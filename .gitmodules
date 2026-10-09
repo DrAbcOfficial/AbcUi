@@ -1,0 +1,12 @@
+[submodule "thirdparty/AbcCore"]
+	path = thirdparty/AbcCore
+	url = https://github.com/DrAbcOfficial/AbcCore.git
+[submodule "thirdparty/RmlUi"]
+	path = thirdparty/RmlUi
+	url = https://github.com/mikke89/RmlUi
+[submodule "thirdparty/freetype"]
+	path = thirdparty/freetype
+	url = https://github.com/freetype/freetype
+[submodule "thirdparty/FreeImage"]
+	path = thirdparty/FreeImage
+	url = https://github.com/hzqst/FreeImage_clone

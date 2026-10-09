@@ -1,0 +1,2 @@
+# UI assets root. Installed to <game>/svencoop/abcui/ (see CMakeLists install rules).
+# Populated from Phase 3 (framework demo document) onward.

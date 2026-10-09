@@ -1,0 +1,36 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "cacheVariables": {
+        "ABC_GAME_DIR": "$env{ABC_GAME_DIR}"
+      }
+    },
+    {
+      "name": "win32-debug",
+      "inherits": "base",
+      "generator": "Visual Studio 18 2026",
+      "architecture": { "value": "Win32", "strategy": "set" }
+    },
+    {
+      "name": "win32-release",
+      "inherits": "win32-debug"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "win32-debug",
+      "configurePreset": "win32-debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "win32-release",
+      "configurePreset": "win32-release",
+      "configuration": "Release"
+    }
+  ]
+}
