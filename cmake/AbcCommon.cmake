@@ -21,4 +21,5 @@ add_compile_options(
     /wd4311 # pointer truncation (32-bit engine pointers)
     /wd4312 # pointer conversion
     /wd4819 # source charset (third-party headers)
+    /wd4828 # source charset (third-party headers, HLSDK)
 )

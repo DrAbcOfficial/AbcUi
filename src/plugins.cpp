@@ -1,46 +1,24 @@
+// AbcUi - plugin entry. Phase 1 skeleton on abc::CAbcPluginBase; the RmlUi
+// framework (render/system interfaces, panels) lands in Phase 3 (05-abcui.md).
+//
+// The metahook globals (g_pInterface/gEngfuncs/g_pMetaHookAPI/g_pMetaSave/
+// gExportfuncs) are DEFINED by abc_core's Plugin.cpp - one copy per plugin DLL
+// (static lib). Do not define them here (duplicate symbol, see README).
 #include <metahook.h>
 
-#include <cstdio>
-#include <cstring>
+#include <abc/Plugin.h>
+#include <abc/Console.h>
 
-#include <abc/Core.h>
+class CAbcUi : public abc::CAbcPluginBase {
+public:
+	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.1.0") {}
 
-// Globals declared extern in metahook.h - one set per plugin DLL (static lib).
-mh_interface_t *g_pInterface;
-cl_enginefunc_t gEngfuncs;
-metahook_api_t *g_pMetaHookAPI;
-mh_enginesave_t *g_pMetaSave;
+protected:
+	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
+		// Phase 3: hook pExportFuncs->HUD_Frame/HUD_Redraw for the RmlUi pump.
+		(void)pExportFuncs;
+		abc::ConsolePrint("AbcUi loaded (%s)\n", Version());
+	}
+};
 
-void IPluginsV4::Init(metahook_api_t *pAPI, mh_interface_t *pInterface, mh_enginesave_t *pSave)
-{
-	g_pInterface = pInterface;
-	g_pMetaHookAPI = pAPI;
-	g_pMetaSave = pSave;
-}
-
-void IPluginsV4::LoadEngine(cl_enginefunc_t *pEngineFuncs)
-{
-	memcpy(&gEngfuncs, pEngineFuncs, sizeof(gEngfuncs));
-}
-
-void IPluginsV4::LoadClient(cl_exportfuncs_t *pExportFuncs)
-{
-	char buf[128];
-	snprintf(buf, sizeof(buf), "AbcUi loaded (%s)\n", abc::CoreVersion());
-	gEngfuncs.pfnConsolePrint(buf);
-}
-
-void IPluginsV4::Shutdown(void)
-{
-}
-
-void IPluginsV4::ExitGame(int iResult)
-{
-}
-
-const char *IPluginsV4::GetVersion(void)
-{
-	return "AbcUi|Version:0.1.0";
-}
-
-EXPOSE_SINGLE_INTERFACE(IPluginsV4, IPluginsV4, METAHOOK_PLUGIN_API_VERSION_V4);
+EXPOSE_SINGLE_INTERFACE(CAbcUi, IPluginsV4, METAHOOK_PLUGIN_API_VERSION_V4);
