@@ -27,7 +27,8 @@ if(ABC_GAME_DIR)
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abcui")
-        install(DIRECTORY assets/abcui DESTINATION "${ABC_GAME_DIR}/svencoop")
+        install(DIRECTORY assets/abcui DESTINATION "${ABC_GAME_DIR}/svencoop"
+            PATTERN ".gitkeep" EXCLUDE)
     endif()
     add_custom_target(deploy
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
