@@ -23,7 +23,8 @@ public:
 	static void update(Rml::Context* context);
 
 	// HUD_Key_Event spine entry (down: 1 press / 0 release; keynum: keydefs).
-	static void onKeyEvent(Rml::Context* context, int down, int keynum);
+	// Returns the Rml consume flag (true = an element handled the key).
+	static bool onKeyEvent(Rml::Context* context, int down, int keynum);
 
 private:
 	static void updateMouse(Rml::Context* context);

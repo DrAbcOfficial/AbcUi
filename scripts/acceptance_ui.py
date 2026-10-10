@@ -180,6 +180,21 @@ def main():
         except Exception as exc:
             check.ok("menu screenshot shows demo document pixels", False, f"read failed: {exc}")
 
+    # Input bridge reachability, BEFORE the debugger toggles (Rml dispatches
+    # keys along the focus chain, and the debugger document steals focus when
+    # shown - refocus arbitration is batch A/C, plan 05 §3.5). Mouse position
+    # is polled from the VGUI cursor, visible at the menu; injected KEYS are
+    # swallowed by the GameUI menu (verified 2026-10-10: same trapkey fires
+    # HUD_Key_Event + Rml keydown in-map), so the keydown check runs in-map.
+    cursor = proc.next_cursor
+    rcon.command("cli.mousemove absolute 300 300")
+    proc.send_stdin("cli.mousemove absolute 320 300")
+    try:
+        proc.wait_for(re.compile(r"\[AbcUi\] demo mouse \d+,\d+"), 10, since=cursor)
+        check.ok("input bridge: mousemove reaches Rml (menu)", True)
+    except TimeoutError:
+        check.ok("input bridge: mousemove reaches Rml (menu)", False)
+
     cursor = proc.next_cursor
     proc.send_stdin("abc_ui_debugger")
     try:
@@ -198,6 +213,18 @@ def main():
         proc.send_stdin(f"map {args.map}")
         time.sleep(28)
         check.ok(f"in-map smoke: game alive after map {args.map}", proc.alive)
+
+        # Keydown reachability in the real render loop (see menu-note above):
+        # engine key injection -> HUD_Key_Event -> KeyMap -> Rml keydown.
+        cursor = proc.next_cursor
+        rcon.command("cli.trapkey t 1")
+        time.sleep(0.2)
+        rcon.command("cli.trapkey t 0")
+        try:
+            proc.wait_for(re.compile(r"\[AbcUi\] demo key T\b"), 10, since=cursor)
+            check.ok("input bridge: keydown reaches Rml (in-map)", True)
+        except TimeoutError:
+            check.ok("input bridge: keydown reaches Rml (in-map)", False)
 
         before = {os.path.basename(p) for p in glob.glob(os.path.join(shots_dir, "*"))}
         shot = take_screenshot(proc, shots_dir, before)
