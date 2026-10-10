@@ -1,0 +1,27 @@
+/* textmenu.rcss - TextMenu layout, from the old
+   abcenchance/res/TextMenuPanel.res (xpos 8, ypos c-216, 96x196,
+   PaintBackgroundType 2 rounded box). */
+
+#textmenu {
+	position: absolute;
+	left: 8dp;
+	top: 50%;
+	width: 96dp;
+	height: 196dp;
+	margin-top: -216dp;
+	/* Old TextMenu.BgColor 0 0 0 64 + the rounded PaintBackgroundType 2. */
+	background-color: #00000040;
+	border-radius: 5dp;
+	transition: opacity 0.2s linear;
+}
+
+#textmenu #menu {
+	position: absolute;
+	left: 1dp;
+	top: 1dp;
+	width: 94dp;
+	height: 194dp;
+	/* Old TextMenu.TextColor 222 222 222 222; menu text keeps newlines. */
+	color: #dededede;
+	white-space: pre-wrap;
+}

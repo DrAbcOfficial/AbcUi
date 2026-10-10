@@ -1,0 +1,30 @@
+/* sidetext.rcss - SidePanel layout, from the old
+   abcenchance/res/SideTextPanel.res (0/c-64 anchor, 72x24, ecco bg). */
+
+#sidetext {
+	position: absolute;
+	left: 0dp;
+	top: 50%;
+	width: 72dp;
+	height: 24dp;
+	margin-top: -64dp;
+}
+
+#sidetext .bg {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 72dp;
+	height: 24dp;
+}
+
+#sidetext #message {
+	position: absolute;
+	left: 12dp;
+	top: 0dp;
+	width: 60dp;
+	height: 24dp;
+	text-align: center;
+	/* Old SideText.TextFgColor = scheme Default. */
+	color: #00ff00;
+}
