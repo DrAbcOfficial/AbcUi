@@ -1,23 +1,22 @@
 /* base.rcss - shared HUD theme (fonts, colours, vars). Plan 05 §4.3.
-   hud_size / hud_alpha knobs land with batch A; Phase 3 pins the baseline. */
-
-@font-face {
-	font-family: "Microsoft YaHei";
-	src: local("Microsoft YaHei");
-	font-weight: normal;
-}
-@font-face {
-	font-family: "Microsoft YaHei";
-	src: local("Microsoft YaHei Bold");
-	font-weight: bold;
-}
-@font-face {
-	font-family: "Consolas";
-	src: local("Consolas");
-}
+   hud_size / hud_alpha knobs land with batch A; Phase 3 pins the baseline.
+   Font faces are loaded natively from C:\Windows\Fonts by rmlui/RmlUiModule
+   (Rml::LoadFontFace), so no @font-face rules here - "local()" sources would
+   go through the file interface and fail. */
 
 body {
 	font-family: "Microsoft YaHei";
 	font-size: 16px;
 	color: #e8e8e8;
+}
+
+/* RmlUi ships no HTML user-agent stylesheet: everything defaults to
+   display:inline. Give the common text elements their block flow here. */
+h1, h2, h3, p, div {
+	display: block;
+}
+
+h1 {
+	font-size: 22px;
+	font-weight: bold;
 }

@@ -153,19 +153,26 @@ void registerCommands() {
 }
 
 void onFrame(double frameTime) {
-	if (!Initialised || !Context)
-		return;
+	// Deferred assembly (see module header): HUD_VidInit proved too
+	// early-bound (-windowed initializes video before the export patch
+	// lands), so the first HUD_Frame carries the one-shot init.
+	if (!Initialised) {
+		init();
+		if (!Initialised || !Context)
+			return;
+		Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
+			static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
+	}
 	InputBridge::update(Context);
 	framework::PanelManager::onFrame(frameTime);
 	Context->Update();
 }
 
 void onVidInit() {
-	if (!Initialised || !Context)
+	if (!Initialised)
 		return;
-	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
-	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
-	Context->SetDimensions(Rml::Vector2i(width, height));
+	Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
+		static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	framework::PanelManager::vidInitAll();
 }
 
