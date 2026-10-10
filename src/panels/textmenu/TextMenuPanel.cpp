@@ -53,17 +53,80 @@ void fadeTo(Rml::Element* body, bool state) {
 	body->SetProperty("opacity", state ? "1" : "0");
 }
 
-std::string escapeXml(const std::string& text) {
+// Old TextImageEx::Paint inline colour stream (SC 5.26 menu text): \w \d \y
+// \r \c \g \m \o switch colour mid-string, \R toggles right-aligned flow,
+// a newline resets to the label colour. Colours byte-exact from the old
+// switch; \d is the label fg itself (TextMenu.TextColor #dedede).
+const char* menuColorCode(char code) {
+	switch (code) {
+		case 'w': return "#ffffff";
+		case 'd': return "#dedede";
+		case 'y': return "#ffd240"; // 255 210 64
+		case 'r': return "#d24000"; // 210 64 0
+		case 'c': return "#00ffff";
+		case 'g': return "#00ff00";
+		case 'm': return "#ff00ff";
+		case 'o': return "#ffa500"; // 255 165 0
+		default: return nullptr;
+	}
+}
+
+std::string colorizeMenuRml(const std::string& text) {
 	std::string out;
-	out.reserve(text.size());
-	for (char c : text) {
+	out.reserve(text.size() + 32);
+	bool inSpan = false;
+	const auto closeSpan = [&]() {
+		if (inSpan) {
+			out += "</span>";
+			inSpan = false;
+		}
+	};
+	for (size_t i = 0; i < text.size(); i++) {
+		const unsigned char c = static_cast<unsigned char>(text[i]);
+		if (c == '\\' && i + 1 < text.size()) {
+			if (const char* hex = menuColorCode(text[i + 1])) {
+				closeSpan();
+				out += "<span style=\"color: ";
+				out += hex;
+				out += "\">";
+				inSpan = true;
+				i++;
+				continue;
+			}
+			if (text[i + 1] == 'R') {
+				// Right-align flow control: no inline-markup equivalent in
+				// Rml; consume so it does not print (server menus rarely
+				// ship it - old Paint mirrored the x cursor).
+				i++;
+				continue;
+			}
+		}
+		if (c == '\r' || c <= 8) {
+			// Old Paint: CR and control chars <= 8 are skipped.
+			continue;
+		}
+		if (c == '\n') {
+			// Old Paint resets to the label colour per line.
+			closeSpan();
+			out += c;
+			continue;
+		}
+		if (c == '&') {
+			// "&&" draws one ampersand; a single & was the hotkey marker
+			// (old code skipped it, the next char still drew).
+			if (i + 1 < text.size() && text[i + 1] == '&') {
+				out += "&amp;";
+				i++;
+			}
+			continue;
+		}
 		switch (c) {
-			case '&': out += "&amp;"; break;
 			case '<': out += "&lt;"; break;
 			case '>': out += "&gt;"; break;
 			default: out += c;
 		}
 	}
+	closeSpan();
 	return out;
 }
 } // namespace
@@ -115,7 +178,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 			MenuString.erase(MenuString.begin(), begin);
 			MenuString.erase(rend.base(), MenuString.end());
 			if (Rml::Element* menu = element("menu"))
-				menu->SetInnerRML(escapeXml(MenuString));
+				menu->SetInnerRML(colorizeMenuRml(MenuString));
 			if (Rml::Element* body = getDocument())
 				fadeTo(body, true);
 			show();
