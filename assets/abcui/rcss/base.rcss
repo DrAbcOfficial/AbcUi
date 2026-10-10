@@ -64,5 +64,7 @@ h1 {
 .font-uibold {
 	font-family: Tahoma;
 	font-weight: bold;
-	font-size: 4.4dp; /* "UiBold": Tahoma 10px, unscaled in the old scheme */
+	font-size: 10dp; /* "UiBold": Tahoma tall 10 - the one scheme font with no
+	    yres tiers, so vgui's proportional panels scaled it by screenH/480
+	    (Scheme2 ReloadFontGlyphs) - 10 design units, not 10 screen px. */
 }
