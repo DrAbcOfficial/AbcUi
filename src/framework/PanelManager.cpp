@@ -8,11 +8,12 @@
 #include "../panels/ammostack/AmmoStackPanel.h"
 #include "../panels/ammobar/AmmoBarPanel.h"
 #include "../panels/deadmsg/DeadMsgPanel.h"
-#include "../panels/demo/DemoPanel.h"
 #include "../panels/flashlight/FlashlightPanel.h"
 #include "../panels/health/HealthPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/notice/NoticePanel.h"
+#include "../panels/sidetext/SideTextPanel.h"
+#include "../panels/textmenu/TextMenuPanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
 
 #include <abc/Console.h>
@@ -23,7 +24,6 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 	// Factory list: one line per panel (plan 05 §4.1 - Viewport successor).
 	static std::vector<std::unique_ptr<HudPanel>> panels = []() {
 		std::vector<std::unique_ptr<HudPanel>> list;
-		list.push_back(std::make_unique<panels::DemoPanel>());
 		list.push_back(std::make_unique<panels::HealthPanel>());
 		list.push_back(std::make_unique<panels::FlashlightPanel>());
 		list.push_back(std::make_unique<panels::AmmoBarPanel>());
@@ -33,6 +33,8 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::DeadMsgPanel>());
 		list.push_back(std::make_unique<panels::NoticePanel>("notice", "abcui/rml/notice.rml", 1));
 		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abcui/rml/notice_center.rml", 4));
+		list.push_back(std::make_unique<panels::SideTextPanel>());
+		list.push_back(std::make_unique<panels::TextMenuPanel>());
 		return list;
 	}();
 	return panels;
@@ -43,6 +45,8 @@ void PanelManager::registerPanelCvars() {
 	// their cvar pointers, the spine only triggers the batch.
 	panels::health::registerCvars();
 	panels::deadmsg::registerCvars();
+	panels::sidetext::registerCvars();
+	panels::textmenu::registerCommands();
 }
 
 void PanelManager::initAll(Rml::Context* context) {

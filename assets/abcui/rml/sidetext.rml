@@ -1,0 +1,10 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/sidetext.rcss"/>
+</head>
+<body id="sidetext">
+	<img class="bg" src="../img/ecco_background.tga"/>
+	<div id="message" class="font-uibold">${SCORE}</div>
+</body>
+</rml>

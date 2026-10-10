@@ -26,10 +26,11 @@ void verifyInstalled() {
 		const char* What;
 	};
 	constexpr Check checks[] = {
-		{"abcui/rml/demo.rml", "demo document"},
 		{"abcui/rcss/base.rcss", "base stylesheet"},
-		{"abcui/img/test.png", "demo image"},
 		{"abcui/lang/english.txt", "localization"},
+		{"abcui/rml/health.rml", "health document"},
+		{"abcui/rml/ammobar.rml", "ammo document"},
+		{"abcui/rml/textmenu.rml", "textmenu document"},
 		{"abcui/img/healthpanel_background.tga", "health panel art"},
 		{"abcui/img/ammobar_background.tga", "ammo panel art"},
 		{"abcui/img/flashlight_off.tga", "flashlight art"},

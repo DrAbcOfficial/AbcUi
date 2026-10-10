@@ -65,8 +65,9 @@ add_library(AbcUi MODULE
     src/panels/ammostack/AmmoStackPanel.cpp
     src/panels/ammobar/AmmoBarPanel.cpp
     src/panels/deadmsg/DeadMsgPanel.cpp
-    src/panels/demo/DemoPanel.cpp
     src/panels/notice/NoticePanel.cpp
+    src/panels/sidetext/SideTextPanel.cpp
+    src/panels/textmenu/TextMenuPanel.cpp
     src/panels/flashlight/FlashlightPanel.cpp
     src/panels/health/HealthPanel.cpp
     src/panels/itemstack/ItemStackPanel.cpp
