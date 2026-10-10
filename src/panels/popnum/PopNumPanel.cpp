@@ -7,6 +7,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -19,6 +20,10 @@
 #include "../../framework/Localization.h"
 #include "../../framework/Projection.h"
 #include "../../framework/Theme.h"
+
+// Windows.h min/max macros fight std::max (old repo precedent).
+#undef max
+#undef min
 
 namespace panels {
 
@@ -42,6 +47,9 @@ constexpr int kThousand = 1000;
 constexpr int kMillion = 1000000;
 constexpr int kHundredMillion = 100000000;
 constexpr float kFrontDotGate = 0.5f; // old cos-60 check
+// D-17 #5: fixed lifetime (the old 2-per-frame alpha at the 60fps reference:
+// 255 / 2 / 60 seconds), identical at any framerate.
+constexpr float kNumberLifetime = 255.0f / 2.0f / 60.0f;
 
 bool viewForward(vec3_t forward) {
 	const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
@@ -170,16 +178,18 @@ void PopNumPanel::onRedraw(double frameTime) {
 		show();
 
 	// Old OnThink per number: front-facing gate re-checked for the reposition,
-	// bob y = proj.y - tall * (-sin(age)/2), alpha decays 2 per frame.
+	// bob y = proj.y - tall * (-sin(age)/2).
 	const float density = framework::Theme::scale();
 	const float boxWidth = kBoxWidth * density;
 	const float boxHeight = kBoxHeight * density;
 
 	for (size_t i = 0; i < Numbers.size();) {
 		Number& number = Numbers[i];
-		// Old Destory path: the label alpha decayed 2 per frame and the panel
-		// died at exhaustion (framerate-dependent lifetime, old parity).
-		number.alpha -= 2.0f;
+		// D-17 #5: the old label alpha decayed a fixed 2 per frame - a
+		// framerate-dependent lifetime (~2.1s at 60fps, ~1.3s at 100fps).
+		// Time-based now, referenced to the old 60fps behavior.
+		number.alpha = 255.0f * std::max(0.0f, 1.0f -
+			static_cast<float>(ClientTimeNow - number.createTime) / kNumberLifetime);
 		if (number.alpha <= 0.0f) {
 			if (number.element)
 				container->RemoveChild(number.element);

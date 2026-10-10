@@ -21,6 +21,7 @@
 #include "../../data/HudState.h"
 #include "../../data/TextFeed.h"
 #include "../../framework/Localization.h"
+#include "../../framework/TextUtil.h"
 
 namespace panels {
 
@@ -116,18 +117,9 @@ void DeadMsgPanel::addItem(const char* victim, const char* attacker, const char*
 	if (!hudstate::isHudHidden(hudstate::kHideAll))
 		show();
 
-	const auto escapeXml = [](std::string text) {
-		std::string out;
-		for (char c : text) {
-			switch (c) {
-				case '&': out += "&amp;"; break;
-				case '<': out += "&lt;"; break;
-				case '>': out += "&gt;"; break;
-				default: out += c;
-			}
-		}
-		return out;
-	};
+	// Server-derived names are escaped through the shared helper (D-17 #3;
+	// was a local lambda, same rules).
+	const auto escapeXml = framework::TextUtil::escapeRml;
 	std::string rml = "<div class=\"attacker font-default\">" + escapeXml(attacker) + "</div>"
 		"<div class=\"inflictor font-default\">[" + escapeXml(inflictor) + "]</div>"
 		"<div class=\"victim font-default\">" + escapeXml(victim) + "</div>";
@@ -153,11 +145,12 @@ void DeadMsgPanel::addItem(const char* victim, const char* attacker, const char*
 	entry.createTime = ClientTimeNow;
 	Rows.push_back(entry);
 
-	// Old AddItem console print (localized template).
+	// Old AddItem console print (localized template - a local trusted file,
+	// but the substitution is bounded after the D-17 round).
 	std::string templateText;
 	if (framework::Localization::translate(templateText, "DeathMsg_ConsolePrint")) {
 		char buffer[1024];
-		sprintf_s(buffer, templateText.c_str(),
+		snprintf(buffer, sizeof(buffer), templateText.c_str(),
 			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor);
 		abc::ConsolePrint("%s\n", buffer);
 	}

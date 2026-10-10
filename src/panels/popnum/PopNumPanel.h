@@ -38,7 +38,7 @@ private:
 	struct Number {
 		float origin[3] = {};
 		double createTime = 0.0;
-		float alpha = 255.0f; // old Label alpha, decremented 2 per frame
+		float alpha = 255.0f; // fades over kNumberLifetime (D-17: time-based)
 		Rml::Element* element = nullptr;
 	};
 

@@ -14,11 +14,12 @@ namespace panels {
 
 namespace {
 
-// Old HudAnimations.txt DMGTiles_* sequence: alpha 0 -> 255 in 0.1s, hold
-// 3.0s, fade to 0 in 0.1s (the res keep_time 5 entry was never consumed by
-// the old code path - the script value is the observable one).
+// Old HudAnimations.txt DMGTiles_* sequence: alpha 0 -> 255 in 0.1s, hold,
+// fade to 0 in 0.1s. D-17 #4: the hold now honors the res "keep_time 5"
+// entry the old code shipped but never consumed (the script hardcoded 3.0s
+// while the res said 5 - dead config quirk).
 constexpr double kFadeIn = 0.1;
-constexpr double kHold = 3.0;
+constexpr double kHold = 5.0;
 constexpr double kFadeOut = 0.1;
 
 // Label element ids (one per tile, tokens resolved at document-ready).
