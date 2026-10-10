@@ -17,5 +17,8 @@ namespace hooks {
 
 // LoadClient time: chain our HUD_XXX implementations into the export table.
 void attachExports(cl_exportfuncs_t* pExportFuncs);
+// LoadClient time: locate the client's vanilla HUD list (sig-scan; fatal on
+// miss like the old Sig_NotFound). See the suppression note in hooks.cpp.
+void locateVanillaHudList();
 
 }
