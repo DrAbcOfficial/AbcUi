@@ -13,6 +13,7 @@
 #include <abc/Render.h>
 #include <abc/RenderCommon.h>
 
+#include "../data/SpriteResource.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
@@ -199,6 +200,19 @@ void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 }
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
+	// Sprite URIs ("spr://<hud.txt name>", "spricon://<atlas>/<l>,<t>,<r>,<b>")
+	// resolve through the sprite data layer, never the file interface (the
+	// scheme prefix also keeps Rml from joining the document directory).
+	if (source.rfind("spr://", 0) == 0 || source.rfind("spricon://", 0) == 0) {
+		int width = 0, height = 0;
+		const Rml::TextureHandle handle = sprites::textureForUri(source, width, height);
+		if (handle) {
+			dimensions.x = width;
+			dimensions.y = height;
+		}
+		return handle;
+	}
+
 	// `source` is the RML-referenced path (Rml joins the document directory);
 	// resolve against the mod dir like every other abcui asset.
 	const std::string path = abc::ModPath(source.c_str());
