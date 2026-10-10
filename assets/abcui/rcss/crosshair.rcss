@@ -1,0 +1,24 @@
+/* crosshair.rcss - CrosshairPanel layout. The old panel was a fullscreen
+   vgui Panel whose children were positioned every frame in raw screen pixels
+   (SetBounds) - the port keeps px units here and lets onData drive geometry,
+   so the cl_crosshair* cvars stay screen-pixel values like before. */
+
+#crosshair {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#crosshair .core, #crosshair .outline {
+	position: absolute;
+	background-color: rgba(0, 0, 0, 0);
+}
+
+/* Old CSPRImage default crosshair (kRenderTransTexture - straight alpha, no
+   additive mark); geometry also driven in px from onData. */
+#crosshair #spr-crosshair {
+	position: absolute;
+	display: none;
+}

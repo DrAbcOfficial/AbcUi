@@ -6,3 +6,21 @@ demo_body = 经 IMetaRenderer 渲染的 RmlUi 文本。键盘事件已接入输�
 DeathMsg_ConsolePrint = %s 被 %s 使用 %s 击杀
 DeathMsg_Suicide = 自杀
 DeathMsg_MonsterKill = 击杀
+
+# Damage tiles (DmgTiles panel)
+DMGTiles_Poison = 中毒
+DMGTiles_Acid = 酸蚀
+DMGTiles_Freeze = 冻伤
+DMGTiles_Drown = 窒息
+DMGTiles_Burn = 烧伤
+DMGTiles_Gas = 毒气
+DMGTiles_Radiation = 辐射
+DMGTiles_Shock = 电击
+DMGTiles_Energybeam = 激光
+DMGTiles_Sonic = 噪声
+
+# Pop numbers (PopNum panel)
+PopNumber_O = %s1
+PopNumber_K = %s1千
+PopNumber_M = %s1百万
+PopNumber_B = %s1亿
