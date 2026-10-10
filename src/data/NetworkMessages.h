@@ -35,6 +35,26 @@ struct WeaponListData {
 using TextMsgCallback = bool(int target, const char* msg, const char* param1,
 	const char* param2, const char* param3, const char* param4);
 
+// Damage UserMsg payload (old g_EventDamage tuple, value-semantic): armor and
+// damage taken, the DMG_* tile bits for DmgTiles, and the world-space hit
+// direction source for the Indicator.
+struct DamageData {
+	int armor = 0;
+	int damage = 0;
+	int tiles = 0;
+	float from[3] = {};
+};
+
+// The old ABCCustomMsg/POPNUMBER MetaHook usermsg package (wire contract with
+// the user's server-side addon - field order must not change): a world origin,
+// a damage/heal value and an RGBA tint. Subtype POPNUMBER = 0, carrier type
+// MHSV_CMD_ABC_CUSTOM = 77 (old networkmessage.h).
+struct PopNumData {
+	float origin[3] = {};
+	int value = 0;
+	int color[4] = {};
+};
+
 extern abc::CallbackList<void(int, int)> AmmoX; // (ammoIndex, count)
 extern abc::CallbackList<void(const WeaponListData&)> WeaponList;
 extern abc::CallbackList<void()> InitHud;
@@ -54,6 +74,8 @@ extern abc::CallbackList<void(int, int, int, const std::string&)> ShowMenu; // (
 extern abc::CallbackList<void(int)> FlashBat; // flashlight battery
 extern abc::CallbackList<void(bool, int)> Flashlight; // (on, battery)
 extern abc::CallbackList<TextMsgCallback> TextMsg;
+extern abc::CallbackList<void(const DamageData&)> Damage;
+extern abc::CallbackList<void(const PopNumData&)> PopNum;
 
 // HUD_Init: installs the HookUserMsg chain. Idempotent.
 void init();

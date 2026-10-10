@@ -28,6 +28,8 @@ abc::CallbackList<void(int, int, int, const std::string&)> ShowMenu;
 abc::CallbackList<void(int)> FlashBat;
 abc::CallbackList<void(bool, int)> Flashlight;
 abc::CallbackList<TextMsgCallback> TextMsg;
+abc::CallbackList<void(const DamageData&)> Damage;
+abc::CallbackList<void(const PopNumData&)> PopNum;
 #pragma endregion
 
 namespace {
@@ -53,6 +55,8 @@ pfnUserMsgHook original_ShowMenu = nullptr;
 pfnUserMsgHook original_FlashBat = nullptr;
 pfnUserMsgHook original_Flashlight = nullptr;
 pfnUserMsgHook original_TextMsg = nullptr;
+pfnUserMsgHook original_Damage = nullptr;
+pfnUserMsgHook original_MetaHook = nullptr;
 
 int __MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf) {
 	abc::MsgReader msg(pbuf, iSize);
@@ -265,6 +269,54 @@ int __MsgFunc_TextMsg(const char* pszName, int iSize, void* pbuf) {
 	});
 	return chain ? original_TextMsg(pszName, iSize, pbuf) : 1;
 }
+
+int __MsgFunc_Damage(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	DamageData data;
+	data.armor = msg.readByte();
+	data.damage = msg.readByte();
+	data.tiles = msg.readLong();
+	if (!msg.ok())
+		return original_Damage(pszName, iSize, pbuf);
+	// Old CHECK_MSG_OK shortcut: an all-zero damage report carries no origin.
+	if (data.armor + data.damage + data.tiles == 0)
+		return original_Damage(pszName, iSize, pbuf);
+	for (int i = 0; i < 3; i++)
+		data.from[i] = msg.readCoord();
+	if (!msg.ok())
+		return original_Damage(pszName, iSize, pbuf);
+	Damage(data);
+	return original_Damage(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_MetaHook(const char* pszName, int iSize, void* pbuf) {
+	// The old plugin-to-plugin usermsg carrier (registered by the user's
+	// server-side addon; absent on vanilla servers - original may be null).
+	abc::MsgReader msg(pbuf, iSize);
+	const int type = msg.readByte();
+	if (!msg.ok())
+		return original_MetaHook ? original_MetaHook(pszName, iSize, pbuf) : 0;
+	if (type == 77) { // MetaHookMsgType::MHSV_CMD_ABC_CUSTOM
+		const int subtype = msg.readByte();
+		if (!msg.ok())
+			return original_MetaHook ? original_MetaHook(pszName, iSize, pbuf) : 0;
+		if (subtype == 0) { // ABCCustomMsg::POPNUMBER
+			PopNumData data;
+			data.origin[0] = msg.readCoord();
+			data.origin[1] = msg.readCoord();
+			data.origin[2] = msg.readCoord();
+			data.value = msg.readLong();
+			data.color[0] = msg.readByte();
+			data.color[1] = msg.readByte();
+			data.color[2] = msg.readByte();
+			data.color[3] = msg.readByte();
+			if (!msg.ok())
+				return original_MetaHook ? original_MetaHook(pszName, iSize, pbuf) : 0;
+			PopNum(data);
+		}
+	}
+	return original_MetaHook ? original_MetaHook(pszName, iSize, pbuf) : 0;
+}
 #pragma endregion
 
 } // namespace
@@ -295,6 +347,10 @@ void init() {
 	original_FlashBat = HOOK_MESSAGE(FlashBat);
 	original_Flashlight = HOOK_MESSAGE(Flashlight);
 	original_TextMsg = HOOK_MESSAGE(TextMsg);
+	original_Damage = HOOK_MESSAGE(Damage);
+	// The MetaHook carrier is addon-registered; a null chain (vanilla servers)
+	// leaves every read a no-op passthrough (see __MsgFunc_MetaHook).
+	original_MetaHook = HOOK_MESSAGE(MetaHook);
 }
 
 }

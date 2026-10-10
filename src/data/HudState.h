@@ -13,6 +13,7 @@
 #include <abc/Events.h>
 
 struct client_data_s;
+struct clientdata_s;
 
 namespace hudstate {
 
@@ -43,6 +44,11 @@ void init();
 // events above.
 void onUpdateClientData(const client_data_s* cdata);
 
+// Spine feed (HUD_TxferLocalOverrides chain): captures the prediction client
+// data pointer the old code read as gClientData (crosshair health/punchangle,
+// Effect waterlevel). The pointer is engine-owned and refreshed every frame.
+void onTxferLocalOverrides(const clientdata_s* client);
+
 bool hasSuit();
 bool hasLongJump();
 bool isSpectate();
@@ -52,5 +58,12 @@ bool isSpectate();
 bool isHudHidden(int token);
 // Probe aid: the raw last-write token value.
 int debugHideTokens();
+
+// Old gClientData readers (null until the first prediction frame).
+float health();
+int waterlevel();
+const float* punchangle();
+// Old s_flFov: the HUD_UpdateClientData fov (view zoom state).
+float fov();
 
 }
