@@ -13,6 +13,10 @@
 // micro-adjustment" the plan anticipated vs OnPostRenderView: the latter
 // fires per view render (water portals/mirrors would double-draw the UI).
 
+namespace Rml {
+class Context;
+}
+
 namespace rmlui {
 
 // Deferred assembly: the first HUD_Frame builds the Rml context (one-shot).
@@ -27,6 +31,10 @@ void shutdown();
 
 // HUD_Init time: abc_ui_debugger command (cvar/command red line, plan 08 §4.9).
 void registerCommands();
+
+// Live Rml context, null before init()/after shutdown() - Debug probe
+// tooling only (ProbeCommand.cpp).
+Rml::Context* context();
 
 // Spine entries (hooks.cpp).
 void onFrame(double frameTime);

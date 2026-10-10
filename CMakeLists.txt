@@ -49,6 +49,7 @@ add_library(AbcUi MODULE
     src/rmlui/InputBridge.cpp
     src/rmlui/KeyMap.cpp
     src/rmlui/RmlUiModule.cpp
+    src/rmlui/ProbeCommand.cpp
     src/rmlui/SourceSpewStub.cpp
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
