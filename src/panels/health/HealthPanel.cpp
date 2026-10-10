@@ -61,6 +61,10 @@ void HealthPanel::onDocumentReady() {
 	subscribe(hudstate::LongJumpChanged, [this](bool longJump) {
 		setLongJump(longJump);
 	});
+	// The change events may have fired before the panels existed (the suit
+	// bit arrives on the first client-data frame, ahead of the first
+	// HUD_Frame that builds them) - evaluate the current state once here.
+	updateVisibility();
 }
 
 void HealthPanel::reset() {

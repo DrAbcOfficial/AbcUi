@@ -17,7 +17,7 @@
 	height: 12dp;
 	/* Old FlashLightOn/Off animation sequences: the newly shown icon fades
 	   in over 0.1s. */
-	transition: opacity 0.1s linear;
+	transition: opacity 0.1s linear-in;
 }
 #on-image { visibility: hidden; }
 
@@ -32,9 +32,7 @@
 	overflow: hidden;
 }
 #power-bar {
-	position: absolute;
-	left: 0dp;
-	top: 0dp;
+	display: block;
 	width: 23dp;
 	height: 8dp;
 }

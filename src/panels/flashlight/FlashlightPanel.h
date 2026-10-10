@@ -19,6 +19,7 @@ protected:
 
 private:
 	void updateVisibility();
+	void applyHideToken();
 	void setFlashLight(bool on, int battery);
 	void setFlashBattery(int battery);
 };

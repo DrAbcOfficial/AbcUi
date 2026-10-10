@@ -12,7 +12,7 @@
 	/* Old TextMenu.BgColor 0 0 0 64 + the rounded PaintBackgroundType 2. */
 	background-color: #00000040;
 	border-radius: 5dp;
-	transition: opacity 0.2s linear;
+	transition: opacity 0.2s linear-in;
 }
 
 #textmenu #menu {

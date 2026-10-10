@@ -22,8 +22,11 @@
    Font sizes are the old scheme's 1080p tier expressed in dp (they scale
    proportionally like the layout did). */
 
+/* RmlUi 6.3 grammar: font-family takes ONE family name (no CSS comma
+   lists - syntax error); CJK coverage comes from the fallback-flagged
+   faces loaded in RmlUiModule (per-glyph fallback across those). */
 body {
-	font-family: "Verdana", "Microsoft YaHei";
+	font-family: Verdana;
 	font-size: 8.9dp;
 	color: #e8e8e8;
 }
@@ -40,26 +43,26 @@ h1 {
 }
 
 /* Old scheme fonts (SchemeBase.res "Fonts" section), 1080p tier in dp.
-   Verdana covers latin glyphs; YaHei is the per-glyph CJK fallback. */
+   Verdana covers latin glyphs; the YaHei fallback face covers CJK. */
 .font-hudnum {
-	font-family: "Verdana", "Microsoft YaHei";
+	font-family: Verdana;
 	font-weight: bold;
 	font-size: 14.25dp; /* "HealthBar"/"AmmoBar": 32px @1080p */
 }
 .font-default {
-	font-family: "Verdana", "Microsoft YaHei";
+	font-family: Verdana;
 	font-size: 8.9dp; /* "Default": 20px @1080p */
 }
 .font-defaultsmall {
-	font-family: "Verdana", "Microsoft YaHei";
+	font-family: Verdana;
 	font-size: 8.9dp; /* "DefaultSmall": 20px @1080p, weight 0 */
 }
 .font-textmenu {
-	font-family: "Verdana", "Microsoft YaHei";
+	font-family: Verdana;
 	font-size: 10.7dp; /* "TextMenu": 24px @1080p */
 }
 .font-uibold {
-	font-family: "Tahoma", "Microsoft YaHei";
+	font-family: Tahoma;
 	font-weight: bold;
 	font-size: 4.4dp; /* "UiBold": Tahoma 10px, unscaled in the old scheme */
 }

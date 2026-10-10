@@ -23,6 +23,7 @@ protected:
 
 private:
 	void updateVisibility();
+	void applyHideToken();
 	void refreshAmmo();
 	const weaponres::Weapon* HandledWeapon = nullptr;
 };

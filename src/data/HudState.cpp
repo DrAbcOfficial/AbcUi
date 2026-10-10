@@ -88,4 +88,8 @@ bool isHudHidden(int token) {
 	return (HideTokens & token) != 0;
 }
 
+int debugHideTokens() {
+	return HideTokens;
+}
+
 }

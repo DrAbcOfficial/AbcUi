@@ -54,13 +54,13 @@ void StackBase::tickItems(double frameTime) {
 		if (item.fadeInPending) {
 			item.fadeInPending = false;
 			item.element->SetProperty("transition",
-				"opacity " + std::to_string(StackParams.fadeIn) + "s linear");
+				"opacity " + std::to_string(StackParams.fadeIn) + "s linear-in");
 			item.element->SetProperty("opacity", "1");
 		}
 		if (item.fadeStartTime < 0.0 && clientTimeNow >= item.expireTime) {
 			item.fadeStartTime = clientTimeNow;
 			item.element->SetProperty("transition",
-				"opacity " + std::to_string(StackParams.fadeOut) + "s linear");
+				"opacity " + std::to_string(StackParams.fadeOut) + "s linear-in");
 			item.element->SetProperty("opacity", "0");
 		}
 		if (item.fadeStartTime >= 0.0 && clientTimeNow >= item.fadeStartTime + StackParams.fadeOut) {
