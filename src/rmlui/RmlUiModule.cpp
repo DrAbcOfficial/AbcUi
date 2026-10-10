@@ -191,6 +191,16 @@ void onFrame(double frameTime) {
 	Context->Update();
 }
 
+void onRedraw(double frameTime) {
+	// HUD_Redraw phase (see HudPanel::onRedraw): projection consumers
+	// reposition, then a second Update so the same-frame render (which fires
+	// later at OnRenderEndFrame) sees the fresh layout.
+	if (!Initialised || !Context)
+		return;
+	framework::PanelManager::onRedraw(frameTime);
+	Context->Update();
+}
+
 void onVidInit() {
 	if (!Initialised)
 		return;

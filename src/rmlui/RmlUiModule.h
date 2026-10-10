@@ -38,6 +38,8 @@ Rml::Context* context();
 
 // Spine entries (hooks.cpp).
 void onFrame(double frameTime);
+// HUD_Redraw chain: projection consumers reposition + second Update.
+void onRedraw(double frameTime);
 void onVidInit();
 void onKeyEvent(int down, int keynum);
 // HUD_Shutdown: full teardown (context/docs die with the client state).

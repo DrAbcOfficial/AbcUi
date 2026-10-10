@@ -17,7 +17,7 @@
 
 class CAbcUi : public abc::CAbcPluginBase {
 public:
-	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.4.0") {}
+	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.5.0") {}
 
 protected:
 	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
