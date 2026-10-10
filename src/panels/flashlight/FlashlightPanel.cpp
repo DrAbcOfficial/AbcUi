@@ -1,6 +1,5 @@
 // panels::FlashlightPanel implementation - see FlashlightPanel.h.
 // from: ABCEnchance/src/hud/vgui/flashlight.* (GBK->UTF-8).
-#include <metahook.h>
 
 #include "FlashlightPanel.h"
 
@@ -20,6 +19,9 @@ namespace {
 // shipped scheme - the colour path is ported anyway for custom schemes.
 constexpr float kIconColor[3] = {0.0f, 255.0f, 0.0f};
 constexpr int kIconAlpha = 125;
+// Old FlashLightPanel.res: the power wrap's full width the battery ratio
+// scales into.
+constexpr float kPowerWrapWidth = 23.0f;
 } // namespace
 
 FlashlightPanel::FlashlightPanel()
@@ -82,7 +84,7 @@ void FlashlightPanel::setFlashLight(bool on, int battery) {
 void FlashlightPanel::setFlashBattery(int battery) {
 	const float ratio = std::clamp(static_cast<float>(battery) / 100.0f, 0.0f, 1.0f);
 	if (Rml::Element* wrap = element("power-wrap"))
-		wrap->SetProperty("width", Rml::String(std::to_string(ratio * 23.0f)) + "dp");
+		wrap->SetProperty("width", Rml::String(std::to_string(ratio * kPowerWrapWidth)) + "dp");
 
 	// Old SetFlashBattery: icon colour hue *= ratio (green -> red), the
 	// scheme alpha rides along (old SetDrawColor Color(rgb, m_cIconColor.a())).

@@ -16,6 +16,11 @@
 
 namespace textfeed {
 
+// TextMsg target values (old HUDNOTICE enum) - also the NoticePanel variant
+// keys (PanelManager wires one panel per target).
+constexpr int kPrintNotify = 1;
+constexpr int kPrintCenter = 4;
+
 // (victim, attacker, inflictor); attacker empty on suicide.
 extern abc::CallbackList<void(const char*, const char*, const char*)> KillFeed;
 // (target, formatted text) for HUDNOTICE targets 1/4.
