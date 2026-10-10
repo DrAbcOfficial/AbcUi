@@ -5,7 +5,9 @@
 
 #include <abc/Plugin.h>
 
+#include "data/HudState.h"
 #include "data/NetworkMessages.h"
+#include "data/WeaponResource.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 
@@ -19,12 +21,15 @@ static void H_HUD_Init() {
 	if (!CommandsRegistered) {
 		CommandsRegistered = true;
 		netmsg::init();
+		hudstate::init();
+		weaponres::init();
 		rmlui::registerCommands();
 	}
 }
 
 static int H_HUD_VidInit() {
 	int result = gExportfuncs.HUD_VidInit();
+	weaponres::reset();
 	rmlui::onVidInit();
 	return result;
 }
@@ -32,6 +37,20 @@ static int H_HUD_VidInit() {
 static void H_HUD_Frame(double frametime) {
 	gExportfuncs.HUD_Frame(frametime);
 	rmlui::onFrame(frametime);
+}
+
+static int H_HUD_UpdateClientData(struct client_data_s* cdata, float time) {
+	// Observe-first (the old exportfuncs order): data layer before the
+	// engine's own handler.
+	hudstate::onUpdateClientData(cdata);
+	return gExportfuncs.HUD_UpdateClientData(cdata, time);
+}
+
+static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct entity_state_s* pps,
+	struct clientdata_s* pcd, const struct clientdata_s* ppcd,
+	struct weapon_data_s* wd, const struct weapon_data_s* pwd) {
+	weaponres::onTxferPredictionData(pwd);
+	gExportfuncs.HUD_TxferPredictionData(ps, pps, pcd, ppcd, wd, pwd);
 }
 
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
@@ -52,6 +71,8 @@ void attachExports(cl_exportfuncs_t* pExportFuncs) {
 	pExportFuncs->HUD_VidInit = H_HUD_VidInit;
 	pExportFuncs->HUD_Frame = H_HUD_Frame;
 	pExportFuncs->HUD_Key_Event = H_HUD_Key_Event;
+	pExportFuncs->HUD_UpdateClientData = H_HUD_UpdateClientData;
+	pExportFuncs->HUD_TxferPredictionData = H_HUD_TxferPredictionData;
 	pExportFuncs->HUD_Shutdown = H_HUD_Shutdown;
 }
 
