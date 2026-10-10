@@ -26,6 +26,9 @@
 	top: 7.5dp;
 	width: 15dp;
 	height: 15dp;
+	/* Old HealthBar.Health/ArmorIconFgColor = scheme Default (danger rule
+	   overrides). The bar fill rides the same scheme colour. */
+	image-color: #00ff00;
 }
 #health-icon { left: 6dp; }
 #armor-icon { left: 120dp; }
@@ -36,6 +39,12 @@
 	width: 48dp;
 	height: 30dp;
 	text-align: center;
+	/* vgui Labels centre their text vertically; Rml needs the explicit
+	   line box (box height = one line). */
+	line-height: 30dp;
+	/* Old HealthBar.Health/ArmorFgColor = scheme Default; the danger
+	   rule (applyDanger) overrides per value at runtime. */
+	color: #00ff00;
 }
 #health-label { left: 14dp; }
 #armor-label { left: 128dp; }
@@ -68,6 +77,8 @@
 	display: block;
 	width: 56dp;
 	height: 11dp;
+	/* Old HealthBar.Health/ArmorBarFgColor = scheme Default. */
+	image-color: #00ff00;
 }
 
 #longjump {
