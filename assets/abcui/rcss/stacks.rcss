@@ -1,0 +1,108 @@
+/* stacks.rcss - the three pickup stack panels. Anchors from the old
+   abcenchance/res/{Ammo,Item,Weapon}StackPanel.res: c<offset> anchors become
+   50% + margin; r120/r340 (right/bottom-relative) becomes right/bottom.
+   Items stack bottom-up: flex column-reverse reproduces the old
+   PerformLayout (newest at the bottom). */
+
+#ammostack, #itemstack, #weaponstack {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 100%;
+	height: 100%;
+	overflow: hidden;
+}
+
+#ammostack #stack, #itemstack #stack, #weaponstack #stack {
+	position: absolute;
+	display: flex;
+	flex-flow: column-reverse;
+	overflow: hidden;
+}
+
+/* AmmoStackPanel.res: xpos c45 ypos c-128, 80x200. */
+#ammostack #stack {
+	left: 50%;
+	top: 50%;
+	width: 80dp;
+	height: 200dp;
+	margin-left: 45dp;
+	margin-top: -128dp;
+}
+/* ItemStackPanel.res: xpos c-95 ypos c-128, 30x195. */
+#itemstack #stack {
+	left: 50%;
+	top: 50%;
+	width: 30dp;
+	height: 195dp;
+	margin-left: -95dp;
+	margin-top: -128dp;
+}
+/* WeaponStackPanel.res: xpos r120 ypos r340, 120x280 (bottom = 340-280). */
+#weaponstack #stack {
+	right: 120dp;
+	bottom: 60dp;
+	width: 120dp;
+	height: 280dp;
+}
+
+/* AmmoStack: item 80x20, gap 1; icon box 25% wide, count text after it
+   (old CAmmoStackItem::PerformLayout). */
+#ammostack .item {
+	position: relative;
+	flex: none;
+	width: 80dp;
+	height: 20dp;
+	margin-bottom: 1dp;
+}
+#ammostack .icon {
+	position: absolute;
+	left: 0dp;
+	top: 5dp;
+	width: 20dp;
+	height: 10dp;
+}
+#ammostack .count {
+	position: absolute;
+	left: 20dp;
+	top: 0dp;
+	width: 60dp;
+	height: 20dp;
+	color: #00ff00;
+}
+
+/* ItemStack: item 30x30, gap 1, icon only. */
+#itemstack .item {
+	position: relative;
+	flex: none;
+	width: 30dp;
+	height: 30dp;
+	margin-bottom: 1dp;
+}
+#itemstack .icon {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 30dp;
+	height: 30dp;
+}
+
+/* WeaponStack: item 120x30, gap 2, weapon sprite; empty tint via .empty
+   (old WeaponStack.IconEmptyColor = Red). */
+#weaponstack .item {
+	position: relative;
+	flex: none;
+	width: 120dp;
+	height: 30dp;
+	margin-bottom: 2dp;
+}
+#weaponstack .icon {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 120dp;
+	height: 30dp;
+}
+#weaponstack .item.empty .icon {
+	image-color: #ff0000;
+}

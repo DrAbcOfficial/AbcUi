@@ -4,9 +4,13 @@
 #include "HudPanel.h"
 
 #include "../data/NetworkMessages.h"
+#include "../panels/ammostack/AmmoStackPanel.h"
+#include "../panels/ammobar/AmmoBarPanel.h"
 #include "../panels/demo/DemoPanel.h"
 #include "../panels/flashlight/FlashlightPanel.h"
 #include "../panels/health/HealthPanel.h"
+#include "../panels/itemstack/ItemStackPanel.h"
+#include "../panels/weaponstack/WeaponStackPanel.h"
 
 #include <abc/Console.h>
 
@@ -19,6 +23,10 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::DemoPanel>());
 		list.push_back(std::make_unique<panels::HealthPanel>());
 		list.push_back(std::make_unique<panels::FlashlightPanel>());
+		list.push_back(std::make_unique<panels::AmmoBarPanel>());
+		list.push_back(std::make_unique<panels::AmmoStackPanel>());
+		list.push_back(std::make_unique<panels::ItemStackPanel>());
+		list.push_back(std::make_unique<panels::WeaponStackPanel>());
 		return list;
 	}();
 	return panels;

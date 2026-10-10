@@ -1,0 +1,53 @@
+/* ammobar.rcss - AmmoPanel layout, from the old
+   abcenchance/res/AmmoPanel.res (bottom-right anchor, 170x30). */
+
+#ammobar {
+	position: absolute;
+	right: 0dp;
+	bottom: 0dp;
+	width: 170dp;
+	height: 30dp;
+}
+
+#ammobar .bg {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 170dp;
+	height: 30dp;
+}
+
+#ammo1-icon, #ammo2-icon {
+	position: absolute;
+	top: 7.5dp;
+	width: 15dp;
+	height: 15dp;
+	visibility: hidden;
+}
+#ammo1-icon { left: 0dp; }
+#ammo2-icon { left: 145dp; }
+
+#ammo1, #ammo2, #slash {
+	position: absolute;
+	top: 0dp;
+	height: 30dp;
+}
+#ammo1 {
+	left: 20dp;
+	width: 44dp;
+	text-align: right;
+}
+/* Old res: ypos cs-0.54 on a 30dp tall box. */
+#slash {
+	left: 80dp;
+	width: 12dp;
+	top: -1.6dp;
+	text-align: center;
+	/* Old scheme AmmoBar.SlashFgColor. */
+	color: #ff0000;
+}
+#ammo2 {
+	left: 100dp;
+	width: 44dp;
+	text-align: center;
+}
