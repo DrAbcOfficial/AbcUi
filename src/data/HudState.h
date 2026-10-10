@@ -16,6 +16,19 @@ struct client_data_s;
 
 namespace hudstate {
 
+// Hide-HUD token bits (old Viewport.h HUD_HIDEWEAPONS...; the values arrive
+// on the HideWeapon/HideHUD messages).
+enum HudHideBits {
+	kHideWeapons = 1 << 0,
+	kHideFlashlight = 1 << 1,
+	kHideAll = 1 << 2,
+	kHideHealth = 1 << 3,
+	kHideSelection = 1 << 4,
+	kHideBattery = 1 << 5,
+	kHideCustom1 = 1 << 6,
+	kHideCustom2 = 1 << 7,
+};
+
 extern abc::CallbackList<void(bool)> SuitChanged;
 extern abc::CallbackList<void(bool)> LongJumpChanged;
 extern abc::CallbackList<void(bool)> SpectateChanged;

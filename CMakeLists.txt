@@ -61,6 +61,8 @@ add_library(AbcUi MODULE
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/panels/demo/DemoPanel.cpp
+    src/panels/flashlight/FlashlightPanel.cpp
+    src/panels/health/HealthPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )

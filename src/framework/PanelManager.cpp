@@ -3,7 +3,10 @@
 
 #include "HudPanel.h"
 
+#include "../data/NetworkMessages.h"
 #include "../panels/demo/DemoPanel.h"
+#include "../panels/flashlight/FlashlightPanel.h"
+#include "../panels/health/HealthPanel.h"
 
 #include <abc/Console.h>
 
@@ -14,9 +17,17 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 	static std::vector<std::unique_ptr<HudPanel>> panels = []() {
 		std::vector<std::unique_ptr<HudPanel>> list;
 		list.push_back(std::make_unique<panels::DemoPanel>());
+		list.push_back(std::make_unique<panels::HealthPanel>());
+		list.push_back(std::make_unique<panels::FlashlightPanel>());
 		return list;
 	}();
 	return panels;
+}
+
+void PanelManager::registerPanelCvars() {
+	// HUD_Init-time cvar registration (plan 08 §4.9); panel namespaces own
+	// their cvar pointers, the spine only triggers the batch.
+	panels::health::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
@@ -28,7 +39,10 @@ void PanelManager::initAll(Rml::Context* context) {
 }
 
 void PanelManager::vidInitAll() {
-	// Batch A panels recompute scaled positions here (05 §3.1 size change).
+	// Old Viewport::VidInit ended with Reset(): every panel back to its
+	// pre-map state on every map load / video init.
+	for (auto& panel : Panels())
+		panel->reset();
 }
 
 void PanelManager::onFrame(double frameTime) {

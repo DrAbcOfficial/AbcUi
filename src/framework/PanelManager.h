@@ -19,9 +19,11 @@ class HudPanel;
 
 class PanelManager {
 public:
+	// HUD_Init-time cvar registration for the batch panels (plan 08 §4.9).
+	static void registerPanelCvars();
 	// Creates all registered panels and loads their documents.
 	static void initAll(Rml::Context* context);
-	// HUD_VidInit: forward resolution changes (Phase 4 panels react here).
+	// HUD_VidInit: resolution changes + per-panel map reset.
 	static void vidInitAll();
 	// HUD_Frame: per-panel data refresh.
 	static void onFrame(double frameTime);

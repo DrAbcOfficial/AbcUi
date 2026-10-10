@@ -8,11 +8,22 @@
 // maps to the document's display property so hidden panels cost no layout).
 // No data-binding library; controllers use SetInnerRML/SetAttribute
 // directly (plan 05 §4.2).
+//
+// Event subscriptions: data-layer callbacks belong to the panel lifetime -
+// register them in onDocumentReady and push their unsubscribe thunks through
+// addCleanup(); the destructor runs cleanups before the document dies.
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 
+#include <functional>
 #include <string>
+#include <vector>
+
+// abc/Events.h references xcommand_t (CChainedCommand) - the HLSDK typedef
+// must land first (09 §2 include-order rule).
+#include <command.h>
+#include <abc/Events.h>
 
 namespace framework {
 
@@ -38,13 +49,33 @@ public:
 	// Data->DOM refresh; PanelManager::onFrame forwards the pump.
 	virtual void onData(double frameTime) { (void)frameTime; }
 
+	// Map transition (PanelManager::vidInitAll): back to the pre-map state.
+	virtual void reset() {}
+
 protected:
-	// Post-load hook: query elements, apply initial state.
+	// Post-load hook: query elements, subscribe data events.
 	virtual void onDocumentReady() {}
+
+	// Lifetime-ordered unsubscribe thunk (runs in the destructor).
+	void addCleanup(std::function<void()> fn);
+
+	// Subscribes a data-layer callback and arms its unsubscribe for the
+	// panel lifetime (the standard onDocumentReady wiring).
+	template <typename Sig, typename Fn>
+	void subscribe(abc::CallbackList<Sig>& list, Fn&& callback) {
+		const auto handle = list.append(std::forward<Fn>(callback));
+		addCleanup([&list, handle]() { list.remove(handle); });
+	}
+
+	// Common element lookup with a warn-on-missing (panel layout typo guard).
+	Rml::Element* element(const char* id);
 
 	const std::string Name;
 	const std::string DocumentPath;
 	Rml::ElementDocument* Document = nullptr;
+
+private:
+	std::vector<std::function<void()>> Cleanups;
 };
 
 }
