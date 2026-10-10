@@ -1,0 +1,29 @@
+/* notice.rcss - NoticePanel + NoticeCenterPanel layouts, from the old
+   abcenchance/res/NoticePanel.res (2,1 anchor, 200 wide, keep 3s) and
+   NoticeCenterPanel.res (c-100/c-72, keep_center). The old keep_center
+   re-centering becomes text-align center inside the fixed-width box. */
+
+#notice {
+	position: absolute;
+	left: 2dp;
+	top: 1dp;
+	width: 200dp;
+	height: auto;
+}
+
+#notice-center {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 200dp;
+	height: auto;
+	margin-left: -100dp;
+	margin-top: -72dp;
+}
+
+#notice #message, #notice-center #message {
+	display: block;
+	text-align: center;
+	/* Old Notice.TextFgColor = scheme Default. */
+	color: #00ff00;
+}

@@ -1,0 +1,47 @@
+/* deadmsg.rcss - DeathMsgPanel layout, from the old
+   abcenchance/res/DeathMsgPanel.res (rs1.1 anchor = right inset 20dp,
+   ypos 30, 200 wide). Newest row at the bottom (old reverse-iterate
+   PerformLayout); each row: attacker | [inflictor] | victim, right-packed.
+   Colours are the old scheme DeathMsgPanel.* values. */
+
+#deadmsg {
+	position: absolute;
+	right: 20dp;
+	top: 30dp;
+	width: 200dp;
+	height: 100%;
+	overflow: hidden;
+}
+
+#deadmsg #feed {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 200dp;
+	height: 100%;
+	display: flex;
+	flex-flow: column-reverse;
+}
+
+#deadmsg .row {
+	position: relative;
+	flex: none;
+	display: flex;
+	flex-flow: row;
+	justify-content: flex-end;
+	background-color: #7d7d7d7d;
+	border-radius: 4dp;
+	padding: 1dp 2dp;
+	margin-bottom: 1dp;
+}
+
+#deadmsg .attacker {
+	color: #ff0000;
+}
+#deadmsg .inflictor {
+	color: #ffffff;
+	margin: 0dp 1dp;
+}
+#deadmsg .victim {
+	color: #64c882;
+}

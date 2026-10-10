@@ -57,13 +57,16 @@ add_library(AbcUi MODULE
     src/data/HudState.cpp
     src/data/NetworkMessages.cpp
     src/data/SpriteResource.cpp
+    src/data/TextFeed.cpp
     src/data/WeaponResource.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
     src/panels/ammostack/AmmoStackPanel.cpp
     src/panels/ammobar/AmmoBarPanel.cpp
+    src/panels/deadmsg/DeadMsgPanel.cpp
     src/panels/demo/DemoPanel.cpp
+    src/panels/notice/NoticePanel.cpp
     src/panels/flashlight/FlashlightPanel.cpp
     src/panels/health/HealthPanel.cpp
     src/panels/itemstack/ItemStackPanel.cpp
