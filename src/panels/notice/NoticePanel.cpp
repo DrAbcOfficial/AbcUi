@@ -1,0 +1,47 @@
+// panels::NoticePanel implementation - see NoticePanel.h.
+// from: ABCEnchance/src/hud/vgui/notice.* (GBK->UTF-8).
+#include <metahook.h>
+
+#include "NoticePanel.h"
+
+#include <RmlUi/Core/Element.h>
+
+#include "../../data/TextFeed.h"
+
+namespace panels {
+
+namespace {
+// Old NoticePanel.res keep_time.
+constexpr double kKeepTime = 3.0;
+} // namespace
+
+NoticePanel::NoticePanel(const char* name, const char* documentPath, int target)
+	: HudPanel(name, documentPath), Target(target) {}
+
+void NoticePanel::onDocumentReady() {
+	subscribe(textfeed::Notice, [this](int target, const char* text) {
+		if (target != Target)
+			return;
+		if (Rml::Element* message = element("message"))
+			message->SetInnerRML(text);
+		// Old ShowMessage: close at client time + keep_time.
+		CloseTime = ClientTimeNow + kKeepTime;
+		show();
+	});
+}
+
+void NoticePanel::onData(double frameTime) {
+	ClientTimeNow += frameTime;
+	if (CloseTime > 0.0 && ClientTimeNow > CloseTime) {
+		CloseTime = 0.0;
+		hide();
+	}
+}
+
+void NoticePanel::reset() {
+	// Old Reset: drop the countdown and hide.
+	CloseTime = 0.0;
+	hide();
+}
+
+}

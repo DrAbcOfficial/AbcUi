@@ -4,12 +4,15 @@
 #include "HudPanel.h"
 
 #include "../data/NetworkMessages.h"
+#include "../data/TextFeed.h"
 #include "../panels/ammostack/AmmoStackPanel.h"
 #include "../panels/ammobar/AmmoBarPanel.h"
+#include "../panels/deadmsg/DeadMsgPanel.h"
 #include "../panels/demo/DemoPanel.h"
 #include "../panels/flashlight/FlashlightPanel.h"
 #include "../panels/health/HealthPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
+#include "../panels/notice/NoticePanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
 
 #include <abc/Console.h>
@@ -27,6 +30,9 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::AmmoStackPanel>());
 		list.push_back(std::make_unique<panels::ItemStackPanel>());
 		list.push_back(std::make_unique<panels::WeaponStackPanel>());
+		list.push_back(std::make_unique<panels::DeadMsgPanel>());
+		list.push_back(std::make_unique<panels::NoticePanel>("notice", "abcui/rml/notice.rml", 1));
+		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abcui/rml/notice_center.rml", 4));
 		return list;
 	}();
 	return panels;
@@ -36,6 +42,7 @@ void PanelManager::registerPanelCvars() {
 	// HUD_Init-time cvar registration (plan 08 §4.9); panel namespaces own
 	// their cvar pointers, the spine only triggers the batch.
 	panels::health::registerCvars();
+	panels::deadmsg::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
