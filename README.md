@@ -28,7 +28,8 @@ DLL → `<game>/svencoop/metahook/plugins/`，UI 资产（RML/RCSS/图片/语言
 
 RmlUi 集成层（RenderInterface/SystemInterface/FileInterface/InputBridge/KeyMap）、HUD 框架骨架
 （PanelManager/HudPanel/Theme/Localization/Assets）与演示面板已落地；验收驱动
-`scripts/acceptance_ui.py`（管道 stdio + RCON + 截图像素证据，16 项）。
+`scripts/acceptance_ui.py`（管道 stdio + RCON + 截图像素证据，18 项）；游戏内验证
+同样支持 halflife MCP 工具通道（plans_docs 08 §3）。
 
 ## 运行依赖
 
