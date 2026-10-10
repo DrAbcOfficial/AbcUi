@@ -1,12 +1,15 @@
 #pragma once
 
-// rmlui - abc_ui_probe, Debug builds only.
+// rmlui - abc_ui_probe / abc_ui_menu, Debug builds only.
 //
-// Live diagnostic cross-section for acceptance and triage: dumps hudstate,
-// per-document visibility and hardcoded panel element states (armor-bar-wrap,
-// flashlight off-image), then opens a font-pipeline document. The element ids
-// and panel names it probes are deliberately listed only here, in a Debug
-// translation unit - the production surface must not couple to them.
+// abc_ui_probe is a live diagnostic cross-section for acceptance and triage:
+// dumps hudstate, per-document visibility and hardcoded panel element states
+// (armor-bar-wrap, flashlight off-image), then opens a font-pipeline document.
+// abc_ui_menu injects a canned netmsg::ShowMenu so drivers without a live
+// server menu stream can exercise the TextMenu chain (open, slot-key gate,
+// menuselect, re-show). The element ids and panel names these probe are
+// deliberately listed only here, in a Debug translation unit - the production
+// surface must not couple to them.
 
 namespace rmlui {
 

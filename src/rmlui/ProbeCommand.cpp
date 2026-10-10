@@ -9,6 +9,7 @@
 #include <abc/CvarCmd.h>
 
 #include "../data/HudState.h"
+#include "../data/NetworkMessages.h"
 
 #include "RmlUiModule.h"
 
@@ -134,15 +135,36 @@ void probeCommand() {
 			abc::ConsoleWarn("[AbcUi] probe: post-open focus is null\n");
 		abc::ConsolePrint("[AbcUi] probe shown\n");
 	}
-	else {
-		abc::ConsoleWarn("[AbcUi] probe document failed to load\n");
+		else {
+			abc::ConsoleWarn("[AbcUi] probe document failed to load\n");
+		}
 	}
-}
+
+	// ShowMenu injector for the acceptance driver: fires the exact event the
+	// wire parser emits (netmsg::ShowMenu), so a session without a live server
+	// menu stream can still exercise the real downstream chain - TextMenu
+	// open/fade, the slot1..10 chained-command gate, the menuselect emission
+	// and the re-show-cancels-pending-hide path. The canned text carries the
+	// TextImageEx colour stream the panel must translate.
+	void menuCommand() {
+		Rml::Context* context = rmlui::context();
+		if (!context)
+			return;
+		netmsg::ShowMenu(0x7, 15, 0,
+			"\\r[AbcUi]\\w Menu probe\n"
+			"\n"
+			"\\y1. Alpha option\n"
+			"\\w2. Beta option\n"
+			"\\d3. Gamma disabled\n");
+		abc::ConsolePrint("[AbcUi] menu: injected ShowMenu (slots 1-3, 15s, plain menuselect)\n");
+	}
+
 
 } // namespace
 
 void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
+	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 }
 
 }
