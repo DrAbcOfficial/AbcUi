@@ -12,8 +12,8 @@ namespace Assets {
 // Canonical asset-root prefix as referenced from RML/RCSS.
 constexpr const char* kRootPrefix = "abcui/";
 
-// LoadClient time: verify the installed assets, warn (once) about the ones
-// the demo needs when missing (plugin loads even without them).
+// LoadClient time: verify the installed assets, warn (once) about missing
+// ones (plugin loads even without them).
 void verifyInstalled();
 
 }

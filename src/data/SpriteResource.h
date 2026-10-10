@@ -33,8 +33,7 @@
 #include <string>
 #include <unordered_map>
 
-struct rect_s;
-using wrect_t = struct rect_s;
+#include <wrect.h>
 
 namespace sprites {
 

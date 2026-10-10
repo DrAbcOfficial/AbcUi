@@ -43,6 +43,9 @@ Rml::Input::KeyIdentifier mapKeyCode(int keynum) {
 	case K_KP_HOME: return Rml::Input::KI_NUMPAD7;
 	case K_KP_UPARROW: return Rml::Input::KI_NUMPAD8;
 	case K_KP_PGUP: return Rml::Input::KI_NUMPAD9;
+	// The engine delivers the wheel as keynum down-pulses (no matching up),
+	// which has no Rml key equivalent - UNKNOWN drops them until wheel
+	// scrolling is routed as real wheel events (input batch C).
 	case K_MWHEELDOWN: return Rml::Input::KI_UNKNOWN;
 	case K_MWHEELUP: return Rml::Input::KI_UNKNOWN;
 	default: break;

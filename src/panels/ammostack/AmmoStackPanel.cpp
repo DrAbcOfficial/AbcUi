@@ -1,6 +1,5 @@
 // panels::AmmoStackPanel implementation - see AmmoStackPanel.h.
 // from: ABCEnchance/src/hud/vgui/ammostack.* (GBK->UTF-8).
-#include <metahook.h>
 
 #include "AmmoStackPanel.h"
 

@@ -1,6 +1,5 @@
 // panels::NoticePanel implementation - see NoticePanel.h.
 // from: ABCEnchance/src/hud/vgui/notice.* (GBK->UTF-8).
-#include <metahook.h>
 
 #include "NoticePanel.h"
 

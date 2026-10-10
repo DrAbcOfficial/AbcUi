@@ -1,6 +1,5 @@
 // panels::ItemStackPanel implementation - see ItemStackPanel.h.
 // from: ABCEnchance/src/hud/vgui/itemstack.* (GBK->UTF-8).
-#include <metahook.h>
 
 #include "ItemStackPanel.h"
 

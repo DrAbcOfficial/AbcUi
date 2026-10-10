@@ -1,5 +1,4 @@
 // rmlui::InputBridge implementation - see InputBridge.h.
-#include <metahook.h>
 
 #include "InputBridge.h"
 
