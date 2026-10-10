@@ -76,7 +76,10 @@ void HealthPanel::reset() {
 void HealthPanel::updateVisibility() {
 	const bool hideHealth = hudstate::isHudHidden(hudstate::kHideHealth);
 	const bool hideBattery = hudstate::isHudHidden(hudstate::kHideBattery);
-	const bool visible = hudstate::hasSuit() && (!hideBattery || !hideHealth) && !hudstate::isSpectate();
+	// kHideAll = the old Viewport-wide SetVisible(false) (hud hide-all token
+	// from scripted sequences); the group split stays independent of it.
+	const bool visible = hudstate::hasSuit() && (!hideBattery || !hideHealth) &&
+		!hudstate::isSpectate() && !hudstate::isHudHidden(hudstate::kHideAll);
 	if (visible)
 		show();
 	else

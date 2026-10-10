@@ -1,13 +1,17 @@
 /* textmenu.rcss - TextMenu layout, from the old
-   abcenchance/res/TextMenuPanel.res (xpos 8, ypos c-216, 96x196,
-   PaintBackgroundType 2 rounded box). */
+   abcenchance/res/TextMenuPanel.res (xpos 8, ypos c-216, rounded
+   PaintBackgroundType 2 box). The old CTextMenu::SetContent resized the
+   box to the text every message (w*1.1/h*1.1), so the shipped look is a
+   snug panel hugging the menu text - reproduce with an auto-sized box and
+   a small padding. The ypos center-216 anchor stays a fixed top edge of
+   the box (grows downward). */
 
 #textmenu {
 	position: absolute;
 	left: 8dp;
 	top: 50%;
-	width: 96dp;
-	height: 196dp;
+	width: auto;
+	height: auto;
 	margin-top: -216dp;
 	/* Old TextMenu.BgColor 0 0 0 64 + the rounded PaintBackgroundType 2. */
 	background-color: #00000040;
@@ -16,11 +20,8 @@
 }
 
 #textmenu #menu {
-	position: absolute;
-	left: 1dp;
-	top: 1dp;
-	width: 94dp;
-	height: 194dp;
+	/* Old LabelEx: textAlignment north-west, 10% box padding (w*1.1). */
+	padding: 2dp 5dp;
 	/* Old TextMenu.TextColor 222 222 222 222; menu text keeps newlines. */
 	color: #dededede;
 	white-space: pre-wrap;

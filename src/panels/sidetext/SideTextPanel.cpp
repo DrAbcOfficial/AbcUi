@@ -77,7 +77,9 @@ void SideTextPanel::onData(double frameTime) {
 		return;
 
 	const float* velocity = local->curstate.velocity;
-	const float speed = sqrtf(velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2]);
+	// Old: Vector(velocity).AsVector2D().Length() - horizontal speed only
+	// (vertical velocity is not part of the old readout).
+	const float speed = sqrtf(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
 	MaxSpeed = std::max(MaxSpeed, speed);
 
 	std::string text = Template;
@@ -99,8 +101,11 @@ void SideTextPanel::reset() {
 }
 
 void SideTextPanel::updateVisibility() {
+	// Old hud_sideinfo cvar + suit gate; the old panel also hid with the
+	// Viewport-wide HIDEALL token (see HealthPanel note).
 	const bool visible = hudstate::hasSuit() &&
-		(!sidetext::SideInfo || sidetext::SideInfo->value > 0);
+		(!sidetext::SideInfo || sidetext::SideInfo->value > 0) &&
+		!hudstate::isHudHidden(hudstate::kHideAll);
 	if (visible)
 		show();
 	else

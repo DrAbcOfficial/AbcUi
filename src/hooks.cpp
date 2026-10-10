@@ -25,8 +25,15 @@ namespace {
 // cleared every panel's visible bit per HUD_Redraw so the Rml HUD stands
 // alone. VanilliaHud layout: {vtable, x, y, type, flags} - visible bit =
 // flags bit0.
+//
+// Index 3 is SKIPPED on purpose: every historical variant of the old code
+// left exactly one list slot visible (the dynamic_cast era commented out its
+// clear; the index era's switch is 0,1,2,4). Which SC panel that slot is was
+// not fully pinned down (candidates: CHudAmmoSecondary / CHudMenu); the port
+// reproduces the old code's observable behavior.
 constexpr size_t kVanillaHudFlagsOffset = 16;
 constexpr size_t kVanillaHudMaxPanels = 5;
+constexpr size_t kVanillaHudSkipIndex = 3; // deliberately NOT suppressed (old code parity)
 
 DWORD VanillaHudListAddr = 0;
 DWORD VanillaHudPanels[kVanillaHudMaxPanels] = {};
@@ -54,7 +61,7 @@ void rebuildVanillaHudPanels() {
 	};
 	HudListNode* node = reinterpret_cast<HudListNode*>(*(DWORD*)VanillaHudListAddr);
 	for (size_t i = 0; i < kVanillaHudMaxPanels && node; i++) {
-		if (node->panel)
+		if (node->panel && i != kVanillaHudSkipIndex)
 			VanillaHudPanels[VanillaHudPanelCount++] = node->panel;
 		node = reinterpret_cast<HudListNode*>(node->next);
 	}

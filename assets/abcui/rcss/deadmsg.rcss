@@ -1,15 +1,20 @@
 /* deadmsg.rcss - DeathMsgPanel layout, from the old
    abcenchance/res/DeathMsgPanel.res (rs1.1 anchor = right inset 20dp,
-   ypos 30, 200 wide). Newest row at the bottom (old reverse-iterate
-   PerformLayout); each row: attacker | [inflictor] | victim, right-packed.
-   Colours are the old scheme DeathMsgPanel.* values. */
+   ypos 30, 200 wide, 60 tall). Newest row at the bottom (old
+   reverse-iterate PerformLayout bottom-anchored the rows inside the
+   60dp-tall box); each row: attacker | [inflictor] | victim, right-packed.
+   Colours are the old scheme DeathMsgPanel.* values.
+   Note: the old code sized box/rows in proportional units (60u box, row
+   height = box/count); the Rml rows are content-sized, so a full 6-row
+   feed clips the oldest row's top few dp against the 60dp box - rows
+   fade out long before the feed regularly fills that deep. */
 
 #deadmsg {
 	position: absolute;
 	right: 20dp;
 	top: 30dp;
 	width: 200dp;
-	height: 100%;
+	height: 60dp;
 	overflow: hidden;
 }
 
@@ -20,7 +25,8 @@
 	width: 200dp;
 	height: 100%;
 	display: flex;
-	flex-flow: column-reverse;
+	flex-flow: column;
+	justify-content: flex-end;
 }
 
 #deadmsg .row {

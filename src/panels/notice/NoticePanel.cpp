@@ -6,6 +6,7 @@
 
 #include <RmlUi/Core/Element.h>
 
+#include "../../data/HudState.h"
 #include "../../data/TextFeed.h"
 
 namespace panels {
@@ -26,7 +27,16 @@ void NoticePanel::onDocumentReady() {
 			message->SetInnerRML(text);
 		// Old ShowMessage: close at client time + keep_time.
 		CloseTime = ClientTimeNow + kKeepTime;
-		show();
+		// The old viewport-wide HIDEALL bit hid the notice with everything
+		// else (messages still armed the close timer).
+		if (!hudstate::isHudHidden(hudstate::kHideAll))
+			show();
+	});
+	subscribe(hudstate::HideTokenChanged, [this](int) {
+		if (hudstate::isHudHidden(hudstate::kHideAll))
+			hide();
+		else if (CloseTime > ClientTimeNow)
+			show();
 	});
 }
 
