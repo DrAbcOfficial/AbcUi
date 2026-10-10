@@ -34,7 +34,10 @@ bool HudPanel::loadDocument(Rml::Context* context) {
 }
 
 void HudPanel::show() {
-	if (Document)
+	// Idempotent: RmlUi's Show() defaults to FocusFlag::Auto, so re-showing a
+	// visible document would silently steal the context focus (key input of
+	// whatever document the user is interacting with, e.g. an open TextMenu).
+	if (Document && !Document->IsVisible())
 		Document->Show();
 }
 

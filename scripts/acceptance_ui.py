@@ -3,17 +3,19 @@
 
 Same harness as acceptance_essential.py: pipe-stdio game launch (halflife-cli
 bridge), RCON request/response, stdout mirror assertions, screenshot frame
-read-back. Phase 3 checks:
+read-back. Checks (updated for Phase 4: the DemoPanel is retired, its
+instrument role is taken over by the abc_ui_probe debug document):
 
   plugin load (Renderer/AbcEssential/AbcUi), RmlUi assembly banner, panels
-  loaded, demo panel ready, abc_ui_debugger toggle echo, errors.log
-  quiescence, menu + in-map screenshot pixel evidence of the demo document,
-  in-map survival, clean quit.
+  loaded, probe document opens, abc_ui_debugger toggle echo, errors.log
+  quiescence, menu + in-map screenshot pixel evidence of the probe document,
+  input bridge reachability (probe mouse/key echoes), in-map survival,
+  clean quit.
 
-Pixel evidence: the demo window paints #101418e0 (dark) with a #7fd28f
-title; we scan the top-left quadrant for near matches of both. It is a smoke
-signal, not a layout test - human confirmation of legibility stays with the
-user (04 §5 pattern).
+Pixel evidence: the probe document paints a #101418e0 (dark) 640x640 box
+with pure #ff0000 / #00ff00 font-family proof lines; we scan the top-left
+quadrant for near matches. It is a smoke signal, not a layout test - human
+confirmation of legibility stays with the user (04 §5 pattern).
 
 Usage: python scripts/acceptance_ui.py [--game <path>] [--map <name>] [--skip-map]
 """
@@ -47,8 +49,9 @@ from rcon_client import RconConnection  # noqa: E402
 
 GAME_DIR_HINTS = ("--game argument", "GAME_DIR", "halflife-cli/mcp/game_dir.txt")
 
-# Demo document evidence colors (demo.rcss): title green + window background.
-DEMO_TARGETS = [(0x7F, 0xD2, 0x8F, 24), (0x10, 0x14, 0x18, 18)]
+# Probe document evidence colors: font-family proof lines (pure red/green)
+# plus the probe window background (same dark the retired demo used).
+PROBE_TARGETS = [(0xFF, 0x00, 0x00, 24), (0x00, 0xFF, 0x00, 24), (0x10, 0x14, 0x18, 18)]
 
 
 def resolve_game_dir(override):
@@ -90,15 +93,15 @@ def latest_screenshot(shots_dir, before_names):
     return max(candidates, key=os.path.getmtime)
 
 
-def demo_pixels_present(shot_path):
+def probe_pixels_present(shot_path):
     from PIL import Image
     with Image.open(shot_path) as im:
         im = im.convert("RGB")
         w, h = im.size
         pixels = im.crop((0, 0, w // 2, h // 2)).getdata()
-    found = [False] * len(DEMO_TARGETS)
+    found = [False] * len(PROBE_TARGETS)
     for px in pixels:
-        for i, (r, g, b, tol) in enumerate(DEMO_TARGETS):
+        for i, (r, g, b, tol) in enumerate(PROBE_TARGETS):
             if not found[i] and abs(px[0] - r) <= tol and abs(px[1] - g) <= tol and abs(px[2] - b) <= tol:
                 found[i] = True
         if all(found):
@@ -155,9 +158,18 @@ def main():
         check.ok("stdout: RmlUi context ready banner", False)
     buffer = "\n".join(proc.lines_since(0).lines)
     check.ok("stdout: panels loaded line", re.search(r"\[AbcUi\] \d+ panel\(s\) loaded", buffer) is not None)
-    check.ok("stdout: demo panel ready", "[AbcUi] demo panel ready" in buffer)
     check.ok("stdout: no font/asset warnings",
              "no system font loaded" not in buffer and "missing" not in buffer)
+
+    # Open the probe document (Debug builds): the pixel + input evidence
+    # below hangs off it (the retired DemoPanel's instrument role).
+    cursor = proc.next_cursor
+    proc.send_stdin("abc_ui_probe")
+    try:
+        proc.wait_for(re.compile(r"\[AbcUi\] probe shown"), 10, since=cursor)
+        check.ok("stdout: probe document opens", True)
+    except TimeoutError:
+        check.ok("stdout: probe document opens", False)
 
     rcon = RconConnection(host, port, "", protocol="goldsrc-udp")
     rcon.open()
@@ -176,9 +188,9 @@ def main():
     check.ok("menu screenshot written", shot is not None)
     if shot:
         try:
-            check.ok("menu screenshot shows demo document pixels", demo_pixels_present(shot), os.path.basename(shot))
+            check.ok("menu screenshot shows probe document pixels", probe_pixels_present(shot), os.path.basename(shot))
         except Exception as exc:
-            check.ok("menu screenshot shows demo document pixels", False, f"read failed: {exc}")
+            check.ok("menu screenshot shows probe document pixels", False, f"read failed: {exc}")
 
     # Input bridge reachability, BEFORE the debugger toggles (Rml dispatches
     # keys along the focus chain, and the debugger document steals focus when
@@ -190,7 +202,7 @@ def main():
     rcon.command("cli.mousemove absolute 300 300")
     proc.send_stdin("cli.mousemove absolute 320 300")
     try:
-        proc.wait_for(re.compile(r"\[AbcUi\] demo mouse \d+,\d+"), 10, since=cursor)
+        proc.wait_for(re.compile(r"\[AbcUi\] probe mouse \d+,\d+"), 10, since=cursor)
         check.ok("input bridge: mousemove reaches Rml (menu)", True)
     except TimeoutError:
         check.ok("input bridge: mousemove reaches Rml (menu)", False)
@@ -216,12 +228,22 @@ def main():
 
         # Keydown reachability in the real render loop (see menu-note above):
         # engine key injection -> HUD_Key_Event -> KeyMap -> Rml keydown.
+        # Map load re-shows the data panels, which take the Rml focus from
+        # the probe document - close+reopen it so it owns focus again
+        # (second send prints "probe shown" and calls Focus()).
+        cursor = proc.next_cursor
+        proc.send_stdin("abc_ui_probe")
+        proc.send_stdin("abc_ui_probe")
+        try:
+            proc.wait_for(re.compile(r"\[AbcUi\] probe shown"), 10, since=cursor)
+        except TimeoutError:
+            pass
         cursor = proc.next_cursor
         rcon.command("cli.trapkey t 1")
         time.sleep(0.2)
         rcon.command("cli.trapkey t 0")
         try:
-            proc.wait_for(re.compile(r"\[AbcUi\] demo key T\b"), 10, since=cursor)
+            proc.wait_for(re.compile(r"\[AbcUi\] probe key id=\d+"), 10, since=cursor)
             check.ok("input bridge: keydown reaches Rml (in-map)", True)
         except TimeoutError:
             check.ok("input bridge: keydown reaches Rml (in-map)", False)
@@ -231,9 +253,9 @@ def main():
         check.ok("in-map screenshot written", shot is not None)
         if shot:
             try:
-                check.ok("in-map screenshot shows demo document pixels", demo_pixels_present(shot), os.path.basename(shot))
+                check.ok("in-map screenshot shows probe document pixels", probe_pixels_present(shot), os.path.basename(shot))
             except Exception as exc:
-                check.ok("in-map screenshot shows demo document pixels", False, f"read failed: {exc}")
+                check.ok("in-map screenshot shows probe document pixels", False, f"read failed: {exc}")
 
     errors_size_after = os.path.getsize(errors_log) if os.path.isfile(errors_log) else 0
     check.ok("errors.log quiet", errors_size_after == errors_size_before,
