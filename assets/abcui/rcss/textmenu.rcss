@@ -1,18 +1,19 @@
 /* textmenu.rcss - TextMenu layout, from the old
    abcenchance/res/TextMenuPanel.res (xpos 8, ypos c-216, rounded
-   PaintBackgroundType 2 box). The old CTextMenu::SetContent resized the
-   box to the text every message (w*1.1/h*1.1), so the shipped look is a
-   snug panel hugging the menu text - reproduce with an auto-sized box and
-   a small padding. The ypos center-216 anchor stays a fixed top edge of
-   the box (grows downward). */
+   PaintBackgroundType 2 box). CTextMenu never calls SetProportional, so its
+   anchors are RAW PIXELS, not design units: c-216 = screenH/2 - 216px
+   (y=324 @1080p, left-centre-up) and xpos 8 = 8px - 96dp/3.5dp in the dp
+   space. The old CTextMenu::SetContent resized the box to the text every
+   message (w*1.1/h*1.1), so the shipped look is a snug panel hugging the
+   menu text - reproduce with an auto-sized box and a small padding. */
 
 #textmenu {
 	position: absolute;
-	left: 8dp;
+	left: 3.5dp;
 	top: 50%;
 	width: auto;
 	height: auto;
-	margin-top: -216dp;
+	margin-top: -96dp;
 	/* Old TextMenu.BgColor 0 0 0 64 + the rounded PaintBackgroundType 2. */
 	background-color: #00000040;
 	border-radius: 5dp;
