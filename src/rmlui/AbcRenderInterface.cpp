@@ -29,6 +29,8 @@ constexpr bool kFlipTextureUpload = false;
 
 constexpr uint64_t kProgramAlphaBlend = DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED;
 constexpr uint64_t kProgramFilledAlphaBlend = DRAW_FILLED_RECT_ALPHA_BLEND_ENABLED;
+// Sprite icons: kRenderTransAdd parity (src*a + dest) - see header note.
+constexpr uint64_t kProgramSpriteAdditive = DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED;
 
 void ToStraightColor(const Rml::ColourbPremultiplied& in, float out[4]) {
 	const float a = in.alpha / 255.0f;
@@ -199,7 +201,8 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 
 	// Texture handles are surface texture ids (int namespace).
 	const int textureId = static_cast<int>(texture);
-	renderer->DrawTexturedRect(textureId, vertices.data(), vertices.size(), indices.data(), indices.size(), kProgramAlphaBlend, "AbcUi");
+	const uint64_t program = (textureId != 0 && AdditiveTextures.count(texture)) ? kProgramSpriteAdditive : kProgramAlphaBlend;
+	renderer->DrawTexturedRect(textureId, vertices.data(), vertices.size(), indices.data(), indices.size(), program, "AbcUi");
 }
 
 void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
@@ -216,6 +219,9 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
+			// Old ImageSprPanel rendered HUD sprites kRenderTransAdd - mark
+			// the handle so RenderGeometry picks the additive program.
+			AdditiveTextures.insert(handle);
 		}
 		return handle;
 	}
@@ -286,7 +292,12 @@ Rml::TextureHandle AbcRenderInterface::GenerateTexture(Rml::Span<const Rml::byte
 void AbcRenderInterface::ReleaseTexture(Rml::TextureHandle texture) {
 	if (texture == 0)
 		return;
+	AdditiveTextures.erase(texture);
 	vgui2ext::deleteTextureById(static_cast<int>(texture));
+}
+
+void AbcRenderInterface::clearAdditiveTextures() {
+	AdditiveTextures.clear();
 }
 
 void AbcRenderInterface::EnableScissorRegion(bool enable) {
