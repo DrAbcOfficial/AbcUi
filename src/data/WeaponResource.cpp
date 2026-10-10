@@ -25,6 +25,10 @@ namespace {
 
 constexpr int kMaxWeaponName = 128;
 constexpr int kMaxAmmoTypes = 32; // defensive bound for ammo-map reads
+// HLSDK prediction array length (weapon_data_s[] handed to
+// HUD_TxferPredictionData): weapon ids index it directly, so ids at or past
+// this bound would read out of bounds and are rejected at registration.
+constexpr int kMaxWeaponIds = 32;
 
 struct SlotData {
 	std::map<int, int> positions; // slotPos -> weapon id
@@ -138,7 +142,9 @@ void loadWeaponSprites(Weapon& weapon, const char* customSpr) {
 // slot position persistently (same as the old in-place mutation).
 void addWeapon(Weapon&& incoming) {
 	const int id = incoming.id;
-	if (id <= 0 || incoming.slot < 0 || incoming.slot >= static_cast<int>(kMaxWeaponSlot))
+	// Single choke point: every registry id must stay a valid prediction-
+	// array index (onTxferPredictionData indexes weaponDataArray[id]).
+	if (id <= 0 || id >= kMaxWeaponIds || incoming.slot < 0 || incoming.slot >= static_cast<int>(kMaxWeaponSlot))
 		return;
 	if (RegistryState.byId.count(id))
 		return;
