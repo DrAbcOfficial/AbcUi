@@ -4,6 +4,7 @@
 #include "HudState.h"
 
 #include <cdll_int.h>
+#include <entity_state.h>
 
 #include "NetworkMessages.h"
 
@@ -18,6 +19,8 @@ bool Suit = false;
 bool LongJump = false;
 bool Spectate = false;
 int HideTokens = 0;
+const clientdata_s* ClientData = nullptr;
+float Fov = 90.0f;
 
 void onHideToken(int token) {
 	// Old Viewport parity (Viewport.cpp hudhideCallback): plain assignment,
@@ -50,6 +53,10 @@ void init() {
 void onUpdateClientData(const client_data_s* cdata) {
 	if (!cdata)
 		return;
+
+	// Old exportfuncs HUD_UpdateClientData: s_flFov = c->fov (the zoom state
+	// the crosshair autohide gate keys on).
+	Fov = cdata->fov;
 
 	const bool suit = (cdata->iWeaponBits & kWeaponSuitBit) != 0;
 	if (suit != Suit) {
@@ -92,6 +99,27 @@ bool isHudHidden(int token) {
 
 int debugHideTokens() {
 	return HideTokens;
+}
+
+void onTxferLocalOverrides(const clientdata_s* client) {
+	// Old exportfuncs HUD_TxferLocalOverrides: gClientData = client.
+	ClientData = client;
+}
+
+float health() {
+	return ClientData ? ClientData->health : 0.0f;
+}
+
+int waterlevel() {
+	return ClientData ? ClientData->waterlevel : 0;
+}
+
+const float* punchangle() {
+	return ClientData ? ClientData->punchangle : nullptr;
+}
+
+float fov() {
+	return Fov;
 }
 
 }
