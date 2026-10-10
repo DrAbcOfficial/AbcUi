@@ -17,7 +17,7 @@
 
 class CAbcUi : public abc::CAbcPluginBase {
 public:
-	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.3.0") {}
+	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.4.0") {}
 
 protected:
 	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
@@ -27,6 +27,7 @@ protected:
 		// needs is not usable this early (Phase 3 trace finding).
 		abc::MetaRendererInit();
 		vgui2ext::init();
+		hooks::locateVanillaHudList();
 		hooks::attachExports(pExportFuncs);
 		abc::ConsolePrint("[AbcUi] loaded %s\n", Version());
 	}
