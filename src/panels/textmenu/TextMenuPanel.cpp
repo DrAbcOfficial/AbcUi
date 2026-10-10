@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include <abc/CvarCmd.h>
+#include <abc/Console.h>
 #include <abc/Events.h>
 
 #include "../../data/NetworkMessages.h"
@@ -45,6 +46,18 @@ abc::CChainedCommand* command(int index) {
 namespace {
 // Old StartFade sequences TextMenuIn/Out: 0.2s alpha, visibility flips.
 constexpr double kFadeSeconds = 0.2;
+
+// Acceptance-driver visibility: name every state transition on the stdout
+// mirror so a menu that dies without an explicit closer identifies itself
+// (abc_ui_probe instrument role; compiled out in Release).
+#ifndef NDEBUG
+void traceTransition(const char* what, double detail, double now) {
+	abc::ConsolePrint("[AbcUi] textmenu: %s (detail=%.3f now=%.3f)\n", what, detail, now);
+}
+#else
+void traceTransition(const char*, double, double) {}
+#endif
+
 void fadeTo(Rml::Element* body, bool state) {
 	if (!body)
 		return;
@@ -105,9 +118,12 @@ std::string colorizeMenuRml(const std::string& text) {
 			continue;
 		}
 		if (c == '\n') {
-			// Old Paint resets to the label colour per line.
+			// Old Paint resets to the label colour per line. The break must be
+			// a <br/>: a raw newline lands between spans, and the parser drops
+			// whitespace-only text there regardless of white-space (found live
+			// via the abc_ui_menu injector - the menu painted as one line).
 			closeSpan();
-			out += c;
+			out += "<br/>";
 			continue;
 		}
 		if (c == '&') {
@@ -187,6 +203,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 			// menuselect usually lands inside the 0.2s window, and letting the
 			// stale deadline fire would close the just-opened submenu.
 			HideAtTime = -1.0;
+			traceTransition("open", static_cast<double>(ValidSlots), ClientTimeNow);
 		}
 	}
 	else {
@@ -196,6 +213,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 		// The document stays up for the fade-out; hide it once the opacity
 		// transition has finished (OnFadeOutDone).
 		HideAtTime = ClientTimeNow + kFadeSeconds;
+		traceTransition("close-message", static_cast<double>(ValidSlots), ClientTimeNow);
 	}
 	WaitingForMore = needMore != 0;
 }
@@ -210,6 +228,7 @@ void TextMenuPanel::selectMenuItem(int slot) {
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		HideAtTime = ClientTimeNow + kFadeSeconds;
+		traceTransition("select", static_cast<double>(slot), ClientTimeNow);
 	}
 }
 
@@ -222,6 +241,7 @@ void TextMenuPanel::onData(double frameTime) {
 			fadeTo(body, false);
 		HideAtTime = ClientTimeNow + kFadeSeconds;
 		ShutoffTime = -1.0;
+		traceTransition("shutoff", ShutoffTime, ClientTimeNow);
 	}
 	// Fade-out finished: take the document out of the layout (old
 	// TextMenuOut SetVisible 0 at +0.2s). Doing it here - instead of
@@ -230,6 +250,7 @@ void TextMenuPanel::onData(double frameTime) {
 	if (HideAtTime >= 0.0 && ClientTimeNow >= HideAtTime) {
 		HideAtTime = -1.0;
 		hide();
+		traceTransition("hide", ShutoffTime, ClientTimeNow);
 	}
 }
 
