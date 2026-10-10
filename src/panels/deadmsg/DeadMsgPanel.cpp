@@ -65,7 +65,7 @@ void DeadMsgPanel::onData(double frameTime) {
 			// after the row was added.
 			if (ClientTimeNow >= row.createTime + keep) {
 				row.fadeStartTime = ClientTimeNow;
-				row.element->SetProperty("transition", "opacity 0.5s linear");
+				row.element->SetProperty("transition", "opacity 0.5s linear-in");
 				row.element->SetProperty("opacity", "0");
 			}
 			++itor;

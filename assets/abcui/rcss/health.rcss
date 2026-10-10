@@ -46,7 +46,7 @@
 	width: 56dp;
 	height: 11dp;
 	overflow: hidden;
-	transition: width 0.15s linear;
+	transition: width 0.15s linear-in;
 }
 #health-bar-wrap { left: 55dp; }
 #armor-bar-wrap { left: 169dp; }
@@ -62,10 +62,10 @@
 #health-bar-bg { left: 55dp; }
 #armor-bar-bg { left: 169dp; }
 
+/* In-flow (display:block) so overflow:hidden on the wrap clips the fill
+   reliably (RmlUi clipping of abs-positioned children is not guaranteed). */
 #health-bar, #armor-bar {
-	position: absolute;
-	left: 0dp;
-	top: 0dp;
+	display: block;
 	width: 56dp;
 	height: 11dp;
 }

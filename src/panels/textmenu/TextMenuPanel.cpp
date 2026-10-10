@@ -48,7 +48,7 @@ namespace {
 void fadeTo(Rml::Element* body, bool state) {
 	if (!body)
 		return;
-	body->SetProperty("transition", "opacity 0.2s linear");
+	body->SetProperty("transition", "opacity 0.2s linear-in");
 	body->SetProperty("opacity", state ? "1" : "0");
 }
 

@@ -31,12 +31,16 @@ void FlashlightPanel::onDocumentReady() {
 	subscribe(netmsg::FlashBat, [this](int battery) {
 		setFlashBattery(battery);
 	});
+	// Old split: the UpdateClientData handler re-showed on suit alone, the
+	// HideWeapon/HideHUD token path applied the flashlight hide bit. Suit
+	// state may predate the panel (see HealthPanel note).
 	subscribe(hudstate::SuitChanged, [this](bool) {
 		updateVisibility();
 	});
 	subscribe(hudstate::HideTokenChanged, [this](int) {
-		updateVisibility();
+		applyHideToken();
 	});
+	updateVisibility();
 }
 
 void FlashlightPanel::reset() {
@@ -46,6 +50,17 @@ void FlashlightPanel::reset() {
 }
 
 void FlashlightPanel::updateVisibility() {
+	// Old g_EventHudUpdateClientData: suit alone gates the panel here; hide
+	// tokens only apply through their own path (they arrive as messages and
+	// are re-evaluated there, while weapon-bit changes keep re-showing).
+	if (hudstate::hasSuit())
+		show();
+	else
+		hide();
+}
+
+void FlashlightPanel::applyHideToken() {
+	// Old hudhideCallback: ShowPanel(!HIDEFLASHLIGHT) while suited.
 	const bool visible = hudstate::hasSuit() && !hudstate::isHudHidden(hudstate::kHideFlashlight);
 	if (visible)
 		show();

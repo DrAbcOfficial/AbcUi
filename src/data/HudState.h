@@ -48,5 +48,7 @@ bool hasLongJump();
 bool isSpectate();
 // Raw hide tokens: true when any subscribed message carried the bit.
 bool isHudHidden(int token);
+// Probe aid: the raw token accumulator.
+int debugHideTokens();
 
 }

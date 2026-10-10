@@ -141,7 +141,14 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 
 	// With scissor active Rml still sends geometry overlapping the region;
 	// Set2DEx confines rasterization to the region rect.
-	const bool scissor = ScissorEnabled && ScissorRect.Valid() && ScissorRect.Width() > 0 && ScissorRect.Height() > 0;
+	// An empty region (zero width/height - e.g. a fully shrunken overflow
+	// clip) must draw NOTHING: falling through to the unclipped path would
+	// leak the clipped content (the armor-bar-at-zero-width bug).
+	if (ScissorEnabled) {
+		if (!ScissorRect.Valid() || ScissorRect.Width() <= 0 || ScissorRect.Height() <= 0)
+			return;
+	}
+	const bool scissor = ScissorEnabled;
 	if (scissor)
 		translation -= Rml::Vector2f(static_cast<float>(ScissorRect.Left()), static_cast<float>(ScissorRect.Top()));
 
