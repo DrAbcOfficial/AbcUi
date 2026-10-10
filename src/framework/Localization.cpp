@@ -6,6 +6,8 @@
 
 #include "../rmlui/VGUI2ExtensionImport.h"
 
+#include <cstdio>
+#include <cstring>
 #include <unordered_map>
 
 namespace framework {

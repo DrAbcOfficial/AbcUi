@@ -10,6 +10,10 @@
 
 #include "framework/Localization.h"
 
+#include <cstdio>
+#include <cstring>
+#include <string>
+
 #include <Windows.h>
 
 namespace rmlui {
@@ -85,8 +89,11 @@ void AbcSystemInterface::GetClipboardText(Rml::String& text) {
 		if (const wchar_t* wide = static_cast<const wchar_t*>(GlobalLock(handle))) {
 			const int bytes = WideCharToMultiByte(CP_UTF8, 0, wide, -1, nullptr, 0, nullptr, nullptr);
 			if (bytes > 0) {
-				text.resize(static_cast<size_t>(bytes - 1));
+				// The conversion writes the terminating NUL too, so size the
+				// buffer for it first and trim afterwards.
+				text.resize(static_cast<size_t>(bytes));
 				WideCharToMultiByte(CP_UTF8, 0, wide, -1, text.data(), bytes, nullptr, nullptr);
+				text.resize(static_cast<size_t>(bytes - 1));
 			}
 			GlobalUnlock(handle);
 		}
