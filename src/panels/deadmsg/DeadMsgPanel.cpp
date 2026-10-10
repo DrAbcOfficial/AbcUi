@@ -13,6 +13,7 @@
 
 #include <abc/CvarCmd.h>
 #include <abc/Console.h>
+#include <abc/Format.h>
 
 // Windows.h min/max macros fight std::max (old repo precedent).
 #undef max
@@ -145,14 +146,13 @@ void DeadMsgPanel::addItem(const char* victim, const char* attacker, const char*
 	entry.createTime = ClientTimeNow;
 	Rows.push_back(entry);
 
-	// Old AddItem console print (localized template - a local trusted file,
-	// but the substitution is bounded after the D-17 round).
+	// Old AddItem console print (localized template). D-17: the token is a
+	// {0}..{2} template substituted through abc::Format - the names never
+	// touch a printf format slot.
 	std::string templateText;
 	if (framework::Localization::translate(templateText, "DeathMsg_ConsolePrint")) {
-		char buffer[1024];
-		snprintf(buffer, sizeof(buffer), templateText.c_str(),
-			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor);
-		abc::ConsolePrint("%s\n", buffer);
+		abc::ConsolePrint("%s\n", abc::Format(templateText,
+			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor));
 	}
 }
 

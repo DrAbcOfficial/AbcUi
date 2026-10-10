@@ -1,9 +1,9 @@
-# AbcUi localization: english. UTF-8 `key = value`; '#' comments.
+# AbcUi localization ({0} placeholders for abc::Format): english. UTF-8 `key = value`; '#' comments.
 demo_title = AbcUi Phase 3 Demo
 demo_body = RmlUi text rendering through IMetaRenderer. Keyboard events reach the input bridge; the box below proves scissor clipping.
 
 # Killfeed (DeadMsg panel)
-DeathMsg_ConsolePrint = %s was killed by %s (%s)
+DeathMsg_ConsolePrint = {0} was killed by {1} ({2})
 DeathMsg_Suicide = suicide
 DeathMsg_MonsterKill = killed
 
@@ -20,7 +20,7 @@ DMGTiles_Energybeam = Beam
 DMGTiles_Sonic = Sonic
 
 # Pop numbers (PopNum panel)
-PopNumber_O = %s1
-PopNumber_K = %s1K
-PopNumber_M = %s1M
-PopNumber_B = %s1B
+PopNumber_O = {0}
+PopNumber_K = {0}K
+PopNumber_M = {0}M
+PopNumber_B = {0}B

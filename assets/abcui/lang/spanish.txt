@@ -1,4 +1,4 @@
-# AbcUi localization: spanish. UTF-8 `key = value`; '#' comments.
+# AbcUi localization ({0} placeholders for abc::Format): spanish. UTF-8 `key = value`; '#' comments.
 
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = intoxicación
@@ -13,7 +13,7 @@ DMGTiles_Energybeam = Láser
 DMGTiles_Sonic = Ruido
 
 # Pop numbers (PopNum panel)
-PopNumber_O = %s1
-PopNumber_K = %s1 mil
-PopNumber_M = %s1 millones
-PopNumber_B = %s1 100 millones
+PopNumber_O = {0}
+PopNumber_K = {0} mil
+PopNumber_M = {0} millones
+PopNumber_B = {0} 100 millones

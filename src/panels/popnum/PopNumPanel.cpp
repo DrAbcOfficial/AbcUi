@@ -13,6 +13,7 @@
 
 #include <abc/CvarCmd.h>
 #include <abc/Console.h>
+#include <abc/Format.h>
 #include <abc/Math.h>
 
 #include "../../data/HudState.h"
@@ -110,14 +111,12 @@ std::string PopNumPanel::formatValue(int value) {
 		value /= kThousand;
 		token = "PopNumber_K";
 	}
-	std::string text;
+		std::string text;
 	if (!framework::Localization::translate(text, token))
-		text = "%s1";
-	const std::string number = std::to_string(value);
-	const size_t slot = text.find("%s1");
-	if (slot != std::string::npos)
-		text.replace(slot, 3, number);
-	return text;
+		text = "{0}";
+	// D-17: the tokens carry {0} placeholders (was the vgui %s1 style) and
+	// substitute through abc::Format - no printf near the table text.
+	return abc::Format(text, value);
 }
 
 void PopNumPanel::addNumber(const float origin[3], int value, const int color[4]) {

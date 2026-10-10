@@ -1,9 +1,9 @@
-# AbcUi localization: schinese (简体中文). UTF-8 `key = value`; '#' comments.
+# AbcUi localization ({0} placeholders for abc::Format): schinese (简体中文). UTF-8 `key = value`; '#' comments.
 demo_title = AbcUi 第三阶段演示
 demo_body = 经 IMetaRenderer 渲染的 RmlUi 文本。键盘事件已接入输入桥；下方方框验证 scissor 裁剪。
 
 # Killfeed (DeadMsg panel)
-DeathMsg_ConsolePrint = %s 被 %s 使用 %s 击杀
+DeathMsg_ConsolePrint = {0} 被 {1} 使用 {2} 击杀
 DeathMsg_Suicide = 自杀
 DeathMsg_MonsterKill = 击杀
 
@@ -20,7 +20,7 @@ DMGTiles_Energybeam = 激光
 DMGTiles_Sonic = 噪声
 
 # Pop numbers (PopNum panel)
-PopNumber_O = %s1
-PopNumber_K = %s1千
-PopNumber_M = %s1百万
-PopNumber_B = %s1亿
+PopNumber_O = {0}
+PopNumber_K = {0}千
+PopNumber_M = {0}百万
+PopNumber_B = {0}亿
