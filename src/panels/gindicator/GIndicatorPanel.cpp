@@ -61,8 +61,13 @@ constexpr const char* kGrenadeModelPath = "models/w_grenade.mdl";
 void onAddEntity(cl_entity_t* ent, const char* modelname) {
 	if (!GrenadeIndicator || GrenadeIndicator->value <= 0)
 		return;
+	// D-17: the old gate also required curstate.sequence != 0 - on SC 5.26
+	// the grenade throw entities carry sequence 0 for their whole flight, so
+	// the old code never drew a marker (trace evidence, 08 §4.32). The
+	// sequence gate is dropped; model name / studio type / messagenum /
+	// range gates stay.
 	if (!ent || !ent->model || strcmp(modelname, kGrenadeModelPath) != 0 ||
-		ent->curstate.sequence == 0 || ent->model->type != mod_studio)
+		ent->model->type != mod_studio)
 		return;
 	const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
 	if (!local || ent->curstate.messagenum != local->curstate.messagenum)

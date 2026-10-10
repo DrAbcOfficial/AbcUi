@@ -7,6 +7,7 @@
 
 #include "../../data/HudState.h"
 #include "../../data/TextFeed.h"
+#include "../../framework/TextUtil.h"
 
 namespace panels {
 
@@ -23,7 +24,10 @@ void NoticePanel::onDocumentReady() {
 		if (target != Target)
 			return;
 		if (Rml::Element* message = element("message"))
-			message->SetInnerRML(text);
+			// D-17 #3: server-derived text goes in escaped (the old vgui
+			// Label drew it plain; SetInnerRML would hand the server an
+			// element-injection surface the original never had).
+			message->SetInnerRML(framework::TextUtil::escapeRml(text));
 		// Old ShowMessage: close at client time + keep_time.
 		CloseTime = ClientTimeNow + kKeepTime;
 		// The old viewport-wide HIDEALL bit hid the notice with everything

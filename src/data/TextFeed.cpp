@@ -49,9 +49,36 @@ std::string findLocalize(const std::string& token) {
 	return token;
 }
 
-// Formats the notice text: #token resolution on msg + params, then msg as
-// the printf format with the non-empty params substituted (old switch on
-// the populated-param count).
+// D-17 #2 (R-17 closure): msg is the printf format by protocol (the HLSDK
+// TextMsg contract - msg=format, params=arguments; the vanilla client does
+// the same), but the raw server text used to go straight into sprintf_s:
+// a stray %n/%x or a specifier/argument mismatch crashed or garbled the
+// HUD. The format is now whitelisted - only "%s" pairs and "%%" survive,
+// every other '%' becomes a literal "%%" - and the substitution runs
+// through bounded snprintf.
+std::string sanitizePrintfFormat(const std::string& format) {
+	std::string out;
+	out.reserve(format.size());
+	for (size_t i = 0; i < format.size(); i++) {
+		if (format[i] != '%') {
+			out += format[i];
+			continue;
+		}
+		if (i + 1 < format.size() && (format[i + 1] == 's' || format[i + 1] == '%')) {
+			out += format[i];
+			out += format[i + 1];
+			i++;
+		}
+		else {
+			out += "%%";
+		}
+	}
+	return out;
+}
+
+// Formats the notice text: #token resolution on msg + params, then the
+// sanitized msg as the printf format with the non-empty params substituted
+// (old switch on the populated-param count).
 std::string formatNotice(std::string msg, std::string params[4]) {
 	msg = findLocalize(msg);
 	int type = 0;
@@ -60,12 +87,13 @@ std::string formatNotice(std::string msg, std::string params[4]) {
 		if (!params[i].empty())
 			type++;
 	}
+	const std::string safeFormat = sanitizePrintfFormat(msg);
 	char buffer[1024];
 	switch (type) {
-		case 1: sprintf_s(buffer, msg.c_str(), params[0].c_str()); break;
-		case 2: sprintf_s(buffer, msg.c_str(), params[0].c_str(), params[1].c_str()); break;
-		case 3: sprintf_s(buffer, msg.c_str(), params[0].c_str(), params[1].c_str(), params[2].c_str()); break;
-		case 4: sprintf_s(buffer, msg.c_str(), params[0].c_str(), params[1].c_str(), params[2].c_str(), params[3].c_str()); break;
+		case 1: snprintf(buffer, sizeof(buffer), safeFormat.c_str(), params[0].c_str()); break;
+		case 2: snprintf(buffer, sizeof(buffer), safeFormat.c_str(), params[0].c_str(), params[1].c_str()); break;
+		case 3: snprintf(buffer, sizeof(buffer), safeFormat.c_str(), params[0].c_str(), params[1].c_str(), params[2].c_str()); break;
+		case 4: snprintf(buffer, sizeof(buffer), safeFormat.c_str(), params[0].c_str(), params[1].c_str(), params[2].c_str(), params[3].c_str()); break;
 		default: return msg;
 	}
 	std::string text = buffer;

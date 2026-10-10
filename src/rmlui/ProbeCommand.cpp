@@ -120,6 +120,21 @@ void probeCommand() {
 			}
 		}
 	}
+	// GIndicator ground truth: tracked-marker count + positions.
+	if (Rml::ElementDocument* gind = context->GetDocument("gindicator")) {
+		if (Rml::Element* markers = gind->GetElementById("markers")) {
+			const int count = markers->GetNumChildren();
+			abc::ConsolePrint("[AbcUi] probe: gindicator markers=%d\n", count);
+			for (int i = 0; i < count && i < 4; i++) {
+				Rml::Element* child = markers->GetChild(i);
+				abc::ConsolePrint("[AbcUi] probe: gind[%d] display='%s' inline-left='%s' inline-top='%s' abs=(%.1f %.1f)\n",
+					i, child->GetProperty("display")->ToString().c_str(),
+					child->GetProperty("left")->ToString().c_str(),
+					child->GetProperty("top")->ToString().c_str(),
+					child->GetAbsoluteLeft(), child->GetAbsoluteTop());
+			}
+		}
+	}
 	const char* rml =
 		"<rml>"
 		"<head>"
