@@ -52,11 +52,13 @@ void DeadMsgPanel::onDocumentReady() {
 		addItem(victim, attacker, inflictor);
 	});
 	// The old viewport-wide HIDEALL token hid the feed with the rest of the
-	// Viewport; rows kept fading underneath (AddItem only ever showed the
-	// panel itself, never a hidden parent).
+	// Viewport; rows kept fading underneath. On clear the still-alive rows
+	// reappear (old Viewport SetVisible(true) revealed its child panels).
 	subscribe(hudstate::HideTokenChanged, [this](int) {
 		if (hudstate::isHudHidden(hudstate::kHideAll))
 			hide();
+		else if (!Rows.empty())
+			show();
 	});
 }
 
@@ -110,7 +112,10 @@ void DeadMsgPanel::addItem(const char* victim, const char* attacker, const char*
 	if (!feed)
 		return;
 
-	show();
+	// A killfeed during a hide-all token still appends the row (it renders
+	// with the panel's next show), but must not un-hide the panel.
+	if (!hudstate::isHudHidden(hudstate::kHideAll))
+		show();
 
 	const auto escapeXml = [](std::string text) {
 		std::string out;
