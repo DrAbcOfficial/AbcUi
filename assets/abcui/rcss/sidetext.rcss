@@ -25,6 +25,9 @@
 	width: 60dp;
 	height: 24dp;
 	text-align: center;
+	/* vgui Labels centre their text vertically; Rml needs the explicit
+	   line box (box height = one line, template ships single-line). */
+	line-height: 24dp;
 	/* Old SideText.TextFgColor = scheme Default. */
 	color: #00ff00;
 }
