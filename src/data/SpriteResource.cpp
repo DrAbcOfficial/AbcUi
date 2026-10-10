@@ -49,13 +49,16 @@ std::unordered_map<std::string, int> CropTextures;
 bool ChannelWarned = false;
 
 // GoldSrc keeps sprites in several search paths; the engine SPR_Load walks
-// the same list (downloads first for server-shipped custom sprites).
+// the same list (mod dir first, then the server-downloaded and addon trees).
+// "<mod>_downloads"/"<mod>_addon" are SIBLINGS of the mod dir, so ".." climbs
+// out of it in the relative path (works for both the relative mod dir the SC
+// engine reports and an absolute one).
 std::vector<std::string> spriteSearchPaths(const std::string& relative) {
-	std::string gamedir = abc::GameDir();
+	const std::string gamedir = abc::GameDir();
 	return {
 		abc::ModPath(relative.c_str()),
-		abc::ModPath((gamedir + "_downloads/" + relative).c_str()),
-		abc::ModPath((gamedir + "_addon/" + relative).c_str()),
+		abc::ModPath(("../" + gamedir + "_downloads/" + relative).c_str()),
+		abc::ModPath(("../" + gamedir + "_addon/" + relative).c_str()),
 	};
 }
 

@@ -1,8 +1,12 @@
 /* stacks.rcss - the three pickup stack panels. Anchors from the old
    abcenchance/res/{Ammo,Item,Weapon}StackPanel.res: c<offset> anchors become
    50% + margin; r120/r340 (right/bottom-relative) becomes right/bottom.
-   Items stack bottom-up: flex column-reverse reproduces the old
-   PerformLayout (newest at the bottom). */
+   Items stack bottom-up (old PerformLayout): the newest item sits on the
+   bottom edge and pushes the older ones up. Reproduced with a plain
+   column flow + flex-end packing - note that column-reverse would put the
+   FIRST appended child on the bottom edge instead (verified against
+   RmlUi 6.3 FlexFormattingContext: reverse axes only flip the cursor
+   direction, the DOM order still runs main-start -> main-end). */
 
 #ammostack, #itemstack, #weaponstack {
 	position: absolute;
@@ -16,7 +20,8 @@
 #ammostack #stack, #itemstack #stack, #weaponstack #stack {
 	position: absolute;
 	display: flex;
-	flex-flow: column-reverse;
+	flex-flow: column;
+	justify-content: flex-end;
 	overflow: hidden;
 }
 

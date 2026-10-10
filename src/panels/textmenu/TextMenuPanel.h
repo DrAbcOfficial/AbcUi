@@ -36,8 +36,15 @@ private:
 	int ValidSlots = 0;
 	bool IsASMenu = false;
 	bool WaitingForMore = false;
+	// Logical open state (old CTextMenu::IsVisible): false the moment a
+	// fade-out starts, so the slot-key chain runs the weapon path again
+	// while the 0.2s opacity transition is still playing.
+	bool MenuOpen = false;
 	std::string MenuString;
 	double ShutoffTime = -1.0;
+	// Client time the fade-out ends and the document can hide (-1 = none
+	// pending; old TextMenuOut SetVisible 0 at +0.2s).
+	double HideAtTime = -1.0;
 	double ClientTimeNow = 0.0;
 };
 

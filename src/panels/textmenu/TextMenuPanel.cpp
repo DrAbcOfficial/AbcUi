@@ -45,6 +45,7 @@ abc::CChainedCommand* command(int index) {
 
 namespace {
 // Old StartFade sequences TextMenuIn/Out: 0.2s alpha, visibility flips.
+constexpr double kFadeSeconds = 0.2;
 void fadeTo(Rml::Element* body, bool state) {
 	if (!body)
 		return;
@@ -82,18 +83,18 @@ void TextMenuPanel::onDocumentReady() {
 	subscribe(netmsg::InitHud, [this]() {
 		reset();
 	});
-	// Old g_EventCmdSlot handler: the menu eats slot keys while open; the
-	// weapon-slot chain only runs when it is closed.
-	for (int i = 0; i < 10; i++) {
-		if (abc::CChainedCommand* chained = textmenu::command(i)) {
-			subscribe(chained->Event(), [this, i]() {
-				if (!isVisible())
-					return true;
-				selectMenuItem(i + 1);
-				return false;
-			});
+		// Old g_EventCmdSlot handler: the menu eats slot keys while open; the
+		// weapon-slot chain only runs when it is closed.
+		for (int i = 0; i < 10; i++) {
+			if (abc::CChainedCommand* chained = textmenu::command(i)) {
+				subscribe(chained->Event(), [this, i]() {
+					if (!MenuOpen)
+						return true;
+					selectMenuItem(i + 1);
+					return false;
+				});
+			}
 		}
-	}
 }
 
 void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const std::string& text) {
@@ -118,11 +119,16 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 			if (Rml::Element* body = getDocument())
 				fadeTo(body, true);
 			show();
+			MenuOpen = true;
 		}
 	}
 	else {
+		MenuOpen = false;
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
+		// The document stays up for the fade-out; hide it once the opacity
+		// transition has finished (OnFadeOutDone).
+		HideAtTime = ClientTimeNow + kFadeSeconds;
 	}
 	WaitingForMore = needMore != 0;
 }
@@ -133,8 +139,10 @@ void TextMenuPanel::selectMenuItem(int slot) {
 	if (slot > 0 && (ValidSlots & (1 << (slot - 1)))) {
 		sprintf_s(command, IsASMenu ? "as_menuselect %d\n" : "menuselect %d\n", slot);
 		abc::EngineClientCmd(command);
+		MenuOpen = false;
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
+		HideAtTime = ClientTimeNow + kFadeSeconds;
 	}
 }
 
@@ -142,9 +150,19 @@ void TextMenuPanel::onData(double frameTime) {
 	ClientTimeNow += frameTime;
 	// Old OnThink shutoff.
 	if (ShutoffTime >= 0.0 && ClientTimeNow >= ShutoffTime) {
+		MenuOpen = false;
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
+		HideAtTime = ClientTimeNow + kFadeSeconds;
 		ShutoffTime = -1.0;
+	}
+	// Fade-out finished: take the document out of the layout (old
+	// TextMenuOut SetVisible 0 at +0.2s). Doing it here - instead of
+	// keeping the document permanently shown - is what keeps slot-key
+	// chaining (and the old IsTextMenuOpen gates) honest.
+	if (HideAtTime >= 0.0 && ClientTimeNow >= HideAtTime) {
+		HideAtTime = -1.0;
+		hide();
 	}
 }
 
@@ -155,6 +173,8 @@ void TextMenuPanel::reset() {
 	WaitingForMore = false;
 	IsASMenu = false;
 	ValidSlots = 0;
+	MenuOpen = false;
+	HideAtTime = -1.0;
 	if (Rml::Element* menu = element("menu"))
 		menu->SetInnerRML("");
 	if (Rml::Element* body = getDocument())

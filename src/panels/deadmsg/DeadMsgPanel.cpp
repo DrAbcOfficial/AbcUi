@@ -19,6 +19,7 @@
 #undef max
 #undef min
 
+#include "../../data/HudState.h"
 #include "../../data/TextFeed.h"
 #include "../../framework/Localization.h"
 
@@ -49,6 +50,13 @@ DeadMsgPanel::DeadMsgPanel()
 void DeadMsgPanel::onDocumentReady() {
 	subscribe(textfeed::KillFeed, [this](const char* victim, const char* attacker, const char* inflictor) {
 		addItem(victim, attacker, inflictor);
+	});
+	// The old viewport-wide HIDEALL token hid the feed with the rest of the
+	// Viewport; rows kept fading underneath (AddItem only ever showed the
+	// panel itself, never a hidden parent).
+	subscribe(hudstate::HideTokenChanged, [this](int) {
+		if (hudstate::isHudHidden(hudstate::kHideAll))
+			hide();
 	});
 }
 

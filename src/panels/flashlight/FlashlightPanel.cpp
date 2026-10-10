@@ -60,8 +60,10 @@ void FlashlightPanel::updateVisibility() {
 }
 
 void FlashlightPanel::applyHideToken() {
-	// Old hudhideCallback: ShowPanel(!HIDEFLASHLIGHT) while suited.
-	const bool visible = hudstate::hasSuit() && !hudstate::isHudHidden(hudstate::kHideFlashlight);
+	// Old hudhideCallback: ShowPanel(!HIDEFLASHLIGHT) while suited, plus the
+	// Viewport-wide hide-all (old SetVisible(false) on the HIDEALL bit).
+	const bool visible = hudstate::hasSuit() && !hudstate::isHudHidden(hudstate::kHideFlashlight) &&
+		!hudstate::isHudHidden(hudstate::kHideAll);
 	if (visible)
 		show();
 	else

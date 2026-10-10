@@ -66,10 +66,11 @@ void AmmoBarPanel::updateVisibility() {
 }
 
 void AmmoBarPanel::applyHideToken() {
-	// Old hudhideCallback: ShowPanel(!HIDEWEAPONS) while suited; RefreshAmmo
-	// re-hides when the weapon carries no ammo types.
+	// Old hudhideCallback: ShowPanel(!HIDEWEAPONS) while suited; the
+	// Viewport-wide HIDEALL bit hides the ammo bar with everything else.
+	// RefreshAmmo re-hides when the weapon carries no ammo types.
 	const bool visible = hudstate::hasSuit() && !hudstate::isHudHidden(hudstate::kHideWeapons) &&
-		!hudstate::isSpectate() && HandledWeapon;
+		!hudstate::isHudHidden(hudstate::kHideAll) && !hudstate::isSpectate() && HandledWeapon;
 	if (visible)
 		show();
 	else
