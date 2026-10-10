@@ -18,11 +18,6 @@ protected:
 	void onDocumentReady() override;
 	void onData(double frameTime) override;
 	void reset() override;
-
-private:
-	// Old CheckExpire also re-evaluated the empty tint per item per tick;
-	// the tint follows weaponres::hasAmmo live.
-	void refreshTints();
 };
 
 }

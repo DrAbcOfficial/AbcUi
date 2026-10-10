@@ -31,8 +31,8 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::ItemStackPanel>());
 		list.push_back(std::make_unique<panels::WeaponStackPanel>());
 		list.push_back(std::make_unique<panels::DeadMsgPanel>());
-		list.push_back(std::make_unique<panels::NoticePanel>("notice", "abcui/rml/notice.rml", 1));
-		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abcui/rml/notice_center.rml", 4));
+		list.push_back(std::make_unique<panels::NoticePanel>("notice", "abcui/rml/notice.rml", textfeed::kPrintNotify));
+		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abcui/rml/notice_center.rml", textfeed::kPrintCenter));
 		list.push_back(std::make_unique<panels::SideTextPanel>());
 		list.push_back(std::make_unique<panels::TextMenuPanel>());
 		return list;

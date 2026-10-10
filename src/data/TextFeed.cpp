@@ -4,7 +4,6 @@
 // arguments transposed (Q_snprintf(buffer, msg, sstr1) with V_snprintf
 // semantics = destLen garbage, sstr1 as format). The port uses the standard
 // TextMsg contract: msg is the format, sstr1..4 the arguments.
-#include <metahook.h>
 
 #include "TextFeed.h"
 
@@ -20,10 +19,6 @@
 namespace textfeed {
 
 namespace {
-
-// Old HUDNOTICE enum.
-constexpr int kPrintNotify = 1;
-constexpr int kPrintCenter = 4;
 
 // Old killfeed patterns (std::wregex before; UTF-8 byte matching is
 // equivalent for these ASCII patterns).
