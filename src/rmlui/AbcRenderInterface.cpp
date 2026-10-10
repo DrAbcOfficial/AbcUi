@@ -6,6 +6,8 @@
 
 #include <FreeImage.h>
 
+#include <cstring>
+
 #include <abc/Console.h>
 #include <abc/Paths.h>
 #include <abc/Render.h>
@@ -212,7 +214,11 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 	FIBITMAP* rgba = FreeImage_ConvertTo32Bits(bitmap.Dib);
 	if (!rgba)
 		return 0;
-	bitmap.Dib = rgba; // take ownership for unified unload
+	// ConvertTo32Bits always returns a fresh bitmap (it clones 32bpp input),
+	// so the loaded original must be released before the scope guard takes
+	// over the conversion.
+	FreeImage_Unload(bitmap.Dib);
+	bitmap.Dib = rgba;
 
 	const int width = FreeImage_GetWidth(rgba);
 	const int height = FreeImage_GetHeight(rgba);

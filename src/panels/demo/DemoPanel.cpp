@@ -5,6 +5,8 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Input.h>
 
+#include <string>
+
 #include <abc/Console.h>
 
 namespace panels {

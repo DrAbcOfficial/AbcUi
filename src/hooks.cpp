@@ -12,8 +12,13 @@ namespace hooks {
 
 static void H_HUD_Init() {
 	gExportfuncs.HUD_Init();
-	// Command/cvar registration is HUD_Init-time only (plan 08 §4.9).
-	rmlui::registerCommands();
+	// Command/cvar registration is HUD_Init-time only (plan 08 §4.9);
+	// guarded like AbcEssential in case the engine re-runs HUD_Init.
+	static bool CommandsRegistered = false;
+	if (!CommandsRegistered) {
+		CommandsRegistered = true;
+		rmlui::registerCommands();
+	}
 }
 
 static int H_HUD_VidInit() {
