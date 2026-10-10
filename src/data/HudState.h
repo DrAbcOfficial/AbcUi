@@ -46,9 +46,11 @@ void onUpdateClientData(const client_data_s* cdata);
 bool hasSuit();
 bool hasLongJump();
 bool isSpectate();
-// Raw hide tokens: true when any subscribed message carried the bit.
+// Raw hide tokens, last write wins (old Viewport parity): the most recent
+// HideWeapon/HideHUD message's token replaces the previous one - bits do
+// not accumulate across messages.
 bool isHudHidden(int token);
-// Probe aid: the raw token accumulator.
+// Probe aid: the raw last-write token value.
 int debugHideTokens();
 
 }

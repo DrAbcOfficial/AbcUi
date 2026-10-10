@@ -20,6 +20,8 @@ bool Spectate = false;
 int HideTokens = 0;
 
 void onHideToken(int token) {
+	// Old Viewport parity (Viewport.cpp hudhideCallback): plain assignment,
+	// the newest message wins - see the isHudHidden contract in the header.
 	HideTokens = token;
 	HideTokenChanged(token);
 }

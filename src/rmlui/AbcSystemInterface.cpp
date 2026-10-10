@@ -1,7 +1,6 @@
 // rmlui::AbcSystemInterface / AbcFileInterface implementation.
 // Clipboard UTF-8 <-> UTF-16 conversion follows the Win32 backend pattern
 // (RmlUi/Backends/RmlUi_Platform_Win32.cpp).
-#include <metahook.h>
 
 #include "AbcSystemInterface.h"
 

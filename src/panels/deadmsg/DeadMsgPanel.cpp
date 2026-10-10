@@ -3,7 +3,6 @@
 // Port note: the old AddItem console print built its printf with transposed
 // Q_snprintf arguments (the victim name landed in the format slot); the port
 // prints the localized "DeathMsg_ConsolePrint" template correctly.
-#include <metahook.h>
 
 #include "DeadMsgPanel.h"
 

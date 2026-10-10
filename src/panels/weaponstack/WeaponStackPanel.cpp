@@ -1,6 +1,5 @@
 // panels::WeaponStackPanel implementation - see WeaponStackPanel.h.
 // from: ABCEnchance/src/hud/vgui/weaponstack.* (GBK->UTF-8).
-#include <metahook.h>
 
 #include "WeaponStackPanel.h"
 

@@ -18,8 +18,8 @@
 #include <string>
 #include <unordered_map>
 
-struct rect_s;
-using wrect_t = struct rect_s;
+#include <wrect.h>
+
 struct weapon_data_s;
 
 namespace weaponres {

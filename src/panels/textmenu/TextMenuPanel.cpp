@@ -1,6 +1,5 @@
 // panels::TextMenuPanel implementation - see TextMenuPanel.h.
 // from: ABCEnchance/src/hud/vgui/textmenu.* (GBK->UTF-8).
-#include <metahook.h>
 
 #include "TextMenuPanel.h"
 
