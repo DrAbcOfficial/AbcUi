@@ -14,6 +14,7 @@
 #include "../framework/Assets.h"
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
+#include "../data/SpriteResource.h"
 
 #include "AbcRenderInterface.h"
 #include "AbcSystemInterface.h"
@@ -122,6 +123,7 @@ void init() {
 
 	loadFonts();
 	framework::Localization::load();
+	sprites::vidInit();
 	framework::Assets::verifyInstalled();
 	framework::PanelManager::initAll(Context);
 
@@ -140,6 +142,7 @@ void shutdown() {
 	if (auto* renderer = abc::MetaRenderer())
 		renderer->UnregisterRenderCallbacks(&Callbacks);
 	framework::PanelManager::shutdown();
+	sprites::shutdown();
 	Context = nullptr;
 	Rml::Shutdown();
 	Callbacks.RenderInterface.reset();
