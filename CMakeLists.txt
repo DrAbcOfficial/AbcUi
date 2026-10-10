@@ -59,6 +59,7 @@ add_library(AbcUi MODULE
     src/data/SpriteResource.cpp
     src/data/WeaponResource.cpp
     src/framework/PanelManager.cpp
+    src/framework/Theme.cpp
     src/panels/demo/DemoPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"

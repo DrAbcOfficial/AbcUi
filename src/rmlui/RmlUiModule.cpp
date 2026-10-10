@@ -14,6 +14,7 @@
 #include "../framework/Assets.h"
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
+#include "../framework/Theme.h"
 #include "../data/SpriteResource.h"
 
 #include "AbcRenderInterface.h"
@@ -28,11 +29,16 @@ namespace {
 // System fonts, loaded straight from the Windows font dir (plan 05 §3.4 -
 // no redistribution). TTC multi-face support is a Phase 3 verification item
 // (R-10): failures warn per-face; if nothing loads, text stays invisible but
-// the plugin keeps running.
+// the plugin keeps running. Verdana/Tahoma cover the old scheme's latin
+// faces; YaHei is the CJK fallback (per-glyph fallback through the RCSS
+// font-family list).
 constexpr const char* kFontPaths[] = {
-	"C:\\Windows\\Fonts\\msyh.ttc",   // Microsoft YaHei regular (fallback face)
-	"C:\\Windows\\Fonts\\msyhbd.ttc", // Microsoft YaHei bold
-	"C:\\Windows\\Fonts\\consola.ttf", // Consolas (fallback face)
+	"C:\\Windows\\Fonts\\verdana.ttf",  // old scheme body/number face
+	"C:\\Windows\\Fonts\\verdanab.ttf", // Verdana bold (hud numbers)
+	"C:\\Windows\\Fonts\\tahoma.ttf",   // old "UiBold" face
+	"C:\\Windows\\Fonts\\msyh.ttc",     // Microsoft YaHei regular (fallback face)
+	"C:\\Windows\\Fonts\\msyhbd.ttc",   // Microsoft YaHei bold
+	"C:\\Windows\\Fonts\\consola.ttf",  // Consolas (fallback face)
 };
 
 // Context/renderer singletons (declared before RendererCallbacks: its
@@ -123,6 +129,7 @@ void init() {
 
 	loadFonts();
 	framework::Localization::load();
+	framework::Theme::applyScale(Context);
 	sprites::vidInit();
 	framework::Assets::verifyInstalled();
 	framework::PanelManager::initAll(Context);
@@ -163,6 +170,7 @@ void onFrame(double frameTime) {
 		init();
 		if (!Initialised || !Context)
 			return;
+		framework::Theme::applyScale(Context);
 		Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
 			static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	}
@@ -174,6 +182,7 @@ void onFrame(double frameTime) {
 void onVidInit() {
 	if (!Initialised)
 		return;
+	framework::Theme::applyScale(Context);
 	Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
 		static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	framework::PanelManager::vidInitAll();
