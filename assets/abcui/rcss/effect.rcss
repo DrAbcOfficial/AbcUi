@@ -1,0 +1,50 @@
+/* effect.rcss - EffectPanel layout, from the old
+   abcenchance/res/EffectPanel.res:
+     LeftWater/RightWater: ImageSprPanel, wide o0.5 (= 0.5 x own tall, tall
+       f0 = full screen -> 240dp wide in the 480dp design space), rendermode 5
+       (kRenderTransAdd - additive via the sprframe:// mark), framerate 10;
+       RightWater xpos rs1.0 hugs the right edge.
+     UnderWater/Danger: fullscreen ImagePanel (efx_darkround.tga).
+   Colours: EffectPanel.UnderWaterColor = 80 80 80 255,
+   EffectPanel.DangerColor = Red. */
+
+#effect {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#effect #left-water, #effect #right-water {
+	position: absolute;
+	top: 0dp;
+	width: 240dp;
+	height: 100%;
+	display: none;
+}
+#effect #left-water { left: 0dp; }
+#effect #right-water { right: 0dp; }
+
+#effect #under-water {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 100%;
+	height: 100%;
+	display: none;
+	/* EffectPanel.UnderWaterColor = 80 80 80 255. */
+	image-color: rgba(128, 128, 128, 255);
+}
+
+#effect #danger {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 100%;
+	height: 100%;
+	display: none;
+	/* EffectPanel.DangerColor = scheme Red. */
+	image-color: #ff0000;
+	opacity: 0;
+}

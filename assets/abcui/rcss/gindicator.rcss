@@ -1,0 +1,31 @@
+/* gindicator.rcss - GrenadeIndicatorPanel layout, from the old
+   abcenchance/res/GrenadeIndicatorPanel.res (fullscreen panel, 24x24 grenade
+   icon centered on the projected world position). Marker elements are created
+   per tracked entity by GIndicatorPanel::onData and positioned in raw px.
+   Icon tint = old scheme GIndicator.DrawColor = DefaultTransparent
+   (0 255 0 125). */
+
+#gindicator {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#gindicator #markers {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#gindicator .grenade {
+	position: absolute;
+	display: none;
+	width: 24px;
+	height: 24px;
+	/* DefaultTransparent (0 255 0 125). */
+	image-color: rgba(0, 255, 0, 125);
+}

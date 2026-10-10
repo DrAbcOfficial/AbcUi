@@ -1,0 +1,57 @@
+/* dmgtiles.rcss - DmgTilesPanel layout, from the old
+   abcenchance/res/DMGTilesPanel.res (100x100 at xpos 0, ypos rs1.6 = bottom
+   edge 60dp up; per-tile PerformLayout: 10 rows of h/10, icon = min(w/4, h)
+   at the row start, text at 25% width).
+
+   Old CTileIconItem::PerformLayout: icon min(w*0.25, h) = min(25, 10) = 10dp
+   square; text box at x=25dp spanning 75dp. Colours: DMGTiles.IconColor/
+   TextColor = scheme Default (HUD green), ListViewBgColor = Blank. */
+
+#dmgtiles {
+	position: absolute;
+	left: 0dp;
+	bottom: 60dp;
+	width: 100dp;
+	height: 100dp;
+}
+
+#dmgtiles #tiles {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 100dp;
+	height: 100dp;
+	display: flex;
+	flex-flow: column;
+	justify-content: flex-end;
+}
+
+#dmgtiles .tile {
+	position: relative;
+	flex: none;
+	width: 100dp;
+	height: 10dp;
+	display: none;
+}
+
+#dmgtiles .icon {
+	display: block;
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 10dp;
+	height: 10dp;
+	/* DMGTiles.IconColor = scheme Default. */
+	image-color: #00ff00;
+}
+
+#dmgtiles .label {
+	position: absolute;
+	left: 25dp;
+	top: 0dp;
+	width: 75dp;
+	height: 10dp;
+	/* DMGTiles.TextColor = scheme Default. */
+	color: #00ff00;
+	line-height: 10dp;
+}

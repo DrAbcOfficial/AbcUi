@@ -6,3 +6,21 @@ demo_body = RmlUi text rendering through IMetaRenderer. Keyboard events reach th
 DeathMsg_ConsolePrint = %s was killed by %s (%s)
 DeathMsg_Suicide = suicide
 DeathMsg_MonsterKill = killed
+
+# Damage tiles (DmgTiles panel)
+DMGTiles_Poison = Poison
+DMGTiles_Acid = Acid
+DMGTiles_Freeze = Freeze
+DMGTiles_Drown = Drown
+DMGTiles_Burn = Burn
+DMGTiles_Gas = Gas
+DMGTiles_Radiation = Radiation
+DMGTiles_Shock = Shock
+DMGTiles_Energybeam = Beam
+DMGTiles_Sonic = Sonic
+
+# Pop numbers (PopNum panel)
+PopNumber_O = %s1
+PopNumber_K = %s1K
+PopNumber_M = %s1M
+PopNumber_B = %s1B

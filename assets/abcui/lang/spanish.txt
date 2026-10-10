@@ -1,0 +1,19 @@
+# AbcUi localization: spanish. UTF-8 `key = value`; '#' comments.
+
+# Damage tiles (DmgTiles panel)
+DMGTiles_Poison = intoxicación
+DMGTiles_Acid = erosión ácida
+DMGTiles_Freeze = congelación
+DMGTiles_Drown = asfixia
+DMGTiles_Burn = Quemaduras
+DMGTiles_Gas = Envenenamiento
+DMGTiles_Radiation = Radiación
+DMGTiles_Shock = Choque eléctrico
+DMGTiles_Energybeam = Láser
+DMGTiles_Sonic = Ruido
+
+# Pop numbers (PopNum panel)
+PopNumber_O = %s1
+PopNumber_K = %s1 mil
+PopNumber_M = %s1 millones
+PopNumber_B = %s1 100 millones

@@ -1,0 +1,53 @@
+/* indicator.rcss - IndicatorPanel layout, from the old
+   abcenchance/res/IndicatorPanel.res (400x400 panel centered with c-200
+   anchors; four 200x100 images at xpos 100 ypos 150, per-slot offset 30/40/
+   50/50). The img rides 150-off dp above the pivot in unrotated space (old
+   IndicatorImage::Paint: y in [50-off, 150-off], screen y = pivot_y - y).
+
+   The transform pivot is the screen center: the old math rotated the image
+   quad about the container's top-left corner, which sits exactly at the
+   screen center (container origin = center - (100, 50) with the rotation
+   folded back by the containerW/2, containerH/2 shift).
+
+   RmlUi 6.3 has no calc(): each rotor is a 2000dp box whose center is
+   placed on the panel center with a -50% margin pair (the box is invisible
+   itself and big enough to cover the viewport under any rotation angle). */
+
+#indicator {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -200dp;
+	margin-top: -200dp;
+	width: 400dp;
+	height: 400dp;
+}
+
+#indicator .rotor {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -1000dp;
+	margin-top: -1000dp;
+	width: 2000dp;
+	height: 2000dp;
+	transform-origin: 50% 50%;
+	display: none;
+}
+
+#indicator .pain {
+	display: block;
+	position: absolute;
+	width: 200dp;
+	height: 100dp;
+	left: 50%;
+	margin-left: -100dp;
+	top: 50%;
+	/* top margin = -(150 - offset)dp; offsets 30/40/50/50 (old res). */
+	/* Old scheme Indicator.FgColor = 255 0 0 255. */
+	image-color: #ff0000;
+}
+#rotor-1 .pain { margin-top: -120dp; }
+#rotor-2 .pain { margin-top: -110dp; }
+#rotor-3 .pain { margin-top: -100dp; }
+#rotor-4 .pain { margin-top: -100dp; }
