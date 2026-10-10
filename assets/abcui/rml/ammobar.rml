@@ -1,0 +1,14 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/ammobar.rcss"/>
+</head>
+<body id="ammobar">
+	<img class="bg" src="../img/ammobar_background.tga"/>
+	<img id="ammo1-icon" class="icon"/>
+	<div id="ammo1" class="font-hudnum">0</div>
+	<div id="slash" class="font-hudnum">|</div>
+	<div id="ammo2" class="font-hudnum">0</div>
+	<img id="ammo2-icon" class="icon"/>
+</body>
+</rml>
