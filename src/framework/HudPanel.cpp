@@ -1,6 +1,10 @@
 // framework::HudPanel implementation - see HudPanel.h.
 #include "HudPanel.h"
 
+#include <RmlUi/Core/Element.h>
+
+#include <algorithm>
+
 #include <abc/Console.h>
 
 namespace framework {
@@ -9,6 +13,8 @@ HudPanel::HudPanel(const char* name, const char* documentPath)
 	: Name(name), DocumentPath(documentPath) {}
 
 HudPanel::~HudPanel() {
+	for (auto& cleanup : Cleanups)
+		cleanup();
 	if (Document)
 		Document->Close();
 }
@@ -39,6 +45,17 @@ void HudPanel::hide() {
 
 bool HudPanel::isVisible() const {
 	return Document && Document->IsVisible();
+}
+
+void HudPanel::addCleanup(std::function<void()> fn) {
+	Cleanups.push_back(std::move(fn));
+}
+
+Rml::Element* HudPanel::element(const char* id) {
+	Rml::Element* found = Document ? Document->GetElementById(id) : nullptr;
+	if (!found)
+		abc::ConsoleWarn("[AbcUi] panel \"%s\": element \"%s\" missing\n", Name.c_str(), id);
+	return found;
 }
 
 }

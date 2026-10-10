@@ -8,6 +8,7 @@
 #include "data/HudState.h"
 #include "data/NetworkMessages.h"
 #include "data/WeaponResource.h"
+#include "framework/PanelManager.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 
@@ -23,6 +24,7 @@ static void H_HUD_Init() {
 		netmsg::init();
 		hudstate::init();
 		weaponres::init();
+		framework::PanelManager::registerPanelCvars();
 		rmlui::registerCommands();
 	}
 }

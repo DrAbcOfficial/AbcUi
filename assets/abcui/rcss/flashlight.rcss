@@ -1,0 +1,49 @@
+/* flashlight.rcss - FlashLightPanel layout, from the old
+   abcenchance/res/FlashLightPanel.res (r55/18 anchor, 50x12). */
+
+#flashlight {
+	position: absolute;
+	right: 55dp;
+	top: 18dp;
+	width: 50dp;
+	height: 12dp;
+}
+
+#off-image, #on-image {
+	position: absolute;
+	left: 27dp;
+	top: 0dp;
+	width: 23dp;
+	height: 12dp;
+	/* Old FlashLightOn/Off animation sequences: the newly shown icon fades
+	   in over 0.1s. */
+	transition: opacity 0.1s linear;
+}
+#on-image { visibility: hidden; }
+
+/* Old code drives the power clip width as ratio * off-image width (23dp),
+   overriding the .res box (18dp) - keep the code's value. */
+#power-wrap {
+	position: absolute;
+	left: 28dp;
+	top: 2dp;
+	width: 23dp;
+	height: 8dp;
+	overflow: hidden;
+}
+#power-bar {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 23dp;
+	height: 8dp;
+}
+
+#message {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 26dp;
+	height: 12dp;
+	text-align: center;
+}
