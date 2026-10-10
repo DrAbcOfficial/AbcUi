@@ -24,12 +24,16 @@ cmake --build --preset win32-release --target deploy
 DLL → `<game>/svencoop/metahook/plugins/`，UI 资产（RML/RCSS/图片/语言表）→ `<game>/svencoop/abcui/`，
 `FreeImage.dll` → `<game>/svencoop/metahook/dlls/FreeImage/`。
 
-## Phase 3 状态
+## Phase 4 状态（批次 A 面板）
 
-RmlUi 集成层（RenderInterface/SystemInterface/FileInterface/InputBridge/KeyMap）、HUD 框架骨架
-（PanelManager/HudPanel/Theme/Localization/Assets）与演示面板已落地；验收驱动
-`scripts/acceptance_ui.py`（管道 stdio + RCON + 截图像素证据，18 项）；游戏内验证
-同样支持 halflife MCP 工具通道（plans_docs 08 §3）。
+RmlUi 集成层 + HUD 框架之上，批次 A 十面板已落地：Health / Flashlight / AmmoBar /
+AmmoStack / ItemStack / WeaponStack / Notice×2 / DeadMsg / SideText / TextMenu，
+数据层 NetworkMessages / WeaponResource / SpriteResource（GoldSrc .spr 解码 + hud.txt）/ HudState /
+TextFeed，原版 HUD 经 sig-scan 抑制（HUD_Redraw 链）。保留 cvar：`hud_danger_health`、
+`hud_danger_armor`、`hud_deathnotice(+_time/_count)`、`hud_sideinfo`。
+游戏内诊断：`abc_ui_debugger`（RmlUi 调试器）、`abc_ui_probe`（字体/面板/元素状态转储）。
+RmlUi 6.3 RCSS 语法注意：font-family 只接受单族名（CJK 回退走 fallback face），transition
+缓动名为 `linear-in` 系列（plans_docs 08 §4.21）。
 
 ## 运行依赖
 
