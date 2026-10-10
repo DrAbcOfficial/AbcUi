@@ -15,8 +15,12 @@
 
 namespace rmlui {
 
-// LoadClient time. Fatals through abc::SysError when Renderer is missing
-// (fatal Renderer check is a plugin-level decision, plan 05 §2).
+// Deferred assembly: the first HUD_Frame builds the Rml context (one-shot).
+// LoadClient only grabs the renderer/VGUI2 interfaces (both proven safe
+// there); the context itself cannot be built at LoadClient - the VGUI
+// surface texture channel the font engine needs is not usable that early,
+// and with -windowed the chained HUD_VidInit fires before the export patch
+// lands (both Phase 3 trace findings).
 void init();
 // Idempotent; safe from both HUD_Shutdown and ExitGame.
 void shutdown();

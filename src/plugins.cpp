@@ -22,9 +22,11 @@ public:
 protected:
 	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
 		// Fatal Renderer check + interface grab (plan 05 §2 startup order).
+		// Rml assembly itself defers to the first HUD_Frame (see
+		// RmlUiModule.h): the VGUI surface texture channel the font engine
+		// needs is not usable this early (Phase 3 trace finding).
 		abc::MetaRendererInit();
 		vgui2ext::init();
-		rmlui::init();
 		hooks::attachExports(pExportFuncs);
 		abc::ConsolePrint("[AbcUi] loaded %s\n", Version());
 	}
