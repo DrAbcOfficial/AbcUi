@@ -3,10 +3,13 @@
 
 #ifndef NDEBUG
 
+#include <metahook.h>
+
 #include <RmlUi/Core.h>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
+#include <abc/Math.h>
 
 #include "../data/HudState.h"
 #include "../data/NetworkMessages.h"
@@ -84,7 +87,8 @@ void probeCommand() {
 		abc::ConsoleWarn("[AbcUi] probe: no focus element\n");
 	}
 	for (const char* name : {"health", "flashlight", "ammobar", "ammostack", "itemstack",
-			 "weaponstack", "deadmsg", "notice", "notice-center", "sidetext", "textmenu"}) {
+			 "weaponstack", "deadmsg", "notice", "notice-center", "sidetext", "textmenu",
+			 "crosshair", "indicator", "gindicator", "dmgtiles", "effect", "popnum"}) {
 		if (Rml::ElementDocument* doc = context->GetDocument(name))
 			abc::ConsolePrint("[AbcUi] probe: doc %-14s visible=%d display='%s'\n", name,
 				doc->IsVisible() ? 1 : 0, doc->GetProperty("display")->ToString().c_str());
@@ -97,6 +101,23 @@ void probeCommand() {
 				off->GetAttribute<Rml::String>("src", "<none>").c_str(),
 				off->GetProperty("visibility")->ToString().c_str(),
 				content.x, content.y);
+		}
+	}
+	// Batch B ground truth: the popnum doc's live children with their inline
+	// and absolute positions (projection chain: netmsg -> element -> layout).
+	if (Rml::ElementDocument* popnum = context->GetDocument("popnum")) {
+		if (Rml::Element* numbers = popnum->GetElementById("numbers")) {
+			int count = numbers->GetNumChildren();
+			abc::ConsolePrint("[AbcUi] probe: popnum children=%d doc-visible=%d\n",
+				count, popnum->IsVisible() ? 1 : 0);
+			for (int i = 0; i < count && i < 4; i++) {
+				Rml::Element* child = numbers->GetChild(i);
+				abc::ConsolePrint("[AbcUi] probe: popnum[%d] text='%s' inline-left='%s' inline-top='%s' abs=(%.1f %.1f)\n",
+					i, child->GetInnerRML().c_str(),
+					child->GetProperty("left")->ToString().c_str(),
+					child->GetProperty("top")->ToString().c_str(),
+					child->GetAbsoluteLeft(), child->GetAbsoluteTop());
+			}
 		}
 	}
 	const char* rml =
@@ -159,12 +180,56 @@ void probeCommand() {
 		abc::ConsolePrint("[AbcUi] menu: injected ShowMenu (slots 1-3, 15s, plain menuselect)\n");
 	}
 
+	// Batch B feedback injector: fires the wire-parser events the feedback
+	// panels subscribe (Damage / Health / PopNum) with a source point 100u
+	// ahead of the view, so Indicator + DmgTiles + Effect(danger) + PopNum
+	// run their real downstream chains without a live attacker. GIndicator
+	// needs a live grenade entity and stays a real-game check.
+	void feedbackCommand() {
+		Rml::Context* context = rmlui::context();
+		if (!context)
+			return;
+		const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
+		if (!local) {
+			abc::ConsoleWarn("[AbcUi] feedback: no local player\n");
+			return;
+		}
+		vec3_t angles{}, forward{};
+		gEngfuncs.GetViewAngles(angles);
+		abc::CMathlib::AngleVectors(angles, forward, nullptr, nullptr);
+
+		netmsg::DamageData damage;
+		damage.armor = 25;
+		damage.damage = 40;
+		damage.tiles = (1 << 17) | (1 << 3) | (1 << 8); // POISON | BURN | SHOCK
+		for (int i = 0; i < 3; i++)
+			damage.from[i] = local->curstate.origin[i] + forward[i] * 100.0f;
+		damage.from[2] += 8.0f;
+		netmsg::Damage(damage);
+
+		netmsg::Health(20);
+
+		netmsg::PopNumData popnum;
+		for (int i = 0; i < 3; i++)
+			popnum.origin[i] = local->curstate.origin[i] + forward[i] * 80.0f;
+		popnum.origin[2] += 16.0f;
+		popnum.value = 12345;
+		popnum.color[0] = 255;
+		popnum.color[1] = 200;
+		popnum.color[2] = 50;
+		popnum.color[3] = 255;
+		netmsg::PopNum(popnum);
+
+		abc::ConsolePrint("[AbcUi] feedback: injected Damage(25/40 poison+burn+shock) + Health(20) + PopNum(12345)\n");
+	}
+
 
 } // namespace
 
 void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
+	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);
 }
 
 }

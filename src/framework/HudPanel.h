@@ -49,6 +49,12 @@ public:
 	// Data->DOM refresh; PanelManager::onFrame forwards the pump.
 	virtual void onData(double frameTime) { (void)frameTime; }
 
+	// Render-phase pump (HUD_Redraw, the old vgui think/paint phase): the
+	// engine's view matrices are live here, so panels doing world->screen
+	// projection reposition their elements in this phase and the framework
+	// re-runs Context::Update afterwards (see PanelManager::onRedraw).
+	virtual void onRedraw(double frameTime) { (void)frameTime; }
+
 	// Map transition (PanelManager::vidInitAll): back to the pre-map state.
 	virtual void reset() {}
 

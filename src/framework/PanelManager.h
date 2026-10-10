@@ -27,6 +27,9 @@ public:
 	static void vidInitAll();
 	// HUD_Frame: per-panel data refresh.
 	static void onFrame(double frameTime);
+	// HUD_Redraw: render-phase pump for projection consumers; runs a second
+	// Context::Update so the same-frame Rml render picks the new positions up.
+	static void onRedraw(double frameTime);
 	static void shutdown();
 
 	static const std::vector<std::unique_ptr<HudPanel>>& panels() { return Panels(); }

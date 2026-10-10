@@ -7,11 +7,17 @@
 #include "../data/TextFeed.h"
 #include "../panels/ammostack/AmmoStackPanel.h"
 #include "../panels/ammobar/AmmoBarPanel.h"
+#include "../panels/crosshair/CrosshairPanel.h"
 #include "../panels/deadmsg/DeadMsgPanel.h"
+#include "../panels/dmgtiles/DmgTilesPanel.h"
+#include "../panels/effect/EffectPanel.h"
 #include "../panels/flashlight/FlashlightPanel.h"
+#include "../panels/gindicator/GIndicatorPanel.h"
 #include "../panels/health/HealthPanel.h"
+#include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/notice/NoticePanel.h"
+#include "../panels/popnum/PopNumPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
 #include "../panels/textmenu/TextMenuPanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
@@ -35,6 +41,13 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abcui/rml/notice_center.rml", textfeed::kPrintCenter));
 		list.push_back(std::make_unique<panels::SideTextPanel>());
 		list.push_back(std::make_unique<panels::TextMenuPanel>());
+		// Batch B (feedback panels, plan 05 §6).
+		list.push_back(std::make_unique<panels::CrosshairPanel>());
+		list.push_back(std::make_unique<panels::IndicatorPanel>());
+		list.push_back(std::make_unique<panels::GIndicatorPanel>());
+		list.push_back(std::make_unique<panels::DmgTilesPanel>());
+		list.push_back(std::make_unique<panels::EffectPanel>());
+		list.push_back(std::make_unique<panels::PopNumPanel>());
 		return list;
 	}();
 	return panels;
@@ -47,6 +60,12 @@ void PanelManager::registerPanelCvars() {
 	panels::deadmsg::registerCvars();
 	panels::sidetext::registerCvars();
 	panels::textmenu::registerCommands();
+	// Batch B.
+	panels::crosshair::registerCvars();
+	panels::indicator::registerCvars();
+	panels::gindicator::registerCvars();
+	panels::effect::registerCvars();
+	panels::popnum::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
@@ -67,6 +86,11 @@ void PanelManager::vidInitAll() {
 void PanelManager::onFrame(double frameTime) {
 	for (auto& panel : Panels())
 		panel->onData(frameTime);
+}
+
+void PanelManager::onRedraw(double frameTime) {
+	for (auto& panel : Panels())
+		panel->onRedraw(frameTime);
 }
 
 void PanelManager::shutdown() {

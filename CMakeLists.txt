@@ -63,10 +63,17 @@ add_library(AbcUi MODULE
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
+    src/framework/Projection.cpp
     src/panels/ammostack/AmmoStackPanel.cpp
     src/panels/ammobar/AmmoBarPanel.cpp
+    src/panels/crosshair/CrosshairPanel.cpp
     src/panels/deadmsg/DeadMsgPanel.cpp
+    src/panels/dmgtiles/DmgTilesPanel.cpp
+    src/panels/effect/EffectPanel.cpp
+    src/panels/gindicator/GIndicatorPanel.cpp
+    src/panels/indicator/IndicatorPanel.cpp
     src/panels/notice/NoticePanel.cpp
+    src/panels/popnum/PopNumPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
     src/panels/textmenu/TextMenuPanel.cpp
     src/panels/flashlight/FlashlightPanel.cpp

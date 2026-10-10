@@ -11,11 +11,18 @@
 
 #include "../../framework/HudPanel.h"
 
+// Engine cvar forward declaration (cvardef.h; the typedef lands with
+// metahook.h - this header stays includable before it).
+struct cvar_s;
+
 namespace panels {
 
 namespace health {
 // HUD_Init-time cvar registration (plan 08 §4.9).
 void registerCvars();
+// Old gCVars.pDangerHealth - shared with the Effect panel's danger vignette
+// (one engine cvar, two readers in the old code as well).
+extern cvar_s* DangerHealth;
 }
 
 class HealthPanel : public framework::HudPanel {

@@ -11,6 +11,7 @@
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
+#include "panels/gindicator/GIndicatorPanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 
@@ -113,8 +114,17 @@ static void H_HUD_Frame(double frametime) {
 
 static int H_HUD_Redraw(float time, int intermission) {
 	// Old order: strip the vanilla panels' visible bit before the client
-	// redraws, then chain.
+	// redraws, then chain. The reposition pump runs in this phase (the old
+	// vgui think phase - the only phase where pTriAPI->WorldToScreen sees the
+	// live view matrices). HUD_Redraw's `time` is the absolute client clock
+	// (not a delta like HUD_Frame's) - convert for the frame pumps.
+	static float LastRedrawTime = 0.0f;
+	float delta = time - LastRedrawTime;
+	LastRedrawTime = time;
+	if (delta < 0.0f || delta > 0.5f)
+		delta = 0.0f;
 	hideVanillaHudPanels();
+	rmlui::onRedraw(delta);
 	return gExportfuncs.HUD_Redraw(time, intermission);
 }
 
@@ -123,6 +133,20 @@ static int H_HUD_UpdateClientData(struct client_data_s* cdata, float time) {
 	// engine's own handler.
 	hudstate::onUpdateClientData(cdata);
 	return gExportfuncs.HUD_UpdateClientData(cdata, time);
+}
+
+static void H_HUD_TxferLocalOverrides(struct entity_state_s* state, const struct clientdata_s* client) {
+	// Old exportfuncs: gClientData = client (the prediction client data the
+	// crosshair/effect panels read through hudstate).
+	hudstate::onTxferLocalOverrides(client);
+	gExportfuncs.HUD_TxferLocalOverrides(state, client);
+}
+
+static int H_HUD_AddEntity(int type, struct cl_entity_s* ent, const char* modelname) {
+	// Old Viewport::AddEntity routing (batch B: grenade indicator; the item
+	// highlight half lands with batch D).
+	panels::gindicator::onAddEntity(ent, modelname);
+	return gExportfuncs.HUD_AddEntity(type, ent, modelname);
 }
 
 static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct entity_state_s* pps,
@@ -153,6 +177,8 @@ void attachExports(cl_exportfuncs_t* pExportFuncs) {
 	pExportFuncs->HUD_Key_Event = H_HUD_Key_Event;
 	pExportFuncs->HUD_UpdateClientData = H_HUD_UpdateClientData;
 	pExportFuncs->HUD_TxferPredictionData = H_HUD_TxferPredictionData;
+	pExportFuncs->HUD_TxferLocalOverrides = H_HUD_TxferLocalOverrides;
+	pExportFuncs->HUD_AddEntity = H_HUD_AddEntity;
 	pExportFuncs->HUD_Shutdown = H_HUD_Shutdown;
 }
 
