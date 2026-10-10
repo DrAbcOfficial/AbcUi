@@ -15,10 +15,11 @@
 namespace panels {
 
 namespace {
-// Old scheme FlashLight.IconFgColor falls back to Panel.FgColor = "DullWhite"
-// (142 142 142). Grey input means the old hue *= ratio shift was a no-op in
-// the shipped scheme - the colour path is ported anyway for custom schemes.
-constexpr float kIconColor[3] = {142.0f, 142.0f, 142.0f};
+// Old scheme FlashLight.IconFgColor = "DefaultTransparent" (0 255 0 125).
+// Grey input means the old hue *= ratio shift was a no-op-ish tint in the
+// shipped scheme - the colour path is ported anyway for custom schemes.
+constexpr float kIconColor[3] = {0.0f, 255.0f, 0.0f};
+constexpr int kIconAlpha = 125;
 } // namespace
 
 FlashlightPanel::FlashlightPanel()
@@ -83,15 +84,16 @@ void FlashlightPanel::setFlashBattery(int battery) {
 	if (Rml::Element* wrap = element("power-wrap"))
 		wrap->SetProperty("width", Rml::String(std::to_string(ratio * 23.0f)) + "dp");
 
-	// Old SetFlashBattery: icon colour hue *= ratio (green -> red).
+	// Old SetFlashBattery: icon colour hue *= ratio (green -> red), the
+	// scheme alpha rides along (old SetDrawColor Color(rgb, m_cIconColor.a())).
 	float hsv[3];
 	framework::ColorUtil::rgbToHsv(kIconColor, hsv);
 	hsv[0] *= ratio;
 	float rgb[3];
 	framework::ColorUtil::hsvToRgb(hsv, rgb);
-	char buffer[32];
+	char buffer[40];
 	if (Rml::Element* bar = element("power-bar"))
-		bar->SetProperty("image-color", framework::ColorUtil::format(rgb, buffer));
+		bar->SetProperty("image-color", framework::ColorUtil::formatRgba(rgb, kIconAlpha, buffer));
 
 	char text[32];
 	sprintf_s(text, "%d%%", battery);

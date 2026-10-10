@@ -72,6 +72,15 @@ inline const char* format(const float rgb[3], char buffer[32]) {
 	return buffer;
 }
 
+// rgba() variant - RmlUi takes the alpha as a 0..255 integer (not the CSS
+// 0..1 float). Needed for scheme colours that carry real alpha, e.g. the
+// flashlight "DefaultTransparent" (0 255 0 125) icon tint.
+inline const char* formatRgba(const float rgb[3], int alpha, char buffer[40]) {
+	sprintf_s(buffer, 40, "rgba(%d, %d, %d, %d)",
+		static_cast<int>(rgb[0]), static_cast<int>(rgb[1]), static_cast<int>(rgb[2]), alpha);
+	return buffer;
+}
+
 }
 
 }
