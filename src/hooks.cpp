@@ -5,6 +5,7 @@
 
 #include <abc/Plugin.h>
 
+#include "data/NetworkMessages.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 
@@ -17,6 +18,7 @@ static void H_HUD_Init() {
 	static bool CommandsRegistered = false;
 	if (!CommandsRegistered) {
 		CommandsRegistered = true;
+		netmsg::init();
 		rmlui::registerCommands();
 	}
 }
