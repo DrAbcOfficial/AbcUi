@@ -12,6 +12,11 @@
 //   alpha (SRC_ALPHA, ONE_MINUS_SRC_ALPHA). RmlUi hands out premultiplied
 //   vertex colours and premultiplied font atlas bytes, so both are converted
 //   to straight alpha here (un-premultiply; alpha 0 clamps to black).
+// - Sprite textures (spr://, spricon://) draw with the alpha-based additive
+//   program (SRC_ALPHA, ONE = kRenderTransAdd "src*a + dest") - the old
+//   ImageSprPanel drew every HUD sprite icon that way, which both removes
+//   the sprite's black background and lets the Rml opacity transition ride
+//   the same alpha term (old panel-alpha fade).
 // - Texture handles are VGUI2 surface texture ids (CreateNewTextureID /
 //   DrawSetTextureRGBA), the same namespace IMetaRenderer draws from.
 // - Scissor (Spike R-1): IMetaRenderer has no glScissor equivalent, but
@@ -27,6 +32,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/Types.h>
 
+#include <unordered_set>
 #include <vector>
 
 namespace rmlui {
@@ -52,6 +58,11 @@ public:
 	void EnableScissorRegion(bool enable) override;
 	void SetScissorRegion(Rml::Rectanglei region) override;
 
+	// Forgets the additive-texture marks (SpriteResource bulk-deletes its
+	// textures outside RmlUi on shutdown - stale ids must not tint regular
+	// textures that later reuse them).
+	void clearAdditiveTextures();
+
 private:
 	struct CompiledGeometry {
 		std::vector<Rml::Vertex> Vertices;
@@ -65,6 +76,8 @@ private:
 	bool TwoDActive = false;
 	bool AppliedScissor = false;
 	Rml::Rectanglei AppliedScissorRect = Rml::Rectanglei::MakeInvalid();
+	// Sprite textures draw additive (see header note).
+	std::unordered_set<Rml::TextureHandle> AdditiveTextures;
 };
 
 }
