@@ -28,6 +28,15 @@
 // - 2D state ownership: RenderGeometry installs Set2D/Set2DEx lazily per
 //   scissor state; beginFrame()/endFrame() bracket a render pass (endFrame
 //   pops the matrix stack). Called by RmlUiModule around Context::Render().
+// - Transforms: Rml element transforms (rotate etc., batch B Indicator) pass
+//   through SetTransform as a matrix in the same screen space as the compiled
+//   vertices; applied CPU-side in RenderGeometry as M·(v + translation) (the
+//   GL2 sample order: translate first, then the loaded matrix). Reset by
+//   RmlUi's RenderManager identity reset whenever the next element is
+//   untransformed, so nothing lingers across the frame.
+// - Extra texture URIs handled here:
+//     texadd://<mod-relative path> -> FreeImage file loaded additive (old
+//     kRenderTransAdd TGA panels: the pain indicator).
 
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/Types.h>
@@ -57,6 +66,7 @@ public:
 
 	void EnableScissorRegion(bool enable) override;
 	void SetScissorRegion(Rml::Rectanglei region) override;
+	void SetTransform(const Rml::Matrix4f* transform) override;
 
 	// Forgets the additive-texture marks (SpriteResource bulk-deletes its
 	// textures outside RmlUi on shutdown - stale ids must not tint regular
@@ -69,6 +79,11 @@ private:
 		std::vector<int> Indices;
 	};
 
+	// Applies the active Rml transform (if any) to a screen-space point.
+	Rml::Vector2f applyTransform(const Rml::Vector2f& point) const;
+	// FreeImage file loader behind both the plain-path and texadd:// calls.
+	Rml::TextureHandle loadFileTexture(Rml::Vector2i& dimensions, const Rml::String& source);
+
 	bool ScissorEnabled = false;
 	Rml::Rectanglei ScissorRect = Rml::Rectanglei::MakeInvalid();
 	// Mirrors what the renderer is currently set up for, so consecutive
@@ -78,6 +93,10 @@ private:
 	Rml::Rectanglei AppliedScissorRect = Rml::Rectanglei::MakeInvalid();
 	// Sprite textures draw additive (see header note).
 	std::unordered_set<Rml::TextureHandle> AdditiveTextures;
+	// Current element transform (null = identity); RmlUi only calls
+	// SetTransform when the value actually changes (RenderManager).
+	Rml::Matrix4f Transform = Rml::Matrix4f::Identity();
+	bool TransformActive = false;
 };
 
 }

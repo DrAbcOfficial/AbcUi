@@ -151,8 +151,6 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 			return;
 	}
 	const bool scissor = ScissorEnabled;
-	if (scissor)
-		translation -= Rml::Vector2f(static_cast<float>(ScissorRect.Left()), static_cast<float>(ScissorRect.Top()));
 
 	// Per-state 2D setup (matrix push/pop balanced by endFrame).
 	if (!TwoDActive || AppliedScissor != scissor || (scissor && !(AppliedScissorRect == ScissorRect))) {
@@ -175,8 +173,10 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 		// Untextured geometry: the filled-rect fast path (05 §3.2).
 		std::vector<filledrectvertex_t> vertices(vertexCount);
 		for (size_t i = 0; i < vertexCount; i++) {
-			vertices[i].pos[0] = source->Vertices[i].position.x + translation.x;
-			vertices[i].pos[1] = source->Vertices[i].position.y + translation.y;
+			const Rml::Vector2f pos = applyTransform(
+				source->Vertices[i].position + translation);
+			vertices[i].pos[0] = pos.x - (scissor ? static_cast<float>(ScissorRect.Left()) : 0.0f);
+			vertices[i].pos[1] = pos.y - (scissor ? static_cast<float>(ScissorRect.Top()) : 0.0f);
 			ToStraightColor(source->Vertices[i].colour, vertices[i].col);
 		}
 		std::vector<uint32_t> indices(indexCount);
@@ -189,8 +189,9 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 	std::vector<texturedrectvertex_t> vertices(vertexCount);
 	for (size_t i = 0; i < vertexCount; i++) {
 		const Rml::Vertex& v = source->Vertices[i];
-		vertices[i].pos[0] = v.position.x + translation.x;
-		vertices[i].pos[1] = v.position.y + translation.y;
+		const Rml::Vector2f pos = applyTransform(v.position + translation);
+		vertices[i].pos[0] = pos.x - (scissor ? static_cast<float>(ScissorRect.Left()) : 0.0f);
+		vertices[i].pos[1] = pos.y - (scissor ? static_cast<float>(ScissorRect.Top()) : 0.0f);
 		vertices[i].texcoord[0] = v.tex_coord.x;
 		vertices[i].texcoord[1] = v.tex_coord.y;
 		ToStraightColor(v.colour, vertices[i].col);
@@ -210,9 +211,10 @@ void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 }
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
-	// Sprite URIs ("spr://<hud.txt name>", "spricon://<atlas>/<l>,<t>,<r>,<b>")
-	// resolve through the sprite data layer, never the file interface (the
-	// scheme prefix also keeps Rml from joining the document directory).
+	// Sprite URIs ("spr://<hud.txt name>", "spricon://<atlas>/<l>,<t>,<r>,<b>",
+	// "spralpha://...", "sprframe://...") resolve through the sprite data
+	// layer, never the file interface (the scheme prefix also keeps Rml from
+	// joining the document directory).
 	if (source.rfind("spr://", 0) == 0 || source.rfind("spricon://", 0) == 0) {
 		int width = 0, height = 0;
 		const Rml::TextureHandle handle = sprites::textureForUri(source, width, height);
@@ -225,9 +227,34 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		}
 		return handle;
 	}
+	if (source.rfind("spralpha://", 0) == 0 || source.rfind("sprframe://", 0) == 0) {
+		int width = 0, height = 0;
+		const Rml::TextureHandle handle = sprites::textureForUri(source, width, height);
+		if (handle) {
+			dimensions.x = width;
+			dimensions.y = height;
+			// spralpha:// is the straight-alpha crop flavor; sprframe:// files
+			// (water splash) are kRenderTransAdd like every HUD sprite.
+			if (source.rfind("sprframe://", 0) == 0)
+				AdditiveTextures.insert(handle);
+		}
+		return handle;
+	}
+	if (source.rfind("texadd://", 0) == 0) {
+		// Mod-relative file loaded additive (old kRenderTransAdd TGA panels -
+		// the pain indicator arc). Shares the FreeImage path below.
+		const Rml::TextureHandle handle = loadFileTexture(dimensions, source.substr(9));
+		if (handle)
+			AdditiveTextures.insert(handle);
+		return handle;
+	}
 
 	// `source` is the RML-referenced path (Rml joins the document directory);
 	// resolve against the mod dir like every other abcui asset.
+	return loadFileTexture(dimensions, source);
+}
+
+Rml::TextureHandle AbcRenderInterface::loadFileTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
 	const std::string path = abc::ModPath(source.c_str());
 
 	const FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
@@ -308,6 +335,19 @@ void AbcRenderInterface::EnableScissorRegion(bool enable) {
 
 void AbcRenderInterface::SetScissorRegion(Rml::Rectanglei region) {
 	ScissorRect = region;
+}
+
+void AbcRenderInterface::SetTransform(const Rml::Matrix4f* transform) {
+	TransformActive = transform != nullptr;
+	if (transform)
+		Transform = *transform;
+}
+
+Rml::Vector2f AbcRenderInterface::applyTransform(const Rml::Vector2f& point) const {
+	if (!TransformActive)
+		return point;
+	const Rml::Vector4f transformed = Transform * Rml::Vector4f(point.x, point.y, 0.0f, 1.0f);
+	return Rml::Vector2f(transformed.x, transformed.y);
 }
 
 }
