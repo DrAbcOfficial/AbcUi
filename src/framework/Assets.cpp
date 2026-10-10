@@ -30,6 +30,10 @@ void verifyInstalled() {
 		{"abcui/rcss/base.rcss", "base stylesheet"},
 		{"abcui/img/test.png", "demo image"},
 		{"abcui/lang/english.txt", "localization"},
+		{"abcui/img/healthpanel_background.tga", "health panel art"},
+		{"abcui/img/ammobar_background.tga", "ammo panel art"},
+		{"abcui/img/flashlight_off.tga", "flashlight art"},
+		{"abcui/spr/weapon_error.txt", "weapon sprite fallback"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))

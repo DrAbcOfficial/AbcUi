@@ -1,3 +1,8 @@
 # AbcUi localization: english. UTF-8 `key = value`; '#' comments.
 demo_title = AbcUi Phase 3 Demo
 demo_body = RmlUi text rendering through IMetaRenderer. Keyboard events reach the input bridge; the box below proves scissor clipping.
+
+# Killfeed (DeadMsg panel)
+DeathMsg_ConsolePrint = %s was killed by %s (%s)
+DeathMsg_Suicide = suicide
+DeathMsg_MonsterKill = killed
