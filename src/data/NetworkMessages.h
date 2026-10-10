@@ -1,0 +1,61 @@
+#pragma once
+
+// data::netmsg - UserMsg parse layer feeding the panel data model.
+// Ported from ABCEnchance src/core/events/networkmessage.* (the batch-A
+// message set; Damage/DeathMsg/MOTD/VoteMenu/... land with their batches).
+// Parsing uses abc::MsgReader (09 §5: no second reader); a truncated message
+// falls back to the original handler, matching the old CHECK_MSG_OK shape.
+//
+// Registration is HUD_Init-time only (plan 08 §4.9), through init() from the
+// hook spine. ShowMenu/TextMsg can swallow the vanilla handler the same way
+// the old hooks did (return-1 semantics).
+
+#include <string>
+
+#include <abc/Events.h>
+
+namespace netmsg {
+
+// WeaponList payload: the fields as they arrive on the wire (max ammo 255
+// means unlimited, decoded to -1 like the old parser).
+struct WeaponListData {
+	std::string name;
+	int ammoType = -1;
+	int max1 = -1;
+	int ammo2Type = -1;
+	int max2 = -1;
+	int slot = -1;
+	int slotPos = -1;
+	int id = 0;
+	int flags = 0;
+};
+
+// TextMsg: subscribers return false to swallow the vanilla handler (killfeed
+// and notice lines are consumed by the panels); all-true chains it through.
+using TextMsgCallback = bool(int target, const char* msg, const char* param1,
+	const char* param2, const char* param3, const char* param4);
+
+extern abc::CallbackList<void(int, int)> AmmoX; // (ammoIndex, count)
+extern abc::CallbackList<void(const WeaponListData&)> WeaponList;
+extern abc::CallbackList<void()> InitHud;
+extern abc::CallbackList<void(int, const char*)> CustWeapon; // (id, sprName)
+extern abc::CallbackList<void(int, int, int, int)> CurWeapon; // (state, id, clip, clip2)
+extern abc::CallbackList<void(int)> HideWeapon; // hide bits token
+extern abc::CallbackList<void(int)> HideHud; // hide bits token
+extern abc::CallbackList<void(int, const char*)> WeaponSpr; // (id, sprName)
+extern abc::CallbackList<void(int)> WeapPickup; // weapon id
+extern abc::CallbackList<void(int, int)> AmmoPickup; // (ammoIndex, count)
+extern abc::CallbackList<void(const char*)> ItemPickup; // hud.txt sprite name
+extern abc::CallbackList<void(int)> Battery; // armor
+extern abc::CallbackList<void(int)> Health;
+// (clientIndex 1..32, frags, deaths, health, armor, teamNumber, hideExtra, isAdmin)
+extern abc::CallbackList<void(int, float, int, float, float, int, int, int)> ScoreInfo;
+extern abc::CallbackList<void(int, int, int, const std::string&)> ShowMenu; // (validSlots, displaySeconds, bits, text)
+extern abc::CallbackList<void(int)> FlashBat; // flashlight battery
+extern abc::CallbackList<void(bool, int)> Flashlight; // (on, battery)
+extern abc::CallbackList<TextMsgCallback> TextMsg;
+
+// HUD_Init: installs the HookUserMsg chain. Idempotent.
+void init();
+
+}

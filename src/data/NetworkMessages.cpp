@@ -1,0 +1,300 @@
+// data::netmsg implementation - see NetworkMessages.h.
+// from: ABCEnchance/src/core/events/networkmessage.* (batch-A subset);
+// hook/chain shape mirrors AbcEssential autofunc/Signals.cpp.
+#include <metahook.h>
+
+#include "NetworkMessages.h"
+
+#include <abc/NetMsg.h>
+
+namespace netmsg {
+
+namespace {
+
+#pragma region events (definitions)
+abc::CallbackList<void(int, int)> AmmoX;
+abc::CallbackList<void(const WeaponListData&)> WeaponList;
+abc::CallbackList<void()> InitHud;
+abc::CallbackList<void(int, const char*)> CustWeapon;
+abc::CallbackList<void(int, int, int, int)> CurWeapon;
+abc::CallbackList<void(int)> HideWeapon;
+abc::CallbackList<void(int)> HideHud;
+abc::CallbackList<void(int, const char*)> WeaponSpr;
+abc::CallbackList<void(int)> WeapPickup;
+abc::CallbackList<void(int, int)> AmmoPickup;
+abc::CallbackList<void(const char*)> ItemPickup;
+abc::CallbackList<void(int)> Battery;
+abc::CallbackList<void(int)> Health;
+abc::CallbackList<void(int, float, int, float, float, int, int, int)> ScoreInfo;
+abc::CallbackList<void(int, int, int, const std::string&)> ShowMenu;
+abc::CallbackList<void(int)> FlashBat;
+abc::CallbackList<void(bool, int)> Flashlight;
+abc::CallbackList<TextMsgCallback> TextMsg;
+#pragma endregion
+
+#pragma region hooks
+// Previous handler per message (the HookUserMsg return), chained through on
+// every path the old hooks forwarded - most importantly on truncated reads.
+pfnUserMsgHook original_AmmoX = nullptr;
+pfnUserMsgHook original_WeaponList = nullptr;
+pfnUserMsgHook original_InitHUD = nullptr;
+pfnUserMsgHook original_CustWeapon = nullptr;
+pfnUserMsgHook original_CurWeapon = nullptr;
+pfnUserMsgHook original_HideWeapon = nullptr;
+pfnUserMsgHook original_HideHUD = nullptr;
+pfnUserMsgHook original_WeaponSpr = nullptr;
+pfnUserMsgHook original_WeapPickup = nullptr;
+pfnUserMsgHook original_AmmoPickup = nullptr;
+pfnUserMsgHook original_ItemPickup = nullptr;
+pfnUserMsgHook original_Battery = nullptr;
+pfnUserMsgHook original_Health = nullptr;
+pfnUserMsgHook original_ScoreInfo = nullptr;
+pfnUserMsgHook original_ShowMenu = nullptr;
+pfnUserMsgHook original_FlashBat = nullptr;
+pfnUserMsgHook original_Flashlight = nullptr;
+pfnUserMsgHook original_TextMsg = nullptr;
+
+int __MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int index = msg.readByte();
+	int count = msg.readLong();
+	if (!msg.ok())
+		return original_AmmoX(pszName, iSize, pbuf);
+	AmmoX(index, count);
+	return original_AmmoX(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_WeaponList(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	WeaponListData data;
+	data.name = msg.readString();
+	if (data.name.size() >= 128)
+		return original_WeaponList(pszName, iSize, pbuf);
+	data.ammoType = msg.readChar();
+	data.max1 = msg.readLong();
+	if (data.max1 == 255)
+		data.max1 = -1;
+	data.ammo2Type = msg.readChar();
+	data.max2 = msg.readLong();
+	if (data.max2 == 255)
+		data.max2 = -1;
+	data.slot = msg.readChar();
+	data.slotPos = msg.readChar();
+	data.id = msg.readShort();
+	data.flags = msg.readByte();
+	if (!msg.ok())
+		return original_WeaponList(pszName, iSize, pbuf);
+	if (data.id > 0 && data.slot >= 0 && data.slot < 10)
+		WeaponList(data);
+	return original_WeaponList(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_InitHUD(const char* pszName, int iSize, void* pbuf) {
+	InitHud();
+	return original_InitHUD(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_CustWeapon(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int id = msg.readShort();
+	std::string name = msg.readString();
+	if (!msg.ok())
+		return original_CustWeapon(pszName, iSize, pbuf);
+	if (!name.empty())
+		CustWeapon(id, name.c_str());
+	return original_CustWeapon(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_CurWeapon(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int state = msg.readByte();
+	int id = msg.readShort();
+	int clip = msg.readLong();
+	int clip2 = msg.readLong();
+	if (!msg.ok())
+		return original_CurWeapon(pszName, iSize, pbuf);
+	CurWeapon(state, id, clip, clip2);
+	return original_CurWeapon(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_HideWeapon(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int token = msg.readByte();
+	if (!msg.ok())
+		return original_HideWeapon(pszName, iSize, pbuf);
+	HideWeapon(token);
+	return original_HideWeapon(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_HideHUD(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int token = msg.readByte();
+	if (!msg.ok())
+		return original_HideHUD(pszName, iSize, pbuf);
+	HideHud(token);
+	return original_HideHUD(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_WeaponSpr(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int id = msg.readShort();
+	std::string name = msg.readString();
+	if (!msg.ok())
+		return original_WeaponSpr(pszName, iSize, pbuf);
+	if (!name.empty())
+		WeaponSpr(id, name.c_str());
+	return original_WeaponSpr(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_WeapPickup(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int index = msg.readShort();
+	if (!msg.ok())
+		return original_WeapPickup(pszName, iSize, pbuf);
+	WeapPickup(index);
+	return original_WeapPickup(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_AmmoPickup(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int index = msg.readByte();
+	int count = msg.readLong();
+	if (!msg.ok())
+		return original_AmmoPickup(pszName, iSize, pbuf);
+	AmmoPickup(index, count);
+	return original_AmmoPickup(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_ItemPickup(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	std::string name = msg.readString();
+	if (!msg.ok())
+		return original_ItemPickup(pszName, iSize, pbuf);
+	ItemPickup(name.c_str());
+	return original_ItemPickup(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_Battery(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int armor = msg.readShort();
+	if (!msg.ok())
+		return original_Battery(pszName, iSize, pbuf);
+	Battery(armor);
+	return original_Battery(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_Health(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int health = msg.readLong();
+	if (!msg.ok())
+		return original_Health(pszName, iSize, pbuf);
+	Health(health);
+	return original_Health(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int clientIndex = msg.readByte();
+	if (!msg.ok())
+		return original_ScoreInfo(pszName, iSize, pbuf);
+	if (clientIndex >= 1 && clientIndex <= 32) {
+		float frags = msg.readFloat();
+		int deaths = msg.readLong();
+		float health = msg.readFloat();
+		float armor = msg.readFloat();
+		int teamNumber = msg.readByte();
+		int hideExtra = msg.readByte();
+		int isAdmin = msg.readByte();
+		if (!msg.ok())
+			return original_ScoreInfo(pszName, iSize, pbuf);
+		ScoreInfo(clientIndex, frags, deaths, health, armor, teamNumber, hideExtra, isAdmin);
+	}
+	return original_ScoreInfo(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_ShowMenu(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int validSlots = msg.readShort();
+	int displaySeconds = msg.readChar();
+	int bits = msg.readByte();
+	std::string text = msg.readString();
+	if (!msg.ok())
+		return original_ShowMenu(pszName, iSize, pbuf);
+	ShowMenu(validSlots, displaySeconds, bits, text);
+	// The old hook unconditionally swallowed ShowMenu so the vanilla VGUI
+	// menu never flashes - the TextMenu panel owns this message.
+	return 1;
+}
+
+int __MsgFunc_FlashBat(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int battery = msg.readByte();
+	if (!msg.ok())
+		return original_FlashBat(pszName, iSize, pbuf);
+	FlashBat(battery);
+	return original_FlashBat(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_Flashlight(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int on = msg.readByte();
+	int battery = msg.readByte();
+	if (!msg.ok())
+		return original_Flashlight(pszName, iSize, pbuf);
+	Flashlight(on > 0, battery);
+	return original_Flashlight(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_TextMsg(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	int target = msg.readByte();
+	std::string info = msg.readString();
+	std::string param1 = msg.readString();
+	std::string param2 = msg.readString();
+	std::string param3 = msg.readString();
+	std::string param4 = msg.readString();
+	if (!msg.ok())
+		return original_TextMsg(pszName, iSize, pbuf);
+	// Every subscriber runs; a single false swallows the vanilla handler
+	// (old g_EventTextMsg forEach with ret &=).
+	bool chain = true;
+	TextMsg.forEach([&](const abc::CallbackList<TextMsgCallback>::Handle&,
+						const abc::CallbackList<TextMsgCallback>::Callback& callback) {
+		chain &= callback(target, info.c_str(), param1.c_str(), param2.c_str(),
+			param3.c_str(), param4.c_str());
+	});
+	return chain ? original_TextMsg(pszName, iSize, pbuf) : 1;
+}
+#pragma endregion
+
+} // namespace
+
+void init() {
+	static bool registered = false;
+	if (registered)
+		return;
+	registered = true;
+	// HOOK_MESSAGE per message (g_pMetaHookAPI->HookUserMsg): returns the
+	// previous handler, forming the multi-plugin chain (AbcEssential
+	// registers its own links at its HUD_Init).
+	original_AmmoX = HOOK_MESSAGE(AmmoX);
+	original_WeaponList = HOOK_MESSAGE(WeaponList);
+	original_InitHUD = HOOK_MESSAGE(InitHUD);
+	original_CustWeapon = HOOK_MESSAGE(CustWeapon);
+	original_CurWeapon = HOOK_MESSAGE(CurWeapon);
+	original_HideWeapon = HOOK_MESSAGE(HideWeapon);
+	original_HideHUD = HOOK_MESSAGE(HideHUD);
+	original_WeaponSpr = HOOK_MESSAGE(WeaponSpr);
+	original_WeapPickup = HOOK_MESSAGE(WeapPickup);
+	original_AmmoPickup = HOOK_MESSAGE(AmmoPickup);
+	original_ItemPickup = HOOK_MESSAGE(ItemPickup);
+	original_Battery = HOOK_MESSAGE(Battery);
+	original_Health = HOOK_MESSAGE(Health);
+	original_ScoreInfo = HOOK_MESSAGE(ScoreInfo);
+	original_ShowMenu = HOOK_MESSAGE(ShowMenu);
+	original_FlashBat = HOOK_MESSAGE(FlashBat);
+	original_Flashlight = HOOK_MESSAGE(Flashlight);
+	original_TextMsg = HOOK_MESSAGE(TextMsg);
+}
+
+}
