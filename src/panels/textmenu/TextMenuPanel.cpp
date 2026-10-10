@@ -120,6 +120,11 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 				fadeTo(body, true);
 			show();
 			MenuOpen = true;
+			// A fresh menu cancels a pending fade-out-hide (old StartFade(true)
+			// ran CancelAnimationsForPanel first): the server's answer to a
+			// menuselect usually lands inside the 0.2s window, and letting the
+			// stale deadline fire would close the just-opened submenu.
+			HideAtTime = -1.0;
 		}
 	}
 	else {
