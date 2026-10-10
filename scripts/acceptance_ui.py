@@ -261,9 +261,11 @@ def main():
     check.ok("errors.log quiet", errors_size_after == errors_size_before,
              f"{errors_size_before} -> {errors_size_after}")
 
-    rcon.command("quit")
-    time.sleep(6)
-    check.ok("clean quit via RCON", not proc.alive)
+    # Same shutdown contract as acceptance_essential.py: RCON quit, then wait
+    # out the engine's exit window (08 §4.20: the reply may outlive 6s) with
+    # the shared stop() fallback chain before declaring failure.
+    stop = proc.stop(quit_command=lambda: rcon.command("quit"))
+    check.ok("clean quit via RCON", proc.returncode == 0 or not proc.alive, stop.summary)
 
     print(f"\n[test] {check.count - len(check.failures)}/{check.count} passed")
     if check.failures:
