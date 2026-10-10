@@ -1,0 +1,3 @@
+# AbcUi localization: schinese (简体中文). UTF-8 `key = value`; '#' comments.
+demo_title = AbcUi 第三阶段演示
+demo_body = 经 IMetaRenderer 渲染的 RmlUi 文本。键盘事件已接入输入桥；下方方框验证 scissor 裁剪。
