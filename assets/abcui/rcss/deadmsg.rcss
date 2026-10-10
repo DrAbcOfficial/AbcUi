@@ -32,6 +32,11 @@
 #deadmsg .row {
 	position: relative;
 	flex: none;
+	/* Old CDeathMsgItem::PerformLayout sized the row's background to the
+	   three labels' content width and right-packed it inside the 200dp
+	   panel - a short kill feed row must not paint a full-width box. */
+	align-self: flex-end;
+	width: auto;
 	display: flex;
 	flex-flow: row;
 	justify-content: flex-end;
