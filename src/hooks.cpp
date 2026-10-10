@@ -44,11 +44,19 @@ void findVanillaHudList() {
 	auto* clientVidInit = reinterpret_cast<void*>(g_pMetaSave->pExportFuncs->HUD_VidInit);
 	if (!clientVidInit)
 		return;
+	// The pattern is deliberately minimal (the mov-ecx-imm32 prologue byte
+	// within the first 0x10 bytes of HUD_VidInit - a wider signature would
+	// need a per-build disassembly), so the extracted pointer is range-
+	// checked against the mirrored client image before anything reads it.
 	const auto addr = static_cast<unsigned char*>(
 		g_pMetaHookAPI->SearchPattern(clientVidInit, 0x10, "\xB9", 1));
 	if (!addr)
 		abc::SysError("[AbcUi] Could not found: HUDList");
+	const DWORD clientBase = reinterpret_cast<DWORD>(g_pMetaHookAPI->GetClientBase());
+	const DWORD clientSize = g_pMetaHookAPI->GetClientSize();
 	VanillaHudListAddr = *(DWORD*)(addr + 1);
+	if (VanillaHudListAddr < clientBase || VanillaHudListAddr - clientBase >= clientSize)
+		abc::SysError("[AbcUi] HUDList pointer outside the client image: %08x", VanillaHudListAddr);
 }
 
 void rebuildVanillaHudPanels() {
