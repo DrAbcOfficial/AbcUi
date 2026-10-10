@@ -9,9 +9,7 @@
 
 namespace netmsg {
 
-namespace {
-
-#pragma region events (definitions)
+#pragma region events (definitions - external linkage, see the header)
 abc::CallbackList<void(int, int)> AmmoX;
 abc::CallbackList<void(const WeaponListData&)> WeaponList;
 abc::CallbackList<void()> InitHud;
@@ -31,6 +29,8 @@ abc::CallbackList<void(int)> FlashBat;
 abc::CallbackList<void(bool, int)> Flashlight;
 abc::CallbackList<TextMsgCallback> TextMsg;
 #pragma endregion
+
+namespace {
 
 #pragma region hooks
 // Previous handler per message (the HookUserMsg return), chained through on

@@ -54,8 +54,10 @@ add_library(AbcUi MODULE
     src/framework/Assets.cpp
     src/framework/HudPanel.cpp
     src/framework/Localization.cpp
+    src/data/HudState.cpp
     src/data/NetworkMessages.cpp
     src/data/SpriteResource.cpp
+    src/data/WeaponResource.cpp
     src/framework/PanelManager.cpp
     src/panels/demo/DemoPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)

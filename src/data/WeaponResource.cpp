@@ -1,0 +1,348 @@
+// data::weaponres implementation - see WeaponResource.h.
+// from: ABCEnchance/src/core/resource/weaponresource.* (value-semantic
+// rebuild; single store + id sets replace the three pointer lists).
+#include <metahook.h>
+
+#include "WeaponResource.h"
+
+#include <cdll_int.h>
+#include <wrect.h>
+#include <weaponinfo.h>
+
+#include <algorithm>
+#include <map>
+#include <set>
+
+#include <abc/Console.h>
+#include <abc/Render.h>
+
+#include "NetworkMessages.h"
+#include "SpriteResource.h"
+
+namespace weaponres {
+
+namespace {
+
+constexpr int kMaxWeaponName = 128;
+constexpr int kMaxAmmoTypes = 32; // defensive bound for ammo-map reads
+
+struct SlotData {
+	std::map<int, int> positions; // slotPos -> weapon id
+	int minPos = 0;
+	int maxPos = 0;
+
+	void updateMinMax() {
+		if (positions.empty()) {
+			minPos = maxPos = 0;
+			return;
+		}
+		minPos = positions.begin()->first;
+		maxPos = positions.rbegin()->first;
+	}
+};
+
+struct Registry {
+	std::unordered_map<int, Weapon> byId;
+	std::unordered_map<std::string, int> byName;
+	SlotData slots[kMaxWeaponSlot];
+	std::set<int> owned;
+	std::set<int> available;
+	std::unordered_map<int, int> ammo;
+	const Weapon* curWeapon = nullptr;
+	int curWeaponId = 0;
+
+	void clear() {
+		byId.clear();
+		byName.clear();
+		for (auto& slot : slots) {
+			slot.positions.clear();
+			slot.minPos = slot.maxPos = 0;
+		}
+		owned.clear();
+		available.clear();
+		ammo.clear();
+		curWeapon = nullptr;
+		curWeaponId = 0;
+	}
+};
+
+Registry RegistryState;
+
+// client_sprite_t* lookup by name + res (old GetSpriteList helper).
+const client_sprite_t* findSpriteEntry(const client_sprite_t* list, int count,
+	const char* name, int res) {
+	if (!list)
+		return nullptr;
+	for (int i = 0; i < count; i++, list++) {
+		if (strcmp(name, list->szName) == 0 && list->iRes == res)
+			return list;
+	}
+	return nullptr;
+}
+
+void fillSpriteSource(Weapon::SpriteSource& source, const char* atlasName, const wrect_t& rect) {
+	source.atlas = std::string(atlasName) + ".spr";
+	source.rect = rect;
+	source.valid = true;
+}
+
+// Old GetSpriteList-based loadSprite lambda with the same fallback chain
+// (deltas default to the primary slot's source).
+void loadWeaponSprites(Weapon& weapon, const char* customSpr) {
+	weapon.active = {};
+	weapon.inactive = {};
+	weapon.ammo = {};
+	weapon.ammo2 = {};
+	weapon.crosshair = {};
+	weapon.autoaim = {};
+	weapon.zoomedCrosshair = {};
+	weapon.zoomedAutoaim = {};
+
+	char listPath[256];
+	if (customSpr && customSpr[0])
+		sprintf_s(listPath, "sprites/%s/%s.txt", customSpr, weapon.sprName.c_str());
+	else
+		sprintf_s(listPath, "sprites/%s.txt", weapon.sprName.c_str());
+
+	int count = 0;
+	const client_sprite_t* list = gEngfuncs.pfnSPR_GetList(listPath, &count);
+	if (!list) {
+		count = 0;
+		list = gEngfuncs.pfnSPR_GetList(const_cast<char*>("abcui/spr/weapon_error.txt"), &count);
+		if (!list)
+			return;
+	}
+
+	const int screenW = abc::MetaRenderer() ? static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()) : 1920;
+	const int res = screenW < 640 ? 320 : 640;
+
+	const auto load = [&](const char* type, Weapon::SpriteSource& source,
+						  const Weapon::SpriteSource* fallback = nullptr) {
+		if (const client_sprite_t* entry = findSpriteEntry(list, count, type, res))
+			fillSpriteSource(source, entry->szSprite, entry->rc);
+		else if (fallback && fallback->valid)
+			source = *fallback;
+	};
+
+	load("crosshair", weapon.crosshair);
+	load("autoaim", weapon.autoaim);
+	load("zoom", weapon.zoomedCrosshair, &weapon.crosshair);
+	load("zoom_autoaim", weapon.zoomedAutoaim, &weapon.zoomedCrosshair);
+	load("weapon", weapon.inactive);
+	load("weapon_s", weapon.active);
+	load("ammo", weapon.ammo);
+	load("ammo2", weapon.ammo2, &weapon.ammo);
+}
+
+// Old WeaponList::Add - duplicate ids rejected, position collisions bump the
+// slot position persistently (same as the old in-place mutation).
+void addWeapon(Weapon&& incoming) {
+	const int id = incoming.id;
+	if (id <= 0 || incoming.slot < 0 || incoming.slot >= static_cast<int>(kMaxWeaponSlot))
+		return;
+	if (RegistryState.byId.count(id))
+		return;
+
+	Weapon& weapon = RegistryState.byId[id] = std::move(incoming);
+	RegistryState.byName[weapon.name] = id;
+
+	SlotData& slot = RegistryState.slots[weapon.slot];
+	while (slot.positions.count(weapon.slotPos))
+		weapon.slotPos++;
+	slot.positions[weapon.slotPos] = id;
+	slot.updateMinMax();
+	loadWeaponSprites(weapon, nullptr);
+}
+
+void dropAllWeapons() {
+	RegistryState.owned.clear();
+	RegistryState.available.clear();
+	RegistryState.curWeapon = nullptr;
+	RegistryState.curWeaponId = 0;
+}
+
+#pragma region netmsg handlers
+void onAmmoX(int index, int count) {
+	RegistryState.ammo[index] = count;
+}
+
+void onWeaponList(const netmsg::WeaponListData& data) {
+	if (const auto itor = RegistryState.byId.find(data.id); itor != RegistryState.byId.end()) {
+		// Old UpdateWeapon: full replace + sprite reload, ownership kept.
+		Weapon updated;
+		updated.name = data.name;
+		updated.sprName = data.name;
+		updated.ammoType = data.ammoType;
+		updated.max1 = data.max1;
+		updated.ammo2Type = data.ammo2Type;
+		updated.max2 = data.max2;
+		updated.slot = data.slot;
+		updated.slotPos = data.slotPos;
+		updated.id = data.id;
+		updated.flags = data.flags;
+		Weapon& weapon = itor->second;
+		updated.clip = weapon.clip;
+		updated.clip2 = weapon.clip2;
+		updated.state = weapon.state;
+		weapon = std::move(updated);
+		loadWeaponSprites(weapon, nullptr);
+		return;
+	}
+
+	Weapon created;
+	created.name = data.name;
+	created.sprName = data.name;
+	created.ammoType = data.ammoType;
+	created.max1 = data.max1;
+	created.ammo2Type = data.ammo2Type;
+	created.max2 = data.max2;
+	created.slot = data.slot;
+	created.slotPos = data.slotPos;
+	created.id = data.id;
+	created.flags = data.flags;
+	created.clip = 0;
+	addWeapon(std::move(created));
+}
+
+void onCustWeapon(int id, const char* sprName) {
+	const auto itor = RegistryState.byId.find(id);
+	if (itor == RegistryState.byId.end())
+		return;
+	loadWeaponSprites(itor->second, sprName);
+}
+
+void onCurWeapon(int state, int id, int clip, int clip2) {
+	if (state > 0) {
+		if (id == -1) {
+			dropAllWeapons();
+			return;
+		}
+		RegistryState.curWeaponId = id;
+		RegistryState.curWeapon = getWeapon(id);
+		if (const auto itor = RegistryState.byId.find(id); itor != RegistryState.byId.end()) {
+			itor->second.clip = clip;
+			itor->second.clip2 = clip2;
+			itor->second.state = state;
+		}
+		return;
+	}
+	if (id == -1 || id == 0)
+		dropAllWeapons();
+}
+
+void onWeaponSpr(int id, const char* sprName) {
+	const auto itor = RegistryState.byId.find(id);
+	if (itor == RegistryState.byId.end() || id <= 0)
+		return;
+	itor->second.sprName = sprName;
+	loadWeaponSprites(itor->second, nullptr);
+}
+#pragma endregion
+
+} // namespace
+
+void init() {
+	static bool registered = false;
+	if (registered)
+		return;
+	registered = true;
+	netmsg::AmmoX.append(onAmmoX);
+	netmsg::WeaponList.append(onWeaponList);
+	netmsg::CustWeapon.append(onCustWeapon);
+	netmsg::CurWeapon.append(onCurWeapon);
+	netmsg::WeaponSpr.append(onWeaponSpr);
+}
+
+void reset() {
+	RegistryState.clear();
+}
+
+void onTxferPredictionData(const weapon_data_s* weaponDataArray) {
+	if (!weaponDataArray)
+		return;
+	// Ownership diff against the prediction array. Only m_iId/m_iClip are
+	// consumed: the old sync also copied a "m_iClip2" that lived past the
+	// real weapon_data_t layout (fabricated WeaponData struct) - not ported.
+	for (const auto& [id, weapon] : RegistryState.byId) {
+		const weapon_data_s& data = weaponDataArray[id];
+		if (data.m_iId <= 0) {
+			RegistryState.owned.erase(id);
+		}
+		else {
+			RegistryState.owned.insert(id);
+			// Registry mutation: id keys are stable, only scalar fields move.
+			RegistryState.byId[id].clip = data.m_iClip;
+		}
+	}
+	// Current weapon pointer survives only while the weapon is still known.
+	if (RegistryState.curWeaponId && !RegistryState.byId.count(RegistryState.curWeaponId))
+		RegistryState.curWeapon = nullptr;
+	else if (RegistryState.curWeaponId)
+		RegistryState.curWeapon = &RegistryState.byId[RegistryState.curWeaponId];
+}
+
+const Weapon* getWeapon(int id) {
+	const auto itor = RegistryState.byId.find(id);
+	return itor != RegistryState.byId.end() ? &itor->second : nullptr;
+}
+
+const Weapon* getWeapon(const char* name) {
+	const auto itor = RegistryState.byName.find(name);
+	return itor != RegistryState.byName.end() ? getWeapon(itor->second) : nullptr;
+}
+
+const Weapon* getWeapon(int slot, int pos) {
+	if (slot < 0 || slot >= static_cast<int>(kMaxWeaponSlot))
+		return nullptr;
+	const auto& positions = RegistryState.slots[slot].positions;
+	const auto itor = positions.find(pos);
+	return itor != positions.end() ? getWeapon(itor->second) : nullptr;
+}
+
+bool hasWeapon(int slot, int pos) {
+	return getWeapon(slot, pos) && RegistryState.owned.count(getWeapon(slot, pos)->id) > 0;
+}
+
+const Weapon* currentWeapon() {
+	return RegistryState.curWeapon;
+}
+
+int countAmmo(int ammoType) {
+	if (ammoType < 0 || ammoType >= kMaxAmmoTypes)
+		return 0;
+	const auto itor = RegistryState.ammo.find(ammoType);
+	return itor != RegistryState.ammo.end() ? itor->second : 0;
+}
+
+bool hasAmmo(const Weapon* weapon) {
+	if (!weapon)
+		return false;
+	// Weapons that need no ammo.
+	if (weapon->max1 == -1 && weapon->max2 == -1)
+		return true;
+	if (weapon->ammoType > -1) {
+		const bool has = weapon->clip > 0 || countAmmo(weapon->ammoType) > 0;
+		if (weapon->ammo2Type > -1 && !has)
+			return weapon->clip2 > 0 || countAmmo(weapon->ammo2Type) > 0;
+		return has;
+	}
+	return true;
+}
+
+bool ammoIcon(int ammoType, std::string& atlas, wrect_t& rect) {
+	for (const auto& [id, weapon] : RegistryState.byId) {
+		if (weapon.ammoType == ammoType && weapon.ammo.valid) {
+			atlas = weapon.ammo.atlas;
+			rect = weapon.ammo.rect;
+			return true;
+		}
+		if (weapon.ammo2Type == ammoType && weapon.ammo2.valid) {
+			atlas = weapon.ammo2.atlas;
+			rect = weapon.ammo2.rect;
+			return true;
+		}
+	}
+	return false;
+}
+
+}
