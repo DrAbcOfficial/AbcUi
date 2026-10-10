@@ -10,3 +10,6 @@
 [submodule "thirdparty/FreeImage"]
 	path = thirdparty/FreeImage
 	url = https://github.com/hzqst/FreeImage_clone
+[submodule "thirdparty/VGUI2Extension"]
+	path = thirdparty/VGUI2Extension
+	url = https://github.com/MetaHookSv/VGUI2Extension
