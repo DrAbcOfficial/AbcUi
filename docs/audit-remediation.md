@@ -36,3 +36,12 @@ Both configurations compiled against production sources; production TextUtil/For
 - UID-02 fixed: duplicate IDs update name and slot indexes, resolve slot collisions, preserve object address and selected slot.
 - UID-03 fixed: shared weapon limit derived from SDK local_state_t weapondata extent; AmmoX supports byte domain rather than arbitrary 32 cap. No assertion that current server uses extended IDs.
 - UIP-10 fixed: drop-all clears selection and emits event; confirm rechecks shouldDraw and ownership; global command pointer cleared in destructor.
+
+## Steam/texture ownership stage
+
+- UID-04 fixed: Native requests user information before interpreting the small-avatar handle; pending/unknown persona is retryable, dimensions bounded. Real Steam downloads not exercised.
+- UID-05 fixed: avatar service pumped from RmlUiModule every frame independent of Scoreboard; registered Radar interests retry with 1-second throttle.
+- UID-06 fixed: decoded-but-unuploaded entries retry uploads; sprite/avatar caches explicitly own and release all native IDs after Rml shutdown, including IDs never delivered to Rml. Upload wrapper has void API: backend driver success cannot be detected beyond createTexture failure.
+- UIR-S01 addressed: per-load opaque texture records separate logical handle from engine ID and ownership; cached sprite/avatar IDs borrowed, file/font IDs owned, external prefix resolved live. Shared URIs cannot free cache IDs or collide with regenerated external IDs. GPU failure/double-release runtime test not performed.
+- UIR-03 completed: VidInit releases only spr:// Rml sources through pinned ReleaseTexture, so resolution-dependent metadata resolves again. No blanket file/font texture invalidation.
+- UID-S06 addressed: Native disconnect clears caches/interfaces without SteamAPI_Shutdown, service/native entry caps 256. Decoded pixel duplication remains bounded, intentional for retry; no background-thread Steam use.

@@ -3,6 +3,7 @@
 #include <metahook.h>
 
 #include "AbcRenderInterface.h"
+#include "../framework/ResourceLimits.h"
 
 #include <cstddef>
 #include <cstring>
@@ -270,7 +271,14 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 			source->Indices.data(), indexCount, kProgramFilledAlphaBlend, "AbcUi filled");
 	}
 	else {
-		const int textureId = static_cast<int>(texture);
+		const auto record = Textures.find(texture);
+		if (record == Textures.end()) { if (translateOnGpu) renderer->PopWorldMatrix(); return; }
+		int textureId = record->second.Id;
+		if (!record->second.ExternalPrefix.empty()) {
+			const auto live = ExternalTextures.find(record->second.ExternalPrefix);
+			if (live == ExternalTextures.end()) { if (translateOnGpu) renderer->PopWorldMatrix(); return; }
+			textureId = static_cast<int>(live->second.Texture);
+		}
 		const auto* drawVertices = reinterpret_cast<const texturedrectvertex_t*>(
 			TransformActive ? scratchTextured : texturedVertices);
 		uint64_t program = AdditiveTextures.count(texture) ? kProgramSpriteAdditive : kProgramAlphaBlend;
@@ -279,7 +287,7 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 		// cache holds one entry for the URI).
 		bool drewMasked = false;
 		for (const auto& [prefix, external] : ExternalTextures) {
-			if (static_cast<int>(external.Texture) != textureId || !external.MaskSlot || !*external.MaskSlot)
+			if (record->second.ExternalPrefix != prefix || !external.MaskSlot || !*external.MaskSlot)
 				continue;
 			program |= DRAW_TEXTURED_RECT_MASK_TEXTURE_ENABLED;
 			renderer->DrawTexturedRectMask(textureId, *external.MaskSlot, drawVertices, vertexCount,
@@ -308,7 +316,7 @@ void AbcRenderInterface::registerExternalTexture(const Rml::String& uriPrefix, R
 	ExternalTextures[uriPrefix] = entry;
 	// A recycled handle must not stay marked as owned (a second
 	// registration of the same GL id after a frame-buffer regen).
-	OwnedTextures.erase(texture);
+
 }
 
 void AbcRenderInterface::unregisterExternalTexture(const Rml::String& uriPrefix) {
@@ -328,7 +336,7 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 			continue;
 		dimensions.x = external.Width;
 		dimensions.y = external.Height;
-		return external.Texture;
+		return retainTexture(static_cast<int>(external.Texture), false, prefix);
 	}
 	// Sprite URIs ("spr://<hud.txt name>", "spricon://<atlas>/<l>,<t>,<r>,<b>",
 	// "spralpha://...", "sprframe://...") resolve through the sprite data
@@ -336,11 +344,10 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 	// joining the document directory).
 	if (source.rfind("spr://", 0) == 0 || source.rfind("spricon://", 0) == 0) {
 		int width = 0, height = 0;
-		const Rml::TextureHandle handle = sprites::textureForUri(source, width, height);
+		const Rml::TextureHandle handle = retainTexture(sprites::textureForUri(source, width, height), false);
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
-			OwnedTextures.insert(handle);
 			// Old ImageSprPanel rendered HUD sprites kRenderTransAdd - mark
 			// the handle so RenderGeometry picks the additive program.
 			AdditiveTextures.insert(handle);
@@ -353,21 +360,19 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		const std::string body = source.substr(9);
 		const uint64_t steamId = strtoull(body.c_str(), nullptr, 10);
 		int width = 0, height = 0;
-		const Rml::TextureHandle handle = avatars::textureFor(steamId, width, height, true);
+		const Rml::TextureHandle handle = retainTexture(avatars::textureFor(steamId, width, height, true), false);
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
-			OwnedTextures.insert(handle);
 		}
 		return handle;
 	}
 	if (source.rfind("spralpha://", 0) == 0 || source.rfind("sprframe://", 0) == 0) {
 		int width = 0, height = 0;
-		const Rml::TextureHandle handle = sprites::textureForUri(source, width, height);
+		const Rml::TextureHandle handle = retainTexture(sprites::textureForUri(source, width, height), false);
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
-			OwnedTextures.insert(handle);
 			// spralpha:// is the straight-alpha crop flavor; sprframe:// files
 			// (water splash) are kRenderTransAdd like every HUD sprite.
 			if (source.rfind("sprframe://", 0) == 0)
@@ -402,12 +407,12 @@ Rml::TextureHandle AbcRenderInterface::loadFileTexture(Rml::Vector2i& dimensions
 	if (textureId == 0)
 		return 0;
 	dimensions = Rml::Vector2i(image.Width, image.Height);
-	OwnedTextures.insert(static_cast<Rml::TextureHandle>(textureId));
-	return static_cast<Rml::TextureHandle>(textureId);
+	return retainTexture(textureId, true);
 }
 
 Rml::TextureHandle AbcRenderInterface::GenerateTexture(Rml::Span<const Rml::byte> source, Rml::Vector2i dimensions) {
-	if (dimensions.x <= 0 || dimensions.y <= 0 || source.size() < static_cast<size_t>(dimensions.x) * dimensions.y * 4)
+	size_t bytes;
+	if (!framework::ResourceLimits::imageBytes(dimensions.x,dimensions.y,bytes) || source.size() < bytes)
 		return 0;
 
 	// RmlUi font/gradient atlases arrive premultiplied; straighten to match
@@ -418,18 +423,24 @@ Rml::TextureHandle AbcRenderInterface::GenerateTexture(Rml::Span<const Rml::byte
 	const int textureId = UploadNewTexture(pixels.data(), dimensions.x, dimensions.y);
 	if (textureId == 0)
 		return 0;
-	OwnedTextures.insert(static_cast<Rml::TextureHandle>(textureId));
-	return static_cast<Rml::TextureHandle>(textureId);
+	return retainTexture(textureId, true);
+}
+
+Rml::TextureHandle AbcRenderInterface::retainTexture(int id, bool owned, Rml::String external) {
+	if (!id) return 0;
+	const auto handle = NextTexture++;
+	Textures.emplace(handle, TextureRecord{id,owned,std::move(external)});
+	return handle;
 }
 
 void AbcRenderInterface::ReleaseTexture(Rml::TextureHandle texture) {
 	if (texture == 0)
 		return;
 	AdditiveTextures.erase(texture);
-	// Only handles this interface's texture channel created are deleted;
-	// external textures (the radar FBO) stay with their owner.
-	if (OwnedTextures.erase(texture))
-		vgui2ext::deleteTextureById(static_cast<int>(texture));
+	const auto record = Textures.find(texture);
+	if (record == Textures.end()) return;
+	if (record->second.Owned) vgui2ext::deleteTextureById(record->second.Id);
+	Textures.erase(record);
 }
 
 void AbcRenderInterface::clearAdditiveTextures() {

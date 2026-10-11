@@ -7,6 +7,7 @@
 #include "../framework/ResourceLimits.h"
 #include <filesystem>
 #include <memory>
+#include <unordered_set>
 
 #include <wrect.h>
 
@@ -403,10 +404,11 @@ void vidInit() {
 }
 
 void shutdown() {
-	// Texture ids are NOT deleted here: every id this module hands out flows
-	// through AbcRenderInterface::LoadTexture into Rml's texture database, and
-	// Rml::Shutdown releases each one via ReleaseTexture (the single delete
-	// point - deleting here too double-freed the ids into the engine surface).
+	// Rml borrowed records have been released before cache-owned IDs.
+	std::unordered_set<int> ids;
+	for (const auto& [key,id] : CropTextures) ids.insert(id);
+	for (const auto& [key,id] : FrameTextures) ids.insert(id);
+	for (int id : ids) if (id) vgui2ext::deleteTextureById(id);
 	CropTextures.clear();
 	Atlases.clear();
 	HudEntries.clear();

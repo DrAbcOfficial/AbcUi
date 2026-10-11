@@ -233,8 +233,7 @@ void shutdown() {
 	if (auto* renderer = abc::MetaRenderer())
 		renderer->UnregisterRenderCallbacks(&Callbacks);
 	framework::PanelManager::shutdown();
-	sprites::shutdown();
-	avatars::shutdown();
+
 	// Rml::Shutdown drains its texture database through ReleaseTexture - the
 	// single delete point for every sprite id (all went through LoadTexture).
 	// clearAdditiveTextures() before that keeps recycled ids off the additive
@@ -242,6 +241,8 @@ void shutdown() {
 	Callbacks.RenderInterface->clearAdditiveTextures();
 	Context = nullptr;
 	Rml::Shutdown();
+	sprites::shutdown();
+	avatars::shutdown();
 	Callbacks.RenderInterface.reset();
 	FileInterface.reset();
 	SystemInterface.reset();
@@ -266,6 +267,7 @@ void onFrame(double frameTime) {
 			static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	}
 	InputBridge::update(Context);
+	avatars::onFrame();
 	framework::PanelManager::onFrame(frameTime);
 #ifndef NDEBUG
 	PerfTimer updateTimer;
@@ -294,6 +296,8 @@ void onRedraw(double frameTime) {
 
 void onVidInit() {
 	sprites::vidInit();
+	if (Initialised) for (const auto& source : Rml::GetTextureSourceList())
+		if (source.rfind("spr://",0)==0) Rml::ReleaseTexture(source);
 	if (!Initialised)
 		return;
 	framework::Theme::applyScale(Context);
