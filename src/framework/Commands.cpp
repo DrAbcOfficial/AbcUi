@@ -1,6 +1,7 @@
 // framework::commands implementation - see Commands.h.
 #include "Commands.h"
 
+#include <cstdio>
 #include <cstring>
 #include <memory>
 #include <vector>
@@ -47,6 +48,14 @@ abc::CChainedCommand* get(const char* name) {
 			return entry.command.get();
 	}
 	return nullptr;
+}
+
+abc::CChainedCommand* slotCommand(int index) {
+	if (index < 0 || index > 9)
+		return nullptr;
+	char name[16];
+	sprintf_s(name, "slot%d", index + 1);
+	return get(name);
 }
 
 }
