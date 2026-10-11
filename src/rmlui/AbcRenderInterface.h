@@ -35,7 +35,7 @@
 //   RmlUi's RenderManager identity reset whenever the next element is
 //   untransformed, so nothing lingers across the frame.
 // - Extra texture URIs handled here:
-//     texadd://<mod-relative path> -> FreeImage file loaded additive (old
+//     texadd://<mod-relative path> -> file loaded additive (old
 //     kRenderTransAdd TGA panels: the pain indicator).
 
 #include <RmlUi/Core/RenderInterface.h>
@@ -81,7 +81,9 @@ private:
 
 	// Applies the active Rml transform (if any) to a screen-space point.
 	Rml::Vector2f applyTransform(const Rml::Vector2f& point) const;
-	// FreeImage file loader behind both the plain-path and texadd:// calls.
+	// File decode behind both the plain-path and texadd:// calls goes
+	// through framework::ImageLoader (FreeImage); this wrapper uploads the
+	// result to the VGUI2 surface texture channel.
 	Rml::TextureHandle loadFileTexture(Rml::Vector2i& dimensions, const Rml::String& source);
 
 	bool ScissorEnabled = false;
