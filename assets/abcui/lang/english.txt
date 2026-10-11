@@ -5,6 +5,11 @@ DeathMsg_ConsolePrint = {0} was killed by {1} ({2})
 DeathMsg_Suicide = suicide
 DeathMsg_MonsterKill = killed
 
+# Vote panel
+Vote_DefaultMessage = A vote was cast
+Vote_DefaultYes = Yes
+Vote_DefaultNo = No
+
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = Poison
 DMGTiles_Acid = Acid

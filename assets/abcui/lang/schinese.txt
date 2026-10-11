@@ -5,6 +5,11 @@ DeathMsg_ConsolePrint = {0} 被 {1} 使用 {2} 击杀
 DeathMsg_Suicide = 自杀
 DeathMsg_MonsterKill = 击杀
 
+# Vote panel
+Vote_DefaultMessage = 发起了一个投票
+Vote_DefaultYes = 是
+Vote_DefaultNo = 否
+
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = 中毒
 DMGTiles_Acid = 酸蚀

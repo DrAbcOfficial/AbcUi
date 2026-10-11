@@ -1,0 +1,91 @@
+/* vote.rcss - VotePanel layout, from the old abcenchance/res/VotePanel.res
+   (122x183 at c+96/c-96; content panel 11..183; title 1,1 120x10; content
+   4,14 114x144 wrapped DefaultSmall; yes/no rows at y 145/161, icons 21,
+   texts 32; scheme Vote.* colors). */
+
+#vote {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	overflow: visible;
+}
+
+#box {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -4dp;
+	margin-top: -96dp;
+	width: 122dp;
+	height: 183dp;
+	/* old Vote.BackGoundColor = Blank -> the content panel carries the tint */
+	display: none;
+}
+
+#title {
+	position: absolute;
+	left: 1dp;
+	top: 1dp;
+	width: 120dp;
+	height: 10dp;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 10dp;
+	color: #ffffff;
+}
+
+#content {
+	position: absolute;
+	left: 0dp;
+	top: 11dp;
+	width: 122dp;
+	height: 133dp;
+	background-color: rgba(0, 0, 0, 64);
+	font-family: Verdana;
+	font-size: 8dp;
+	/* old Vote.ContentFgColor */
+	color: #ffffff;
+	overflow-y: auto;
+	padding: 4dp;
+	box-sizing: border-box;
+}
+
+#row-yes,
+#row-no {
+	position: absolute;
+	left: 0dp;
+	width: 122dp;
+	height: 10dp;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 10dp;
+	color: #ffffff;
+}
+
+#row-yes {
+	top: 145dp;
+}
+
+#row-no {
+	top: 161dp;
+}
+
+#row-yes img,
+#row-no img {
+	position: absolute;
+	left: 21dp;
+	top: 0dp;
+	width: 10dp;
+	height: 10dp;
+}
+
+#row-yes div,
+#row-no div {
+	position: absolute;
+	left: 32dp;
+	top: 0dp;
+	width: 88dp;
+	height: 10dp;
+}

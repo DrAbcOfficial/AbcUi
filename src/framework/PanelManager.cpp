@@ -19,6 +19,7 @@
 #include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/notice/NoticePanel.h"
 #include "../panels/playerboard/PlayerBoardPanel.h"
+#include "../panels/vote/VotePanel.h"
 #include "../panels/popnum/PopNumPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
 #include "../panels/textmenu/TextMenuPanel.h"
@@ -52,6 +53,7 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::PopNumPanel>());
 		// Batch C (interaction + big data, plan 05 §6).
 		list.push_back(std::make_unique<panels::PlayerBoardPanel>());
+		list.push_back(std::make_unique<panels::VotePanel>());
 		return list;
 	}();
 	return panels;
@@ -72,6 +74,7 @@ void PanelManager::registerPanelCvars() {
 	panels::popnum::registerCvars();
 	// Batch C.
 	panels::playerboard::registerCvars();
+	panels::vote::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
