@@ -19,7 +19,7 @@ def between(text, start, end):
 
 def main():
     panel = (ROOT / 'src/panels/weaponchoose/WeaponChoosePanel.cpp').read_text()
-    events = (ROOT.parent / 'AbcCore/src/Events.cpp').read_text()
+    events = (ROOT / 'thirdparty/AbcCore/src/Events.cpp').read_text()
     attack = between(panel, 'return !weaponchoose::attackConfirm();', '\n')
     assert not attack.strip()
     callback = between(panel, 'otherwise the attack runs.', '\n\t\t});').split('\n', 1)[1]

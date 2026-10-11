@@ -1,13 +1,13 @@
 {
   "version": 6,
-  "cmakeMinimumRequired": { "major": 3, "minor": 24, "patch": 0 },
+  "cmakeMinimumRequired": { "major": 4, "minor": 2, "patch": 0 },
   "configurePresets": [
     {
       "name": "base",
       "hidden": true,
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
-        "ABC_GAME_DIR": "G:/SteamLibrary/steamapps/common/Sven Co-op"
+        "ABC_GAME_DIR": "$env{ABC_GAME_DIR}"
       }
     },
     {

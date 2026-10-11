@@ -16,7 +16,9 @@ Usage:  python scripts/convert_tga_to_png.py [--keep-tga]
 """
 
 import argparse
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 from PIL import Image
@@ -35,14 +37,24 @@ def normalize(image: Image.Image) -> Image.Image:
 def convert(tga_path: Path) -> tuple[int, int]:
     """Returns (tga bytes, png bytes); raises on any verification failure."""
     png_path = tga_path.with_suffix(".png")
-    with Image.open(tga_path) as tga:
-        normalized = normalize(tga)
-        expected = normalized.tobytes()
-        normalized.save(png_path, "PNG", optimize=True)
-
-    with Image.open(png_path) as png:
-        if normalize(png).tobytes() != expected:
-            raise RuntimeError(f"pixel verification failed: {png_path}")
+    if png_path.exists():
+        raise FileExistsError(f"refusing to overwrite: {png_path}")
+    fd, temporary = tempfile.mkstemp(prefix=png_path.name + ".", suffix=".tmp", dir=png_path.parent)
+    os.close(fd)
+    staged = Path(temporary)
+    try:
+        with Image.open(tga_path) as tga:
+            normalized = normalize(tga)
+            expected = normalized.tobytes()
+            expected_size = normalized.size
+            normalized.save(staged, "PNG", optimize=True)
+        with Image.open(staged) as png:
+            if png.size != expected_size or normalize(png).tobytes() != expected:
+                raise RuntimeError(f"pixel verification failed: {png_path}")
+        # Publishing via hard link is atomic and never overwrites a racing target.
+        os.link(staged, png_path)
+    finally:
+        staged.unlink(missing_ok=True)
 
     tga_bytes = tga_path.stat().st_size
     png_bytes = png_path.stat().st_size
@@ -74,13 +86,15 @@ def main() -> int:
         saved = tga_bytes - png_bytes
         print(f"{tga_path.relative_to(ASSET_ROOT)}: "
               f"{tga_bytes} -> {png_bytes} bytes ({saved:+d})")
-        if not args.keep_tga:
+    if failures == 0 and not args.keep_tga:
+        for tga_path in tga_files:
             tga_path.unlink()
 
     saved_total = total_tga - total_png
+    saved_percent = 100.0 * saved_total / total_tga if total_tga else 0.0
     print(f"\n{len(tga_files) - failures}/{len(tga_files)} converted, "
           f"{total_tga} -> {total_png} bytes total ({saved_total:+d}, "
-          f"{100.0 * saved_total / total_tga:.1f}% saved)")
+          f"{saved_percent:.1f}% saved)")
     return 1 if failures else 0
 
 

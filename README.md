@@ -7,7 +7,7 @@ ABCEnchance 拆分迁移产物之一，共享库为 [AbcCore](https://github.com
 
 ## 构建
 
-需要 Windows + MSVC（VS 2026）+ CMake ≥ 3.24，**仅 Win32 x86**。
+需要 Windows + MSVC（VS 2026）+ CMake ≥ 4.2，**仅 Win32 x86**。
 
 ```bash
 git clone --recursive https://github.com/DrAbcOfficial/AbcUi.git
@@ -17,6 +17,8 @@ cmake --build --preset win32-release
 
 ## 部署
 
+先设置环境变量 `ABC_GAME_DIR` 为游戏根目录并重新配置，或使用 `-DABC_GAME_DIR=...`。未指定时不创建部署目标。
+
 ```bash
 cmake --build --preset win32-release --target deploy
 ```
@@ -24,7 +26,7 @@ cmake --build --preset win32-release --target deploy
 DLL → `<game>/svencoop/metahook/plugins/`，UI 资产（RML/RCSS/图片/语言表）→ `<game>/svencoop/abcui/`，
 `FreeImage.dll` → `<game>/svencoop/metahook/dlls/FreeImage/`。
 
-## Phase 4 状态（批次 A 面板）
+## P0–P8 状态
 
 RmlUi 集成层 + HUD 框架之上，批次 A 十面板已落地：Health / Flashlight / AmmoBar /
 AmmoStack / ItemStack / WeaponStack / Notice×2 / DeadMsg / SideText / TextMenu，
@@ -58,4 +60,6 @@ AbcUi.dll
 
 RmlUi 静态链入（freetype 经 add_subdirectory + `Freetype::Freetype` 别名供 RmlUi 消费）；FreeImage 链导入库，
 `FreeImage.dll` 随 install 部署到 `svencoop/metahook/dlls/FreeImage/`（与 Renderer 同款，启动器将该目录加入 PATH）。
-SteamAPIBridge 子模块在记分板批次（Phase 6）前引入。
+Steam 使用 Bridge/Native 双后端抽象；当前头像与真名由动态绑定游戏 steam_api.dll 的 Native 后端提供，无 steam_api.lib 导入依赖。
+
+批次 B/C/D 包括反馈面板、计分板、投票、MOTD、武器选择、物品高亮和 Radar；共23类面板。P8 使用编译几何烘焙与世界矩阵平移，不直接调用 OpenGL。审计修复与验证边界见 `docs/audit-remediation.md`。

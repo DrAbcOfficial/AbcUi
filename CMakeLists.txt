@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 4.2)
 
 project(AbcUi LANGUAGES CXX)
 
@@ -131,6 +131,7 @@ if(ABC_GAME_DIR)
             PATTERN ".gitkeep" EXCLUDE)
     endif()
     add_custom_target(deploy
+        DEPENDS AbcUi FreeImage
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
         COMMENT "Deploying AbcUi.dll, FreeImage.dll and assets to ${ABC_GAME_DIR}")
 endif()
