@@ -45,7 +45,7 @@ private:
 	void setWater(WaterType type);
 	// Old CSPRImage::Animate at framerate 10 (visible splashes only).
 	void animateWater();
-	void applyWaterFrame(const char* elementId, const char* sprPath);
+	void applyWaterFrame(const char* elementId, const char* sprPath, int frame);
 
 	int OldWaterStatus = 0;
 	WaterType NowWaterType = WaterType::None;
@@ -53,7 +53,11 @@ private:
 	// Animation clock for the splash frame flip (old CSPRImage Animate).
 	double ClientTimeNow = 0.0;
 	double WaterAnimTime = 0.0;
-	int WaterFrame = 0;
+	// The two splash files carry different frame counts (38 vs 33) and the old
+	// CSPRImage pair animated independently - one counter per sprite; a shared
+	// modulo on the left file walked the right sprite out of range.
+	int WaterFrameLeft = 0;
+	int WaterFrameRight = 0;
 };
 
 }

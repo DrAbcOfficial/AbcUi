@@ -17,7 +17,7 @@ namespace framework {
 
 namespace projection {
 
-int worldToScreen(const vec3_t world, float screen[2]) {
+int worldToScreen(const float world[3], float screen[2]) {
 	int width = 1920, height = 1080;
 	if (abc::MetaRenderer()) {
 		width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());

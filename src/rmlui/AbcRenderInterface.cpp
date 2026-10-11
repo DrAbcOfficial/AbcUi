@@ -81,10 +81,10 @@ struct ScopedBitmap {
 int UploadNewTexture(const unsigned char* rgba, int width, int height) {
 	const int id = vgui2ext::createTexture();
 	if (id == 0) {
-		static bool warned = false;
-		if (!warned) {
+		static bool Warned = false;
+		if (!Warned) {
 			abc::ConsoleWarn("[AbcUi] texture upload unavailable (VGUI2Extension surface missing)\n");
-			warned = true;
+			Warned = true;
 		}
 		return 0;
 	}

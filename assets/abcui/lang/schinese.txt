@@ -1,6 +1,4 @@
 # AbcUi localization ({0} placeholders for abc::Format): schinese (简体中文). UTF-8 `key = value`; '#' comments.
-demo_title = AbcUi 第三阶段演示
-demo_body = 经 IMetaRenderer 渲染的 RmlUi 文本。键盘事件已接入输入桥；下方方框验证 scissor 裁剪。
 
 # Killfeed (DeadMsg panel)
 DeathMsg_ConsolePrint = {0} 被 {1} 使用 {2} 击杀

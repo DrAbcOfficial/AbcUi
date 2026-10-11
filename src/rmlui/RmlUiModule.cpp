@@ -158,8 +158,10 @@ void shutdown() {
 		renderer->UnregisterRenderCallbacks(&Callbacks);
 	framework::PanelManager::shutdown();
 	sprites::shutdown();
-	// Sprite textures died with the bulk delete above; drop the additive
-	// marks so recycled texture ids stay on the regular alpha program.
+	// Rml::Shutdown drains its texture database through ReleaseTexture - the
+	// single delete point for every sprite id (all went through LoadTexture).
+	// clearAdditiveTextures() before that keeps recycled ids off the additive
+	// program if any handle outside the database ever existed.
 	Callbacks.RenderInterface->clearAdditiveTextures();
 	Context = nullptr;
 	Rml::Shutdown();

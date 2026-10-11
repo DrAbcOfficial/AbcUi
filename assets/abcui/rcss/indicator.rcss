@@ -9,6 +9,13 @@
    screen center (container origin = center - (100, 50) with the rotation
    folded back by the containerW/2, containerH/2 shift).
 
+   Texture orientation (P5 audit): the old DrawTexturePos mapped the stored
+   97x260 crescent through transposed texcoords (u along screen +y, v along
+   screen +x), compositing it as the same image rotated 90 degrees
+   counter-clockwise - a shallow bowl under the pivot opening up at angle 0.
+   The shipped pain_indicator.tga is pre-rotated 90 CCW (260x97) so the plain
+   upright img reproduces that composite byte for byte (D-17 note).
+
    RmlUi 6.3 has no calc(): each rotor is a 2000dp box whose center is
    placed on the panel center with a -50% margin pair (the box is invisible
    itself and big enough to cover the viewport under any rotation angle). */

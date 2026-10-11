@@ -56,6 +56,9 @@ void EffectPanel::onDocumentReady() {
 	subscribe(netmsg::Health, [this](int health) {
 		// Old Viewport g_EventHealth handler ran before both panels' SetHealth:
 		// while connected and not spectating, non-positive health clamps to 1.
+		// Port note (D-17 deviation): the old clamp also required
+		// PlayerResource's m_bIsConnected, which batch C has not landed yet -
+		// the local-player + spectate checks stand in until then.
 		if (health <= 0) {
 			const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
 			if (local && !hudstate::isSpectate())
@@ -69,7 +72,8 @@ void EffectPanel::reset() {
 	// Old Reset: panel shown, all overlays hidden, water state cleared.
 	OldWaterStatus = 0;
 	NowWaterType = WaterType::None;
-	WaterFrame = 0;
+	WaterFrameLeft = 0;
+	WaterFrameRight = 0;
 	if (Document) {
 		for (const char* id : {"left-water", "right-water", "under-water", "danger"}) {
 			if (Rml::Element* el = Document->GetElementById(id)) {
@@ -111,27 +115,34 @@ void EffectPanel::setWater(WaterType type) {
 	OutWaterStart = ClientTimeNow;
 }
 
-void EffectPanel::applyWaterFrame(const char* elementId, const char* sprPath) {
+void EffectPanel::applyWaterFrame(const char* elementId, const char* sprPath, int frame) {
 	Rml::Element* splash = Document ? Document->GetElementById(elementId) : nullptr;
 	if (!splash)
 		return;
 	char uri[160];
-	sprintf_s(uri, "sprframe://%s|%d", sprPath, WaterFrame);
+	sprintf_s(uri, "sprframe://%s|%d", sprPath, frame);
 	splash->SetAttribute("src", Rml::String(uri));
 }
 
 void EffectPanel::animateWater() {
-	// Old OnThink: Animate() advanced the frame clock on visible splashes.
+	// Old OnThink: Animate() advanced each splash's own frame clock (own frame
+	// count per CSPRImage; the old sequence clamped at the last frame -
+	// m_bSequenceLoop defaults false - while the port loops; invisible either
+	// way, the splash alpha expires after 15 frames < 33).
 	const float frameDelta = static_cast<float>(ClientTimeNow - WaterAnimTime);
 	if (frameDelta < 1.0f / kWaterFramerate)
 		return;
 	WaterAnimTime = ClientTimeNow;
-	const int frameCount = sprites::standaloneFrameCount(kLeftWaterSpr);
-	if (frameCount <= 0)
-		return;
-	WaterFrame = (WaterFrame + 1) % frameCount;
-	applyWaterFrame("left-water", kLeftWaterSpr);
-	applyWaterFrame("right-water", kRightWaterSpr);
+	const int leftCount = sprites::standaloneFrameCount(kLeftWaterSpr);
+	if (leftCount > 0) {
+		WaterFrameLeft = (WaterFrameLeft + 1) % leftCount;
+		applyWaterFrame("left-water", kLeftWaterSpr, WaterFrameLeft);
+	}
+	const int rightCount = sprites::standaloneFrameCount(kRightWaterSpr);
+	if (rightCount > 0) {
+		WaterFrameRight = (WaterFrameRight + 1) % rightCount;
+		applyWaterFrame("right-water", kRightWaterSpr, WaterFrameRight);
+	}
 }
 
 void EffectPanel::onData(double frameTime) {
@@ -198,12 +209,14 @@ void EffectPanel::onData(double frameTime) {
 				static_cast<float>(ClientTimeNow - OutWaterStart) / kWaterKeepTime);
 			const float underAlpha = std::max(0.0f, 1.0f -
 				static_cast<float>(ClientTimeNow - OutWaterStart) / kFadeTime);
-			// Old SetFrame(0) restart: snap the src back to frame 0 on the
-			// transition frame only (splashAlpha still at its first frame).
+			// Old SetFrame(0) restart: snap both splashes back to frame 0 on
+			// the transition frame only (splashAlpha still at its first
+			// frame).
 			if (splashAlpha >= 1.0f) {
-				WaterFrame = 0;
-				applyWaterFrame("left-water", kLeftWaterSpr);
-				applyWaterFrame("right-water", kRightWaterSpr);
+				WaterFrameLeft = 0;
+				WaterFrameRight = 0;
+				applyWaterFrame("left-water", kLeftWaterSpr, WaterFrameLeft);
+				applyWaterFrame("right-water", kRightWaterSpr, WaterFrameRight);
 			}
 			left->SetProperty("display", "block");
 			left->SetProperty("opacity", std::to_string(splashAlpha));

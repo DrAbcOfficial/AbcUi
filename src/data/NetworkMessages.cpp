@@ -292,6 +292,10 @@ int __MsgFunc_Damage(const char* pszName, int iSize, void* pbuf) {
 int __MsgFunc_MetaHook(const char* pszName, int iSize, void* pbuf) {
 	// The old plugin-to-plugin usermsg carrier (registered by the user's
 	// server-side addon; absent on vanilla servers - original may be null).
+	// Chain note (D-17): the old hook never stored its prior and returned 0
+	// unconditionally, swallowing any earlier plugin's "MetaHook" handler;
+	// this port chains the prior on every path (null original = vanilla
+	// server, nothing to forward).
 	abc::MsgReader msg(pbuf, iSize);
 	const int type = msg.readByte();
 	if (!msg.ok())
