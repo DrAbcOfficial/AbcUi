@@ -1,6 +1,7 @@
 // framework::PanelManager implementation - see PanelManager.h.
 #include "PanelManager.h"
 
+#include "Commands.h"
 #include "HudPanel.h"
 
 #include "../data/NetworkMessages.h"
@@ -59,7 +60,7 @@ void PanelManager::registerPanelCvars() {
 	panels::health::registerCvars();
 	panels::deadmsg::registerCvars();
 	panels::sidetext::registerCvars();
-	panels::textmenu::registerCommands();
+	commands::registerAll();
 	// Batch B.
 	panels::crosshair::registerCvars();
 	panels::indicator::registerCvars();

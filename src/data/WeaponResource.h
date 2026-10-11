@@ -1,23 +1,25 @@
 #pragma once
 
-// data::weaponres - weapon registry, ammo counts and per-weapon sprite
-// sources. Ported from ABCEnchance src/core/resource/weaponresource.*
-// (value-semantic rebuild per plan 09 §5: one Weapon store keyed by id/name/
-// slot-pos instead of three pointer lists over heap objects).
+// data::weaponres - weapon registry, ammo counts, per-weapon sprite sources
+// and the slot-selection machinery (batch C). Ported from ABCEnchance
+// src/core/resource/weaponresource.* (value-semantic rebuild per plan 09 §5).
+// The old SelectSlot pointer-list walk is rebuilt as sorted position lookups
+// over the registry; its observable behavior (slot keys enter/cycle a slot,
+// invnext/invprev walk slots and positions, fastswitch sends the weapon
+// command directly, otherwise WeaponChoose highlights) is preserved.
 //
-// Batch-A consumers: AmmoBar (current weapon ammo icons + counts), AmmoStack
-// (ammo pickup icons), WeaponStack (pickup icons + HasAmmo tint). SelectSlot
-// and the WeaponChoose feed stay with batch C. The ownership script events
-// the old code fired here belong to AbcEssential signals (own diff) and are
-// not duplicated.
+// Consumers: AmmoBar/AmmoStack/WeaponStack (batch A sprites), Crosshair
+// (batch B), WeaponChoose (batch C) via the Choose*/Pickup* events below.
+// The ownership script events the old code fired here belong to AbcEssential
+// signals (own diff) and are not duplicated.
 //
 // Sprite sources: sprites/<sprName>.txt parsed via SPR_GetList, atlas file +
 // rect stored per slot; panels build spricon:// URIs through data::sprites.
-// from: ABCEnchance/src/core/resource/weaponresource.*
 
 #include <string>
 #include <unordered_map>
 
+#include <abc/Events.h>
 #include <wrect.h>
 
 struct weapon_data_s;
@@ -92,5 +94,24 @@ bool hasAmmo(const Weapon* weapon);
 // Old GetAmmoPicFromWeapon: icon source of the ammo type, from any weapon
 // using it. Returns false when no weapon carries the type.
 bool ammoIcon(int ammoType, std::string& atlas, wrect_t& rect);
+
+#pragma region slot selection (batch C, WeaponChoose data feed)
+// The UI selection highlight (old m_pNowSelected) and its slot.
+const Weapon* selectedWeapon();
+int selectedSlot();
+
+// Old SelectSlot: slot keys enter a slot (then cycle within it), the
+// invnext/invprev wheel walks slots and positions. Only owned+usable weapons
+// (ammo or SELECTONEMPTY) participate. With hud_fastswitch the weapon command
+// is sent directly; otherwise ChooseWeapon fires so the UI can highlight.
+// The TextMenu-open gate lives at the subscription site (panel assembly).
+void selectSlot(int slot, int advance, bool wheel);
+
+// Selection/ownership feeds for the WeaponChoose UI.
+extern abc::CallbackList<void(const Weapon*)> ChooseWeapon; // highlight changed
+extern abc::CallbackList<void(const Weapon*)> PickupWeapon;
+extern abc::CallbackList<void(const Weapon*)> DropWeapon;
+extern abc::CallbackList<void()> DropAllWeapons;
+#pragma endregion
 
 }

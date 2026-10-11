@@ -12,14 +12,21 @@
 #include <algorithm>
 #include <map>
 #include <set>
+#include <vector>
 
 #include <abc/Console.h>
+#include <abc/CvarCmd.h>
 #include <abc/Render.h>
 
 #include "NetworkMessages.h"
 #include "SpriteResource.h"
 
 namespace weaponres {
+
+abc::CallbackList<void(const Weapon*)> ChooseWeapon;
+abc::CallbackList<void(const Weapon*)> PickupWeapon;
+abc::CallbackList<void(const Weapon*)> DropWeapon;
+abc::CallbackList<void()> DropAllWeapons;
 
 namespace {
 
@@ -54,6 +61,9 @@ struct Registry {
 	std::unordered_map<int, int> ammo;
 	const Weapon* curWeapon = nullptr;
 	int curWeaponId = 0;
+	// UI selection highlight (old m_pNowSelected / m_iNowSlot).
+	const Weapon* selected = nullptr;
+	int selectedSlotId = kInvalidWeaponSlot;
 
 	void clear() {
 		byId.clear();
@@ -67,10 +77,61 @@ struct Registry {
 		ammo.clear();
 		curWeapon = nullptr;
 		curWeaponId = 0;
+		selected = nullptr;
+		selectedSlotId = kInvalidWeaponSlot;
 	}
 };
 
+
 Registry RegistryState;
+cvar_t* cvar_fastswitch = nullptr;
+
+// Weapon usable for selection: owned and (ammo or SELECTONEMPTY).
+bool selectable(const Weapon& weapon) {
+	return RegistryState.owned.count(weapon.id) > 0 &&
+		(hasAmmo(&weapon) || (weapon.flags & kItemFlagSelectOnEmpty) != 0);
+}
+
+// Owned+selectable weapon ids of one slot ordered by slotPos.
+std::vector<const Weapon*> slotWeapons(int slot) {
+	std::vector<const Weapon*> result;
+	if (slot < 0 || slot >= static_cast<int>(kMaxWeaponSlot))
+		return result;
+	for (const auto& [pos, id] : RegistryState.slots[slot].positions) {
+		const auto itor = RegistryState.byId.find(id);
+		if (itor != RegistryState.byId.end() && selectable(itor->second))
+			result.push_back(&itor->second);
+	}
+	return result;
+}
+
+std::vector<const Weapon*> allSelectableWeapons() {
+	std::vector<const Weapon*> result;
+	for (const auto& [id, weapon] : RegistryState.byId) {
+		if (selectable(weapon))
+			result.push_back(&weapon);
+	}
+	std::sort(result.begin(), result.end(), [](const Weapon* a, const Weapon* b) {
+		if (a->slot != b->slot)
+			return a->slot < b->slot;
+		return a->slotPos < b->slotPos;
+	});
+	return result;
+}
+
+// Old SetSelectWeapon minus the TextMenu gate (lives at the subscription):
+// fastswitch runs the weapon command right away, otherwise the UI highlight
+// event fires and the panel drives the confirm.
+void applySelection(const Weapon* weapon) {
+	RegistryState.selected = weapon;
+	RegistryState.selectedSlotId = weapon ? weapon->slot : kInvalidWeaponSlot;
+	if (weapon && cvar_fastswitch && cvar_fastswitch->value > 0) {
+		char command[128];
+		sprintf_s(command, "%s\n", weapon->name.c_str());
+		gEngfuncs.pfnClientCmd(command);
+	}
+	ChooseWeapon(weapon);
+}
 
 // client_sprite_t* lookup by name + res (old GetSpriteList helper).
 const client_sprite_t* findSpriteEntry(const client_sprite_t* list, int count,
@@ -252,6 +313,7 @@ void init() {
 	if (registered)
 		return;
 	registered = true;
+	cvar_fastswitch = abc::CVAR_GET_POINTER("hud_fastswitch");
 	netmsg::AmmoX.append(onAmmoX);
 	netmsg::WeaponList.append(onWeaponList);
 	netmsg::CustWeapon.append(onCustWeapon);
@@ -269,22 +331,34 @@ void onTxferPredictionData(const weapon_data_s* weaponDataArray) {
 	// Ownership diff against the prediction array. Only m_iId/m_iClip are
 	// consumed: the old sync also copied a "m_iClip2" that lived past the
 	// real weapon_data_t layout (fabricated WeaponData struct) - not ported.
+	std::vector<const Weapon*> pickedUp;
+	std::vector<const Weapon*> dropped;
 	for (const auto& [id, weapon] : RegistryState.byId) {
 		const weapon_data_s& data = weaponDataArray[id];
 		if (data.m_iId <= 0) {
-			RegistryState.owned.erase(id);
+			if (RegistryState.owned.erase(id))
+				dropped.push_back(&weapon);
 		}
 		else {
-			RegistryState.owned.insert(id);
+			if (RegistryState.owned.insert(id).second)
+				pickedUp.push_back(&weapon);
 			// Registry mutation: id keys are stable, only scalar fields move.
 			RegistryState.byId[id].clip = data.m_iClip;
 		}
 	}
+	for (const Weapon* weapon : pickedUp)
+		PickupWeapon(weapon);
+	for (const Weapon* weapon : dropped)
+		DropWeapon(weapon);
 	// Current weapon pointer survives only while the weapon is still known.
 	if (RegistryState.curWeaponId && !RegistryState.byId.count(RegistryState.curWeaponId))
 		RegistryState.curWeapon = nullptr;
 	else if (RegistryState.curWeaponId)
 		RegistryState.curWeapon = &RegistryState.byId[RegistryState.curWeaponId];
+	if (RegistryState.selected && !RegistryState.byId.count(RegistryState.selected->id)) {
+		RegistryState.selected = nullptr;
+		RegistryState.selectedSlotId = kInvalidWeaponSlot;
+	}
 }
 
 const Weapon* getWeapon(int id) {
@@ -349,6 +423,71 @@ bool ammoIcon(int ammoType, std::string& atlas, wrect_t& rect) {
 		}
 	}
 	return false;
+}
+
+const Weapon* selectedWeapon() {
+	return RegistryState.selected;
+}
+
+int selectedSlot() {
+	return RegistryState.selectedSlotId;
+}
+
+void selectSlot(int slot, int advance, bool wheel) {
+	const std::vector<const Weapon*> pool = allSelectableWeapons();
+	if (pool.empty())
+		return;
+	slot = std::clamp(slot, 0, static_cast<int>(kMaxWeaponSlot) - 1);
+
+	// Wheel from a cold start selects the first usable weapon.
+	if (wheel && !RegistryState.selected) {
+		applySelection(pool.front());
+		return;
+	}
+
+	std::vector<const Weapon*> inSlot = slotWeapons(slot);
+	if (!wheel && slot != RegistryState.selectedSlotId) {
+		// Entering a different slot: first position (advance<0 walks in from
+		// the end - the old GetLastPos semantics).
+		if (!inSlot.empty()) {
+			applySelection(advance > 0 ? inSlot.front() : inSlot.back());
+		}
+		return;
+	}
+
+	// Same slot (or wheel): step to the neighbour position; at the slot edge
+	// the wheel rolls into the next/previous non-empty slot, the slot key
+	// wraps within the slot.
+	const Weapon* current = RegistryState.selected;
+	if (!current)
+		return;
+	if (!inSlot.empty() && (!wheel || current->slot == slot)) {
+		for (size_t i = 0; i < inSlot.size(); i++) {
+			if (inSlot[i] != current)
+				continue;
+			const int step = advance > 0 ? 1 : -1;
+			const size_t next = (i + step + inSlot.size()) % inSlot.size();
+			applySelection(inSlot[next]);
+			return;
+		}
+	}
+
+	// Wheel across slots: find the neighbour non-empty slot (circular).
+	if (!wheel)
+		return;
+	std::vector<int> nonEmpty;
+	for (int s = 0; s < static_cast<int>(kMaxWeaponSlot); s++) {
+		if (!slotWeapons(s).empty())
+			nonEmpty.push_back(s);
+	}
+	if (nonEmpty.empty())
+		return;
+	const int at = static_cast<int>(std::find(nonEmpty.begin(), nonEmpty.end(), current->slot) - nonEmpty.begin());
+	const int base = at >= 0 ? at : 0;
+	const int step = advance > 0 ? 1 : -1;
+	const int next = nonEmpty[(base + step + static_cast<int>(nonEmpty.size())) % nonEmpty.size()];
+	const std::vector<const Weapon*> target = slotWeapons(next);
+	applySelection(advance > 0 ? target.front() : target.back());
 }
 
 }

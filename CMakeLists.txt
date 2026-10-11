@@ -59,6 +59,7 @@ add_library(AbcUi MODULE
     src/rmlui/SteamApiNative.cpp
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
+    src/framework/Commands.cpp
     src/framework/HudPanel.cpp
     src/framework/Localization.cpp
     src/data/HudState.cpp
