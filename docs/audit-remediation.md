@@ -45,3 +45,27 @@ Both configurations compiled against production sources; production TextUtil/For
 - UIR-S01 addressed: per-load opaque texture records separate logical handle from engine ID and ownership; cached sprite/avatar IDs borrowed, file/font IDs owned, external prefix resolved live. Shared URIs cannot free cache IDs or collide with regenerated external IDs. GPU failure/double-release runtime test not performed.
 - UIR-03 completed: VidInit releases only spr:// Rml sources through pinned ReleaseTexture, so resolution-dependent metadata resolves again. No blanket file/font texture invalidation.
 - UID-S06 addressed: Native disconnect clears caches/interfaces without SteamAPI_Shutdown, service/native entry caps 256. Decoded pixel duplication remains bounded, intentional for retry; no background-thread Steam use.
+
+## Panel/data state stage
+
+- UIP-04 fixed: per-panel DomState suppresses identical text/style/attribute writes, PlayerBoard and ItemHighlight text cached; Radar retains per-index img nodes and diffs source/position instead of rebuilding every frame. No measured FPS claim.
+- UIP-05 fixed: PlayerBoard fill image width and clipping basis both 67dp.
+- UIP-06 fixed: AmmoBar refresh and Flashlight suit changes share hide visibility gate.
+- UIP-07 fixed: grenade markers revalidate cvar/model/message/visibility/expiry and current range; no stale non-grenade slot marker. Same-model reuse before expiry lacks engine generation token (remaining limitation).
+- UIP-08 fixed: PopNum explicitly hides failed/front-negative projections, re-shows when valid. 128-element cap.
+- UIP-09 fixed: each MOTD reopen re-arms HasContent/countdown; retained Page not confused with active timer.
+- UIP-11 fixed: menu clipping scales 180/96 design units by density and never inverts clamp bounds.
+- UIP-12 implemented: size 0 auto/1 normal/2 compact, positive spacing overrides bounded 8..128 raw px; 0 defaults normal28/compact18. Auto currently selects compact above 12 players (documented approximation to legacy measured-overflow choice). Real size/spacing visual parity remains unverified.
+- UID-07 fixed: protocol enums unchanged, Team1..4 mapped to shipped color tokens, remaining class/unknown translations supplied in all three languages.
+- UID-08 fixed: reset clears debugPinned; fake players cannot retain update suppression across maps.
+- UIF-S02 addressed for stable health/armor/flashlight/server/nextmap snapshots; lazy panels hydrate from data. HudState owns copied clientdata and resets on VidInit (UID-S01). Transient preassembly events are not queued.
+- UIF-S03 addressed: passive documents pointer-events none, Show uses FocusFlag::None. Combined hover/wheel/modal behavior still needs game acceptance.
+- UIF-S05 partially addressed: ProbeDoc explicitly closes/resets before Rml shutdown. Developer symbol/log path cleanup remains tracked below.
+- UID-S02 finite bounded ScoreInfo validation before state mutation; native handler still receives original messages. UID-S03 disconnected name/changed Steam identity resets records; exact SvEngine userdata identity still not dynamically inspected.
+- UID-S05 unknown #game tokens pass to original handler instead of swallowing untranslated keys; English killfeed regex semantics retained.
+- UIP-S01 bounded menu16KiB/MOTD64KiB/pop128; timeout for indefinitely fragmented messages remains follow-up (bounds already prevent unbounded accumulation).
+- UIP-S03 item markers validate current modelindex and EF_NODRAW each redraw.
+- UIP-S05 live vote/deathnotice-off hides current content; crosshair center updated before zoom return and missing document guarded.
+- UIR-S04 projection now preserves negative screen coordinates for consumer clipping instead of artificial edge pinning.
+
+All panel visual/hover/GPU/map transitions remain offline-unverified; build and helper tests alone are not equivalent to game acceptance.

@@ -38,7 +38,7 @@
 	position: absolute;
 	left: 12dp;
 	top: 0dp;
-	width: 38dp;
+	width: 67dp;
 	height: 3dp;
 	overflow: hidden;
 	display: block;
@@ -48,7 +48,7 @@
 .tile .bar img {
 	left: 0;
 	top: 0;
-	width: 38dp;
+	width: 67dp;
 	height: 3dp;
 }
 
@@ -56,7 +56,7 @@
 	position: absolute;
 	left: 12dp;
 	top: 4dp;
-	width: 38dp;
+	width: 67dp;
 	height: 3dp;
 	overflow: hidden;
 	display: block;
@@ -66,7 +66,7 @@
 	position: absolute;
 	left: 12dp;
 	top: 7dp;
-	width: 38dp;
+	width: 67dp;
 	height: 11dp;
 	font-family: Verdana;
 	font-size: 8dp;

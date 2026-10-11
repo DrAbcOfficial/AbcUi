@@ -142,10 +142,14 @@ void MotdPanel::reset() {
 }
 
 void MotdPanel::append(const char* message) {
+	if (!message) return;
+	const size_t size = strlen(message);
+	if (size > 65536 || Buffer.size() > 65536-size) { Buffer.clear(); return; }
 	Buffer += message;
 }
 
 void MotdPanel::startCountdown() {
+	HasContent = !Page.empty();
 	ShowTime = ClientTimeNow + kKeepTime;
 	Fading = false;
 	if (Rml::Element* box = element("box"))
@@ -196,8 +200,10 @@ void MotdPanel::loadMissionBrief() {
 		FILE* f = nullptr;
 		if (fopen_s(&f, abc::ModPath(path.c_str()).c_str(), "rb") != 0 || !f)
 			return false;
-		while ((read = fread(chunk, 1, sizeof(chunk), f)) > 0)
+		while ((read = fread(chunk, 1, sizeof(chunk), f)) > 0) {
+			if (Buffer.size() + read > 65536) { Buffer.clear(); fclose(f); return false; }
 			Buffer.append(chunk, read);
+		}
 		fclose(f);
 		return true;
 	};

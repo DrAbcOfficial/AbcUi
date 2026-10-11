@@ -26,6 +26,7 @@
 // raw px against the proportional panel).
 
 #include "../../framework/HudPanel.h"
+#include "../../framework/DomState.h"
 
 namespace panels {
 
@@ -64,6 +65,8 @@ protected:
 	void onData(double frameTime) override;
 
 private:
+	framework::DomState AppliedDom;
+	std::unordered_map<int,Rml::Element*> AvatarElements;
 	bool Scaled = false;
 };
 

@@ -2,6 +2,7 @@
 #include <metahook.h>
 
 #include "RmlUiModule.h"
+#include "SteamAPI.h"
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Debugger.h>
@@ -232,10 +233,11 @@ void shutdown() {
 	Initialised = false;
 	if (auto* renderer = abc::MetaRenderer())
 		renderer->UnregisterRenderCallbacks(&Callbacks);
+	closeProbeDocument();
 	framework::PanelManager::shutdown();
 
-	// Rml::Shutdown drains its texture database through ReleaseTexture - the
-	// single delete point for every sprite id (all went through LoadTexture).
+	// Rml::Shutdown first releases per-load borrowed/owned records; cache IDs
+	// are deleted only afterwards, including never-delivered avatar uploads.
 	// clearAdditiveTextures() before that keeps recycled ids off the additive
 	// program if any handle outside the database ever existed.
 	Callbacks.RenderInterface->clearAdditiveTextures();
@@ -243,6 +245,7 @@ void shutdown() {
 	Rml::Shutdown();
 	sprites::shutdown();
 	avatars::shutdown();
+	steamapi::shutdown();
 	Callbacks.RenderInterface.reset();
 	FileInterface.reset();
 	SystemInterface.reset();

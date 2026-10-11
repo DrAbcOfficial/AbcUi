@@ -60,7 +60,9 @@ void PlayerInfo::update() {
 	const auto* info = reinterpret_cast<const player_info_sc_t*>(
 		hooks::EngineStudioApi->PlayerInfo(index - 1));
 	const bool wasConnected = connected;
-	connected = info != nullptr;
+	connected = info && info->name[0];
+	if (connected && steamId64 && info->m_nSteamID && steamId64 != info->m_nSteamID) { reset(); connected = true; }
+	if (!connected) { reset(); return; }
 	if (connected != wasConnected) {
 		// Player connected or disconnected: drop the stale identity fields
 		// (the old g_EventPlayerInfoChanged subscribers saw this state too).
@@ -103,6 +105,9 @@ void PlayerInfo::update() {
 }
 
 void PlayerInfo::reset() {
+#ifndef NDEBUG
+	debugPinned = false;
+#endif
 	ping = 0;
 	loss = 0;
 	model.clear();

@@ -178,6 +178,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 	IsASMenu = ((bits >> 7) & 1) != 0;
 	ShutoffTime = displaySeconds > 0 ? ClientTimeNow + displaySeconds : -1.0;
 	if (ValidSlots) {
+		if (text.size() > 16384 || MenuString.size() > 16384-text.size()) { MenuString.clear(); reset(); return; }
 		MenuString += text;
 		if (needMore == 0) {
 			// Old: strip the leading/trailing newline runs servers send.

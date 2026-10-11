@@ -85,6 +85,7 @@ private:
 	double TimeEndBase = 0.0;
 	double LastRefresh = 0.0;
 	double ClientTimeNow = 0.0;
+	float AppliedRowHeight = -1;
 	bool Visible = false;
 	bool MouseMode = false;
 	bool Intermission = false;

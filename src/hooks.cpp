@@ -118,6 +118,7 @@ static void H_HUD_Init() {
 static int H_HUD_VidInit() {
 	rebuildVanillaHudPanels();
 	int result = gExportfuncs.HUD_VidInit();
+	hudstate::reset();
 	weaponres::reset();
 	playerres::resetAll();
 	rmlui::onVidInit();

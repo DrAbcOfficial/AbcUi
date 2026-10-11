@@ -124,6 +124,7 @@ void PopNumPanel::addNumber(const float origin[3], int value, const int color[4]
 	Rml::Element* container = Document ? Document->GetElementById("numbers") : nullptr;
 	if (!container)
 		return;
+	if (Numbers.size() >= 128) { container->RemoveChild(Numbers.front().element); Numbers.erase(Numbers.begin()); }
 	Rml::ElementPtr holder = Document->CreateElement("div");
 	if (!holder)
 		return;
@@ -200,10 +201,11 @@ void PopNumPanel::onRedraw(double frameTime) {
 		vec3_t forward{};
 		if (viewForward(forward) && inFront(number.origin, forward)) {
 			float screen[2] = {};
-			framework::projection::worldToScreen(number.origin, screen);
+			if (framework::projection::worldToScreen(number.origin, screen)) { if(number.element) number.element->SetProperty("display","none"); ++i; continue; }
 			const float age = static_cast<float>(ClientTimeNow - number.createTime);
 			const float ratio = -sinf(age) / 2.0f;
 			if (number.element) {
+				number.element->SetProperty("display", "block");
 				number.element->SetProperty("left",
 					std::to_string(screen[0] - boxWidth / 2.0f) + "px");
 				number.element->SetProperty("top",
@@ -211,6 +213,7 @@ void PopNumPanel::onRedraw(double frameTime) {
 				number.element->SetProperty("opacity", std::to_string(number.alpha / 255.0f));
 			}
 		}
+		else if (number.element) number.element->SetProperty("display", "none");
 		i++;
 	}
 	if (Numbers.empty())

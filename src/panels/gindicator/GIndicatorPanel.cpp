@@ -132,7 +132,12 @@ void GIndicatorPanel::onRedraw(double frameTime) {
 	// Old OnThink expiry sweep runs regardless of the paint gates.
 	for (size_t i = 0; i < gindicator::Tracked.size();) {
 		gindicator::TrackedGrenade& tracked = gindicator::Tracked[i];
-		const bool expired = !tracked.ent || tracked.expire <= gEngfuncs.GetClientTime();
+		const cl_entity_t* localNow = gEngfuncs.GetLocalPlayer();
+		const auto* ent = tracked.ent;
+		const bool expired = !gindicator::GrenadeIndicator || gindicator::GrenadeIndicator->value <= 0 || !ent || !ent->model ||
+			strcmp(ent->model->name,gindicator::kGrenadeModelPath)!=0 || !localNow ||
+			ent->curstate.messagenum != localNow->curstate.messagenum || (ent->curstate.effects & EF_NODRAW) ||
+			tracked.expire <= gEngfuncs.GetClientTime();
 		if (expired) {
 			if (tracked.marker)
 				container->RemoveChild(tracked.marker);
@@ -172,7 +177,7 @@ void GIndicatorPanel::onRedraw(double frameTime) {
 		const float dot = length > 0.0f
 			? (rel[0] * forward[0] + rel[1] * forward[1] + rel[2] * forward[2]) / length
 			: 0.0f;
-		if (dot > kFrontDotGate) {
+		if (dot > kFrontDotGate && length <= (gindicator::GrenadeIndicatorRange ? gindicator::GrenadeIndicatorRange->value : 256.0f)) {
 			float screen[2] = {};
 			framework::projection::worldToScreen(tracked.ent->curstate.origin, screen);
 			// Old 24x24 box centered on the projection.

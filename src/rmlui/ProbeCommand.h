@@ -15,5 +15,6 @@ namespace rmlui {
 
 // HUD_Init time (abc_ui_probe command). No-op in Release.
 void registerProbeCommand();
+void closeProbeDocument();
 
 }

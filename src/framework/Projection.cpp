@@ -28,8 +28,8 @@ int worldToScreen(const float world[3], float screen[2]) {
 	const int result = gEngfuncs.pTriAPI->WorldToScreen(
 		const_cast<float*>(world), raw);
 	// Old VEC_WorldToScreen parity (NDC -> screen, y flip).
-	screen[0] = std::max(0.0f, (1.0f + raw[0]) * width / 2.0f);
-	screen[1] = std::max(0.0f, (1.0f - raw[1]) * height / 2.0f);
+	screen[0] = (1.0f + raw[0]) * width / 2.0f;
+	screen[1] = (1.0f - raw[1]) * height / 2.0f;
 	return result;
 }
 

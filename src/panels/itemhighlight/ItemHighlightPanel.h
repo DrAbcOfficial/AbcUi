@@ -30,6 +30,7 @@
 //   stale record until the messagenum sweep caught it a frame later).
 
 #include "../../framework/HudPanel.h"
+#include "../../framework/DomState.h"
 
 #include <string>
 #include <unordered_map>
@@ -66,6 +67,7 @@ protected:
 	void onRedraw(double frameTime) override;
 
 private:
+	framework::DomState AppliedDom;
 	// Per-marker DOM handles (kept from creation - a lookup by entindex would
 	// collide with Rml's document-scoped GetElementById, 08 §4.33).
 	struct Marker {

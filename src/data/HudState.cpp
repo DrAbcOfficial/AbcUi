@@ -19,8 +19,10 @@ bool Suit = false;
 bool LongJump = false;
 bool Spectate = false;
 int HideTokens = 0;
+clientdata_s ClientDataValue{};
 const clientdata_s* ClientData = nullptr;
 float Fov = 90.0f;
+MessageSnapshot Snapshot;
 
 void onHideToken(int token) {
 	// Old Viewport parity (Viewport.cpp hudhideCallback): plain assignment,
@@ -46,6 +48,13 @@ void init() {
 	SpectateChanged = {};
 	HideTokenChanged = {};
 	// The old hudhideCallback subscribed both messages with one handler.
+	netmsg::Health.append([](int v) { Snapshot.Health=v; });
+	netmsg::Battery.append([](int v) { Snapshot.Armor=v; });
+	netmsg::FlashBat.append([](int v) { Snapshot.FlashBattery=v; });
+	netmsg::Flashlight.append([](bool on,int v) { Snapshot.FlashOn=on; Snapshot.FlashBattery=v; });
+	netmsg::ServerName.append([](const char* v) { Snapshot.ServerName=v ? v : ""; });
+	netmsg::NextMap.append([](const char* v) { Snapshot.NextMap=v ? v : ""; });
+	netmsg::TimeEnd.append([](int v) { Snapshot.TimeEnd=v; });
 	netmsg::HideWeapon.append(onHideToken);
 	netmsg::HideHud.append(onHideToken);
 }
@@ -81,6 +90,13 @@ void onUpdateClientData(const client_data_s* cdata) {
 	}
 }
 
+const MessageSnapshot& messages() { return Snapshot; }
+
+void reset() {
+	Snapshot = {};
+	Suit = LongJump = Spectate = false; HideTokens = 0; ClientData = nullptr; ClientDataValue = {}; Fov = 90;
+}
+
 bool hasSuit() {
 	return Suit;
 }
@@ -103,7 +119,8 @@ int debugHideTokens() {
 
 void onTxferLocalOverrides(const clientdata_s* client) {
 	// Old exportfuncs HUD_TxferLocalOverrides: gClientData = client.
-	ClientData = client;
+	if (client) { ClientDataValue = *client; ClientData = &ClientDataValue; }
+	else ClientData = nullptr;
 }
 
 float health() {
