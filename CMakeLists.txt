@@ -62,6 +62,7 @@ add_library(AbcUi MODULE
     src/framework/Commands.cpp
     src/framework/HudPanel.cpp
     src/framework/Localization.cpp
+    src/data/Avatars.cpp
     src/data/HudState.cpp
     src/data/NetworkMessages.cpp
     src/data/PlayerResource.cpp
@@ -85,6 +86,7 @@ add_library(AbcUi MODULE
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/vote/VotePanel.cpp
     src/panels/motd/MotdPanel.cpp
+    src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/popnum/PopNumPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
     src/panels/textmenu/TextMenuPanel.cpp

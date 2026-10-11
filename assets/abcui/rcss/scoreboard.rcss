@@ -1,0 +1,155 @@
+/* scoreboard.rcss - ScorePanel layout, from the old abcenchance/res/
+   ScorePanel.res (552 wide centered at c-276/c-324, min_height 300,
+   bgcolor_override 0 0 0 64; column widths avatar 24, donor 18, name 164,
+   steamid 92, health/armor/frags/deaths 47 each, ping 80; SchemeBase:
+   ThisPlayerBgColor = LightOrange, KillerBgColor = 255 0 0 128).
+   Rows use RCSS display: table; the context menu is a floating absolute
+   div (old vgui Menu). */
+
+#scoreboard {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	overflow: visible;
+}
+
+#box {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -276dp;
+	width: 552dp;
+	/* vertical center rides the controller (content height varies) */
+	display: none;
+	background-color: rgba(0, 0, 0, 64);
+}
+
+#header {
+	position: relative;
+	width: 552dp;
+	height: 22dp;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 10dp;
+	color: #ffffff;
+}
+
+#server-name {
+	position: absolute;
+	left: 8dp;
+	top: 3dp;
+	width: 400dp;
+	height: 10dp;
+	overflow: hidden;
+}
+
+#map-name {
+	position: absolute;
+	left: 8dp;
+	top: 12dp;
+	width: 192dp;
+	height: 10dp;
+}
+
+#next-map {
+	position: absolute;
+	left: 300dp;
+	top: 12dp;
+	width: 190dp;
+	height: 10dp;
+	text-align: right;
+}
+
+#player-count {
+	position: absolute;
+	left: 496dp;
+	top: 2dp;
+	width: 48dp;
+	height: 8dp;
+	text-align: right;
+}
+
+#time-end {
+	position: absolute;
+	left: 496dp;
+	top: 12dp;
+	width: 48dp;
+	height: 10dp;
+	text-align: right;
+}
+
+#table {
+	position: relative;
+	width: 552dp;
+	min-height: 300dp;
+	display: table;
+	table-layout: fixed;
+	font-family: Verdana;
+	font-size: 8dp;
+	color: #ffffff;
+}
+
+#table .row {
+	display: table-row;
+}
+
+#table .cell {
+	display: table-cell;
+	overflow: hidden;
+	vertical-align: middle;
+	padding-left: 2dp;
+}
+
+#table .row img {
+	width: 24dp;
+	height: 24dp;
+}
+
+/* column widths (ScorePanel.res); name absorbs the steamid width when the
+   steamid column is off (old GetNameColumnWidth). */
+#table .c-avatar { width: 24dp; }
+#table .c-donor { width: 18dp; }
+#table .c-donor img { width: 18dp; height: 18dp; }
+#table .c-name { width: 164dp; }
+#table .c-steamid { width: 92dp; }
+#table .c-health { width: 47dp; }
+#table .c-armor { width: 47dp; }
+#table .c-frags { width: 47dp; }
+#table .c-deaths { width: 47dp; }
+#table .c-ping { width: 78dp; }
+
+#table .header .cell {
+	color: #dedede;
+	font-weight: bold;
+}
+
+#table .section .cell {
+	color: #dedede;
+	background-color: rgba(0, 0, 0, 128);
+}
+
+#table .thisplayer {
+	background-color: rgba(255, 155, 40, 80);
+}
+
+#menu {
+	position: absolute;
+	width: 180dp;
+	display: none;
+	background-color: rgba(20, 20, 20, 240);
+	z-index: 10;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 16dp;
+	color: #ffffff;
+}
+
+#menu .item {
+	padding-left: 8dp;
+}
+
+#menu .item:hover {
+	background-color: rgba(0, 112, 188, 200);
+}

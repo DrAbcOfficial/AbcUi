@@ -13,6 +13,7 @@
 #include <abc/Render.h>
 #include <abc/RenderCommon.h>
 
+#include "../data/Avatars.h"
 #include "../data/SpriteResource.h"
 #include "VGUI2ExtensionImport.h"
 
@@ -224,6 +225,19 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 			// Old ImageSprPanel rendered HUD sprites kRenderTransAdd - mark
 			// the handle so RenderGeometry picks the additive program.
 			AdditiveTextures.insert(handle);
+		}
+		return handle;
+	}
+	if (source.rfind("avatar://", 0) == 0) {
+		// avatar://<steamid64>[?gen] - scoreboard avatars (data::avatars);
+		// the scoreboard bumps `gen` when an avatar lands so Rml re-resolves.
+		const std::string body = source.substr(9);
+		const uint64_t steamId = strtoull(body.c_str(), nullptr, 10);
+		int width = 0, height = 0;
+		const Rml::TextureHandle handle = avatars::textureFor(steamId, width, height, true);
+		if (handle) {
+			dimensions.x = width;
+			dimensions.y = height;
 		}
 		return handle;
 	}

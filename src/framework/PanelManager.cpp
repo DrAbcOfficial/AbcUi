@@ -19,6 +19,7 @@
 #include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/notice/NoticePanel.h"
 #include "../panels/motd/MotdPanel.h"
+#include "../panels/scoreboard/ScoreboardPanel.h"
 #include "../panels/playerboard/PlayerBoardPanel.h"
 #include "../panels/vote/VotePanel.h"
 #include "../panels/popnum/PopNumPanel.h"
@@ -56,6 +57,7 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::PlayerBoardPanel>());
 		list.push_back(std::make_unique<panels::VotePanel>());
 		list.push_back(std::make_unique<panels::MotdPanel>());
+		list.push_back(std::make_unique<panels::ScoreboardPanel>());
 		return list;
 	}();
 	return panels;
@@ -78,6 +80,7 @@ void PanelManager::registerPanelCvars() {
 	panels::playerboard::registerCvars();
 	panels::vote::registerCvars();
 	panels::motd::registerCvars();
+	panels::scoreboard::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
