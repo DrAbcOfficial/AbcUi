@@ -226,6 +226,9 @@ static int H_HUD_GetStudioModelInterface(int version, struct r_studio_interface_
 static void H_HUD_Shutdown() {
 	rmlui::onHudShutdown();
 	gExportfuncs.HUD_Shutdown();
+	// Old UninstallClientHook order: the hook comes down after the client's
+	// own shutdown ran (it may still open viewport windows on the way out).
+	unhookVanillaMenuRoute();
 }
 
 // Keep relative mouse motion and already-held attacks out of UI mode.
@@ -306,6 +309,55 @@ void locateNativeHudPanelInfo() {
 
 void locateVanillaHudList() {
 	findVanillaHudList();
+}
+
+namespace {
+
+// Native viewport menu route (from: ABCEnchance exportfuncs.cpp
+// TFV_ShowVGUIMenu + TFV_SHOWVGUIMENU_SHIT_SIG). The SC client opens every
+// built-in viewport window through CTeamFortressViewport::ShowVGUIMenu(id);
+// the old mod inline-hooked it so the vanilla mission brief (4) never opens
+// (the missionbriefing command chain feeds the new motd panel) and the
+// vanilla MOTD window (5) yields while hud_motd is non-zero (>= 1 the new
+// panel replaces it, < 0 suppresses both, 0 restores the vanilla window).
+// Every other menu id chains untouched.
+constexpr int kMenuMissionBrief = 4;
+constexpr int kMenuMotd = 5;
+
+using ShowVguiMenuFn = void(__fastcall*)(void* pthis, int dummy, int menu);
+ShowVguiMenuFn OriginalShowVguiMenu = nullptr;
+hook_t* ShowVguiMenuHook = nullptr;
+
+static void __fastcall H_TFV_ShowVGUIMenu(void* pthis, int dummy, int menu) {
+	if (menu == kMenuMissionBrief)
+		return;
+	if (menu == kMenuMotd && panels::motd::blocksVanillaWindow()) {
+		panels::motd::showMotd();
+		return;
+	}
+	if (OriginalShowVguiMenu)
+		OriginalShowVguiMenu(pthis, dummy, menu);
+}
+
+} // namespace
+
+void hookVanillaMenuRoute() {
+	// The old sig scans the whole client image; \x2A is the MetaHook
+	// wildcard (the two jal/cond displacements move per build).
+	constexpr char pattern[] = "\xA1\x2A\x2A\x2A\x2A\x57\x8B\xF9\x8B\x40\x04\xFF\xD0\x85\xC0\x0F\x85\x2A\x2A\x2A\x2A\x55\x8B\x6C\x24\x0C\x39\x05";
+	const auto target = static_cast<void*>(g_pMetaHookAPI->SearchPattern(
+		g_pMetaHookAPI->GetClientBase(), g_pMetaHookAPI->GetClientSize(), pattern, sizeof(pattern) - 1));
+	if (!target)
+		abc::SysError("[AbcUi] Could not found: TFV_ShowVGUIMenu");
+	ShowVguiMenuHook = g_pMetaHookAPI->InlineHook(target, H_TFV_ShowVGUIMenu, reinterpret_cast<void**>(&OriginalShowVguiMenu));
+}
+
+void unhookVanillaMenuRoute() {
+	if (ShowVguiMenuHook) {
+		g_pMetaHookAPI->UnHook(ShowVguiMenuHook);
+		ShowVguiMenuHook = nullptr;
+		OriginalShowVguiMenu = nullptr;
+	}
 }
 
 }

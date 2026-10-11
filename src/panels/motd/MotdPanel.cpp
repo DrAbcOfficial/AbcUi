@@ -26,13 +26,40 @@ cvar_t* HudMotd = nullptr;
 MotdPanel* PanelInstance = nullptr;
 
 void registerCvars() {
-	HudMotd = abc::CREATE_CVAR("hud_motd", "1", abc::FCVAR_VALUE, nullptr);
+	// Old callback: re-typing hud_motd 1/-1 mid-game dismissed the open panel
+	// (0 left it alone - the vanilla window takes over on the next trigger).
+	HudMotd = abc::CREATE_CVAR("hud_motd", "1", abc::FCVAR_VALUE, [](cvar_t* cvar) {
+		switch (static_cast<int>(cvar->value)) {
+		case 1:
+		case -1:
+			if (PanelInstance)
+				PanelInstance->hide();
+			break;
+		default:
+			break;
+		}
+	});
 }
 
 // Wheel ownership: the open motd scrolls (old per-page auto-advance died
 // with the pagination - D-17 ledger).
 bool wantsWheel() {
 	return PanelInstance && PanelInstance->isVisible();
+}
+
+// The old TFV_ShowVGUIMenu hook's gate: hud_motd != 0 keeps the vanilla MOTD
+// window down (>= 1 shows this panel instead, < 0 suppresses both).
+bool blocksVanillaWindow() {
+	return HudMotd && HudMotd->value != 0.0f;
+}
+
+// Old CViewport::ShowMOTD -> CMotdPanel::ShowMotd: the client's
+// ShowVGUIMenu(MOTD) lands here instead of the vanilla window. The hud_motd
+// gate rides inside showMotd like the old one (the hook only guarantees the
+// vanilla side stays down).
+void showMotd() {
+	if (PanelInstance)
+		PanelInstance->showMotd();
 }
 }
 
