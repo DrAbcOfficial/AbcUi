@@ -371,6 +371,16 @@ void probeCommand() {
 	// scoreboard table/scroll/context-menu at 32 occupancy. The wire-parse
 	// layer stays untouched - this feeds the same store the real ScoreInfo
 	// events write.
+	// Phase 8 benchmark instrument: prints the accumulated per-frame phase
+	// timings (Context::Update / Context::Render) and restarts the window.
+	void perfCommand() {
+		const rmlui::PerfSnapshot snapshot = rmlui::perfSnapshot();
+		abc::ConsolePrint(
+			"[AbcUi] perf: frames=%d update avg=%.3fms max=%.3fms | render avg=%.3fms max=%.3fms\n",
+			snapshot.Frames, snapshot.UpdateAvgMs, snapshot.UpdateMaxMs,
+			snapshot.RenderAvgMs, snapshot.RenderMaxMs);
+	}
+
 	void boardCommand() {
 		playerres::debugPopulateBoard();
 		abc::ConsolePrint("[AbcUi] board: 31 fake players pinned; +showscores opens, MOUSE2 pointer, right-click rows\n");
@@ -448,6 +458,7 @@ void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);
 	abc::ADD_COMMAND("abc_ui_board", boardCommand);
+	abc::ADD_COMMAND("abc_ui_perf", perfCommand);
 	abc::ADD_COMMAND("abc_ui_pointer_on", pointerOnCommand);
 	abc::ADD_COMMAND("abc_ui_pointer_off", pointerOffCommand);
 	abc::ADD_COMMAND("abc_ui_wheelup", wheelUpCommand);

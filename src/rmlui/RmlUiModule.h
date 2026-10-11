@@ -42,6 +42,19 @@ Rml::Context* context();
 // panel registers its FBO as an external masked texture through it (batch D).
 AbcRenderInterface* renderInterface();
 
+#ifndef NDEBUG
+// Debug per-frame phase timer (abc_ui_perf, Phase 8 benchmark instrument):
+// QueryPerformanceCounter brackets around the two Context passes - Update()
+// per HUD_Frame and onRedraw, Render() per OnRenderEndFrame. Accumulates a
+// rolling window; the command prints avg/max over the window and resets.
+struct PerfSnapshot {
+	int Frames = 0;
+	double UpdateAvgMs = 0.0, UpdateMaxMs = 0.0;
+	double RenderAvgMs = 0.0, RenderMaxMs = 0.0;
+};
+PerfSnapshot perfSnapshot();
+#endif
+
 // Spine entries (hooks.cpp).
 void onFrame(double frameTime);
 // HUD_Redraw chain: projection consumers reposition + second Update.
