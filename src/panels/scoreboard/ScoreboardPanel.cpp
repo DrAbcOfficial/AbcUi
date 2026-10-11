@@ -249,6 +249,13 @@ ScoreboardPanel::~ScoreboardPanel() {
 	setMouseMode(false);
 	if (scoreboard::PanelInstance == this)
 		scoreboard::PanelInstance = nullptr;
+	if (Listener) {
+		if (auto* box = element("box")) {
+			box->RemoveEventListener("mousedown", Listener, false);
+			box->RemoveEventListener("click", Listener, false);
+		}
+		Listener->Panel = nullptr;
+	}
 	delete Listener;
 }
 

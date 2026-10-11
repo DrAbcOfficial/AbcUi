@@ -309,10 +309,10 @@ void onKeyEvent(int down, int keynum) {
 
 void onWheel(int down, int keynum) {
 	// The engine delivers the wheel as down-only keynum pulses (KeyMap note);
-	// positive Rml wheel_delta = scroll away (old vgui wheel direction).
+	// positive Rml wheel_delta scrolls down (pinned Win32 backend contract).
 	if (!Initialised || !Context || !down)
 		return;
-	const float delta = keynum == K_MWHEELUP ? 1.0f : -1.0f;
+	const float delta = keynum == K_MWHEELUP ? -1.0f : 1.0f;
 	Context->ProcessMouseWheel(delta, 0);
 }
 

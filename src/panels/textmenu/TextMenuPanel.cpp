@@ -2,6 +2,7 @@
 // from: ABCEnchance/src/hud/vgui/textmenu.* (GBK->UTF-8).
 
 #include "TextMenuPanel.h"
+#include "../../framework/TextUtil.h"
 
 #include <RmlUi/Core/Element.h>
 
@@ -180,11 +181,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 		MenuString += text;
 		if (needMore == 0) {
 			// Old: strip the leading/trailing newline runs servers send.
-			const auto isContent = [](char ch) { return ch != '\n'; };
-			const auto begin = std::find_if(MenuString.begin(), MenuString.end(), isContent);
-			const auto rend = std::find_if(MenuString.rbegin(), MenuString.rend(), isContent);
-			MenuString.erase(MenuString.begin(), begin);
-			MenuString.erase(rend.base(), MenuString.end());
+			MenuString = framework::TextUtil::trimNewlines(MenuString);
 			if (Rml::Element* menu = element("menu"))
 				menu->SetInnerRML(colorizeMenuRml(MenuString));
 			if (Rml::Element* body = getDocument())

@@ -144,6 +144,10 @@ WeaponChoosePanel::WeaponChoosePanel()
 	weaponchoose::PanelInstance = this;
 }
 
+WeaponChoosePanel::~WeaponChoosePanel() {
+	if (weaponchoose::PanelInstance == this) weaponchoose::PanelInstance = nullptr;
+}
+
 void WeaponChoosePanel::reset() {
 	Visible = false;
 	hide();
