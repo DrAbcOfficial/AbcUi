@@ -24,4 +24,11 @@ int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFet
 // (new) source. 0 = still showing the bundled default.
 int generation(std::uint64_t steamId64);
 
+// Frame-pump poll for the steamapi download (old CAvatarImage::Paint retry):
+// runs the same 1s-throttled fetch attempt as textureFor. True when THIS call
+// uploaded the RGBA (the caller must refresh its rows - Rml caches textures
+// per source string, failures included, so a landing avatar only reaches the
+// screen through a new ?gen URL on a rebuilt row).
+bool touch(std::uint64_t steamId64);
+
 }

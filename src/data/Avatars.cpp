@@ -64,6 +64,26 @@ bool upload(Entry& entry) {
 	return true;
 }
 
+// The steamapi fetch attempt behind both consumers (the old CAvatarImage
+// 1s throttle, m_fNextLoadTime): GetSmallFriendAvatar returns 0 while steam
+// is still downloading, callers re-ask until it lands. True when the RGBA
+// uploaded this call.
+bool tryFetch(Entry& entry, std::uint64_t steamId64, double now) {
+	if (!entry.rgba.empty() || now < entry.nextAttempt)
+		return false;
+	entry.nextAttempt = now + 1.0;
+	steamapi::AvatarRgba avatar;
+	if (!steamapi::avatar(steamId64, avatar) || !avatar.rgba)
+		return false;
+	entry.rgba.assign(avatar.rgba, avatar.rgba + static_cast<size_t>(avatar.width) * avatar.height * 4);
+	entry.width = avatar.width;
+	entry.height = avatar.height;
+	if (!upload(entry))
+		return false;
+	entry.generation++;
+	return true;
+}
+
 }
 
 void init() {
@@ -98,25 +118,21 @@ int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFet
 	// Retryable with the old 1s throttle (CAvatarImage m_fNextLoadTime):
 	// GetSmallFriendAvatar returns 0 while steam is still fetching, and the
 	// throttle keeps the per-refresh polling from hammering the interface.
-	const double now = NowSeconds();
-	if (triggerFetch && entry.rgba.empty() && now >= entry.nextAttempt) {
-		entry.nextAttempt = now + 1.0;
-		steamapi::AvatarRgba avatar;
-		if (steamapi::avatar(steamId64, avatar) && avatar.rgba) {
-			entry.rgba.assign(avatar.rgba, avatar.rgba + static_cast<size_t>(avatar.width) * avatar.height * 4);
-			entry.width = avatar.width;
-			entry.height = avatar.height;
-			if (upload(entry))
-				entry.generation++;
-			width = entry.width;
-			height = entry.height;
-			return entry.textureId;
-		}
+	if (triggerFetch && tryFetch(entry, steamId64, NowSeconds())) {
+		width = entry.width;
+		height = entry.height;
+		return entry.textureId;
 	}
 
 	width = DefaultAvatarWidth;
 	height = DefaultAvatarHeight;
 	return DefaultAvatarTexture;
+}
+
+bool touch(std::uint64_t steamId64) {
+	if (!steamId64 || !DefaultAvatarTexture)
+		return false;
+	return tryFetch(Entries[steamId64], steamId64, NowSeconds());
 }
 
 int generation(std::uint64_t steamId64) {
