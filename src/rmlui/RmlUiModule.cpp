@@ -293,6 +293,7 @@ void onRedraw(double frameTime) {
 }
 
 void onVidInit() {
+	sprites::vidInit();
 	if (!Initialised)
 		return;
 	framework::Theme::applyScale(Context);
