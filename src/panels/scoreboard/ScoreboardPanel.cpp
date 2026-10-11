@@ -159,8 +159,9 @@ void ScoreboardPanel::setVisible(bool visible) {
 	if (visible == Visible)
 		return;
 	Visible = visible;
-	if (Rml::Element* box = element("box"))
-		box->SetProperty("display", visible ? "block" : "none");
+	// The document itself is the visibility switch (HudPanel::show is
+	// idempotent and focus-safe); the box rides it.
+	visible ? show() : hide();
 	if (!visible)
 		closeContextMenu();
 	// Old ShowPanel: a fresh open refreshes everything immediately.

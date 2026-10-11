@@ -140,20 +140,16 @@ WeaponChoosePanel::WeaponChoosePanel()
 }
 
 void WeaponChoosePanel::reset() {
-	if (Document) {
-		if (Rml::Element* box = element("box"))
-			box->SetProperty("display", "none");
-	}
 	Visible = false;
 	SelectBlock = false;
+	hide();
 }
 
 void WeaponChoosePanel::setVisible(bool visible) {
 	if (visible == Visible)
 		return;
 	Visible = visible;
-	if (Rml::Element* box = element("box"))
-		box->SetProperty("display", visible ? "block" : "none");
+	visible ? show() : hide();
 }
 
 bool WeaponChoosePanel::shouldDraw() const {

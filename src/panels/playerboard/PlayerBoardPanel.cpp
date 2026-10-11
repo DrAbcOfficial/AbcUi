@@ -144,7 +144,10 @@ bool PlayerBoardPanel::updateClientInfo(Rml::Element* tile, int entindex) {
 
 void PlayerBoardPanel::onData(double frameTime) {
 	(void)frameTime;
-	// Everything runs in onRedraw (world projection phase).
+	// The document must be shown for any tile to render; per-tile display
+	// flips carry the real visibility (everything else runs in onRedraw -
+	// the world projection phase).
+	show();
 }
 
 void PlayerBoardPanel::onRedraw(double frameTime) {

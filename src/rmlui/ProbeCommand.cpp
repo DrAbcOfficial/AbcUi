@@ -135,6 +135,23 @@ void probeCommand() {
 			}
 		}
 	}
+	// Batch C ground truth: the scoreboard box/table display state (the
+	// +showscores chain) and the new documents' visibility.
+	if (Rml::ElementDocument* board = context->GetDocument("scoreboard")) {
+		if (Rml::Element* box = board->GetElementById("box")) {
+			Rml::Element* table = box->GetElementById("table");
+			abc::ConsolePrint("[AbcUi] probe: scoreboard box display='%s' opacity='%s' abs=(%.1f %.1f) table-children=%d doc-visible=%d\n",
+				box->GetProperty("display")->ToString().c_str(),
+				box->GetProperty("opacity")->ToString().c_str(),
+				box->GetAbsoluteLeft(), box->GetAbsoluteTop(),
+				table ? table->GetNumChildren() : -1,
+				board->IsVisible() ? 1 : 0);
+		}
+	}
+	for (const char* doc : {"playerboard", "vote", "motd", "weaponchoose"}) {
+		if (Rml::ElementDocument* d = context->GetDocument(doc))
+			abc::ConsolePrint("[AbcUi] probe: doc-batchc %s visible=%d\n", doc, d->IsVisible() ? 1 : 0);
+	}
 	const char* rml =
 		"<rml>"
 		"<head>"
