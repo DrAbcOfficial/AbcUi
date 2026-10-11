@@ -246,7 +246,7 @@ void WeaponChoosePanel::rebuild() {
 		// slotN_icon assets; the icons tint by scheme SlotColor).
 		sprintf_s(buffer,
 			"<div class='slot' style='left:%.0fdp; top:0dp;'>"
-			"<img src='../img/weaponchoose/slot%zu_icon.tga' style='image-color: rgba(0, 255, 0, 125);'/></div>",
+			"<img src='../img/weaponchoose/slot%zu_icon.png' style='image-color: rgba(0, 255, 0, 125);'/></div>",
 			x, (slot + 1) % 10);
 		rml += buffer;
 		y = kSlotIcon + kGap;
@@ -312,7 +312,7 @@ void WeaponChoosePanel::rebuild() {
 	// ChooseWeapon empty-slot path.
 	if (selFound) {
 		sprintf_s(buffer,
-			"<img id='bucket' src='../img/weaponchoose/select_icon.tga' style='left:%.0fdp; top:%.0fdp; "
+			"<img id='bucket' src='../img/weaponchoose/select_icon.png' style='left:%.0fdp; top:%.0fdp; "
 			"width:%.0fdp; height:%.0fdp; image-color: rgba(255, 255, 0, 255);'/>",
 			selX, selY, selW, selH);
 		rml += buffer;

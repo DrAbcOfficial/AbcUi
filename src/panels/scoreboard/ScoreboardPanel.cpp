@@ -519,7 +519,7 @@ void ScoreboardPanel::rebuildTable() {
 			rml += "<div class='cell c-donor'></div>";
 			return;
 		}
-		appendFmt(rml, "<div class='cell c-donor'><img src='../img/%s.tga'/></div>", icon);
+		appendFmt(rml, "<div class='cell c-donor'><img src='../img/%s.png'/></div>", icon);
 	};
 
 	// The admin badge paints over the avatar square (old CAvatarImage::Paint).
@@ -533,9 +533,9 @@ void ScoreboardPanel::rebuildTable() {
 		appendFmt(rml, "<div class='cell c-avatar'><img src='avatar://%llu?gen=%d'/>",
 			static_cast<unsigned long long>(info.steamId64), avatars::generation(info.steamId64));
 		if (info.admin == playerres::Admin::Operator)
-			rml += "<img class='admin' src='../img/admin_icon32.tga'/>";
+			rml += "<img class='admin' src='../img/admin_icon32.png'/>";
 		else if (info.admin == playerres::Admin::ServerOwner)
-			rml += "<img class='admin' src='../img/serverowner_icon32.tga'/>";
+			rml += "<img class='admin' src='../img/serverowner_icon32.png'/>";
 		rml += "</div>";
 	};
 

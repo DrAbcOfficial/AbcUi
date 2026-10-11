@@ -4,18 +4,18 @@
 	<link type="text/rcss" href="../rcss/health.rcss"/>
 </head>
 <body id="health">
-	<img class="bg" src="../img/healthpanel_background.tga"/>
+	<img class="bg" src="../img/healthpanel_background.png"/>
 
-	<img id="health-icon" class="icon" src="../img/healthbar_icon.tga"/>
+	<img id="health-icon" class="icon" src="../img/healthbar_icon.png"/>
 	<div id="health-label" class="font-hudnum">0</div>
 	<div id="health-bar-bg"></div>
-	<div id="health-bar-wrap"><img id="health-bar" src="../img/healthbar.tga"/></div>
+	<div id="health-bar-wrap"><img id="health-bar" src="../img/healthbar.png"/></div>
 
-	<img id="armor-icon" class="icon" src="../img/armorbar_icon.tga"/>
+	<img id="armor-icon" class="icon" src="../img/armorbar_icon.png"/>
 	<div id="armor-label" class="font-hudnum">0</div>
 	<div id="armor-bar-bg"></div>
-	<div id="armor-bar-wrap"><img id="armor-bar" src="../img/armorbar.tga"/></div>
+	<div id="armor-bar-wrap"><img id="armor-bar" src="../img/armorbar.png"/></div>
 
-	<img id="longjump" src="../img/longjump.tga"/>
+	<img id="longjump" src="../img/longjump.png"/>
 </body>
 </rml>

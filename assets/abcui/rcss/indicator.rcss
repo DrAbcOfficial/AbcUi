@@ -14,7 +14,7 @@
    vertex order (p1=screen top-left gets (0,0) but p2=screen top-right gets
    (0,1)) - the composite is the stored image TRANSPOSED across its main
    diagonal: a shallow arch over the pivot bulging up at angle 0. The shipped
-   pain_indicator.tga is pre-transposed (260x97) so the plain upright img
+   pain_indicator.png is pre-transposed (260x97) so the plain upright img
    reproduces that composite byte for byte (D-17 note).
 
    RmlUi 6.3 has no calc(): each rotor is a 2000dp box whose center is
