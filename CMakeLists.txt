@@ -92,6 +92,7 @@ add_library(AbcUi MODULE
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/weaponchoose/WeaponChoosePanel.cpp
     src/panels/popnum/PopNumPanel.cpp
+    src/panels/radar/RadarPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
     src/panels/textmenu/TextMenuPanel.cpp
     src/panels/flashlight/FlashlightPanel.cpp

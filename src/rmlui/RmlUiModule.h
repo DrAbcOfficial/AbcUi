@@ -19,6 +19,8 @@ class Context;
 
 namespace rmlui {
 
+class AbcRenderInterface;
+
 // Deferred assembly: the first HUD_Frame builds the Rml context (one-shot).
 // LoadClient only grabs the renderer/VGUI2 interfaces (both proven safe
 // there); the context itself cannot be built at LoadClient - the VGUI
@@ -35,6 +37,10 @@ void registerCommands();
 // Live Rml context, null before init()/after shutdown() - Debug probe
 // tooling only (ProbeCommand.cpp).
 Rml::Context* context();
+
+// Live render interface, null before init()/after shutdown(). The radar
+// panel registers its FBO as an external masked texture through it (batch D).
+AbcRenderInterface* renderInterface();
 
 // Spine entries (hooks.cpp).
 void onFrame(double frameTime);

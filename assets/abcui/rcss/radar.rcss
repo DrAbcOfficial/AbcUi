@@ -1,0 +1,73 @@
+/* radar.rcss - RadarPanel layout. Geometry from the old
+   abcenchance/res/RadarPanel.res (D-19):
+   - plate at (5,5), 100 design units base / 300 scaled (+scale_radar swaps
+     the plate's width/height from C++);
+   - map inset gw = w*0.01 at (gw/2, gh/2) (old PerformLayout) - as
+     percentages so it tracks both plate sizes;
+   - north mark 5 units (C++ positions it on the rim each frame, px);
+   - aim arrow 20 units centered (old Viewangleground xpos 40, ypos 40 in a
+     100-unit parent - static, the old code never moved it);
+   - avatars are raw-px children created by the panel. */
+
+#radar {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#radar #plate {
+	position: absolute;
+	left: 5dp;
+	top: 5dp;
+	width: 100dp;
+	height: 100dp;
+}
+
+#radar #plate img {
+	position: absolute;
+}
+
+#radar #plate-square, #radar #plate-round {
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#radar #map {
+	left: 0.5%;
+	top: 0.5%;
+	width: 99%;
+	height: 99%;
+	/* Old CRadarMapImage::SetColor(Radar.MapColor 255 255 255 255) x
+	   radar_brightness 1.0. */
+	image-color: #ffffff;
+}
+
+#radar #north {
+	width: 5dp;
+	height: 5dp;
+}
+
+#radar #aim {
+	left: 50%;
+	top: 50%;
+	width: 20dp;
+	height: 20dp;
+	margin-left: -10dp;
+	margin-top: -10dp;
+}
+
+#radar #avatars {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#radar #avatars .avatar {
+	position: absolute;
+}

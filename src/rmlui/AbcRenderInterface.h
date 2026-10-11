@@ -41,6 +41,8 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/Types.h>
 
+#include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
@@ -73,6 +75,18 @@ public:
 	// textures that later reuse them).
 	void clearAdditiveTextures();
 
+	// Externally-owned live texture (batch D - the radar FBO). Requests whose
+	// source starts with `uriPrefix` resolve to `texture` (never deleted by
+	// ReleaseTexture; the owner frees it), carry the given pixel dimensions,
+	// and draw through *maskSlot as a mask texture whenever it is non-zero
+	// (radar shape select) - the old CRadarMapImage::Paint semantics. The
+	// query suffix on the URI is a cache-bust only (the FBO texture id
+	// changes when the engine regenerates frame buffers; the owner bumps the
+	// suffix and re-registers).
+	void registerExternalTexture(const Rml::String& uriPrefix, Rml::TextureHandle texture,
+		int width, int height, const int* maskSlot);
+	void unregisterExternalTexture(const Rml::String& uriPrefix);
+
 private:
 	struct CompiledGeometry {
 		std::vector<Rml::Vertex> Vertices;
@@ -85,6 +99,19 @@ private:
 	// through framework::ImageLoader (FreeImage); this wrapper uploads the
 	// result to the VGUI2 surface texture channel.
 	Rml::TextureHandle loadFileTexture(Rml::Vector2i& dimensions, const Rml::String& source);
+
+	// External live textures (see registerExternalTexture) plus the handles
+	// this interface created itself through the VGUI surface channel: only
+	// owned handles may be deleted on ReleaseTexture (external ones - the
+	// radar FBO - belong to their owner).
+	struct ExternalTexture {
+		Rml::TextureHandle Texture = 0;
+		int Width = 0;
+		int Height = 0;
+		const int* MaskSlot = nullptr;
+	};
+	std::unordered_map<Rml::String, ExternalTexture> ExternalTextures;
+	std::unordered_set<Rml::TextureHandle> OwnedTextures;
 
 	bool ScissorEnabled = false;
 	Rml::Rectanglei ScissorRect = Rml::Rectanglei::MakeInvalid();

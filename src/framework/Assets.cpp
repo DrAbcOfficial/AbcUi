@@ -53,6 +53,9 @@ void verifyInstalled() {
 		{"abcui/rml/itemhighlight.rml", "item highlight document"},
 		{"abcui/ItemHighLightList.txt", "item highlight list"},
 		{"abcui/img/itemhighlight/marker.png", "item highlight marker art"},
+		{"abcui/rml/radar.rml", "radar document"},
+		{"abcui/img/radar/radar_background.png", "radar plate art"},
+		{"abcui/img/radar/radar_mask.png", "radar square mask"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))
