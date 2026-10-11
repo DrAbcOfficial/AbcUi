@@ -1,0 +1,50 @@
+/* motd.rcss - MotdPanel layout, from the old abcenchance/res/MotdPanel.res
+   (122x183 at r144/c-96; keep_time 5, fade_time 1; Motd.BgColor 0 0 0 64,
+   progress 0 112 188 128). The old per-page countdown becomes one scrollable
+   page whose progress strip drains over the same keep_time (D-17: the old
+   character-count pagination depended on vgui font metrics; scrolling
+   replaces it). */
+
+#motd {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	overflow: visible;
+}
+
+#box {
+	position: absolute;
+	right: 144dp;
+	top: 50%;
+	margin-top: -96dp;
+	width: 122dp;
+	height: 183dp;
+	background-color: rgba(0, 0, 0, 64);
+	display: none;
+	/* fade_time 1s */
+	transition: opacity 1s linear-in;
+}
+
+#progress {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 122dp;
+	height: 2dp;
+	background-color: rgba(0, 112, 188, 128);
+}
+
+#message {
+	position: absolute;
+	left: 10dp;
+	top: 10dp;
+	width: 102dp;
+	height: 163dp;
+	font-family: Verdana;
+	font-size: 8dp;
+	color: #ffffff;
+	overflow-y: auto;
+	white-space: pre-wrap;
+}
