@@ -13,6 +13,7 @@
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
 #include "panels/gindicator/GIndicatorPanel.h"
+#include "panels/vote/VotePanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 #include "rmlui/SteamAPI.h"
@@ -165,9 +166,13 @@ static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct en
 }
 
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
-	// Observe-first: feed Rml, then always let the engine/binding chain run.
-	// Key consumption (return-1 semantics) lands with the batch-C vote keys
-	// / scoreboard pointer routing (plan 05 §3.5 input routing rules).
+	// Batch-C UI key consumers first (vote answers): a hit swallows the key
+	// from the engine/binding chain (old Viewport::KeyInput false-return).
+	if (panels::vote::onKeyEvent(down, keynum)) {
+		rmlui::onKeyEvent(down, keynum);
+		return 0;
+	}
+	// Observe-first: feed Rml, then let the engine/binding chain run.
 	rmlui::onKeyEvent(down, keynum);
 	return gExportfuncs.HUD_Key_Event(down, keynum, pszCurrentBinding);
 }

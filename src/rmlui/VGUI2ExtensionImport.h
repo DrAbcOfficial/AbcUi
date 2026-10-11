@@ -37,4 +37,15 @@ bool isCursorVisible();
 // Game language setting ("english"/"schinese"/...), empty when unavailable.
 const char* currentLanguage();
 
+// IGameUIFuncs::Key_NameForKey (engine factory) - the display name for an
+// engine keynum, "" when unavailable (vote panel yes/no labels).
+const char* keyNameForKey(int keynum);
+
+// Centers the OS cursor on the game window and unlocks it (scoreboard
+// pointer mode; old EnableMousePointer + vgui UnlockCursor). Returns false
+// when the surface interface is missing.
+bool centerAndUnlockCursor();
+// Re-locks the cursor (scoreboard close).
+void lockCursor();
+
 }

@@ -1,5 +1,15 @@
 # AbcUi localization ({0} placeholders for abc::Format): spanish. UTF-8 `key = value`; '#' comments.
 
+# Killfeed (DeadMsg panel)
+DeathMsg_ConsolePrint = {0} asesinado por {1} usando {2}
+DeathMsg_Suicide = suicidarse
+DeathMsg_MonsterKill = matar
+
+# Vote panel
+Vote_DefaultMessage = Se inició una votación
+Vote_DefaultYes = Sí
+Vote_DefaultNo = No
+
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = intoxicación
 DMGTiles_Acid = erosión ácida

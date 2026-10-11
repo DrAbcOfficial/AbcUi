@@ -5,6 +5,7 @@
 
 #include <ISurface2.h>
 #include <IVGUI2Extension.h>
+#include <IGameUIFuncs.h>
 
 #include <abc/Console.h>
 #include <abc/Plugin.h>
@@ -14,6 +15,7 @@ namespace vgui2ext {
 namespace {
 IVGUI2Extension* Extension = nullptr;
 vgui::ISurface2* Surface2 = nullptr;
+IGameUIFuncs* GameUIFuncs = nullptr;
 bool WarnedUnavailable = false;
 
 bool warnUnavailableOnce() {
@@ -44,9 +46,12 @@ void init() {
 		abc::SysError("[AbcUi] Could not get interface \"%s\" from VGUI2Extension", VGUI_SURFACE2_INTERFACE_VERSION);
 		return;
 	}
+	// The key-name table lives in the engine (old VGUI2 BaseUI binding).
+	GameUIFuncs = (decltype(GameUIFuncs))g_pMetaHookAPI->GetEngineFactory()(VENGINE_GAMEUIFUNCS_VERSION, NULL);
 }
 
 void shutdown() {
+	GameUIFuncs = nullptr;
 	Surface2 = nullptr;
 	Extension = nullptr;
 }
@@ -91,6 +96,28 @@ const char* currentLanguage() {
 	if (!Extension)
 		return "";
 	return Extension->GetCurrentLanguage();
+}
+
+const char* keyNameForKey(int keynum) {
+	if (!GameUIFuncs)
+		return "";
+	return GameUIFuncs->Key_NameForKey(keynum);
+}
+
+bool centerAndUnlockCursor() {
+	if (!Surface2)
+		return false;
+	const int x = gEngfuncs.GetWindowCenterX();
+	const int y = gEngfuncs.GetWindowCenterY();
+	Surface2->SurfaceSetCursorPos(x, y);
+	Surface2->UnlockCursor();
+	return true;
+}
+
+void lockCursor() {
+	if (!Surface2)
+		return;
+	Surface2->LockCursor();
 }
 
 }
