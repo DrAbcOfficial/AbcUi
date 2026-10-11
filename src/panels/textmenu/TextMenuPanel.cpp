@@ -12,33 +12,26 @@
 #include <abc/Events.h>
 
 #include "../../data/NetworkMessages.h"
+#include "../../framework/Commands.h"
 
 namespace panels {
 
 namespace textmenu {
 
-namespace {
-// CChainedCommand instances are fixed-slot (abc/Events.h) and must hook at
-// HUD_Init; they live for the DLL lifetime. The panel subscribes their
-// events from onDocumentReady - unsubscribed states chain straight through
-// (RunChain with no subscriber = original command).
-std::unique_ptr<abc::CChainedCommand> Commands[10];
-} // namespace
-
-void registerCommands() {
-	static bool registered = false;
-	if (registered)
-		return;
-	registered = true;
-	for (int i = 0; i < 10; i++) {
-		char name[16];
-		sprintf_s(name, "slot%d", i + 1);
-		Commands[i] = std::make_unique<abc::CChainedCommand>(name);
-	}
-}
+// Logical open state (old CTextMenu::IsVisible). The panel instance keeps
+// writing it in sync; bus consumers (WeaponChoose slot feed) read isOpen().
+bool MenuOpenState = false;
 
 abc::CChainedCommand* command(int index) {
-	return (index >= 0 && index < 10) ? Commands[index].get() : nullptr;
+	if (index < 0 || index > 9)
+		return nullptr;
+	char name[16];
+	sprintf_s(name, "slot%d", index + 1);
+	return commands::get(name);
+}
+
+bool isOpen() {
+	return MenuOpenState;
 }
 
 } // namespace textmenu
@@ -166,7 +159,7 @@ void TextMenuPanel::onDocumentReady() {
 		for (int i = 0; i < 10; i++) {
 			if (abc::CChainedCommand* chained = textmenu::command(i)) {
 				subscribe(chained->Event(), [this, i]() {
-					if (!MenuOpen)
+					if (!textmenu::MenuOpenState)
 						return true;
 					selectMenuItem(i + 1);
 					return false;
@@ -197,7 +190,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 			if (Rml::Element* body = getDocument())
 				fadeTo(body, true);
 			show();
-			MenuOpen = true;
+			textmenu::MenuOpenState = true;
 			// A fresh menu cancels a pending fade-out-hide (old StartFade(true)
 			// ran CancelAnimationsForPanel first): the server's answer to a
 			// menuselect usually lands inside the 0.2s window, and letting the
@@ -207,7 +200,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 		}
 	}
 	else {
-		MenuOpen = false;
+		textmenu::MenuOpenState = false;
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		// The document stays up for the fade-out; hide it once the opacity
@@ -224,7 +217,7 @@ void TextMenuPanel::selectMenuItem(int slot) {
 	if (slot > 0 && (ValidSlots & (1 << (slot - 1)))) {
 		sprintf_s(command, IsASMenu ? "as_menuselect %d\n" : "menuselect %d\n", slot);
 		abc::EngineClientCmd(command);
-		MenuOpen = false;
+		textmenu::MenuOpenState = false;
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		HideAtTime = ClientTimeNow + kFadeSeconds;
@@ -236,7 +229,7 @@ void TextMenuPanel::onData(double frameTime) {
 	ClientTimeNow += frameTime;
 	// Old OnThink shutoff.
 	if (ShutoffTime >= 0.0 && ClientTimeNow >= ShutoffTime) {
-		MenuOpen = false;
+		textmenu::MenuOpenState = false;
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		HideAtTime = ClientTimeNow + kFadeSeconds;
@@ -261,7 +254,7 @@ void TextMenuPanel::reset() {
 	WaitingForMore = false;
 	IsASMenu = false;
 	ValidSlots = 0;
-	MenuOpen = false;
+	textmenu::MenuOpenState = false;
 	HideAtTime = -1.0;
 	if (Rml::Element* menu = element("menu"))
 		menu->SetInnerRML("");

@@ -13,10 +13,12 @@
 namespace panels {
 
 namespace textmenu {
-// HUD_Init-time: hooks slot1..10 through abc::CChainedCommand (plan 08 §4.9).
-void registerCommands();
-// The hooked command for a slot index (0-based), null before registration.
+// The chained slot command for a slot index (0-based) - the framework bus
+// instance (framework/commands.h), null before HUD_Init.
 abc::CChainedCommand* command(int index);
+// Logical menu-open state (old CTextMenu::IsVisible) - the WeaponChoose
+// slot feed and the bus consumers gate on this.
+bool isOpen();
 }
 
 class TextMenuPanel : public framework::HudPanel {
@@ -36,10 +38,6 @@ private:
 	int ValidSlots = 0;
 	bool IsASMenu = false;
 	bool WaitingForMore = false;
-	// Logical open state (old CTextMenu::IsVisible): false the moment a
-	// fade-out starts, so the slot-key chain runs the weapon path again
-	// while the 0.2s opacity transition is still playing.
-	bool MenuOpen = false;
 	std::string MenuString;
 	double ShutoffTime = -1.0;
 	// Client time the fade-out ends and the document can hide (-1 = none
