@@ -50,6 +50,47 @@ constexpr const char* kFontPaths[] = {
 // renderFrame reads them).
 Rml::Context* Context = nullptr;
 
+#ifndef NDEBUG
+// abc_ui_perf instrument (Phase 8): QPC brackets around the Update passes
+// (onFrame/onRedraw) and the Render pass (renderFrame). The command prints
+// avg/max over the accumulated window and restarts it.
+struct PerfWindow {
+	int Frames = 0;
+	double UpdateTotalMs = 0.0, UpdateMaxMs = 0.0;
+	double RenderTotalMs = 0.0, RenderMaxMs = 0.0;
+};
+
+PerfWindow Perf;
+double PerfInvFrequencyMs = 0.0;
+
+class PerfTimer {
+public:
+	PerfTimer() {
+		QueryPerformanceCounter(&Start);
+	}
+	double milliseconds() const {
+		LARGE_INTEGER end;
+		QueryPerformanceCounter(&end);
+		return static_cast<double>(end.QuadPart - Start.QuadPart) * PerfInvFrequencyMs;
+	}
+
+private:
+	LARGE_INTEGER Start;
+};
+
+void PerfAccumulateUpdate(double ms) {
+	Perf.UpdateTotalMs += ms;
+	Perf.UpdateMaxMs = Perf.UpdateMaxMs > ms ? Perf.UpdateMaxMs : ms;
+}
+
+void PerfAccumulateRender(double ms) {
+	Perf.RenderTotalMs += ms;
+	Perf.RenderMaxMs = Perf.RenderMaxMs > ms ? Perf.RenderMaxMs : ms;
+	Perf.Frames++;
+}
+
+#endif
+
 class RendererCallbacks : public IMetaRendererCallbacks {
 public:
 	void OnBeginRendering(int*, int*, int*, int*) override {}
@@ -61,7 +102,9 @@ public:
 	void OnPreRenderViewPost() override {}
 	void OnPostRenderView() override {}
 	void OnPostRenderViewPost() override {}
-	void OnRenderEndFrame() override { renderFrame(); }
+	void OnRenderEndFrame() override {
+		renderFrame();
+	}
 
 	// Render the Rml scene onto the final buffer, once per engine frame,
 	// right before it is blitted to screen (see module header note).
@@ -72,7 +115,13 @@ public:
 		renderer->PushFrameBuffer();
 		renderer->BindFrameBuffer(renderer->GetFinalBufferFBO());
 		RenderInterface->beginFrame();
+#ifndef NDEBUG
+		const PerfTimer renderTimer;
+#endif
 		Context->Render();
+#ifndef NDEBUG
+		PerfAccumulateRender(renderTimer.milliseconds());
+#endif
 		RenderInterface->endFrame();
 		renderer->PopFrameBuffer();
 	}
@@ -113,6 +162,19 @@ Rml::Context* context() {
 	return Context;
 }
 
+#ifndef NDEBUG
+PerfSnapshot perfSnapshot() {
+	PerfSnapshot out;
+	out.Frames = Perf.Frames;
+	out.UpdateAvgMs = Perf.Frames ? Perf.UpdateTotalMs / Perf.Frames : 0.0;
+	out.UpdateMaxMs = Perf.UpdateMaxMs;
+	out.RenderAvgMs = Perf.Frames ? Perf.RenderTotalMs / Perf.Frames : 0.0;
+	out.RenderMaxMs = Perf.RenderMaxMs;
+	Perf = {};
+	return out;
+}
+#endif
+
 AbcRenderInterface* renderInterface() {
 	return Callbacks.RenderInterface.get();
 }
@@ -120,6 +182,12 @@ AbcRenderInterface* renderInterface() {
 void init() {
 	if (Initialised)
 		return;
+
+#ifndef NDEBUG
+	LARGE_INTEGER frequency;
+	QueryPerformanceFrequency(&frequency);
+	PerfInvFrequencyMs = 1000.0 / static_cast<double>(frequency.QuadPart);
+#endif
 
 	vgui2ext::init();
 
@@ -199,7 +267,13 @@ void onFrame(double frameTime) {
 	}
 	InputBridge::update(Context);
 	framework::PanelManager::onFrame(frameTime);
+#ifndef NDEBUG
+	PerfTimer updateTimer;
+#endif
 	Context->Update();
+#ifndef NDEBUG
+	PerfAccumulateUpdate(updateTimer.milliseconds());
+#endif
 }
 
 void onRedraw(double frameTime) {
@@ -209,7 +283,13 @@ void onRedraw(double frameTime) {
 	if (!Initialised || !Context)
 		return;
 	framework::PanelManager::onRedraw(frameTime);
+#ifndef NDEBUG
+	PerfTimer updateTimer;
+#endif
 	Context->Update();
+#ifndef NDEBUG
+	PerfAccumulateUpdate(updateTimer.milliseconds());
+#endif
 }
 
 void onVidInit() {
