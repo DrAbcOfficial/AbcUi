@@ -6,6 +6,8 @@
 #include <abc/Console.h>
 #include <abc/Plugin.h>
 
+#include <keydefs.h>
+
 #include "data/HudState.h"
 #include "data/NetworkMessages.h"
 #include "data/PlayerResource.h"
@@ -13,6 +15,7 @@
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
 #include "panels/gindicator/GIndicatorPanel.h"
+#include "panels/motd/MotdPanel.h"
 #include "panels/scoreboard/ScoreboardPanel.h"
 #include "panels/vote/VotePanel.h"
 #include "rmlui/InputBridge.h"
@@ -134,6 +137,9 @@ static int H_HUD_Redraw(float time, int intermission) {
 	if (delta < 0.0f || delta > 0.5f)
 		delta = 0.0f;
 	hideVanillaHudPanels();
+	// Old Viewport::SetInterMission -> ShowPanel(intermission > 0); the
+	// +/-showscores commands stay dead while it lasts.
+	panels::scoreboard::setIntermission(intermission != 0);
 	rmlui::onRedraw(delta);
 	return gExportfuncs.HUD_Redraw(time, intermission);
 }
@@ -166,12 +172,38 @@ static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct en
 	gExportfuncs.HUD_TxferPredictionData(ps, pps, pcd, ppcd, wd, pwd);
 }
 
+namespace {
+
+// Wheel ownership (batch C): the engine delivers wheel pulses through
+// HUD_Key_Event; while a scrollable Rml surface is up (scoreboard pointer
+// mode, open motd) they scroll it and never reach the weapon switch.
+bool uiOwnsWheel(int down, int keynum) {
+	if (!down || (keynum != K_MWHEELUP && keynum != K_MWHEELDOWN))
+		return false;
+	if (panels::scoreboard::wantsWheel())
+		return true;
+	return panels::motd::wantsWheel();
+}
+
+} // namespace
+
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
+#ifndef NDEBUG
+	// Key-chain trace (P6 audit round): mouse/wheel keys are rare, print them
+	// with the consumption verdict.
+	if (keynum >= K_MOUSE2 || keynum == K_MWHEELUP || keynum == K_MWHEELDOWN)
+		abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down, keynum,
+			(panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum)) ? 1 : 0);
+#endif
 	// Batch-C UI key consumers first (vote answers, scoreboard pointer
 	// toggle): a hit swallows the key from the engine/binding chain (old
 	// Viewport::KeyInput false-return).
 	if (panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum)) {
 		rmlui::onKeyEvent(down, keynum);
+		return 0;
+	}
+	if (uiOwnsWheel(down, keynum)) {
+		rmlui::onWheel(down, keynum);
 		return 0;
 	}
 	// Observe-first: feed Rml, then let the engine/binding chain run.

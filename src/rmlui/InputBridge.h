@@ -6,16 +6,23 @@
 // ProcessKeyDown/Up. Modifier state (shift/ctrl/alt) is tracked locally from
 // the same stream (the Win32-backend GetKeyModifierState semantics).
 //
-// Mouse (Phase 3): polled once per HUD_Frame - position from the VGUI2
-// surface, buttons from GetAsyncKeyState while the VGUI cursor is visible.
-// Batch C upgrades this to the IVGUI2Extension WndProc callback when real
-// event timing matters (R-4 note in VGUI2ExtensionImport.h). While the VGUI
-// cursor is hidden (normal play, engine cursor) Rml receives no mouse input.
+// Mouse (batch C): the IVGUI2Extension WndProc callback drives clicks and
+// motion (R-4; the async-key poll cannot see injected/message-level input).
+// The gate is the VGUI cursor visibility OR the explicit UI-mouse owner flag
+// (scoreboard pointer mode - the old vgui SetMouseInputEnabled, engine-side
+// cursor visibility never flips for it). While neither holds, Rml receives
+// no mouse input. The fallback poll (no VGUI2Extension) keeps the Phase 3
+// shape.
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Input.h>
 
 namespace rmlui {
+
+// Pointer-mode ownership (scoreboard setMouseMode): forces the mouse gate
+// open even while the engine-side cursor visibility stays hidden.
+void setUiMouseOwner(bool owner);
+bool uiMouseOwner();
 
 class InputBridge {
 public:

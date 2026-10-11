@@ -16,7 +16,6 @@
 	position: absolute;
 	left: 20dp;
 	top: 20dp;
-	display: none;
 }
 
 #content {
@@ -44,6 +43,17 @@
 #content .item img {
 	width: 100%;
 	height: 100%;
+}
+
+/* Old CWeaponChooseItem ammo bars (PerformLayout): 80,80,80,125 backing,
+   255,255,0,125 fill (empty = Red) - geometry is inline. */
+#content .item .bar-bg {
+	position: absolute;
+	background-color: rgba(80, 80, 80, 125);
+}
+
+#content .item .bar-fill {
+	position: absolute;
 }
 
 #bucket {

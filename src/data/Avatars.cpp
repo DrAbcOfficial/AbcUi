@@ -25,7 +25,14 @@ struct Entry {
 	int width = 0;
 	int height = 0;
 	int textureId = 0; // 0 = not uploaded yet
+	int generation = 0; // bumped on upload - the scoreboard cache-bust suffix
+	double nextAttempt = 0.0; // steam retry throttle (old m_fNextLoadTime)
 };
+
+// Monotonic client clock for the throttle; frametime-independent.
+double NowSeconds() {
+	return static_cast<double>(GetTickCount64()) / 1000.0;
+}
 
 std::unordered_map<std::uint64_t, Entry> Entries;
 int DefaultAvatarTexture = 0;
@@ -172,15 +179,19 @@ int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFet
 		return entry.textureId;
 	}
 
-	// Retryable: GetSmallFriendAvatar returns 0 while steam is still
-	// fetching - the scoreboard refresh keeps asking until it lands.
-	if (triggerFetch && entry.rgba.empty()) {
+	// Retryable with the old 1s throttle (CAvatarImage m_fNextLoadTime):
+	// GetSmallFriendAvatar returns 0 while steam is still fetching, and the
+	// throttle keeps the per-refresh polling from hammering the interface.
+	const double now = NowSeconds();
+	if (triggerFetch && entry.rgba.empty() && now >= entry.nextAttempt) {
+		entry.nextAttempt = now + 1.0;
 		steamapi::AvatarRgba avatar;
 		if (steamapi::avatar(steamId64, avatar) && avatar.rgba) {
 			entry.rgba.assign(avatar.rgba, avatar.rgba + static_cast<size_t>(avatar.width) * avatar.height * 4);
 			entry.width = avatar.width;
 			entry.height = avatar.height;
-			upload(entry);
+			if (upload(entry))
+				entry.generation++;
 			width = entry.width;
 			height = entry.height;
 			return entry.textureId;
@@ -190,6 +201,11 @@ int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFet
 	width = DefaultAvatarWidth;
 	height = DefaultAvatarHeight;
 	return DefaultAvatarTexture;
+}
+
+int generation(std::uint64_t steamId64) {
+	const auto itor = Entries.find(steamId64);
+	return itor == Entries.end() ? 0 : itor->second.generation;
 }
 
 }

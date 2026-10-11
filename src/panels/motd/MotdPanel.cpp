@@ -23,9 +23,16 @@ namespace panels {
 namespace motd {
 // Old ctor cvar (persisted contract - never rename).
 cvar_t* HudMotd = nullptr;
+MotdPanel* PanelInstance = nullptr;
 
 void registerCvars() {
 	HudMotd = abc::CREATE_CVAR("hud_motd", "1", abc::FCVAR_VALUE, nullptr);
+}
+
+// Wheel ownership: the open motd scrolls (old per-page auto-advance died
+// with the pagination - D-17 ledger).
+bool wantsWheel() {
+	return PanelInstance && PanelInstance->isVisible();
 }
 }
 
@@ -85,16 +92,22 @@ std::string htmlToText(std::string html) {
 }
 
 MotdPanel::MotdPanel()
-	: HudPanel("motd", "abcui/rml/motd.rml") {}
+	: HudPanel("motd", "abcui/rml/motd.rml") {
+	motd::PanelInstance = this;
+}
+
+MotdPanel::~MotdPanel() {
+	if (motd::PanelInstance == this)
+		motd::PanelInstance = nullptr;
+}
 
 void MotdPanel::reset() {
 	Buffer.clear();
 	Page.clear();
 	HasContent = false;
 	Fading = false;
-	// Old Reset does not clear LoadedMissionBrief (the map brief survives a
-	// scoreboard re-show within one map); it reloads per map by the VidInit
-	// panel reset of the old viewport - match that (fresh document state).
+	// Old Reset cleared the mission-brief flag too (m_bLoadedMissionBrief =
+	// false) - the brief reloads per map through the VidInit panel reset.
 	LoadedMissionBrief = false;
 	if (Rml::Element* box = element("box"))
 		box->SetProperty("opacity", "1");
@@ -118,9 +131,10 @@ void MotdPanel::finishSend() {
 		return;
 	}
 	// Old FinishSendMOTD: HTML documents and http(s) URLs went to the vgui
-	// HTML control; everything else became text pages. The port has no
-	// browser surface: HTML renders stripped, URLs render as text with a
-	// console note (D-17 - see the header).
+	// HTML control; everything else became text pages - and the finish never
+	// showed the window (display waited for missionbriefing/ShowMotd). The
+	// port has no browser surface: HTML renders stripped, URLs render as
+	// text with a console note (D-17 - see the header).
 	if (Buffer.starts_with("<!DOCTYPE html>") || Buffer.starts_with("<!doctype html>")) {
 		Page = htmlToText(Buffer);
 	} else if (Buffer.starts_with("http://") || Buffer.starts_with("https://")) {
@@ -135,47 +149,47 @@ void MotdPanel::finishSend() {
 	if (Rml::Element* message = element("message"))
 		message->SetInnerRML(framework::TextUtil::escapeRml(Page));
 	HasContent = true;
-	startCountdown();
 }
 
 void MotdPanel::loadMissionBrief() {
-	// Old LoadMissionBrief: <map>.txt next to the bsp, through the vgui
-	// filesystem. AbcUi reads mod-relative files directly (Assets/FreeImage
-	// precedent); pfnGetLevelName yields "maps/<map>.bsp".
+	// Old LoadMissionBrief read GetLevelName() + ".txt" - the level name is
+	// "maps/<map>.bsp", so the file was "maps/<map>.bsp.txt" (the SC mission
+	// briefing convention). The port prefers that legacy name and falls back
+	// to the plain "maps/<map>.txt" (D-17: both conventions served).
 	if (LoadedMissionBrief)
 		return;
 	LoadedMissionBrief = true;
 	const char* levelName = gEngfuncs.pfnGetLevelName();
 	if (!levelName || !levelName[0])
 		return;
-	char mapPath[256];
-	sprintf_s(mapPath, "%s", levelName);
-	const std::string dotTxt = ".bsp";
-	if (const size_t at = std::string(mapPath).rfind(dotTxt); at != std::string::npos)
-		mapPath[at] = '\0';
-	sprintf_s(mapPath, "%s.txt", mapPath);
 
-	FILE* f = nullptr;
-	if (fopen_s(&f, abc::ModPath(mapPath).c_str(), "rb") != 0 || !f)
-		return;
 	char chunk[1024];
 	size_t read = 0;
-	while ((read = fread(chunk, 1, sizeof(chunk), f)) > 0)
-		Buffer.append(chunk, read);
-	fclose(f);
+	const auto tryRead = [&](const std::string& path) {
+		FILE* f = nullptr;
+		if (fopen_s(&f, abc::ModPath(path.c_str()).c_str(), "rb") != 0 || !f)
+			return false;
+		while ((read = fread(chunk, 1, sizeof(chunk), f)) > 0)
+			Buffer.append(chunk, read);
+		fclose(f);
+		return true;
+	};
+	if (tryRead(std::string(levelName) + ".txt"))
+		return;
+	tryRead(std::string(levelName).substr(0, std::string(levelName).rfind('.')) + ".txt");
 }
 
 void MotdPanel::showMotd() {
 	if (motd::HudMotd && motd::HudMotd->value < 1.0f)
 		return;
 	loadMissionBrief();
-	// Old ShowMotd re-paged the accumulated buffer; the single-page form
-	// renders whatever accumulated and counts down again.
-	if (!Page.empty()) {
+	// Old ShowMotd: FinishSendMOTD first when pages were not built, then the
+	// window showed and counted down. Mid-game motd_write alone never popped
+	// the window - the command path is the only shower.
+	if (Page.empty())
+		finishSend();
+	if (!Page.empty())
 		startCountdown();
-		return;
-	}
-	finishSend();
 }
 
 void MotdPanel::onDocumentReady() {
@@ -194,7 +208,10 @@ void MotdPanel::onDocumentReady() {
 	if (abc::CChainedCommand* brief = commands::get("missionbriefing")) {
 		subscribe(brief->Event(), [this]() {
 			showMotd();
-			return true;
+			// Old g_EventCmdMissionBrief always swallowed the original
+			// (ret &= false) - the vanilla SC briefing window must not open
+			// on top of ours.
+			return false;
 		});
 	}
 	hide();

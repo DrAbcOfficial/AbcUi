@@ -9,12 +9,17 @@
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
+
+#include <keydefs.h>
 #include <abc/Math.h>
 
 #include "../data/HudState.h"
 #include "../data/NetworkMessages.h"
+#include "../data/PlayerResource.h"
+#include "../panels/scoreboard/ScoreboardPanel.h"
 
 #include "RmlUiModule.h"
+#include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
 
@@ -152,6 +157,18 @@ void probeCommand() {
 		if (Rml::ElementDocument* d = context->GetDocument(doc))
 			abc::ConsolePrint("[AbcUi] probe: doc-batchc %s visible=%d\n", doc, d->IsVisible() ? 1 : 0);
 	}
+	// Mouse-chain diagnostics (P6 audit round): cursor state, the R-4 WndProc
+	// callback registration and the scoreboard pointer mode (wantsWheel =
+	// visible && pointer-mode).
+	{
+		int cx = -1, cy = -1;
+		const bool cursor = vgui2ext::getCursorPos(cx, cy);
+		abc::ConsolePrint("[AbcUi] probe: mouse cursor=%d visible=%d pos=(%d,%d) wndproc=%d owner=%d scoreboard-wheel=%d\n",
+			cursor ? 1 : 0, vgui2ext::isCursorVisible() ? 1 : 0, cx, cy,
+			vgui2ext::uiCallbacksRegistered() ? 1 : 0,
+			rmlui::uiMouseOwner() ? 1 : 0,
+			panels::scoreboard::wantsWheel() ? 1 : 0);
+	}
 	const char* rml =
 		"<rml>"
 		"<head>"
@@ -255,6 +272,39 @@ void probeCommand() {
 		abc::ConsolePrint("[AbcUi] feedback: injected Damage(25/40 poison+burn+shock) + Health(20) + PopNum(12345)\n");
 	}
 
+	// Batch C full-occupancy board instrument: pins 31 fake playerres slots
+	// (mixed teams/health/donor/admin) so a local session can drive the
+	// scoreboard table/scroll/context-menu at 32 occupancy. The wire-parse
+	// layer stays untouched - this feeds the same store the real ScoreInfo
+	// events write.
+	void boardCommand() {
+		playerres::debugPopulateBoard();
+		abc::ConsolePrint("[AbcUi] board: 31 fake players pinned; +showscores opens, MOUSE2 pointer, right-click rows\n");
+	}
+
+	// Injected mouse keys (MOUSE2/wheel) never reach the client key chain
+	// (P6 acceptance finding - real hardware does), so the driver flips the
+	// pointer mode and pumps the wheel directly.
+	void pointerOnCommand() {
+		panels::scoreboard::setPointerMode(true);
+		abc::ConsolePrint("[AbcUi] pointer: on\n");
+	}
+
+	void pointerOffCommand() {
+		panels::scoreboard::setPointerMode(false);
+		abc::ConsolePrint("[AbcUi] pointer: off\n");
+	}
+
+	void wheelUpCommand() {
+		rmlui::onWheel(1, K_MWHEELUP);
+		abc::ConsolePrint("[AbcUi] wheel: up\n");
+	}
+
+	void wheelDownCommand() {
+		rmlui::onWheel(1, K_MWHEELDOWN);
+		abc::ConsolePrint("[AbcUi] wheel: down\n");
+	}
+
 
 } // namespace
 
@@ -262,6 +312,11 @@ void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);
+	abc::ADD_COMMAND("abc_ui_board", boardCommand);
+	abc::ADD_COMMAND("abc_ui_pointer_on", pointerOnCommand);
+	abc::ADD_COMMAND("abc_ui_pointer_off", pointerOffCommand);
+	abc::ADD_COMMAND("abc_ui_wheelup", wheelUpCommand);
+	abc::ADD_COMMAND("abc_ui_wheeldown", wheelDownCommand);
 }
 
 }

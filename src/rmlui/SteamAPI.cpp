@@ -12,6 +12,8 @@ SteamApiBackend* Active = nullptr;
 
 }
 
+void ensure();
+
 void init() {
 	if (Active)
 		return;
@@ -24,6 +26,13 @@ void init() {
 			return;
 		}
 	}
+}
+
+void ensure() {
+	// Lazy retry: the LoadClient probe can legitimately fail (steam_api.dll
+	// not yet loaded / SteamAPI_Init pending); the first avatar or persona
+	// consumer re-probes instead of degrading for the whole session.
+	init();
 }
 
 void shutdown() {
@@ -39,14 +48,17 @@ bool available() {
 }
 
 SteamId64 localSteamId() {
+	ensure();
 	return Active ? Active->localSteamId() : 0;
 }
 
 std::string personaName(SteamId64 id) {
+	ensure();
 	return Active ? Active->personaName(id) : std::string();
 }
 
 bool avatar(SteamId64 id, AvatarRgba& out) {
+	ensure();
 	return Active ? Active->avatar(id, out) : false;
 }
 

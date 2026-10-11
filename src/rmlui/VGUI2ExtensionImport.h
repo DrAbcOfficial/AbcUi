@@ -48,4 +48,9 @@ bool centerAndUnlockCursor();
 // Re-locks the cursor (scoreboard close).
 void lockCursor();
 
+// R-4 batch C: true once the BaseUI callbacks (engine surface WndProc) are
+// registered - InputBridge then drives the Rml mouse from window messages
+// instead of the async-key poll (which cannot see injected input).
+bool uiCallbacksRegistered();
+
 }

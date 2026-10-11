@@ -7,8 +7,9 @@
 	position: absolute;
 	left: 0;
 	top: 0;
-	width: 0;
-	height: 0;
+	/* full-screen pass-through for the #box percentage anchors */
+	width: 100%;
+	height: 100%;
 	overflow: visible;
 }
 
@@ -16,12 +17,11 @@
 	position: absolute;
 	left: 50%;
 	top: 50%;
-	margin-left: -4dp;
+	/* old xpos c+96: the box's left edge sits 96 design px right of center */
+	margin-left: 96dp;
 	margin-top: -96dp;
 	width: 122dp;
 	height: 183dp;
-	/* old Vote.BackGoundColor = Blank -> the content panel carries the tint */
-	display: none;
 }
 
 #title {
@@ -41,12 +41,15 @@
 	left: 0dp;
 	top: 11dp;
 	width: 122dp;
-	height: 133dp;
+	/* old VoteContentPanel: ypos 11 tall 172 - the tint backs the yes/no
+	   rows too (they sit at 145/161, inside the backing) */
+	height: 172dp;
 	background-color: rgba(0, 0, 0, 64);
 	font-family: Verdana;
 	font-size: 8dp;
 	/* old Vote.ContentFgColor */
 	color: #ffffff;
+	white-space: pre-wrap;
 	overflow-y: auto;
 	padding: 4dp;
 	box-sizing: border-box;

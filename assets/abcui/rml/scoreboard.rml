@@ -17,7 +17,9 @@
 			<div id="next-map"></div>
 			<div id="time-end"></div>
 		</div>
-		<div id="table"></div>
+		<div id="table-scroll">
+			<div id="table"></div>
+		</div>
 		<div id="menu">
 			<div class="item" id="menu-profile"></div>
 			<div class="item" id="menu-copy-url"></div>

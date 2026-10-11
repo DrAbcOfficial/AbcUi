@@ -23,6 +23,7 @@
 #include <RmlUi/Core/SystemInterface.h>
 
 #include <algorithm>
+#include <cstdarg>
 #include <cmath>
 #include <cstdio>
 #include <map>
@@ -78,6 +79,28 @@ bool onKeyEvent(int down, int keynum) {
 	return PanelInstance && PanelInstance->answerKey(down, keynum);
 }
 
+void setIntermission(bool intermission) {
+	// Edge-triggered: HUD_Redraw calls this every frame with the current
+	// flag; only the 0->1/1->0 transitions drive the panel (old
+	// SetInterMission was a state change, not a per-frame vote).
+	if (!PanelInstance || PanelInstance->Intermission == intermission)
+		return;
+	PanelInstance->Intermission = intermission;
+	// Old SetInterMission -> ShowPanel(intermission > 0).
+	PanelInstance->setVisible(intermission);
+	// The pointer never auto-engages on the intermission board (old code kept
+	// +/-showscores dead there; MOUSE2 stays live for players who want it).
+}
+
+bool wantsWheel() {
+	return PanelInstance && PanelInstance->Visible && PanelInstance->MouseMode;
+}
+
+void setPointerMode(bool enabled) {
+	if (PanelInstance && PanelInstance->Visible)
+		PanelInstance->setMouseMode(enabled);
+}
+
 } // namespace scoreboard
 
 namespace {
@@ -87,6 +110,80 @@ constexpr int kMouse2 = K_MOUSE2;
 std::string localized(const char* token, const char* fallback) {
 	std::string out;
 	return framework::Localization::translate(out, token) ? out : fallback;
+}
+
+// printf-composed RML fragments: server-derived strings (names, localized
+// tags) are unbounded, so every cell composes into the target string - no
+// fixed cell buffers (the P6 audit round traced a CRT "Buffer too small"
+// fail-fast to exactly this class).
+void appendFmt(std::string& out, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	const int needed = vsnprintf(nullptr, 0, format, args);
+	va_end(args);
+	if (needed <= 0)
+		return;
+	const size_t at = out.size();
+	out.resize(at + static_cast<size_t>(needed));
+	va_start(args, format);
+	vsnprintf(out.data() + at, static_cast<size_t>(needed) + 1, format, args);
+	va_end(args);
+}
+
+std::string strFmt(const char* format, ...) {
+	std::string out;
+	va_list args;
+	va_start(args, format);
+	const int needed = vsnprintf(nullptr, 0, format, args);
+	va_end(args);
+	if (needed <= 0)
+		return out;
+	out.resize(static_cast<size_t>(needed));
+	va_start(args, format);
+	vsnprintf(out.data(), static_cast<size_t>(needed) + 1, format, args);
+	va_end(args);
+	return out;
+}
+
+// Old SectionedListPanel GetFgColorEx COLOR_PERCENT/COLOR_PING: hue rides
+// the value (0 -> red, full -> hue 90), saturation/value pinned.
+std::string hueColor(float hue) {
+	// HSV(h,1,1) -> rgb (hue in degrees 0..120 here).
+	hue = std::clamp(hue, 0.0f, 90.0f);
+	const float sector = hue / 60.0f;
+	const float c = 1.0f;
+	const float x = c * (1.0f - std::fabs(std::fmod(hue / 60.0f, 2.0f) - 1.0f));
+	float r = 0, g = 0, b = 0;
+	if (sector < 1.0f) { r = c; g = x; }
+	else { r = x; g = c; }
+	char out[32];
+	sprintf_s(out, "rgba(%d, %d, %d, 255)",
+		static_cast<int>(r * 255.0f), static_cast<int>(g * 255.0f), static_cast<int>(b * 255.0f));
+	return out;
+}
+
+// Old COLOR_PERCENT cell: |value|/100*90 hue.
+std::string percentColor(float value) {
+	return hueColor(std::fabs(value) / 100.0f * 90.0f);
+}
+
+// Old COLOR_PING cell: 90 - |sum|/255*90 (fast ping keeps the green end).
+std::string pingColor(int ping, int loss) {
+	const float value = static_cast<float>(ping + loss);
+	return hueColor(90.0f - std::clamp(std::fabs(value) / 255.0f * 90.0f, 0.0f, 90.0f));
+}
+
+// Old Viewport::GetPlayerColor (client dll per-player tint, alpha 255).
+bool playerColor(int index, int& r, int& g, int& b) {
+	if (!hooks::GetClientColor)
+		return false;
+	const float* tint = hooks::GetClientColor(index);
+	if (!tint)
+		return false;
+	r = static_cast<int>(std::clamp(tint[0], 0.0f, 1.0f) * 255.0f);
+	g = static_cast<int>(std::clamp(tint[1], 0.0f, 1.0f) * 255.0f);
+	b = static_cast<int>(std::clamp(tint[2], 0.0f, 1.0f) * 255.0f);
+	return true;
 }
 
 } // namespace
@@ -106,9 +203,13 @@ public:
 			static_cast<float>(event.GetParameter("mouse_x", 0)),
 			static_cast<float>(event.GetParameter("mouse_y", 0)));
 
-		// Walk up to the element carrying data-action (menu item) or
-		// data-client (row).
-		for (Rml::Element* node = event.GetCurrentElement(); node; node = node->GetParentNode()) {
+		// Walk up from the event TARGET (bubble-phase GetCurrentElement is
+		// the listening box itself, not the pressed row - RmlUi
+		// EventDispatcher sets CurrentElement per listener attachment).
+		bool overMenu = false;
+		for (Rml::Element* node = event.GetTargetElement(); node; node = node->GetParentNode()) {
+			if (node->GetId() == "menu")
+				overMenu = true;
 			if (node->HasAttribute("data-action")) {
 				if (type == "click" && button == 0) {
 					if (const Rml::Variant* value = node->GetAttribute("data-action")) {
@@ -129,7 +230,9 @@ public:
 				}
 			}
 		}
-		if (type == "mousedown") {
+		// Clicks inside the open menu must not dismiss it before the click
+		// action runs (MenuClient would already be cleared).
+		if (type == "mousedown" && !overMenu) {
 			Panel->closeContextMenu();
 		}
 	}
@@ -140,6 +243,12 @@ public:
 ScoreboardPanel::ScoreboardPanel()
 	: HudPanel("scoreboard", "abcui/rml/scoreboard.rml") {
 	scoreboard::PanelInstance = this;
+}
+
+ScoreboardPanel::~ScoreboardPanel() {
+	if (scoreboard::PanelInstance == this)
+		scoreboard::PanelInstance = nullptr;
+	delete Listener;
 }
 
 void ScoreboardPanel::reset() {
@@ -175,6 +284,11 @@ void ScoreboardPanel::setMouseMode(bool enabled) {
 	if (enabled == MouseMode)
 		return;
 	MouseMode = enabled;
+	// The engine-side cursor visibility never flips for this mode (P6
+	// acceptance finding: UnlockCursor leaves IsCursorVisible false) - the
+	// input bridge carries an explicit ownership bit instead (the Rml
+	// counterpart of the old vgui SetMouseInputEnabled).
+	rmlui::setUiMouseOwner(enabled);
 	if (enabled) {
 		vgui2ext::centerAndUnlockCursor();
 	} else {
@@ -201,14 +315,17 @@ bool ScoreboardPanel::answerKey(int down, int keynum) {
 void ScoreboardPanel::onDocumentReady() {
 	if (abc::CChainedCommand* open = commands::get("+showscores")) {
 		subscribe(open->Event(), [this]() {
-			setVisible(true);
+			if (!Intermission)
+				setVisible(true);
 			return false;
 		});
 	}
 	if (abc::CChainedCommand* close = commands::get("-showscores")) {
 		subscribe(close->Event(), [this]() {
-			setVisible(false);
-			setMouseMode(false);
+			if (!Intermission) {
+				setVisible(false);
+				setMouseMode(false);
+			}
 			return false;
 		});
 	}
@@ -239,14 +356,15 @@ void ScoreboardPanel::onDocumentReady() {
 }
 
 void ScoreboardPanel::updateHeader() {
-	char buffer[128];
 	if (Rml::Element* node = element("server-name"))
 		node->SetInnerRML(framework::TextUtil::escapeRml(ServerName));
 	{
-		char base[64];
 		const char* level = gEngfuncs.pfnGetLevelName();
 		const char* slash = level ? (std::max)(strrchr(level, '/'), strrchr(level, '\\')) : nullptr;
-		sprintf_s(base, "%s", slash ? slash + 1 : (level ? level : ""));
+		std::string base = slash ? slash + 1 : (level ? level : "");
+		// Old V_FileBase stripped the extension too ("mapname" not "map.bsp").
+		if (const size_t dot = base.rfind('.'); dot != std::string::npos)
+			base.resize(dot);
 		if (Rml::Element* node = element("map-name"))
 			node->SetInnerRML(framework::TextUtil::escapeRml(base));
 	}
@@ -256,21 +374,23 @@ void ScoreboardPanel::updateHeader() {
 			if (const playerres::PlayerInfo* info = playerres::getPlayerInfo(i); info && info->isValid())
 				connected++;
 		}
-		sprintf_s(buffer, "%d/%d", connected, gEngfuncs.GetMaxClients());
 		if (Rml::Element* node = element("player-count"))
-			node->SetInnerRML(buffer);
+			node->SetInnerRML(strFmt("%d/%d", connected, gEngfuncs.GetMaxClients()));
 	}
 	{
+		// NextMap is server text - composed, never a fixed buffer.
 		const std::string label = localized("Scores_NextMap", "Next Map: ");
-		sprintf_s(buffer, "%s%s", label.c_str(), NextMap.c_str());
 		if (Rml::Element* node = element("next-map"))
-			node->SetInnerRML(framework::TextUtil::escapeRml(buffer));
+			node->SetInnerRML(framework::TextUtil::escapeRml(label + NextMap));
 	}
 	{
-		const int remaining = std::max(0, TimeEndCount - static_cast<int>(ClientTimeNow - TimeEndBase));
-		sprintf_s(buffer, "%.1d:%.2d", remaining / 60, remaining % 60);
-		if (Rml::Element* node = element("time-end"))
-			node->SetInnerRML(buffer);
+		// Old OnThink: the time label kept its last value until a TimeEnd
+		// arrived (m_iTimeEndCount<=0 -> no refresh, never "00:00").
+		if (TimeEndCount > 0) {
+			const int remaining = std::max(0, TimeEndCount - static_cast<int>(ClientTimeNow - TimeEndBase));
+			if (Rml::Element* node = element("time-end"))
+				node->SetInnerRML(strFmt("%.1d:%.2d", remaining / 60, remaining % 60));
+		}
 	}
 }
 
@@ -367,10 +487,20 @@ void ScoreboardPanel::rebuildTable() {
 	};
 	headerRow(true);
 
-	char buffer[128];
 	const std::string na = localized("Scores_NA", "N/A");
 	const std::string specTag = localized("Scores_PlayerSpec", "(Spectator)");
 	const std::string deadTag = localized("Scores_PlayerHealthDead", "DEAD");
+
+	// Old section header "(n/x)": x was the whole server's connected count.
+	int connectedTotal = 0;
+	for (int i = 1; i <= playerres::kMaxPlayers; i++) {
+		if (const playerres::PlayerInfo* info = playerres::getPlayerInfo(i); info && info->isValid())
+			connectedTotal++;
+	}
+
+	// Old SectionedListPanel: the column-label header doubled as the only
+	// section when the server ran team-less (no "Team_None (n/x)" strip).
+	const bool singleTeamNone = order.size() == 1 && order[0] == teamres::TeamId::None;
 
 	auto appendDonorIcon = [&](const playerres::PlayerInfo& info) {
 		const char* icon = "";
@@ -383,60 +513,70 @@ void ScoreboardPanel::rebuildTable() {
 			case playerres::Donor::Developer: icon = "donor_6"; break;
 			default: break;
 		}
-		if (info.admin == playerres::Admin::Operator)
-			icon = "admin_icon32";
-		else if (info.admin == playerres::Admin::ServerOwner)
-			icon = "serverowner_icon32";
 		if (!icon[0]) {
 			rml += "<div class='cell c-donor'></div>";
 			return;
 		}
-		sprintf_s(buffer, "<div class='cell c-donor'><img src='../img/%s.tga'/></div>", icon);
-		rml += buffer;
+		appendFmt(rml, "<div class='cell c-donor'><img src='../img/%s.tga'/></div>", icon);
+	};
+
+	// The admin badge paints over the avatar square (old CAvatarImage::Paint).
+	auto appendAvatar = [&](const playerres::PlayerInfo& info) {
+		if (!(scoreboard::ShowAvatars && scoreboard::ShowAvatars->value > 0)) {
+			rml += "<div class='cell c-avatar'></div>";
+			return;
+		}
+		// The ?gen suffix cache-busts Rml's per-source texture database once
+		// the RGBA landed (avatars bumps the generation on upload).
+		appendFmt(rml, "<div class='cell c-avatar'><img src='avatar://%llu?gen=%d'/>",
+			static_cast<unsigned long long>(info.steamId64), avatars::generation(info.steamId64));
+		if (info.admin == playerres::Admin::Operator)
+			rml += "<img class='admin' src='../img/admin_icon32.tga'/>";
+		else if (info.admin == playerres::Admin::ServerOwner)
+			rml += "<img class='admin' src='../img/serverowner_icon32.tga'/>";
+		rml += "</div>";
 	};
 
 	for (teamres::TeamId team : order) {
 		const std::vector<RowRef>& rows = sections[team];
-		// Section header: team name (player share) + team score.
-		{
+		// Section header: team name (player share of the server) + team score.
+		if (!singleTeamNone) {
 			const char* token = teamres::teamNameToken(team);
 			std::string teamName = localized(token, token);
-			sprintf_s(buffer, "%s (%d/%d)", teamName.c_str(), static_cast<int>(rows.size()),
-				static_cast<int>(sections.size()) > 0 ? teamScores[team].frags : 0);
-			rml += "<div class='row section'>";
-			rml += "<div class='cell c-avatar'></div><div class='cell c-donor'></div>";
-			rml += "<div class='cell c-name'>";
-			rml += framework::TextUtil::escapeRml(buffer);
-			rml += "</div>";
+			appendFmt(rml, "<div class='row section'>"
+				"<div class='cell c-avatar'></div><div class='cell c-donor'></div>"
+				"<div class='cell c-name'>%s (%d/%d)</div>",
+				framework::TextUtil::escapeRml(teamName).c_str(), static_cast<int>(rows.size()),
+				connectedTotal);
 			if (showSteamId)
 				rml += "<div class='cell c-steamid'></div>";
 			rml += "<div class='cell c-health'></div><div class='cell c-armor'></div>";
-			sprintf_s(buffer, "%d", teamScores[team].frags);
-			rml += "<div class='cell c-frags'>";
-			rml += framework::TextUtil::escapeRml(buffer);
-			rml += "</div>";
-			sprintf_s(buffer, "%d", teamScores[team].deaths);
-			rml += "<div class='cell c-deaths'>";
-			rml += framework::TextUtil::escapeRml(buffer);
-			rml += "</div><div class='cell c-ping'></div></div>";
+			appendFmt(rml, "<div class='cell c-frags'>%d</div>", teamScores[team].frags);
+			appendFmt(rml, "<div class='cell c-deaths'>%d</div>", teamScores[team].deaths);
+			rml += "<div class='cell c-ping'></div></div>";
 		}
 
 		for (const RowRef& row : rows) {
 			const playerres::PlayerInfo& info = *row.info;
-			char rowOpen[96];
-			sprintf_s(rowOpen, "<div class='row%s' data-client='%d'>",
-				info.isThisPlayer() ? " thisplayer" : "", info.index);
+			// Row fg/bg ride the client's per-player tint (old SetItemFgColor
+			// GetPlayerColor; bg = same tint at alpha 80 unless this player).
+			std::string rowOpen = "<div class='row";
+			if (info.isThisPlayer())
+				rowOpen += " thisplayer";
+			int pr = 0, pg = 0, pb = 0;
+			if (playerColor(info.index, pr, pg, pb)) {
+				// Row fg/bg ride the client's per-player tint (old
+				// SetItemFgColor GetPlayerColor; bg = same tint at alpha 80
+				// unless this player).
+				appendFmt(rowOpen, "' style='color: rgba(%d, %d, %d, 255);", pr, pg, pb);
+				if (!info.isThisPlayer())
+					appendFmt(rowOpen, " background-color: rgba(%d, %d, %d, 80);", pr, pg, pb);
+				rowOpen += "'";
+			}
+			appendFmt(rowOpen, "' data-client='%d'>", info.index);
 			rml += rowOpen;
 
-			// Avatar (default until steam delivers; the scoreboard refresh
-			// cache-busts ready ones so Rml re-resolves the texture).
-			if (scoreboard::ShowAvatars && scoreboard::ShowAvatars->value > 0) {
-				sprintf_s(buffer, "<div class='cell c-avatar'><img src='avatar://%llu'/></div>",
-					static_cast<unsigned long long>(info.steamId64));
-				rml += buffer;
-			} else {
-				rml += "<div class='cell c-avatar'></div>";
-			}
+			appendAvatar(info);
 			appendDonorIcon(info);
 
 			// Name (+ real name when the backend can serve it).
@@ -447,49 +587,58 @@ void ScoreboardPanel::rebuildTable() {
 					name += info.realName;
 					name += ")";
 				}
-				sprintf_s(buffer, "<div class='cell c-name'>%s</div>",
+				appendFmt(rml, "<div class='cell c-name'>%s</div>",
 					framework::TextUtil::escapeRml(name).c_str());
-				rml += buffer;
 			}
 
 			if (showSteamId) {
+				// hud_scoreboard_showsteamidtype: 64-bit form vs STEAM_0:X:Y
+				// (old m_szSteamID64 vs m_pSteamId.Render()).
 				char steam[32];
-				sprintf_s(steam, "%llu", static_cast<unsigned long long>(info.steamId64));
-				sprintf_s(buffer, "<div class='cell c-steamid'>%s</div>",
+				if (info.steamId64 == 0) {
+					steam[0] = '\0'; // old m_szSteamID64 stayed empty when invalid
+				} else if (scoreboard::ShowSteamIdType && scoreboard::ShowSteamIdType->value > 0) {
+					sprintf_s(steam, "%llu", static_cast<unsigned long long>(info.steamId64));
+				} else {
+					const std::uint32_t accountId = static_cast<std::uint32_t>(info.steamId64 & 0xFFFFFFFFull);
+					sprintf_s(steam, "STEAM_0:%u:%u", accountId & 1, accountId >> 1);
+				}
+				appendFmt(rml, "<div class='cell c-steamid'>%s</div>",
 					framework::TextUtil::escapeRml(steam).c_str());
-				rml += buffer;
 			}
 
-			// Health / armor (spectators show the tag; negative = dead).
+			// Health / armor (spectators show the grey tag; negative = dead;
+			// both carry the old COLOR_PERCENT hue ramp).
 			if (info.spectate) {
-				sprintf_s(buffer, "<div class='cell c-health'>%s</div><div class='cell c-armor'>%s</div>",
+				appendFmt(rml,
+					"<div class='cell c-health' style='color: rgba(128, 128, 128, 255);'>%s</div>"
+					"<div class='cell c-armor' style='color: rgba(128, 128, 128, 255);'>%s</div>",
 					framework::TextUtil::escapeRml(specTag).c_str(), framework::TextUtil::escapeRml(na).c_str());
-				rml += buffer;
 			} else {
 				if (info.health < 0) {
-					sprintf_s(buffer, "<div class='cell c-health'>%s</div>",
+					appendFmt(rml, "<div class='cell c-health'>%s</div>",
 						framework::TextUtil::escapeRml(deadTag).c_str());
 				} else {
-					sprintf_s(buffer, "<div class='cell c-health'>%d</div>", static_cast<int>(info.health));
+					appendFmt(rml, "<div class='cell c-health' style='color: %s;'>%d</div>",
+						percentColor(info.health).c_str(), static_cast<int>(info.health));
 				}
-				rml += buffer;
 				if (info.armor < 0) {
-					sprintf_s(buffer, "<div class='cell c-armor'>%s</div>",
+					appendFmt(rml, "<div class='cell c-armor'>%s</div>",
 						framework::TextUtil::escapeRml(na).c_str());
 				} else {
-					sprintf_s(buffer, "<div class='cell c-armor'>%d</div>", static_cast<int>(info.armor));
+					appendFmt(rml, "<div class='cell c-armor' style='color: %s;'>%d</div>",
+						percentColor(info.armor).c_str(), static_cast<int>(info.armor));
 				}
-				rml += buffer;
 			}
 
-			sprintf_s(buffer, "<div class='cell c-frags'>%d</div><div class='cell c-deaths'>%d</div>",
+			appendFmt(rml, "<div class='cell c-frags'>%d</div><div class='cell c-deaths'>%d</div>",
 				static_cast<int>(info.frags), info.deaths);
-			rml += buffer;
 			if (showLoss)
-				sprintf_s(buffer, "<div class='cell c-ping'>%d/%d</div>", info.ping, info.loss);
+				appendFmt(rml, "<div class='cell c-ping' style='color: %s;'>%d/%d</div>",
+					pingColor(info.ping, info.loss).c_str(), info.ping, info.loss);
 			else
-				sprintf_s(buffer, "<div class='cell c-ping'>%d</div>", info.ping);
-			rml += buffer;
+				appendFmt(rml, "<div class='cell c-ping' style='color: %s;'>%d</div>",
+					pingColor(info.ping, 0).c_str(), info.ping);
 			rml += "</div>";
 		}
 	}
@@ -535,11 +684,18 @@ void ScoreboardPanel::openContextMenu(int clientIndex, const Rml::Vector2f& posi
 		item->SetProperty("display", info->realName.empty() ? "none" : "block");
 
 	// Position at the pointer, clamped into the window (old
-	// PositionRelativeToPanel CURSOR mode).
+	// PositionRelativeToPanel CURSOR mode). #menu sits inside #box (a
+	// centered absolute container) - its left/top are relative to the box
+	// origin, so clamp in context space first, then subtract the box offset.
 	Rml::Vector2f at = position;
 	if (Rml::Context* context = rmlui::context()) {
 		at.x = std::clamp(at.x, 0.0f, static_cast<float>(context->GetDimensions().x) - 180.0f);
 		at.y = std::clamp(at.y, 0.0f, static_cast<float>(context->GetDimensions().y) - 96.0f);
+	}
+	if (Rml::Element* box = element("box")) {
+		const Rml::Vector2f origin = box->GetAbsoluteOffset();
+		at.x -= origin.x;
+		at.y -= origin.y;
 	}
 	menu->SetProperty("left", std::to_string(at.x) + "px");
 	menu->SetProperty("top", std::to_string(at.y) + "px");

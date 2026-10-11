@@ -19,4 +19,9 @@ void shutdown();
 // download attempt when the id is not ready yet.
 int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFetch);
 
+// Cache-bust generation for "avatar://<id>?gen=<n>": bumped once the RGBA
+// for this id uploaded, so the scoreboard rewrite makes Rml re-resolve the
+// (new) source. 0 = still showing the bundled default.
+int generation(std::uint64_t steamId64);
+
 }

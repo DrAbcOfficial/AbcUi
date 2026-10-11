@@ -5,6 +5,7 @@
 #include <Windows.h>
 
 #include "KeyMap.h"
+#include "RmlUiModule.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
@@ -17,7 +18,31 @@ int LastMouseY = -1;
 bool ShiftWasDown = false;
 bool CtrlWasDown = false;
 bool AltWasDown = false;
+// Visibility-gate edge: the poll below only samples while the VGUI cursor is
+// visible, so a button HELD across the gate opening (e.g. the MOUSE2 that
+// unlocked the scoreboard pointer) must not synthesize a press on the first
+// sampled frame.
+bool GateWasOpen = false;
+// Explicit ownership (scoreboard pointer mode): the engine-side cursor
+// visibility never flips for it (P6 acceptance finding), so the mode carries
+// its own gate bit.
+bool UiMouseOwner = false;
 
+} // namespace
+
+void setUiMouseOwner(bool owner) {
+	UiMouseOwner = owner;
+	if (!owner) {
+		GateWasOpen = false;
+		MouseButtonWasDown[0] = MouseButtonWasDown[1] = MouseButtonWasDown[2] = false;
+	}
+}
+
+bool uiMouseOwner() {
+	return UiMouseOwner;
+}
+
+namespace {
 int modifierState() {
 	int state = 0;
 	if (ShiftWasDown)
@@ -50,23 +75,41 @@ void InputBridge::update(Rml::Context* context) {
 }
 
 void InputBridge::updateMouse(Rml::Context* context) {
-	// The VGUI cursor visibility doubles as the "GameUI owns the mouse" gate:
-	// during normal play (cursor hidden, engine shooting) Rml must not see
-	// clicks, and the GameUI menu activates the VGUI cursor.
-	if (!vgui2ext::isCursorVisible())
+	// The VGUI cursor visibility doubles as the "GameUI owns the mouse" gate;
+	// the scoreboard pointer mode carries its own bit (engine visibility
+	// never flips for it).
+	if (!vgui2ext::isCursorVisible() && !UiMouseOwner) {
+		GateWasOpen = false;
 		return;
+	}
 
+	// Gate edge: sync the held-state baseline silently (no press/release
+	// synthesis for buttons held from the game side).
+	if (!GateWasOpen) {
+		GateWasOpen = true;
+		const int virtualKeys[3] = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON };
+		for (int button = 0; button < 3; button++)
+			MouseButtonWasDown[button] = (GetAsyncKeyState(virtualKeys[button]) & 0x8000) != 0;
+		LastMouseX = -1; // emit one motion event to seed the hover position
+	}
+
+		// Position poll under both paths (the WndProc motion dedups through
+	// LastMouseX/Y - the surface cursor position moves with injected SDL
+	// motion even when no window message is generated).
 	int x = 0, y = 0;
 	if (!vgui2ext::getCursorPos(x, y))
 		return;
-	// Forward only on change: this is a poll, Rml wants motion events.
 	if (x != LastMouseX || y != LastMouseY) {
 		LastMouseX = x;
 		LastMouseY = y;
 		context->ProcessMouseMove(x, y, modifierState());
 	}
 
-	// Buttons via async state; Rml button ids: 0 left, 1 right, 2 middle.
+	// Buttons: the WndProc callback writes the same state array as it sees
+	// window messages; this async-key sample stays as the fallback for
+	// injected input that never surfaces as a window message (P6 acceptance:
+	// SDL-injected clicks are invisible to the WndProc chain). Shared state =
+	// natural dedup when both paths observe the same button.
 	const int virtualKeys[3] = { VK_LBUTTON, VK_RBUTTON, VK_MBUTTON };
 	for (int button = 0; button < 3; button++) {
 		const bool down = (GetAsyncKeyState(virtualKeys[button]) & 0x8000) != 0;
@@ -89,4 +132,49 @@ bool InputBridge::onKeyEvent(Rml::Context* context, int down, int keynum) {
 	return context->ProcessKeyUp(key, modifierState());
 }
 
+void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam) {
+	// Same gate as the legacy poll: normal play keeps the cursor locked and
+	// the GameUI menu keeps it visible for its own surface.
+	Rml::Context* context = rmlui::context();
+	if (!context || !vgui2ext::isCursorVisible())
+		return;
+
+	switch (msg) {
+		case 0x0200: { // WM_MOUSEMOVE (client coords, signed shorts in lParam)
+			const int x = static_cast<short>(LOWORD(lparam));
+			const int y = static_cast<short>(HIWORD(lparam));
+			LastMouseX = x;
+			LastMouseY = y;
+			context->ProcessMouseMove(x, y, modifierState());
+			break;
+		}
+		case 0x0201: // WM_LBUTTONDOWN
+			MouseButtonWasDown[0] = true;
+			context->ProcessMouseButtonDown(0, modifierState());
+			break;
+		case 0x0202: // WM_LBUTTONUP
+			MouseButtonWasDown[0] = false;
+			context->ProcessMouseButtonUp(0, modifierState());
+			break;
+		case 0x0204: // WM_RBUTTONDOWN
+			MouseButtonWasDown[1] = true;
+			context->ProcessMouseButtonDown(1, modifierState());
+			break;
+		case 0x0205: // WM_RBUTTONUP
+			MouseButtonWasDown[1] = false;
+			context->ProcessMouseButtonUp(1, modifierState());
+			break;
+		case 0x0207: // WM_MBUTTONDOWN
+			MouseButtonWasDown[2] = true;
+			context->ProcessMouseButtonDown(2, modifierState());
+			break;
+		case 0x0208: // WM_MBUTTONUP
+			MouseButtonWasDown[2] = false;
+			context->ProcessMouseButtonUp(2, modifierState());
+			break;
+		default:
+			break; // wheel rides the engine key path (hooks uiOwnsWheel)
+	}
 }
+
+} // namespace rmlui

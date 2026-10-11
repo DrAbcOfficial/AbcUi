@@ -12,6 +12,7 @@
 #include <RmlUi/Core/Element.h>
 
 #include <abc/CvarCmd.h>
+#include <abc/Format.h>
 
 #include "../../data/NetworkMessages.h"
 #include "../../framework/Localization.h"
@@ -58,6 +59,11 @@ VotePanel::VotePanel()
 	vote::PanelInstance = this;
 }
 
+VotePanel::~VotePanel() {
+	if (vote::PanelInstance == this)
+		vote::PanelInstance = nullptr;
+}
+
 void VotePanel::reset() {
 	setVisible(false);
 }
@@ -76,9 +82,8 @@ bool VotePanel::answerKey(int down, int keynum) {
 	const int no = vote::KeyNo ? static_cast<int>(vote::KeyNo->value) : 93;
 	if (keynum != yes && keynum != no)
 		return false;
-	char command[16];
-	sprintf_s(command, "%s\n", keynum == yes ? "voteyes" : "voteno");
-	gEngfuncs.pfnClientCmd(command);
+	// Old KeyCodeTyped sent ServerCmd("voteyes"/"voteno").
+	gEngfuncs.pfnServerCmd(keynum == yes ? "voteyes" : "voteno");
 	setVisible(false);
 	return true;
 }
@@ -86,27 +91,34 @@ bool VotePanel::answerKey(int down, int keynum) {
 void VotePanel::startVote(int type, const std::string& content, const std::string& yes,
 	const std::string& no) {
 	(void)type;
-	if (Rml::Element* box = element("content"))
-		box->SetInnerRML(framework::TextUtil::escapeRml(content));
+	if (Rml::Element* node = element("content"))
+		node->SetInnerRML(framework::TextUtil::escapeRml(content));
 
 	// Server captions (CUSTOM votes) win; typed/default votes keep the
 	// localized default caption next to the bound key name.
 	const std::string yesCaption = !yes.empty() ? yes : defaultCaption("Vote_DefaultYes", "Yes");
 	const std::string noCaption = !no.empty() ? no : defaultCaption("Vote_DefaultNo", "No");
-	char label[192];
-	sprintf_s(label, "%s %s", vgui2ext::keyNameForKey(
-		vote::KeyYes ? static_cast<int>(vote::KeyYes->value) : 92), yesCaption.c_str());
+	// The caption is server text - bounded assembly only (R-17 face).
+	const auto boundKey = [](int keynum) {
+		const char* name = vgui2ext::keyNameForKey(keynum);
+		return name ? name : "";
+	};
+	const std::string yesLabel = abc::Format("{0} {1}",
+		boundKey(vote::KeyYes ? static_cast<int>(vote::KeyYes->value) : 92), yesCaption);
+	const std::string noLabel = abc::Format("{0} {1}",
+		boundKey(vote::KeyNo ? static_cast<int>(vote::KeyNo->value) : 93), noCaption);
 	if (Rml::Element* text = element("yes-text"))
-		text->SetInnerRML(framework::TextUtil::escapeRml(label));
-	sprintf_s(label, "%s %s", vgui2ext::keyNameForKey(
-		vote::KeyNo ? static_cast<int>(vote::KeyNo->value) : 93), noCaption.c_str());
+		text->SetInnerRML(framework::TextUtil::escapeRml(yesLabel));
 	if (Rml::Element* text = element("no-text"))
-		text->SetInnerRML(framework::TextUtil::escapeRml(label));
+		text->SetInnerRML(framework::TextUtil::escapeRml(noLabel));
 
 	setVisible(true);
 }
 
 void VotePanel::onDocumentReady() {
+	// Old ctor label: the static "#Vote_DefaultMessage" title strip.
+	if (Rml::Element* node = element("title"))
+		node->SetInnerRML(framework::TextUtil::escapeRml(defaultCaption("Vote_DefaultMessage", "")));
 	subscribe(netmsg::VoteMenu, [this](const netmsg::VoteMenuData& data) {
 		startVote(data.type, data.content, data.yes, data.no);
 	});

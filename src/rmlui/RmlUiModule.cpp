@@ -11,6 +11,8 @@
 #include <abc/Plugin.h>
 #include <abc/Render.h>
 
+#include <keydefs.h>
+
 #include "../framework/Assets.h"
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
@@ -219,6 +221,15 @@ void onKeyEvent(int down, int keynum) {
 	if (!Initialised || !Context)
 		return;
 	InputBridge::onKeyEvent(Context, down, keynum);
+}
+
+void onWheel(int down, int keynum) {
+	// The engine delivers the wheel as down-only keynum pulses (KeyMap note);
+	// positive Rml wheel_delta = scroll away (old vgui wheel direction).
+	if (!Initialised || !Context || !down)
+		return;
+	const float delta = keynum == K_MWHEELUP ? 1.0f : -1.0f;
+	Context->ProcessMouseWheel(delta, 0);
 }
 
 void onHudShutdown() {

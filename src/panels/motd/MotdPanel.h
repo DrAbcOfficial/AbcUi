@@ -17,11 +17,14 @@ namespace panels {
 namespace motd {
 // HUD_Init-time cvar registration (plan 08 §4.9).
 void registerCvars();
+// Wheel ownership: the open motd scrolls (pagination replacement, D-17).
+bool wantsWheel();
 }
 
 class MotdPanel : public framework::HudPanel {
 public:
 	MotdPanel();
+	~MotdPanel() override;
 
 	void reset() override;
 
@@ -30,7 +33,8 @@ protected:
 	void onData(double frameTime) override;
 
 private:
-	// Old AppendMotd / FinishSendMOTD.
+	// Old AppendMotd / FinishSendMOTD (build only - the old finish never
+	// showed the window; display waits for missionbriefing).
 	void append(const char* message);
 	void finishSend();
 	// Old ShowMotd (missionbriefing command): loads the map brief once.

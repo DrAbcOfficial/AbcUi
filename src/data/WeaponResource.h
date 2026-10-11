@@ -86,7 +86,12 @@ const Weapon* getWeapon(int id);
 const Weapon* getWeapon(const char* name);
 const Weapon* getWeapon(int slot, int pos);
 bool hasWeapon(int slot, int pos);
+// Ownership check for a registry weapon (old m_pOwnedWeaponData membership).
+bool isOwned(const Weapon* weapon);
 const Weapon* currentWeapon();
+
+// Old hud_fastswitch read (SetSelectWeapon/ShouldDraw gate).
+bool fastSwitchOn();
 
 int countAmmo(int ammoType);
 // Old HasAmmo: unlimited weapons (max1/max2 == -1) always true.

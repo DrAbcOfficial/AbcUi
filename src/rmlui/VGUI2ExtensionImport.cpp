@@ -10,13 +10,17 @@
 #include <abc/Console.h>
 #include <abc/Plugin.h>
 
+#include "RmlUiModule.h"
+
 namespace vgui2ext {
 
 namespace {
+
 IVGUI2Extension* Extension = nullptr;
 vgui::ISurface2* Surface2 = nullptr;
 IGameUIFuncs* GameUIFuncs = nullptr;
 bool WarnedUnavailable = false;
+bool UICallbacksRegistered = false;
 
 bool warnUnavailableOnce() {
 	if (!WarnedUnavailable) {
@@ -25,6 +29,35 @@ bool warnUnavailableOnce() {
 	}
 	return false;
 }
+
+// R-4 callback path (batch C): the engine surface WndProc sees every UI-level
+// mouse message - including injected ones the async-key poll cannot observe
+// (GetAsyncKeyState never sees SDL/window-message input). Observation-only:
+// the result stays IGNORED, the vanilla surface still handles everything.
+class UICallbacks final : public IVGUI2Extension_BaseUICallbacks {
+public:
+	int GetAltitude() const override { return 0; }
+	void Initialize(CreateInterfaceFn* factories, int count) override {}
+	void Start(struct cl_enginefuncs_s* engineFuncs, int interfaceVersion) override {}
+	void Shutdown() override {}
+	void Key_Event(int& down, int& keynum, const char*& pszCurrentBinding,
+		VGUI2Extension_CallbackContext* CallbackContext) override {}
+	void CallEngineSurfaceAppProc(void*& pevent, void*& userData,
+		VGUI2Extension_CallbackContext* CallbackContext) override {}
+	void CallEngineSurfaceWndProc(void*& hwnd, unsigned int& msg, unsigned int& wparam, long& lparam,
+		VGUI2Extension_CallbackContext* CallbackContext) override {
+		rmlui::onSurfaceWndProc(msg, wparam, lparam);
+	}
+	void Paint(int& x, int& y, int& right, int& bottom,
+		VGUI2Extension_CallbackContext* CallbackContext) override {}
+	void HideGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {}
+	void ActivateGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {}
+	void HideConsole(VGUI2Extension_CallbackContext* CallbackContext) override {}
+	void ShowConsole(VGUI2Extension_CallbackContext* CallbackContext) override {}
+};
+
+UICallbacks UICallbacksInstance;
+
 } // namespace
 
 void init() {
@@ -48,12 +81,27 @@ void init() {
 	}
 	// The key-name table lives in the engine (old VGUI2 BaseUI binding).
 	GameUIFuncs = (decltype(GameUIFuncs))g_pMetaHookAPI->GetEngineFactory()(VENGINE_GAMEUIFUNCS_VERSION, NULL);
+
+	// R-4 batch C upgrade: WndProc callbacks drive the Rml mouse (clicks and
+	// motion) - the async-key poll cannot see injected or message-level input.
+	if (!UICallbacksRegistered) {
+		Extension->RegisterBaseUICallbacks(&UICallbacksInstance);
+		UICallbacksRegistered = true;
+	}
 }
 
 void shutdown() {
+	if (Extension && UICallbacksRegistered) {
+		Extension->UnregisterBaseUICallbacks(&UICallbacksInstance);
+		UICallbacksRegistered = false;
+	}
 	GameUIFuncs = nullptr;
 	Surface2 = nullptr;
 	Extension = nullptr;
+}
+
+bool uiCallbacksRegistered() {
+	return UICallbacksRegistered;
 }
 
 bool available() {

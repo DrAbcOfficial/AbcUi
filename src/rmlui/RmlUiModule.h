@@ -42,6 +42,16 @@ void onFrame(double frameTime);
 void onRedraw(double frameTime);
 void onVidInit();
 void onKeyEvent(int down, int keynum);
+// Engine wheel pulses (HUD_Key_Event keynums) -> Context::ProcessMouseWheel;
+// called while a scrollable UI consumer owns the wheel.
+void onWheel(int down, int keynum);
+// Engine surface WndProc messages (vgui2ext BaseUI callback, R-4 batch C):
+// UI-level mouse motion/buttons for the Rml context. Observation-only.
+void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam);
+// InputBridge pointer-mode ownership (scoreboard setMouseMode): forces the
+// mouse gate open even while the engine-side cursor visibility stays hidden.
+void setUiMouseOwner(bool owner);
+bool uiMouseOwner();
 // HUD_Shutdown: full teardown (context/docs die with the client state).
 void onHudShutdown();
 
