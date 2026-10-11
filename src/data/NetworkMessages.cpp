@@ -4,6 +4,7 @@
 #include <metahook.h>
 
 #include "NetworkMessages.h"
+#include <cmath>
 
 #include <abc/NetMsg.h>
 
@@ -234,7 +235,8 @@ int __MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf) {
 		int isAdmin = msg.readByte();
 		if (!msg.ok())
 			return original_ScoreInfo(pszName, iSize, pbuf);
-		ScoreInfo(clientIndex, frags, deaths, health, armor, teamNumber, hideExtra, isAdmin);
+		if (std::isfinite(frags) && std::isfinite(health) && std::isfinite(armor) && std::abs(frags) <= 1000000000.0f && health >= 0 && health <= 1000000000.0f && armor >= 0 && armor <= 1000000000.0f)
+			ScoreInfo(clientIndex, frags, deaths, health, armor, teamNumber, hideExtra, isAdmin);
 	}
 	return original_ScoreInfo(pszName, iSize, pbuf);
 }

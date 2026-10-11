@@ -51,13 +51,13 @@ public:
 	}
 };
 ProbeInputEcho InputEcho;
+Rml::ElementDocument* ProbeDoc = nullptr;
 
 // Live font-pipeline probe (batch A acceptance aid): builds a document from
 // an inline sheet - three explicit font families plus one line styled only
 // through the file-based base.rcss. Which lines render localizes a
 // missing-text report (face lookup vs base.rcss vs document markup).
 void probeCommand() {
-	static Rml::ElementDocument* ProbeDoc = nullptr;
 	if (ProbeDoc) {
 		ProbeDoc->Close();
 		ProbeDoc = nullptr;
@@ -451,6 +451,12 @@ void probeCommand() {
 
 } // namespace
 
+void closeProbeDocument() {
+#ifndef NDEBUG
+	if (ProbeDoc) { ProbeDoc->Close(); ProbeDoc = nullptr; }
+#endif
+}
+
 void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_input_regression", inputRegressionCommand);
 	abc::ADD_COMMAND("abc_ui_input_key", mouseKeyCommand);
@@ -470,6 +476,12 @@ void registerProbeCommand() {
 #else // NDEBUG
 
 namespace rmlui {
+
+void closeProbeDocument() {
+#ifndef NDEBUG
+	if (ProbeDoc) { ProbeDoc->Close(); ProbeDoc = nullptr; }
+#endif
+}
 
 void registerProbeCommand() {
 }

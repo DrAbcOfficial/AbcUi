@@ -27,6 +27,8 @@ bool HudPanel::loadDocument(Rml::Context* context) {
 		abc::ConsoleWarn("[AbcUi] panel \"%s\": failed to load %s\n", Name.c_str(), DocumentPath.c_str());
 		return false;
 	}
+	// Passive HUD documents must not intercept scoreboard/MOTD hit testing.
+	if (Name != "scoreboard" && Name != "motd") Document->SetProperty("pointer-events", "none");
 	// Start hidden; panels opt into visibility via show() (data-driven).
 	Document->Hide();
 	onDocumentReady();
@@ -38,7 +40,7 @@ void HudPanel::show() {
 	// visible document would silently steal the context focus (key input of
 	// whatever document the user is interacting with, e.g. an open TextMenu).
 	if (Document && !Document->IsVisible())
-		Document->Show();
+		Document->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
 }
 
 void HudPanel::hide() {

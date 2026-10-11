@@ -75,6 +75,10 @@ void VotePanel::setVisible(bool visible) {
 	visible ? show() : hide();
 }
 
+void VotePanel::onData(double) {
+	if (vote::HudVote && vote::HudVote->value <= 0) setVisible(false);
+}
+
 bool VotePanel::answerKey(int down, int keynum) {
 	if (!down || !Visible || !isVisible() || !vote::HudVote || vote::HudVote->value <= 0)
 		return false;

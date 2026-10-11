@@ -3,6 +3,7 @@
 #include <metahook.h>
 
 #include "RadarPanel.h"
+#include <unordered_set>
 
 #include <RmlUi/Core/Element.h>
 
@@ -333,6 +334,7 @@ void RadarPanel::onDocumentReady() {
 }
 
 void RadarPanel::reset() {
+	AppliedDom.clear();
 	// Old CRadarPanel::Reset: SetScale(false).
 	setScale(false);
 }
@@ -422,13 +424,12 @@ void RadarPanel::onData(double frameTime) {
 		north->SetProperty("top", std::to_string(sty) + "px");
 	}
 
-	// Avatars (old 32-slot fleet): rebuild per frame (the old code's live
-	// SetPlayer/SetPos/SetVisible churn held the same set).
-	while (Rml::Element* child = avatars->GetFirstChild())
-		avatars->RemoveChild(child);
+	std::unordered_set<int> used;
 	const playerres::PlayerInfo* localInfo = playerres::getLocalPlayerInfo();
-	if (!radar::RadarAvatar || radar::RadarAvatar->value <= 0 || !localInfo)
+	if (!radar::RadarAvatar || radar::RadarAvatar->value <= 0 || !localInfo) {
+		for(auto [id,img]:AvatarElements) AppliedDom.property(img,"display","none");
 		return;
+	}
 
 	const float avatarSize = radar::RadarAvatarSize ? radar::RadarAvatarSize->value : 20.0f;
 	const float avatarHalf = avatarSize / 2.0f;
@@ -458,7 +459,7 @@ void RadarPanel::onData(double frameTime) {
 		const float rotatedY = radarX * sinYaw + radarY * cosYaw;
 		float screenX = center + rotatedX * radarScale - avatarHalf;
 		float screenY = center - rotatedY * radarScale - avatarHalf;
-		const float maxPos = plateSize - avatarSize;
+		const float maxPos = std::max(0.0f, plateSize - avatarSize);
 		screenX = std::clamp(screenX, 0.0f, maxPos);
 		screenY = std::clamp(screenY, 0.0f, maxPos);
 		if (roundPlate) {
@@ -478,17 +479,22 @@ void RadarPanel::onData(double frameTime) {
 		char uri[80];
 		sprintf_s(uri, "avatar://%llu?gen=%d", static_cast<unsigned long long>(info->steamId64),
 			avatars::generation(info->steamId64));
-		Rml::ElementPtr holder = Document->CreateElement("img");
-		if (!holder)
-			continue;
-		Rml::Element* img = holder.get();
-		img->SetClass("avatar", true);
-		img->SetAttribute("src", Rml::String(uri));
-		img->SetProperty("left", std::to_string(screenX) + "px");
-		img->SetProperty("top", std::to_string(screenY) + "px");
-		img->SetProperty("width", std::to_string(avatarSize) + "px");
-		img->SetProperty("height", std::to_string(avatarSize) + "px");
-		avatars->AppendChild(std::move(holder));
+		used.insert(index);
+		Rml::Element*& img = AvatarElements[index];
+		if (!img) {
+			auto holder = Document->CreateElement("img"); if (!holder) { AvatarElements.erase(index); continue; }
+			img=holder.get(); img->SetClass("avatar",true); avatars->AppendChild(std::move(holder));
+		}
+		AppliedDom.property(img,"display","block");
+		AppliedDom.attribute(img,"src",uri);
+		AppliedDom.property(img,"left",std::to_string(screenX)+"px");
+		AppliedDom.property(img,"top",std::to_string(screenY)+"px");
+		AppliedDom.property(img,"width",std::to_string(avatarSize)+"px");
+		AppliedDom.property(img,"height",std::to_string(avatarSize)+"px");
+	}
+	for(auto it=AvatarElements.begin();it!=AvatarElements.end();) {
+		if (!used.count(it->first)) { AppliedDom.forget(it->second); avatars->RemoveChild(it->second); it=AvatarElements.erase(it); }
+		else ++it;
 	}
 }
 

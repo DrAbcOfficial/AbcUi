@@ -214,6 +214,7 @@ ItemHighlightPanel::ItemHighlightPanel()
 void ItemHighlightPanel::onDocumentReady() {}
 
 void ItemHighlightPanel::reset() {
+	AppliedDom.clear();
 	// Old Reset: clear the stored entities + re-arm the model index fill.
 	itemhighlight::Tracked.clear();
 	itemhighlight::IndexesFilled = false;
@@ -221,12 +222,13 @@ void ItemHighlightPanel::reset() {
 	PromptShown = false;
 	if (Document) {
 		if (Rml::Element* prompt = Document->GetElementById("pickup"))
-			prompt->SetProperty("display", "none");
+			AppliedDom.property(prompt, "display", "none");
 	}
 	hide();
 }
 
 void ItemHighlightPanel::clearMarkers() {
+	AppliedDom.clear();
 	Rml::Element* container = Document ? Document->GetElementById("markers") : nullptr;
 	if (container) {
 		for (auto& [entindex, marker] : Markers) {
@@ -243,6 +245,7 @@ void ItemHighlightPanel::removeMarker(int entindex) {
 	if (itor == Markers.end())
 		return;
 	Rml::Element* container = Document ? Document->GetElementById("markers") : nullptr;
+	AppliedDom.forget(itor->second.art); AppliedDom.forget(itor->second.artAim); AppliedDom.forget(itor->second.label); AppliedDom.forget(itor->second.box);
 	if (container && itor->second.box)
 		container->RemoveChild(itor->second.box);
 	Markers.erase(itor);
@@ -275,7 +278,7 @@ ItemHighlightPanel::Marker* ItemHighlightPanel::updateMarker(int entindex, int i
 		marker.artAim->SetClass("art", true);
 		marker.artAim->SetClass("art-aim", true);
 		marker.artAim->SetAttribute("src", Rml::String("../img/itemhighlight/marker_aim.png"));
-		marker.artAim->SetProperty("display", "none");
+		AppliedDom.property(marker.artAim, "display", "none");
 		marker.box->AppendChild(std::move(artAim));
 
 		Rml::ElementPtr label = Document->CreateElement("div");
@@ -290,10 +293,10 @@ ItemHighlightPanel::Marker* ItemHighlightPanel::updateMarker(int entindex, int i
 	char tint[40];
 	sprintf_s(tint, "rgba(%d, %d, %d, %d)", item->color[0], item->color[1],
 		item->color[2], item->color[3]);
-	marker.art->SetProperty("image-color", tint);
+	AppliedDom.property(marker.art, "image-color", tint);
 	if (marker.label) {
-		marker.label->SetProperty("color", tint);
-		marker.label->SetInnerRML(framework::TextUtil::escapeRml(displayName(*item)));
+		AppliedDom.property(marker.label, "color", tint);
+		AppliedDom.text(marker.label, framework::TextUtil::escapeRml(displayName(*item)));
 	}
 
 	// Old Update: icon box scales as 45 * ratio (ratio = the old
@@ -303,17 +306,17 @@ ItemHighlightPanel::Marker* ItemHighlightPanel::updateMarker(int entindex, int i
 	const float density = framework::Theme::scale();
 	const float size = kMarkerBox * density * ratio;
 	const float half = size / 2.0f;
-	marker.box->SetProperty("width", std::to_string(size) + "px");
-	marker.box->SetProperty("height", std::to_string(size) + "px");
-	marker.box->SetProperty("left", std::to_string(screen[0] - half) + "px");
-	marker.box->SetProperty("top", std::to_string(screen[1] - half) + "px");
-	marker.box->SetProperty("display", "block");
+	AppliedDom.property(marker.box, "width", std::to_string(size) + "px");
+	AppliedDom.property(marker.box, "height", std::to_string(size) + "px");
+	AppliedDom.property(marker.box, "left", std::to_string(screen[0] - half) + "px");
+	AppliedDom.property(marker.box, "top", std::to_string(screen[1] - half) + "px");
+	AppliedDom.property(marker.box, "display", "block");
 	if (marker.label)
-		marker.label->SetProperty("line-height", std::to_string(size) + "px");
+		AppliedDom.property(marker.label, "line-height", std::to_string(size) + "px");
 
 	// Default (non-aim) state each frame - the aim pass re-flags the target.
-	marker.art->SetProperty("display", "block");
-	marker.artAim->SetProperty("display", "none");
+	AppliedDom.property(marker.art, "display", "block");
+	AppliedDom.property(marker.artAim, "display", "none");
 	return &marker;
 }
 
@@ -346,7 +349,7 @@ void ItemHighlightPanel::updatePromptText(const char* nameToken) {
 	};
 	replaceAll(templ, "%%USE_BINDKEY%%", key);
 	replaceAll(templ, "%%PICKUP_ITEM%%", name);
-	text->SetInnerRML(framework::TextUtil::escapeRml(templ));
+	AppliedDom.text(text, framework::TextUtil::escapeRml(templ));
 }
 
 void ItemHighlightPanel::onData(double frameTime) {
@@ -370,7 +373,7 @@ void ItemHighlightPanel::onRedraw(double frameTime) {
 		hide();
 		Rml::Element* prompt = Document->GetElementById("pickup");
 		if (prompt)
-			prompt->SetProperty("display", "none");
+			AppliedDom.property(prompt, "display", "none");
 		PromptShown = false;
 		return;
 	}
@@ -397,7 +400,8 @@ void ItemHighlightPanel::onRedraw(double frameTime) {
 		const int entindex = itor->first;
 		const int itemIndex = itor->second;
 		cl_entity_t* ent = gEngfuncs.GetEntityByIndex(entindex);
-		if (!ent || ent->curstate.messagenum != local->curstate.messagenum) {
+		const Item* trackedItem = itemAt(itemIndex);
+		if (!ent || !ent->model || !trackedItem || ent->curstate.modelindex != trackedItem->modelIndex || (ent->curstate.effects & EF_NODRAW) || ent->curstate.messagenum != local->curstate.messagenum) {
 			removeMarker(entindex);
 			itor = itemhighlight::Tracked.erase(itor);
 			continue;
@@ -460,11 +464,11 @@ void ItemHighlightPanel::onRedraw(double frameTime) {
 	}
 	if (prompt) {
 		if (promptVisible) {
-			prompt->SetProperty("display", "block");
+			AppliedDom.property(prompt, "display", "block");
 			PromptShown = true;
 		}
 		else if (PromptShown) {
-			prompt->SetProperty("display", "none");
+			AppliedDom.property(prompt, "display", "none");
 			PromptShown = false;
 		}
 	}

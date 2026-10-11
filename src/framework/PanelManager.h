@@ -3,7 +3,7 @@
 // framework::PanelManager - panel registry + lifecycle, the successor of the
 // old Viewport god object's "hold and route 25 panels" duty (plan 05 §4.1).
 //
-// Panels self-register by appending their factory to the built-in list in
+// Panels are explicitly assembled by the built-in factory list in
 // PanelManager.cpp (Phase 4+ adds one line per batch panel - the old
 // Viewport constructor did all of them inline). The manager owns panel
 // lifetime and routes the HUD pump.

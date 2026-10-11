@@ -14,6 +14,8 @@
 #include <metahook.h>
 
 #include "ScoreboardPanel.h"
+#include "../../data/HudState.h"
+#include "../../framework/Theme.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
@@ -320,6 +322,8 @@ bool ScoreboardPanel::answerKey(int down, int keynum) {
 }
 
 void ScoreboardPanel::onDocumentReady() {
+	ServerName = hudstate::messages().ServerName;
+	NextMap = hudstate::messages().NextMap;
 	if (abc::CChainedCommand* open = commands::get("+showscores")) {
 		subscribe(open->Event(), [this]() {
 			if (!Intermission)
@@ -589,7 +593,8 @@ void ScoreboardPanel::rebuildTable() {
 				if (!info.isThisPlayer())
 					appendFmt(rowOpen, " background-color: rgba(%d, %d, %d, 80);", pr, pg, pb);
 			}
-			appendFmt(rowOpen, "' data-client='%d'>", info.index);
+			if (rowOpen.find("style=") == std::string::npos) rowOpen += "' style='";
+			appendFmt(rowOpen, " height: %.1fpx;' data-client='%d'>", AppliedRowHeight > 0 ? AppliedRowHeight : 28.0f, info.index);
 			rml += rowOpen;
 
 			appendAvatar(info);
@@ -705,8 +710,8 @@ void ScoreboardPanel::openContextMenu(int clientIndex, const Rml::Vector2f& posi
 	// origin, so clamp in context space first, then subtract the box offset.
 	Rml::Vector2f at = position;
 	if (Rml::Context* context = rmlui::context()) {
-		at.x = std::clamp(at.x, 0.0f, static_cast<float>(context->GetDimensions().x) - 180.0f);
-		at.y = std::clamp(at.y, 0.0f, static_cast<float>(context->GetDimensions().y) - 96.0f);
+		at.x = std::clamp(at.x, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().x) - 180.0f * framework::Theme::scale()));
+		at.y = std::clamp(at.y, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().y) - 96.0f * framework::Theme::scale()));
 	}
 	if (Rml::Element* box = element("box")) {
 		const Rml::Vector2f origin = box->GetAbsoluteOffset();
@@ -792,6 +797,13 @@ void ScoreboardPanel::onData(double frameTime) {
 		return;
 	}
 
+	const float rawMode = scoreboard::Size ? scoreboard::Size->value : 0;
+	const int mode = std::isfinite(rawMode) ? static_cast<int>(std::clamp(rawMode,0.0f,2.0f)) : 0;
+	int playerCount=0; for(int i=1;i<=playerres::kMaxPlayers;++i) { auto* info=playerres::getPlayerInfo(i); if(info && info->isValid()) ++playerCount; }
+	const bool compact = mode==2 || (mode==0 && playerCount>12);
+	const float configured = compact ? (scoreboard::SpacingCompact ? scoreboard::SpacingCompact->value : 0) : (scoreboard::SpacingNormal ? scoreboard::SpacingNormal->value : 0);
+	const float height = std::isfinite(configured) && configured>0 ? std::clamp(configured,8.0f,128.0f) : (compact ? 18.0f : 28.0f);
+	if(height!=AppliedRowHeight) { AppliedRowHeight=height; DataVersion++; }
 	updateHeader();
 	// Avatar download pump (old CAvatarImage::Paint retry): the steamapi
 	// fetch only lands when someone re-asks, and Rml caches textures per

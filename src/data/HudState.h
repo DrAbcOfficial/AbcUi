@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 
 // data::hudstate - local player HUD state the visibility rules hang off:
 // suit possession (weapon bits bit 31), hide-HUD tokens, longjump module
@@ -38,6 +39,9 @@ extern abc::CallbackList<void(bool)> SpectateChanged;
 extern abc::CallbackList<void(int)> HideTokenChanged;
 
 void init();
+void reset();
+struct MessageSnapshot { int Health = 0; int Armor = 0; int FlashBattery = 100; bool FlashOn = false; std::string ServerName; std::string NextMap; int TimeEnd = 0; };
+const MessageSnapshot& messages();
 
 // Spine feed (HUD_UpdateClientData chain). Tracks suit bits, longjump
 // (physinfo "slj") and spectate (local player iuser1), firing the change

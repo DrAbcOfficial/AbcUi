@@ -65,6 +65,7 @@ void DeadMsgPanel::onDocumentReady() {
 
 void DeadMsgPanel::onData(double frameTime) {
 	ClientTimeNow += frameTime;
+	if (deadmsg::DeathNotice && deadmsg::DeathNotice->value <= 0) { reset(); return; }
 	Rml::Element* feed = Document ? Document->GetElementById("feed") : nullptr;
 	if (!feed)
 		return;

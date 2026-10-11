@@ -91,11 +91,12 @@ PlayerBoardPanel::PlayerBoardPanel()
 void PlayerBoardPanel::onDocumentReady() {}
 
 void PlayerBoardPanel::reset() {
+	AppliedDom.clear();
 	if (!Document)
 		return;
 	for (int index = 1; index <= playerres::kMaxPlayers; index++) {
 		if (Rml::Element* tile = child(Document, tileId(index)))
-			tile->SetProperty("display", "none");
+			AppliedDom.property(tile, "display", "none");
 	}
 }
 
@@ -115,7 +116,7 @@ bool PlayerBoardPanel::updateClientInfo(Rml::Element* tile, int entindex) {
 
 	Rml::Element* name = child(tile, "name");
 	if (name) {
-		name->SetInnerRML(framework::TextUtil::escapeRml(info->name));
+		AppliedDom.text(name, framework::TextUtil::escapeRml(info->name));
 		// Old SetFgColor(GetPlayerColor(index)): the client dll's per-player
 		// tint (0..1 floats -> rgba byte triple, alpha 255).
 		if (hooks::GetClientColor) {
@@ -126,12 +127,12 @@ bool PlayerBoardPanel::updateClientInfo(Rml::Element* tile, int entindex) {
 					static_cast<int>(std::clamp(tint[0], 0.0f, 1.0f) * 255.0f),
 					static_cast<int>(std::clamp(tint[1], 0.0f, 1.0f) * 255.0f),
 					static_cast<int>(std::clamp(tint[2], 0.0f, 1.0f) * 255.0f));
-				name->SetProperty("color", color);
+				AppliedDom.property(name, "color", color);
 			}
 		}
 	}
-	setBarWidth(child(tile, "bar-health"), healthRatio);
-	setBarWidth(child(tile, "bar-armor"), armorRatio);
+	AppliedDom.property(child(tile,"bar-health"),"width",std::to_string(67.0f*healthRatio)+"dp");
+	AppliedDom.property(child(tile,"bar-armor"),"width",std::to_string(67.0f*armorRatio)+"dp");
 
 	// Danger band icons: below hud_playerinfo_danger - dead -> skull, hurt
 	// -> medkit; otherwise the crouch icon rides the hull height (old
@@ -147,11 +148,11 @@ bool PlayerBoardPanel::updateClientInfo(Rml::Element* tile, int entindex) {
 		std::fabs(ent->curstate.maxs[2] - ent->curstate.mins[2]) < 64.0f;
 
 	if (Rml::Element* icon = child(tile, "icon-crouch"))
-		icon->SetProperty("display", showCrouch ? "block" : "none");
+		AppliedDom.property(icon, "display", showCrouch ? "block" : "none");
 	if (Rml::Element* icon = child(tile, "icon-medkit"))
-		icon->SetProperty("display", showMedkit ? "block" : "none");
+		AppliedDom.property(icon, "display", showMedkit ? "block" : "none");
 	if (Rml::Element* icon = child(tile, "icon-dead"))
-		icon->SetProperty("display", showDead ? "block" : "none");
+		AppliedDom.property(icon, "display", showDead ? "block" : "none");
 	return true;
 }
 
@@ -160,7 +161,7 @@ void PlayerBoardPanel::onData(double frameTime) {
 	// The document must be shown for any tile to render; per-tile display
 	// flips carry the real visibility (everything else runs in onRedraw -
 	// the world projection phase).
-	show();
+	if (hudstate::isHudHidden(hudstate::kHideAll) || hudstate::isSpectate()) hide(); else show();
 }
 
 void PlayerBoardPanel::onRedraw(double frameTime) {
@@ -169,7 +170,7 @@ void PlayerBoardPanel::onRedraw(double frameTime) {
 	// range -> view cone; the pass-through survivor gets UpdateClientInfo.
 	const bool enabled = !playerboard::PlayerInfo || playerboard::PlayerInfo->value > 0;
 	const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
-	if (!enabled || !local || !Document) {
+	if (!enabled || !local || !Document || hudstate::isHudHidden(hudstate::kHideAll) || hudstate::isSpectate()) {
 		reset();
 		return;
 	}
@@ -181,14 +182,14 @@ void PlayerBoardPanel::onRedraw(double frameTime) {
 		if (!tile)
 			continue;
 		if (index == local->index) {
-			tile->SetProperty("display", "none");
+			AppliedDom.property(tile, "display", "none");
 			continue;
 		}
 
 		const cl_entity_t* ent = gEngfuncs.GetEntityByIndex(index);
 		if (!ent || ent->curstate.messagenum != local->curstate.messagenum ||
 			!ent->player || !ent->model) {
-			tile->SetProperty("display", "none");
+			AppliedDom.property(tile, "display", "none");
 			continue;
 		}
 
@@ -199,7 +200,7 @@ void PlayerBoardPanel::onRedraw(double frameTime) {
 			distanceSquared += toTarget[i] * toTarget[i];
 		}
 		if (distanceSquared >= kMaxDistance * kMaxDistance) {
-			tile->SetProperty("display", "none");
+			AppliedDom.property(tile, "display", "none");
 			continue;
 		}
 
@@ -210,9 +211,10 @@ void PlayerBoardPanel::onRedraw(double frameTime) {
 		float dot = 0.0f;
 		for (int i = 0; i < 3; i++)
 			dot += toTarget[i] * view[i];
+		if (distance <= 0) continue;
 		dot /= distance;
 		if (dot <= kMinViewDot) {
-			tile->SetProperty("display", "none");
+			AppliedDom.property(tile, "display", "none");
 			continue;
 		}
 
@@ -222,13 +224,13 @@ void PlayerBoardPanel::onRedraw(double frameTime) {
 		anchor[2] += 45.0f;
 		float screen[2] = {};
 		if (framework::projection::worldToScreen(anchor, screen)) {
-			tile->SetProperty("display", "none");
+			AppliedDom.property(tile, "display", "none");
 			continue;
 		}
 
-		tile->SetProperty("left", std::to_string(screen[0] - kTileHalfWidth) + "px");
-		tile->SetProperty("top", std::to_string(screen[1]) + "px");
-		tile->SetProperty("display", updateClientInfo(tile, index) ? "block" : "none");
+		AppliedDom.property(tile, "left", std::to_string(screen[0] - kTileHalfWidth) + "px");
+		AppliedDom.property(tile, "top", std::to_string(screen[1]) + "px");
+		AppliedDom.property(tile, "display", updateClientInfo(tile, index) ? "block" : "none");
 	}
 }
 
