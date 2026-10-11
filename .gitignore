@@ -3,3 +3,6 @@ out/
 .vs/
 *.user
 *.aps
+__pycache__/
+*.pyc
+CMakeUserPresets.json
