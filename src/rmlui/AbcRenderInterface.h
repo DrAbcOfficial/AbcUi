@@ -28,12 +28,23 @@
 // - 2D state ownership: RenderGeometry installs Set2D/Set2DEx lazily per
 //   scissor state; beginFrame()/endFrame() bracket a render pass (endFrame
 //   pops the matrix stack). Called by RmlUiModule around Context::Render().
+// - Geometry baking (Phase 8, 05 §8): the premultiplied→straight colour
+//   conversion and the int→uint32 index widening run ONCE at CompileGeometry;
+//   RenderGeometry draws from the baked arrays with zero per-vertex CPU work.
+//   The element translation (whole pixels - RmlUi rounds it) and the scissor
+//   origin ride the renderer's world matrix (glTranslate semantics, the draw
+//   reads world×proj per call), so the common path is: state machine + one
+//   Draw call. That is the closest "Bind+Draw" the IMetaRenderer API allows:
+//   its Draw* entries only accept CPU vertex arrays (its own ring-buffer
+//   upload inside), and the no-direct-OpenGL red line forbids a caller-VAO
+//   draw path of our own.
 // - Transforms: Rml element transforms (rotate etc., batch B Indicator) pass
 //   through SetTransform as a matrix in the same screen space as the compiled
-//   vertices; applied CPU-side in RenderGeometry as M·(v + translation) (the
-//   GL2 sample order: translate first, then the loaded matrix). Reset by
-//   RmlUi's RenderManager identity reset whenever the next element is
-//   untransformed, so nothing lingers across the frame.
+//   vertices; while one is active RenderGeometry falls back to the CPU loop
+//   (M·(v + translation), the GL2 sample order: translate first, then the
+//   loaded matrix) into reused scratch buffers. Reset by RmlUi's
+//   RenderManager identity reset whenever the next element is untransformed,
+//   so nothing lingers across the frame.
 // - Extra texture URIs handled here:
 //     texadd://<mod-relative path> -> file loaded additive (old
 //     kRenderTransAdd TGA panels: the pain indicator).
@@ -88,9 +99,30 @@ public:
 	void unregisterExternalTexture(const Rml::String& uriPrefix);
 
 private:
+	// Renderer-native baked vertex shapes, mirroring texturedrectvertex_t /
+	// filledrectvertex_t from abc/RenderCommon.h byte for byte (float[2]/
+	// float[4] members = vec2_t/vec4_t). Kept local so the engine headers
+	// stay on the .cpp side of the seam; the static_asserts there pin the
+	// layout, so a Renderer-side drift cannot pass silently (R-14 lesson).
+	struct BakedTexturedVertex {
+		float pos[2];
+		float texcoord[2];
+		float col[4];
+	};
+	struct BakedFilledVertex {
+		float pos[2];
+		float col[4];
+	};
+
 	struct CompiledGeometry {
-		std::vector<Rml::Vertex> Vertices;
-		std::vector<int> Indices;
+		// Positions stay in Rml space (translation is per-render-call and
+		// rides the world matrix); colours are converted at compile time.
+		std::vector<BakedTexturedVertex> Textured;
+		std::vector<uint32_t> Indices;
+		// Untextured draws need the 16-byte filled shape; baked lazily on the
+		// first untextured draw and reused (solid-colour meshes draw every
+		// frame, and the texture of a mesh never changes after RmlUi built it).
+		std::vector<BakedFilledVertex> Filled;
 	};
 
 	// Applies the active Rml transform (if any) to a screen-space point.
@@ -126,6 +158,10 @@ private:
 	// SetTransform when the value actually changes (RenderManager).
 	Rml::Matrix4f Transform = Rml::Matrix4f::Identity();
 	bool TransformActive = false;
+	// Transform-path scratch (transformed elements only): sized per call, no
+	// reallocation after the first few frames.
+	std::vector<BakedTexturedVertex> ScratchTextured;
+	std::vector<BakedFilledVertex> ScratchFilled;
 };
 
 }
