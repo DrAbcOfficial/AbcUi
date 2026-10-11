@@ -43,9 +43,16 @@ void locateVanillaHudList();
 // LoadClient time: locate the client's native HUD panel info array (fatal on
 // miss - same Sig_NotFound policy as the old FillAddress).
 void locateNativeHudPanelInfo();
+// LoadClient time: locate the client's GetClientColor accessor (fatal on
+// miss; the scoreboard/playerboard tints ride it).
+void locatePlayerColor();
 
 // Direct-call captures (09 §3.4): data-layer read-only access.
 extern engine_studio_api_s* EngineStudioApi;
 extern const hudpanel_info_s* NativeHudPanelInfo;
+// Client dll's GetClientColor(index) - the per-player tint (float[3] 0..1).
+// Sig-located like the old SC_GETCLIENTCOLOR_SIG; null = engineless gray.
+using GetClientColorFn = float* (*)(int index);
+extern GetClientColorFn GetClientColor;
 
 }

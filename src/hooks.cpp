@@ -21,6 +21,7 @@ namespace hooks {
 
 engine_studio_api_s* EngineStudioApi = nullptr;
 const hudpanel_info_s* NativeHudPanelInfo = nullptr;
+GetClientColorFn GetClientColor = nullptr;
 
 namespace {
 
@@ -196,6 +197,16 @@ void attachExports(cl_exportfuncs_t* pExportFuncs) {
 	pExportFuncs->HUD_TxferLocalOverrides = H_HUD_TxferLocalOverrides;
 	pExportFuncs->HUD_AddEntity = H_HUD_AddEntity;
 	pExportFuncs->HUD_Shutdown = H_HUD_Shutdown;
+}
+
+void locatePlayerColor() {
+	// from: ABCEnchance exportfuncs.cpp SC_GETCLIENTCOLOR_SIG (the client's
+	// per-player color table accessor the scoreboard/playerboard tint with).
+	constexpr char pattern[] = "\x8B\x4C\x24\x04\x85\xC9\x2A\x2A\x6B\xC1\x5C\x0F\xBF\x80\x2A\x2A\x2A\x2A\x48\x83";
+	GetClientColor = reinterpret_cast<GetClientColorFn>(g_pMetaHookAPI->SearchPattern(
+		g_pMetaHookAPI->GetClientBase(), g_pMetaHookAPI->GetClientSize(), pattern, sizeof(pattern) - 1));
+	if (!GetClientColor)
+		abc::SysError("[AbcUi] Could not found: GetClientColor");
 }
 
 void locateNativeHudPanelInfo() {

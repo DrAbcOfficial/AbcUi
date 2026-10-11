@@ -82,6 +82,7 @@ add_library(AbcUi MODULE
     src/panels/gindicator/GIndicatorPanel.cpp
     src/panels/indicator/IndicatorPanel.cpp
     src/panels/notice/NoticePanel.cpp
+    src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/popnum/PopNumPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
     src/panels/textmenu/TextMenuPanel.cpp

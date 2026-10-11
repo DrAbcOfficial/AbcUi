@@ -18,6 +18,7 @@
 #include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/notice/NoticePanel.h"
+#include "../panels/playerboard/PlayerBoardPanel.h"
 #include "../panels/popnum/PopNumPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
 #include "../panels/textmenu/TextMenuPanel.h"
@@ -49,6 +50,8 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::DmgTilesPanel>());
 		list.push_back(std::make_unique<panels::EffectPanel>());
 		list.push_back(std::make_unique<panels::PopNumPanel>());
+		// Batch C (interaction + big data, plan 05 §6).
+		list.push_back(std::make_unique<panels::PlayerBoardPanel>());
 		return list;
 	}();
 	return panels;
@@ -67,6 +70,8 @@ void PanelManager::registerPanelCvars() {
 	panels::gindicator::registerCvars();
 	panels::effect::registerCvars();
 	panels::popnum::registerCvars();
+	// Batch C.
+	panels::playerboard::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
