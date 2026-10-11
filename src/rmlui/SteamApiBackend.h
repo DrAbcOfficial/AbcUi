@@ -14,6 +14,7 @@ public:
 
 	// One-shot connect attempt; false = this backend cannot serve here.
 	virtual bool connect() = 0;
+	virtual void disconnect() {}
 	virtual Backend kind() = 0;
 
 	virtual SteamId64 localSteamId() = 0;

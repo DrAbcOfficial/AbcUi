@@ -17,8 +17,8 @@
 //   ImageSprPanel drew every HUD sprite icon that way, which both removes
 //   the sprite's black background and lets the Rml opacity transition ride
 //   the same alpha term (old panel-alpha fade).
-// - Texture handles are VGUI2 surface texture ids (CreateNewTextureID /
-//   DrawSetTextureRGBA), the same namespace IMetaRenderer draws from.
+// - Rml texture handles are opaque per-load records, separate from engine IDs.
+//   Sprite/avatar caches own their IDs until shutdown; file/font records own theirs.
 // - Scissor (Spike R-1): IMetaRenderer has no glScissor equivalent, but
 //   Set2DEx(x, y, w, h) installs viewport = rect AND an ortho projection
 //   mapping local (0..w, 0..h) into it; rasterization outside a viewport is
@@ -143,7 +143,10 @@ private:
 		const int* MaskSlot = nullptr;
 	};
 	std::unordered_map<Rml::String, ExternalTexture> ExternalTextures;
-	std::unordered_set<Rml::TextureHandle> OwnedTextures;
+	struct TextureRecord { int Id; bool Owned; Rml::String ExternalPrefix; };
+		std::unordered_map<Rml::TextureHandle, TextureRecord> Textures;
+		Rml::TextureHandle NextTexture = 1;
+		Rml::TextureHandle retainTexture(int id, bool owned, Rml::String external = {});
 
 	bool ScissorEnabled = false;
 	Rml::Rectanglei ScissorRect = Rml::Rectanglei::MakeInvalid();
