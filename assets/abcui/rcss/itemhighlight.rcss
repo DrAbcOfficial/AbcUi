@@ -1,0 +1,93 @@
+/* itemhighlight.rcss - ItemHighlightPanel layout. Geometry from the old
+   abcenchance/res ItemHighLightPanel.res + ItemNamePanel.res (D-19):
+   - marker: 45x45 design box centered on the projected item, size multiplied
+     by the old distance ratio (icon grows with distance, old Update), corner
+     bracket art tinted by the list RGBA, name label centered inside.
+   - pickup: 166x24 at screen-center + 64 design units up (old "cs-0.5" /
+     "c64" ComputePos), bright white centered label on a soft plate. The old
+     vgui GaussianBlurPanel blurred the live 3D scene behind the notice; the
+     2D HUD path has no backdrop blur, so a baked soft-edge plate stands in
+     (visual approximation, recorded in D-19). */
+
+#itemhighlight {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#itemhighlight #markers {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#itemhighlight .marker {
+	position: absolute;
+	display: none;
+}
+
+#itemhighlight .marker .art {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#itemhighlight .marker .label {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	/* Old ItemNamePanel.res "Text": CompactaBold 20px @1080p -> 8.9 design
+	   units; Verdana bold is the loaded stand-in face. */
+	font-family: Verdana;
+	font-weight: bold;
+	font-size: 8.9dp;
+	/* Old "brighttext": Label.TextBrightColor = White; per-item FgColor is
+	   set inline from the list RGBA. */
+	color: #ffffff;
+}
+
+#itemhighlight #pickup {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 166dp;
+	height: 24dp;
+	margin-left: -83dp;
+	margin-top: 64dp;
+	display: none;
+}
+
+#itemhighlight #pickup-blur {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+#itemhighlight #pickup-text {
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	text-align: center;
+	font-family: Verdana;
+	font-size: 8.9dp;
+	/* Old "brighttext". */
+	color: #ffffff;
+}

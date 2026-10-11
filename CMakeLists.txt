@@ -67,6 +67,7 @@ add_library(AbcUi MODULE
     src/data/HudState.cpp
     src/data/NetworkMessages.cpp
     src/data/PlayerResource.cpp
+    src/data/PlayerTrace.cpp
     src/data/SpriteResource.cpp
     src/data/TextFeed.cpp
     src/data/TeamResource.cpp
@@ -83,6 +84,7 @@ add_library(AbcUi MODULE
     src/panels/effect/EffectPanel.cpp
     src/panels/gindicator/GIndicatorPanel.cpp
     src/panels/indicator/IndicatorPanel.cpp
+    src/panels/itemhighlight/ItemHighlightPanel.cpp
     src/panels/notice/NoticePanel.cpp
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/vote/VotePanel.cpp

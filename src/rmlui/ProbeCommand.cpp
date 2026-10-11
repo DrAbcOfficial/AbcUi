@@ -17,6 +17,7 @@
 #include "../data/Avatars.h"
 #include "../data/NetworkMessages.h"
 #include "../data/PlayerResource.h"
+#include "../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 
 #include "../rmlui/SteamAPI.h"
@@ -213,6 +214,26 @@ void probeCommand() {
 	for (const char* doc : {"playerboard", "vote", "motd", "weaponchoose"}) {
 		if (Rml::ElementDocument* d = context->GetDocument(doc))
 			abc::ConsolePrint("[AbcUi] probe: doc-batchc %s visible=%d\n", doc, d->IsVisible() ? 1 : 0);
+	}
+	// ItemHighlight ground truth (batch D): tracked-entity count (the
+	// HUD_AddEntity chain) cross-referenced with the live marker elements -
+	// a mismatch between the two localizes the AddEntity gate vs the DOM path
+	// in one probe run.
+	if (Rml::ElementDocument* ih = context->GetDocument("itemhighlight")) {
+		int markers = 0;
+		if (Rml::Element* container = ih->GetElementById("markers")) {
+			markers = container->GetNumChildren();
+			for (int i = 0; i < markers && i < 4; i++) {
+				Rml::Element* child = container->GetChild(i);
+				abc::ConsolePrint("[AbcUi] probe: itemhighlight[%d] display='%s' inline-left='%s' inline-top='%s' abs=(%.1f %.1f)\n",
+					i, child->GetProperty("display")->ToString().c_str(),
+					child->GetProperty("left")->ToString().c_str(),
+					child->GetProperty("top")->ToString().c_str(),
+					child->GetAbsoluteLeft(), child->GetAbsoluteTop());
+			}
+		}
+		abc::ConsolePrint("[AbcUi] probe: itemhighlight tracked=%d markers=%d doc-visible=%d\n",
+			panels::itemhighlight::debugTrackedCount(), markers, ih->IsVisible() ? 1 : 0);
 	}
 	// Mouse-chain diagnostics (P6 audit round): cursor state, the R-4 WndProc
 	// callback registration and the scoreboard pointer mode (wantsWheel =

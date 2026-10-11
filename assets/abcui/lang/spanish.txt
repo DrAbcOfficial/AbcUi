@@ -56,3 +56,56 @@ Scores_MenuCopyName = Copiar nombre de Steam
 Scores_MenuCopyNameRaw = Copiar nombre de juego
 Scores_MenuCopySteamID = Copiar SteamID
 Scores_MenuCopySteamID64 = Copiar SteamID64
+
+# Item highlight (P7 itemhighlight panel); token names are the old
+# ABCEnchance localize keys (byte-matched against the old schinese.txt).
+# The pickup template keeps the old USE_BINDKEY / PICKUP_ITEM markers.
+GameUI_ABC_ItemPickupNotice = Pulsa [%%USE_BINDKEY%%] recoger %%PICKUP_ITEM%%
+
+Weapon_UZI = UZI
+Weapon_UZIGold = UZI de oro
+Weapon_9mmAR = 9mmAR
+Weapon_9mmHandgun = Pistola
+Weapon_357 = Revolver
+Weapon_BGRAP = Grapa
+Weapon_Crossbow = Ballesta
+Weapon_Crowbar = Palanca
+Weapon_DesertEagle = Águila del desierto
+Weapon_Displacer = Desplazador
+Weapon_Egon = Egon
+Weapon_Gauss = Gauss
+Weapon_HGun = Honet
+Weapon_M16 = M16
+Weapon_M40A1 = Rifle de francotirador
+Weapon_Minigun = Minigun
+Weapon_PipeWrench = Llave de tubo
+Weapon_Medkit = Medkit
+Weapon_RPG = RPG
+Weapon_SAW = M249
+Weapon_ShockRifle = Rifle de Choque
+Weapon_Shotgun = Escopeta
+Weapon_SporeLauncher = Lanzador de esporas
+Weapon_Sqknest = Nido Sqk
+Ammo_9mmARClip = 9mm AR Clip
+Ammo_9mmClip = Clip 9mm
+Ammo_357 = 357
+Ammo_357Box = Caja 357
+Ammo_ARGrenade = Granada AR
+Ammo_Chainammo = 9mm Ammobox
+Ammo_CrossbowClip = Clip de ballesta
+Ammo_GaussClip = U235
+Ammo_Grenade = Granada
+Ammo_M40A1 = Cargador de rifle de francotirador
+Ammo_Satchel = Cartera
+Ammo_RPG = Cargador RPG
+Ammo_SAW = Clip de sierra
+Ammo_Shotbox = Perdigones
+Ammo_Tripmine = Tripmine
+Ammo_UZIClip = UZI Clip
+Item_Adrenaline = Adrenalina
+Item_Antidote = Antídoto
+Item_Battery = Batería
+Item_Longjump = Salto de longitud
+Item_Medkit = Botiquín
+Item_OxygenCan = Bidón de oxígeno
+Item_Rad = Despejado de radiación

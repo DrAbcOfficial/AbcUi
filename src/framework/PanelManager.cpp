@@ -16,6 +16,7 @@
 #include "../panels/gindicator/GIndicatorPanel.h"
 #include "../panels/health/HealthPanel.h"
 #include "../panels/indicator/IndicatorPanel.h"
+#include "../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/notice/NoticePanel.h"
 #include "../panels/motd/MotdPanel.h"
@@ -60,6 +61,8 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::MotdPanel>());
 		list.push_back(std::make_unique<panels::ScoreboardPanel>());
 		list.push_back(std::make_unique<panels::WeaponChoosePanel>());
+		// Batch D (render depth, plan 05 §6).
+		list.push_back(std::make_unique<panels::ItemHighlightPanel>());
 		return list;
 	}();
 	return panels;
@@ -85,6 +88,8 @@ void PanelManager::registerPanelCvars() {
 	panels::scoreboard::registerCvars();
 	panels::weaponchoose::registerCvars();
 	panels::weaponchoose::registerCommands();
+	// Batch D.
+	panels::itemhighlight::registerCvars();
 }
 
 void PanelManager::initAll(Rml::Context* context) {
