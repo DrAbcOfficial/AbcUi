@@ -111,9 +111,10 @@ std::string PopNumPanel::formatValue(int value) {
 		value /= kThousand;
 		token = "PopNumber_K";
 	}
-		std::string text;
+	std::string text;
 	if (!framework::Localization::translate(text, token))
-		text = "{0}";
+		text = "{0}"; // bare number (old ConstructString with a null Find
+					  // result rendered nothing - D-17: keep the value visible)
 	// D-17: the tokens carry {0} placeholders (was the vgui %s1 style) and
 	// substitute through abc::Format - no printf near the table text.
 	return abc::Format(text, value);

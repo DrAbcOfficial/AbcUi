@@ -45,12 +45,17 @@ std::string matchPrefix(const std::smatch& match) {
 	return match.prefix().str();
 }
 
-// Old findLocalize: leading-# tokens resolve through the language table.
+// Leading-# tokens resolve through the plugin language table (the table keys
+// are stored bare - the same convention as AbcSystemInterface::TranslateString,
+// which strips the '#'). The old findLocalize never translated anything (its
+// assignment targeted a by-value parameter); the old Viewport handed the
+// token to vgui's localize Find, which covered the game resource tables too -
+// no game-table fallback here (D-17 note: the plugin ships its own keys).
 std::string findLocalize(const std::string& token) {
 	if (token.empty() || token.front() != '#')
 		return token;
 	std::string translated;
-	if (framework::Localization::translate(translated, token))
+	if (framework::Localization::translate(translated, token.substr(1)))
 		return translated;
 	return token;
 }
@@ -67,6 +72,12 @@ std::string findLocalize(const std::string& token) {
 // format "%s %s" with params {"", "B"} rendered "B "). The port substitutes
 // positionally - {n} is always params[n] - matching the vgui %s1..%s4
 // semantics the templates were written against.
+//
+// Residual semantics change (D-17 note): a server message that carries its
+// own literal "{0}" text AND at least one param now has that text replaced
+// (old printf paths only reacted to '%'). abc::Format renders out-of-range
+// placeholders verbatim, so only in-range indices are affected - accepted as
+// the price of never interpreting server text as a format string.
 std::string normalizePlaceholders(const std::string& fmt) {
 	std::string out;
 	out.reserve(fmt.size());
@@ -140,7 +151,9 @@ int onTextMsg(int target, const char* msg, const char* param1, const char* param
 		}
 		if (std::regex_search(text, match, killedPattern())) {
 			std::string killer = match.suffix().str();
-			// Old: k.erase(k.end() - 2) - the trailing ".\n" of the line.
+			// Old: k.erase(k.end() - 2) erased only the second-to-last char
+			// (the '.'), leaving the '\n' (old quirk, fixed per D-17): the
+			// port trims the whole ".\n" tail.
 			if (killer.size() >= 2)
 				killer.erase(killer.size() - 2);
 			KillFeed(matchPrefix(match).c_str(), killer.c_str(),

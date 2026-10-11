@@ -196,24 +196,34 @@ void CrosshairPanel::updateCenter() {
 }
 
 void CrosshairPanel::drawDefaultCrosshair() {
+	Rml::Element* spr = Document ? Document->GetElementById("spr-crosshair") : nullptr;
+	if (!spr)
+		return;
 	// Old PaintBackground tail: only the vanilla "crosshair" cvar gate here -
 	// the spectate/hudhide/suit/health gates already returned above.
-	if (!crosshair::VanillaCrosshair || crosshair::VanillaCrosshair->value <= 0)
+	const bool vanillaOn = crosshair::VanillaCrosshair && crosshair::VanillaCrosshair->value > 0;
+	const weaponres::Weapon* weapon = nullptr;
+	const weaponres::Weapon::SpriteSource* source = nullptr;
+	if (vanillaOn)
+		weapon = weaponres::getWeapon(CurrentWeaponId);
+	if (weapon) {
+		const bool onTarget = (weapon->state & weaponres::kWeaponStateOnTarget) != 0;
+		const float defaultFov = crosshair::DefaultFov ? crosshair::DefaultFov->value : 90.0f;
+		const bool zoomed = currentFov() < defaultFov;
+		if (!zoomed)
+			source = (onTarget && weapon->autoaim.valid) ? &weapon->autoaim : &weapon->crosshair;
+		else
+			source = (onTarget && weapon->zoomedAutoaim.valid) ? &weapon->zoomedAutoaim : &weapon->zoomedCrosshair;
+	}
+	// Old SetWeapon hid the panel outright on an unknown weapon / no vanilla
+	// cvar / missing sprite, and vgui repainted the spr fresh every frame, so
+	// a stale image could not linger - the Rml img needs an explicit hide
+	// wherever this frame does not draw it.
+	if (!weapon || !source || !source->valid) {
+		SprUri.clear();
+		spr->SetProperty("display", "none");
 		return;
-	const weaponres::Weapon* weapon = weaponres::getWeapon(CurrentWeaponId);
-	if (!weapon)
-		return;
-
-	const bool onTarget = (weapon->state & weaponres::kWeaponStateOnTarget) != 0;
-	const float defaultFov = crosshair::DefaultFov ? crosshair::DefaultFov->value : 90.0f;
-	const bool zoomed = currentFov() < defaultFov;
-	const weaponres::Weapon::SpriteSource* source;
-	if (!zoomed)
-		source = (onTarget && weapon->autoaim.valid) ? &weapon->autoaim : &weapon->crosshair;
-	else
-		source = (onTarget && weapon->zoomedAutoaim.valid) ? &weapon->zoomedAutoaim : &weapon->zoomedCrosshair;
-	if (!source || !source->valid)
-		return;
+	}
 
 	char uri[160];
 	sprintf_s(uri, "spralpha://%s/%d,%d,%d,%d", source->atlas.c_str(),
@@ -221,9 +231,6 @@ void CrosshairPanel::drawDefaultCrosshair() {
 	const float w = static_cast<float>(source->rect.right - source->rect.left);
 	const float h = static_cast<float>(source->rect.bottom - source->rect.top);
 
-	Rml::Element* spr = Document->GetElementById("spr-crosshair");
-	if (!spr)
-		return;
 	if (SprUri != uri) {
 		SprUri = uri;
 		spr->SetAttribute("src", Rml::String(uri));
@@ -243,8 +250,15 @@ void CrosshairPanel::onData(double frameTime) {
 
 void CrosshairPanel::onRedraw(double frameTime) {
 	(void)frameTime;
-	// Old OnThink + PaintBackground gates, evaluated live (the cvar-callback
-	// instant-show paths reach the same state one frame later at worst).
+	// Old OnThink + PaintBackground gates, evaluated live. Two D-17-registered
+	// deviations from the event-driven old panel:
+	// 1. Visibility is re-evaluated per frame instead of latched by
+	//    SetWeapon/cl_crosshair callbacks - on spawn, before the first
+	//    CurWeapon, the old panel stayed hidden while this one already draws
+	//    the dynamic crosshair (the spr part still requires a known weapon).
+	// 2. cl_crosshair_outline_draw off now forces transparent outlines every
+	//    frame; the old code only wrote outline colors while the cvar was on,
+	//    leaving the last color frozen on the panels after a live toggle-off.
 	const bool showDocument = hudstate::hasSuit() &&
 		(!crosshair::Crosshair || crosshair::Crosshair->value > 0) &&
 		!hudstate::isHudHidden(hudstate::kHideAll);
