@@ -1,0 +1,86 @@
+/* playerboard.rcss - PlayerBoardPanel layout, from the old
+   abcenchance/res/PlayerBoardPanel.res (80x16 proportional panel; background
+   67x17 at 0,0; name label 12,7 38x11 autowidetocontents; health bar 12,0
+   38x3; armor bar 12,4 38x3; icons 12-14px at 0,0). Bars clip their width
+   through overflow:hidden + a px width driven per frame (vgui SetWide). */
+
+#playerboard {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 0;
+	overflow: visible;
+}
+
+.tile {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 80dp;
+	height: 17dp;
+	display: none;
+}
+
+.tile img {
+	position: absolute;
+}
+
+.tile .background {
+	left: 0dp;
+	top: 0dp;
+	width: 67dp;
+	height: 17dp;
+	image-color: #ffffff;
+}
+
+.tile .bar-health {
+	left: 12dp;
+	top: 0dp;
+	width: 38dp;
+	height: 3dp;
+	overflow: hidden;
+	display: block;
+	/* the img inside carries the art; width driven per frame */
+}
+
+.tile .bar img {
+	left: 0;
+	top: 0;
+	width: 38dp;
+	height: 3dp;
+}
+
+.tile .bar-armor {
+	left: 12dp;
+	top: 4dp;
+	width: 38dp;
+	height: 3dp;
+	overflow: hidden;
+	display: block;
+}
+
+.tile .name {
+	position: absolute;
+	left: 12dp;
+	top: 7dp;
+	width: 38dp;
+	height: 11dp;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 11dp;
+	/* color rides the per-player tint (old SetFgColor(GetPlayerColor)) */
+}
+
+.tile .icon {
+	left: 0dp;
+	top: 0dp;
+	width: 14dp;
+	height: 14dp;
+	display: none;
+}
+
+.tile .icon-crouch {
+	width: 12dp;
+	height: 12dp;
+}

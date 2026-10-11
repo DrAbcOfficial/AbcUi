@@ -31,6 +31,7 @@ protected:
 		steamapi::init();
 		hooks::locateVanillaHudList();
 		hooks::locateNativeHudPanelInfo();
+		hooks::locatePlayerColor();
 		hooks::attachExports(pExportFuncs);
 		abc::ConsolePrint("[AbcUi] loaded %s\n", Version());
 	}
