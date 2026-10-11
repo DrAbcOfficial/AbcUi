@@ -174,6 +174,21 @@ void probeCommand() {
 				choose->IsVisible() ? 1 : 0);
 		}
 	}
+	// PlayerBoard ground truth (P6 user-test round): updateClientInfo resolves
+	// every per-tile element through GetElementById - a tile-2 lookup that
+	// returns null means the RML ships the element as class-only and the
+	// name/bars/icons updates silently no-op (the "tile shows no name and no
+	// icons" report localizes here in one probe run).
+	if (Rml::ElementDocument* pb = context->GetDocument("playerboard")) {
+		if (Rml::Element* tile = pb->GetElementById("tile-2")) {
+			const auto resolved = [&](const char* id) {
+				return tile->GetElementById(id) ? "ok" : "MISSING";
+			};
+			abc::ConsolePrint("[AbcUi] probe: playerboard tile-2 name=%s bar-health=%s bar-armor=%s icon-crouch=%s icon-medkit=%s icon-dead=%s\n",
+				resolved("name"), resolved("bar-health"), resolved("bar-armor"),
+				resolved("icon-crouch"), resolved("icon-medkit"), resolved("icon-dead"));
+		}
+	}
 	for (const char* doc : {"playerboard", "vote", "motd", "weaponchoose"}) {
 		if (Rml::ElementDocument* d = context->GetDocument(doc))
 			abc::ConsolePrint("[AbcUi] probe: doc-batchc %s visible=%d\n", doc, d->IsVisible() ? 1 : 0);
