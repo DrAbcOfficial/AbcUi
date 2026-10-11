@@ -362,12 +362,13 @@ void onTxferPredictionData(const weapon_data_s* weaponDataArray) {
 		PickupWeapon(weapon);
 	for (const Weapon* weapon : dropped)
 		DropWeapon(weapon);
+	if (!dropped.empty() && RegistryState.owned.empty()) { dropAllWeapons(); return; }
 	// Current weapon pointer survives only while the weapon is still known.
 	if (RegistryState.curWeaponId && !RegistryState.byId.count(RegistryState.curWeaponId))
 		RegistryState.curWeapon = nullptr;
 	else if (RegistryState.curWeaponId)
 		RegistryState.curWeapon = &RegistryState.byId[RegistryState.curWeaponId];
-	if (RegistryState.selected && !RegistryState.byId.count(RegistryState.selected->id)) {
+	if (RegistryState.selected && !RegistryState.owned.count(RegistryState.selected->id)) {
 		RegistryState.selected = nullptr;
 		RegistryState.selectedSlotId = kInvalidWeaponSlot;
 	}

@@ -24,6 +24,7 @@
 // and suppresses the dialog. Release builds keep the CRT default.
 #include <crtdbg.h>
 #include <dbghelp.h>
+#include <filesystem>
 
 #pragma comment(lib, "dbghelp.lib")
 
@@ -36,15 +37,16 @@ int debugAssertReportHook(int reportType, char* message, int* returnValue) {
 	// The same lines to a file: this assert class fail-fasts after the hook
 	// returns, killing the console channel with it (P6 audit round).
 	FILE* trace = nullptr;
-	const bool toFile = fopen_s(&trace, "D:/Desktop/migration/.audit/p6-assert-stack.log", "a") == 0 && trace;
+	std::error_code pathError;
+	const auto directory = std::filesystem::temp_directory_path(pathError);
+	if (!pathError) _wfopen_s(&trace, (directory / L"abcui-assert-stack.log").c_str(), L"a");
 	if (trace)
 		fprintf(trace, "=== %s", message ? message : "(no message)");
 
 	void* frames[ABC_UI_STACK_FRAMES] = {};
 	const WORD count = RtlCaptureStackBackTrace(1, ABC_UI_STACK_FRAMES, frames, nullptr);
 	static bool symbolsReady = []() {
-		return SymInitialize(GetCurrentProcess(),
-			"D:\\Desktop\\migration\\AbcUi\\build\\win32-debug\\Debug;srv*C:\\Windows\\Symbols", TRUE);
+		return SymInitialize(GetCurrentProcess(), nullptr, TRUE);
 	}();
 	for (WORD i = 0; i < count; i++) {
 		char line[320];

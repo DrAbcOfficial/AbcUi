@@ -102,7 +102,7 @@ void shutdown() {
 }
 
 int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFetch) {
-	if (!steamId64 || !DefaultAvatarTexture) {
+	if (!steamId64) {
 		width = DefaultAvatarWidth;
 		height = DefaultAvatarHeight;
 		return DefaultAvatarTexture;

@@ -59,3 +59,9 @@ abc::CChainedCommand* slotCommand(int index) {
 }
 
 }
+
+namespace commands {
+namespace { bool TextMenuOpen = false; }
+bool textMenuOpen() { return TextMenuOpen; }
+void setTextMenuOpen(bool open) { TextMenuOpen = open; }
+}

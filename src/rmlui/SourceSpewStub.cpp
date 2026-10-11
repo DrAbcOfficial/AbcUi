@@ -5,7 +5,7 @@
 // under _DEBUG, and the plugin links no tier0 implementation - so Debug
 // needs these spew symbols. Routing spew to the engine console (instead of
 // the default Win32 assert dialog) keeps Debug builds usable for automated
-// acceptance runs; a debugger break fires when one is attached.
+// acceptance runs. Recoverable spew continues; fatal assert calls SysError.
 //
 // Release builds never reference these (DBGFLAG_ASSERT stays off there).
 #ifdef _DEBUG

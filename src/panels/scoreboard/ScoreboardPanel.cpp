@@ -324,6 +324,7 @@ bool ScoreboardPanel::answerKey(int down, int keynum) {
 void ScoreboardPanel::onDocumentReady() {
 	ServerName = hudstate::messages().ServerName;
 	NextMap = hudstate::messages().NextMap;
+	TimeEndCount = hudstate::messages().TimeEnd; TimeEndBase = ClientTimeNow;
 	if (abc::CChainedCommand* open = commands::get("+showscores")) {
 		subscribe(open->Event(), [this]() {
 			if (!Intermission)
@@ -665,6 +666,11 @@ void ScoreboardPanel::rebuildTable() {
 	}
 
 	table->SetInnerRML(rml);
+	const float rowHeight = AppliedRowHeight > 0 ? AppliedRowHeight : 28.0f;
+	Rml::ElementList images; table->GetElementsByTagName(images,"img");
+	const float icon = std::max(1.0f,std::min(24.0f*framework::Theme::scale(),rowHeight-2.0f));
+	for(auto* image:images) { image->SetProperty("width",std::to_string(icon)+"px"); image->SetProperty("height",std::to_string(icon)+"px"); }
+	table->SetProperty("line-height",std::to_string(rowHeight)+"px");
 }
 
 void ScoreboardPanel::openContextMenu(int clientIndex, const Rml::Vector2f& position) {
@@ -800,9 +806,13 @@ void ScoreboardPanel::onData(double frameTime) {
 	const float rawMode = scoreboard::Size ? scoreboard::Size->value : 0;
 	const int mode = std::isfinite(rawMode) ? static_cast<int>(std::clamp(rawMode,0.0f,2.0f)) : 0;
 	int playerCount=0; for(int i=1;i<=playerres::kMaxPlayers;++i) { auto* info=playerres::getPlayerInfo(i); if(info && info->isValid()) ++playerCount; }
-	const bool compact = mode==2 || (mode==0 && playerCount>12);
-	const float configured = compact ? (scoreboard::SpacingCompact ? scoreboard::SpacingCompact->value : 0) : (scoreboard::SpacingNormal ? scoreboard::SpacingNormal->value : 0);
-	const float height = std::isfinite(configured) && configured>0 ? std::clamp(configured,8.0f,128.0f) : (compact ? 18.0f : 28.0f);
+	const float density = framework::Theme::scale();
+	const float screenHeight = rmlui::context() ? static_cast<float>(rmlui::context()->GetDimensions().y) : 1080.0f;
+	const auto spacing = [](cvar_t* cvar,float fallback) { return cvar && std::isfinite(cvar->value) && cvar->value>0 ? std::clamp(cvar->value,8.0f,128.0f) : fallback; };
+	const float normal = spacing(scoreboard::SpacingNormal,28.0f*density);
+	const float compactDefault = screenHeight<600 ? 18.0f : screenHeight<720 ? 22.0f : screenHeight<800 ? 24.0f : screenHeight<1024 ? 26.0f : 28.0f;
+	const bool compact = mode==2 || (mode==0 && (playerCount+2)*normal > 430.0f*density);
+	const float height = compact ? spacing(scoreboard::SpacingCompact,compactDefault) : normal;
 	if(height!=AppliedRowHeight) { AppliedRowHeight=height; DataVersion++; }
 	updateHeader();
 	// Avatar download pump (old CAvatarImage::Paint retry): the steamapi

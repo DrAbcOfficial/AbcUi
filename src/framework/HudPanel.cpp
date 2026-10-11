@@ -1,5 +1,6 @@
 // framework::HudPanel implementation - see HudPanel.h.
 #include "HudPanel.h"
+#include "../data/HudState.h"
 
 #include <RmlUi/Core/Element.h>
 
@@ -39,6 +40,7 @@ void HudPanel::show() {
 	// Idempotent: RmlUi's Show() defaults to FocusFlag::Auto, so re-showing a
 	// visible document would silently steal the context focus (key input of
 	// whatever document the user is interacting with, e.g. an open TextMenu).
+	if (hudstate::isHudHidden(hudstate::kHideAll) && Name != "scoreboard" && Name != "motd" && Name != "textmenu" && Name != "vote") return;
 	if (Document && !Document->IsVisible())
 		Document->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
 }

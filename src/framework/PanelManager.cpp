@@ -3,6 +3,7 @@
 
 #include "Commands.h"
 #include "HudPanel.h"
+#include "../data/HudState.h"
 
 #include "../data/NetworkMessages.h"
 #include "../data/TextFeed.h"
