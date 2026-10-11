@@ -4,8 +4,6 @@
 
 #include "AbcRenderInterface.h"
 
-#include <FreeImage.h>
-
 #include <cstring>
 
 #include <abc/Console.h>
@@ -15,6 +13,7 @@
 
 #include "../data/Avatars.h"
 #include "../data/SpriteResource.h"
+#include "../framework/ImageLoader.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
@@ -69,15 +68,6 @@ void FlipRows(unsigned char* pixels, int width, int height) {
 		memcpy(b, row.data(), stride);
 	}
 }
-
-// Frees the FIBITMAP on scope exit (FreeImage has no RAII).
-struct ScopedBitmap {
-	FIBITMAP* Dib = nullptr;
-	~ScopedBitmap() {
-		if (Dib)
-			FreeImage_Unload(Dib);
-	}
-};
 
 int UploadNewTexture(const unsigned char* rgba, int width, int height) {
 	const int id = vgui2ext::createTexture();
@@ -269,49 +259,18 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 }
 
 Rml::TextureHandle AbcRenderInterface::loadFileTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
-	const std::string path = abc::ModPath(source.c_str());
-
-	const FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path.c_str(), 0);
-	if (format == FIF_UNKNOWN)
-		return 0;
-	ScopedBitmap bitmap;
-	bitmap.Dib = FreeImage_Load(format, path.c_str());
-	if (!bitmap.Dib)
+	// `source` is the RML-referenced path (Rml joins the document directory);
+	// resolve against the mod dir like every other abcui asset. Decoding goes
+	// through the shared FreeImage loader - format is detected from the file
+	// content, so RML sources stay extension-agnostic.
+	framework::ImageLoader::DecodedImage image;
+	if (!framework::ImageLoader::loadFromFile(abc::ModPath(source.c_str()).c_str(), image))
 		return 0;
 
-	FIBITMAP* rgba = FreeImage_ConvertTo32Bits(bitmap.Dib);
-	if (!rgba)
-		return 0;
-	// ConvertTo32Bits always returns a fresh bitmap (it clones 32bpp input),
-	// so the loaded original must be released before the scope guard takes
-	// over the conversion.
-	FreeImage_Unload(bitmap.Dib);
-	bitmap.Dib = rgba;
-
-	const int width = FreeImage_GetWidth(rgba);
-	const int height = FreeImage_GetHeight(rgba);
-	if (width <= 0 || height <= 0)
-		return 0;
-
-	// FreeImage scans bottom-up BGRA; upload wants top-down RGBA.
-	FreeImage_FlipVertical(rgba);
-	const int stride = width * 4;
-	std::vector<unsigned char> pixels(static_cast<size_t>(stride) * height);
-	for (int y = 0; y < height; y++) {
-		const BYTE* src = FreeImage_GetScanLine(rgba, y);
-		unsigned char* dst = pixels.data() + static_cast<size_t>(y) * stride;
-		for (int x = 0; x < width; x++) {
-			dst[x * 4 + 0] = src[x * 4 + 2];
-			dst[x * 4 + 1] = src[x * 4 + 1];
-			dst[x * 4 + 2] = src[x * 4 + 0];
-			dst[x * 4 + 3] = src[x * 4 + 3];
-		}
-	}
-
-	const int textureId = UploadNewTexture(pixels.data(), width, height);
+	const int textureId = UploadNewTexture(image.Pixels.data(), image.Width, image.Height);
 	if (textureId == 0)
 		return 0;
-	dimensions = Rml::Vector2i(width, height);
+	dimensions = Rml::Vector2i(image.Width, image.Height);
 	return static_cast<Rml::TextureHandle>(textureId);
 }
 
