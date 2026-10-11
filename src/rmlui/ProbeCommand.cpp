@@ -156,6 +156,24 @@ void probeCommand() {
 				board->IsVisible() ? 1 : 0);
 		}
 	}
+	// WeaponChoose ground truth: the bucket frame must ride the highlighted
+	// item - inline left/top plus the projected absolute position localizes a
+	// "frame does not follow the selection" report in one probe run.
+	if (Rml::ElementDocument* choose = context->GetDocument("weaponchoose")) {
+		if (Rml::Element* bucket = choose->GetElementById("bucket")) {
+			abc::ConsolePrint("[AbcUi] probe: weaponchoose bucket doc-visible=%d inline-left='%s' inline-top='%s' inline-size='%s x %s' abs=(%.1f %.1f)\n",
+				choose->IsVisible() ? 1 : 0,
+				bucket->GetProperty("left")->ToString().c_str(),
+				bucket->GetProperty("top")->ToString().c_str(),
+				bucket->GetProperty("width")->ToString().c_str(),
+				bucket->GetProperty("height")->ToString().c_str(),
+				bucket->GetAbsoluteLeft(), bucket->GetAbsoluteTop());
+		}
+		else {
+			abc::ConsolePrint("[AbcUi] probe: weaponchoose bucket absent doc-visible=%d\n",
+				choose->IsVisible() ? 1 : 0);
+		}
+	}
 	for (const char* doc : {"playerboard", "vote", "motd", "weaponchoose"}) {
 		if (Rml::ElementDocument* d = context->GetDocument(doc))
 			abc::ConsolePrint("[AbcUi] probe: doc-batchc %s visible=%d\n", doc, d->IsVisible() ? 1 : 0);

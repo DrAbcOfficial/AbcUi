@@ -87,7 +87,7 @@ void registerCommands() {
 			// press was swallowed (m_bSelectBlock -> BlockAttackOnce). The
 			// port keys both halves off +attack: visible bar -> confirm and
 			// consume; otherwise the attack runs.
-			return weaponchoose::attackConfirm();
+			return !weaponchoose::attackConfirm();
 		});
 	}
 }
@@ -208,6 +208,10 @@ void WeaponChoosePanel::rebuild() {
 	float x = 0.0f;
 	float maxHeight = kSlotIcon;
 	RainbowCounter = 0;
+	// Highlighted item bounds, recorded in the loop below (old
+	// m_pHandledWeapon GetBounds - the bucket rides them, y included).
+	float selX = 0.0f, selY = 0.0f, selW = 0.0f, selH = 0.0f;
+	bool selFound = false;
 
 	// Old item bars: abw=w/10, abx=w/20, abg=w/30, abh=h/10; fill rides the
 	// reserve count over max (scheme AmmoBar colors, empty = Red).
@@ -258,9 +262,10 @@ void WeaponChoosePanel::rebuild() {
 			// rotates the hue per item (ActiveColor Default, InactiveColor
 			// DefaultTransparent, EmptyColor Red, EmptyInactive 125 0 0 80).
 			unsigned char r = 0, g = 255, b = 0, a = 255;
-			unsigned char ri = 125, gi = 0, bi = 0, ai = 80;
+			unsigned char ri = 0, gi = 255, bi = 0, ai = 125;
 			if (!weaponres::hasAmmo(weapon)) {
 				r = 255, g = 0;
+				ri = 125, gi = 0, ai = 80;
 			}
 			if (weaponchoose::RainbowMenu && weaponchoose::RainbowMenu->value > 0) {
 				rainbowShift(RainbowCounter, r, g, b);
@@ -284,6 +289,13 @@ void WeaponChoosePanel::rebuild() {
 				"<div class='item%s' style='left:%.0fdp; top:%.0fdp; width:%.0fdp; height:%.0fdp;'>",
 				active ? " active" : "", x, y, w, h);
 			rml += buffer;
+			if (active) {
+				selX = x;
+				selY = y;
+				selW = w;
+				selH = h;
+				selFound = true;
+			}
 			appendAmmoBars(weapon, w, h);
 			rml += img;
 			rml += "</div>";
@@ -295,18 +307,14 @@ void WeaponChoosePanel::rebuild() {
 	}
 
 	// Bucket frame over the highlighted item (old select_icon ImagePanel -
-	// the bounds came straight off the item, y included).
-	if (selected) {
-		const bool expandedCol = selected->slot == activeSlot;
-		float bx = 0.0f;
-		for (int slot = 0; slot < selected->slot; slot++) {
-			bx += (slot == activeSlot ? kItemActiveW : kItemInactiveW) + kGap;
-		}
+	// the bounds came straight off the item, y included). Missing from the
+	// rebuilt list (dropped while shown) hides the frame, like the old
+	// ChooseWeapon empty-slot path.
+	if (selFound) {
 		sprintf_s(buffer,
 			"<img id='bucket' src='../img/weaponchoose/select_icon.tga' style='left:%.0fdp; top:%.0fdp; "
 			"width:%.0fdp; height:%.0fdp; image-color: rgba(255, 255, 0, 255);'/>",
-			bx, kSlotIcon + kGap, expandedCol ? kItemActiveW : kItemInactiveW,
-			expandedCol ? kItemActiveH : kItemInactiveH);
+			selX, selY, selW, selH);
 		rml += buffer;
 	}
 
