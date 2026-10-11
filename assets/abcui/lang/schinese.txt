@@ -56,3 +56,56 @@ Scores_MenuCopyName = 复制Steam名称
 Scores_MenuCopyNameRaw = 复制游戏名称
 Scores_MenuCopySteamID = 复制SteamID
 Scores_MenuCopySteamID64 = 复制64位SteamID
+
+# Item highlight (P7 itemhighlight panel); token names are the old
+# ABCEnchance localize keys (byte-matched against the old schinese.txt).
+# The pickup template keeps the old USE_BINDKEY / PICKUP_ITEM markers.
+GameUI_ABC_ItemPickupNotice = 按[%%USE_BINDKEY%%]拾取%%PICKUP_ITEM%%
+
+Weapon_UZI = UZI冲锋枪
+Weapon_UZIGold = 黄金UZI冲锋枪
+Weapon_9mmAR = 冲锋枪
+Weapon_9mmHandgun = 手枪
+Weapon_357 = 左轮手枪
+Weapon_BGRAP = 藤壶
+Weapon_Crossbow = 十字弩
+Weapon_Crowbar = 撬棍
+Weapon_DesertEagle = 沙漠之鹰
+Weapon_Displacer = 传送枪
+Weapon_Egon = 胶子炮
+Weapon_Gauss = 高斯枪
+Weapon_HGun = 蜂巢枪
+Weapon_M16 = M16
+Weapon_M40A1 = 狙击步枪
+Weapon_Minigun = 转轮机枪
+Weapon_PipeWrench = 水管钳
+Weapon_Medkit = 医疗包
+Weapon_RPG = RPG
+Weapon_SAW = 机枪
+Weapon_ShockRifle = 电击步枪
+Weapon_Shotgun = 霰弹枪
+Weapon_SporeLauncher = 孢子发射器
+Weapon_Sqknest = 蛇鲨巢
+Ammo_9mmARClip = 冲锋枪弹匣
+Ammo_9mmClip = 手枪弹匣
+Ammo_357 = 左轮子弹
+Ammo_357Box = 左轮子弹盒
+Ammo_ARGrenade = 榴弹
+Ammo_Chainammo = 冲锋枪子弹箱
+Ammo_CrossbowClip = 十字弩弹匣
+Ammo_GaussClip = U235
+Ammo_Grenade = 手雷
+Ammo_M40A1 = 狙击步枪弹匣
+Ammo_Satchel = 遥控炸弹
+Ammo_RPG = RPG弹药
+Ammo_SAW = 机枪弹匣
+Ammo_Shotbox = 霰弹盒
+Ammo_Tripmine = 激光绊雷
+Ammo_UZIClip = UZI弹匣
+Item_Adrenaline = 肾上腺素
+Item_Antidote = 解毒剂
+Item_Battery = 电池
+Item_Longjump = 远距离跳跃模块
+Item_Medkit = 医疗包
+Item_OxygenCan = 氧气罐
+Item_Rad = 消辐宁

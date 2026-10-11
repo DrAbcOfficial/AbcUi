@@ -56,3 +56,56 @@ Scores_MenuCopyName = Copy Steam Name
 Scores_MenuCopyNameRaw = Copy Game Name
 Scores_MenuCopySteamID = Copy SteamID
 Scores_MenuCopySteamID64 = Copy SteamID64
+
+# Item highlight (P7 itemhighlight panel); token names are the old
+# ABCEnchance localize keys (byte-matched against the old schinese.txt).
+# The pickup template keeps the old USE_BINDKEY / PICKUP_ITEM markers.
+GameUI_ABC_ItemPickupNotice = Press [%%USE_BINDKEY%%] pick up %%PICKUP_ITEM%%
+
+Weapon_UZI = UZI
+Weapon_UZIGold = Gold UZI
+Weapon_9mmAR = 9mmAR
+Weapon_9mmHandgun = Pistol
+Weapon_357 = Revolver
+Weapon_BGRAP = Grapple
+Weapon_Crossbow = Crossbow
+Weapon_Crowbar = Crowbar
+Weapon_DesertEagle = Desert Eagle
+Weapon_Displacer = Displacer
+Weapon_Egon = Egon
+Weapon_Gauss = Gauss
+Weapon_HGun = Honet
+Weapon_M16 = M16
+Weapon_M40A1 = Sniper Rifle
+Weapon_Minigun = Minigun
+Weapon_PipeWrench = Pipe Wrench
+Weapon_Medkit = Medkit
+Weapon_RPG = RPG
+Weapon_SAW = M249
+Weapon_ShockRifle = Shock Rifle
+Weapon_Shotgun = Shotgun
+Weapon_SporeLauncher = Spore Launcher
+Weapon_Sqknest = Sqk Nest
+Ammo_9mmARClip = 9mm AR Clip
+Ammo_9mmClip = 9mm Clip
+Ammo_357 = 357
+Ammo_357Box = 357 Box
+Ammo_ARGrenade = AR Grenade
+Ammo_Chainammo = 9mm Ammobox
+Ammo_CrossbowClip = Crossbow Clip
+Ammo_GaussClip = U235
+Ammo_Grenade = Grenade
+Ammo_M40A1 = Sniper Rifle Clip
+Ammo_Satchel = Satchel
+Ammo_RPG = RPG Clip
+Ammo_SAW = Saw Clip
+Ammo_Shotbox = Buckshot
+Ammo_Tripmine = Tripmine
+Ammo_UZIClip = UZI Clip
+Item_Adrenaline = Adrenaline
+Item_Antidote = Antidote
+Item_Battery = Battery
+Item_Longjump = Longjump
+Item_Medkit = Medkit
+Item_OxygenCan = Oxygen Can
+Item_Rad = Radiation Clear

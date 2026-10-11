@@ -49,6 +49,10 @@ void verifyInstalled() {
 		{"abcui/img/icon_shock.png", "damage tile icon"},
 		{"abcui/spr/face_rainleft.spr", "water splash sprite"},
 		{"abcui/spr/face_rainright.spr", "water splash sprite"},
+		// Batch D (render depth panels).
+		{"abcui/rml/itemhighlight.rml", "item highlight document"},
+		{"abcui/ItemHighLightList.txt", "item highlight list"},
+		{"abcui/img/itemhighlight/marker.png", "item highlight marker art"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))

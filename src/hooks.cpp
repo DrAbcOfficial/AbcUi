@@ -13,10 +13,12 @@
 #include "data/HudState.h"
 #include "data/NetworkMessages.h"
 #include "data/PlayerResource.h"
+#include "data/PlayerTrace.h"
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
 #include "panels/gindicator/GIndicatorPanel.h"
+#include "panels/itemhighlight/ItemHighlightPanel.h"
 #include "panels/motd/MotdPanel.h"
 #include "panels/scoreboard/ScoreboardPanel.h"
 #include "panels/vote/VotePanel.h"
@@ -124,6 +126,10 @@ static int H_HUD_VidInit() {
 
 static void H_HUD_Frame(double frametime) {
 	gExportfuncs.HUD_Frame(frametime);
+	// Old exportfuncs HUD_Frame tail: the player traces refresh once per
+	// frame; render-phase consumers (crosshair third-person centre) read the
+	// cache later in the frame.
+	playertrace::update();
 	rmlui::onFrame(frametime);
 }
 
@@ -161,9 +167,9 @@ static void H_HUD_TxferLocalOverrides(struct entity_state_s* state, const struct
 }
 
 static int H_HUD_AddEntity(int type, struct cl_entity_s* ent, const char* modelname) {
-	// Old Viewport::AddEntity routing (batch B: grenade indicator; the item
-	// highlight half lands with batch D).
+	// Old Viewport::AddEntity routing: grenade indicator + item highlight.
 	panels::gindicator::onAddEntity(ent, modelname);
+	panels::itemhighlight::onAddEntity(ent, modelname);
 	return gExportfuncs.HUD_AddEntity(type, ent, modelname);
 }
 

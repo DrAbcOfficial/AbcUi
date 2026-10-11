@@ -19,6 +19,7 @@
 
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
+#include "../../data/PlayerTrace.h"
 #include "../../data/WeaponResource.h"
 #include "../../framework/Projection.h"
 
@@ -82,30 +83,6 @@ namespace {
 // Old GetCurrentFOV: the HUD_UpdateClientData fov capture (s_flFov).
 float currentFov() {
 	return hudstate::fov();
-}
-
-// Old CPlayerTrace::Update's VIEW trace, inlined (only consumer in batch B):
-// hull-2 box trace from the eye along the view axis. The full PlayerTrace
-// module (head/foot traces for ItemHighlight) lands with batch D.
-pmtrace_t viewTrace() {
-	pmtrace_t trace = {};
-	const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
-	if (!local)
-		return trace;
-	vec3_t angles{}, forward{};
-	gEngfuncs.GetViewAngles(angles);
-	abc::CMathlib::AngleVectors(angles, forward, nullptr, nullptr);
-	vec3_t end{};
-	for (int i = 0; i < 3; i++)
-		end[i] = local->origin[i] + forward[i] * 8192.0f;
-	vec3_t start{};
-	vec3_t viewOfs{};
-	gEngfuncs.pEventAPI->EV_LocalPlayerViewheight(viewOfs);
-	for (int i = 0; i < 3; i++)
-		start[i] = local->origin[i] + viewOfs[i];
-	gEngfuncs.pEventAPI->EV_SetTraceHull(2);
-	gEngfuncs.pEventAPI->EV_PlayerTrace(start, end, PM_STUDIO_BOX, local->index, &trace);
-	return trace;
 }
 
 constexpr const char* kTransparent = "rgba(0, 0, 0, 0)";
@@ -181,9 +158,12 @@ void CrosshairPanel::hideDynamicCrosshair() {
 
 void CrosshairPanel::updateCenter() {
 	if (gExportfuncs.CL_IsThirdPerson()) {
-		const pmtrace_t trace = viewTrace();
+		// Old read: GetPlayerTrace()->Get(VIEW)->endpos - the module is
+		// pumped in HUD_Frame, this consumer runs in the render phase (the
+		// old OnThink phase), same ordering as the old code.
+		const pmtrace_t* trace = playertrace::get(playertrace::TraceType::View);
 		float screen[2] = {};
-		framework::projection::worldToScreen(trace.endpos, screen);
+		framework::projection::worldToScreen(trace->endpos, screen);
 		CenterX = screen[0];
 		CenterY = screen[1];
 	}
