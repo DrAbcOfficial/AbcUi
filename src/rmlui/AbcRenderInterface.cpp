@@ -96,6 +96,7 @@ int UploadNewTexture(const unsigned char* rgba, int width, int height) {
 
 AbcRenderInterface::~AbcRenderInterface() {
 	endFrame();
+	for(const auto& [handle,record]:Textures) if(record.Owned) vgui2ext::deleteTextureById(record.Id);
 }
 
 void AbcRenderInterface::beginFrame() {

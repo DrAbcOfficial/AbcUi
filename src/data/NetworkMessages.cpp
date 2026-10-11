@@ -235,7 +235,7 @@ int __MsgFunc_ScoreInfo(const char* pszName, int iSize, void* pbuf) {
 		int isAdmin = msg.readByte();
 		if (!msg.ok())
 			return original_ScoreInfo(pszName, iSize, pbuf);
-		if (std::isfinite(frags) && std::isfinite(health) && std::isfinite(armor) && std::abs(frags) <= 1000000000.0f && health >= 0 && health <= 1000000000.0f && armor >= 0 && armor <= 1000000000.0f)
+		if (std::isfinite(frags) && std::isfinite(health) && std::isfinite(armor) && std::abs(frags) <= 1000000.0f && deaths >= 0 && deaths <= 1000000 && health >= 0 && health <= 1000000000.0f && armor >= 0 && armor <= 1000000000.0f)
 			ScoreInfo(clientIndex, frags, deaths, health, armor, teamNumber, hideExtra, isAdmin);
 	}
 	return original_ScoreInfo(pszName, iSize, pbuf);
@@ -278,10 +278,10 @@ int __MsgFunc_TextMsg(const char* pszName, int iSize, void* pbuf) {
 	abc::MsgReader msg(pbuf, iSize);
 	int target = msg.readByte();
 	std::string info = msg.readString();
-	std::string param1 = msg.readString();
-	std::string param2 = msg.readString();
-	std::string param3 = msg.readString();
-	std::string param4 = msg.readString();
+	std::string param1 = msg.remaining() > 0 ? msg.readString() : std::string();
+	std::string param2 = msg.remaining() > 0 ? msg.readString() : std::string();
+	std::string param3 = msg.remaining() > 0 ? msg.readString() : std::string();
+	std::string param4 = msg.remaining() > 0 ? msg.readString() : std::string();
 	if (!msg.ok())
 		return original_TextMsg(pszName, iSize, pbuf);
 	// Every subscriber runs; a single false swallows the vanilla handler

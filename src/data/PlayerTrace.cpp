@@ -47,8 +47,14 @@ void update() {
 	vec3_t end{};
 	for (int i = 0; i < 3; i++)
 		end[i] = local->origin[i] + forward[i] * 8192.0f;
+	int ignorePhysent = -1;
+	if (gEngfuncs.pEventAPI->EV_GetPhysent) for(int i=0;i<MAX_PHYSENTS;++i) {
+		const auto* phys = gEngfuncs.pEventAPI->EV_GetPhysent(i);
+		if (!phys) break;
+		if (phys->info == local->index) { ignorePhysent=i; break; }
+	}
 	gEngfuncs.pEventAPI->EV_SetTraceHull(2);
-	gEngfuncs.pEventAPI->EV_PlayerTrace(start, end, PM_STUDIO_BOX, local->index, &ViewTrace);
+	gEngfuncs.pEventAPI->EV_PlayerTrace(start, end, PM_STUDIO_BOX, ignorePhysent, &ViewTrace);
 
 	// Head: world-only trace straight up from the player origin.
 	vec3_t up{0.0f, 0.0f, 8192.0f};
@@ -56,7 +62,7 @@ void update() {
 	for (int i = 0; i < 3; i++)
 		upEnd[i] = local->origin[i] + up[i];
 	gEngfuncs.pEventAPI->EV_PlayerTrace(const_cast<float*>(local->origin), upEnd, PM_WORLD_ONLY,
-		local->index, &HeadTrace);
+		-1, &HeadTrace);
 
 	// Foot: world-only trace straight down (old module parity).
 	vec3_t down{0.0f, 0.0f, -8192.0f};
@@ -64,7 +70,7 @@ void update() {
 	for (int i = 0; i < 3; i++)
 		downEnd[i] = local->origin[i] + down[i];
 	gEngfuncs.pEventAPI->EV_PlayerTrace(const_cast<float*>(local->origin), downEnd, PM_WORLD_ONLY,
-		local->index, &FootTrace);
+		-1, &FootTrace);
 }
 
 const pmtrace_t* get(TraceType type) {

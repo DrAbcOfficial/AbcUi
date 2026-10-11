@@ -26,3 +26,9 @@ abc::CChainedCommand* get(const char* name);
 abc::CChainedCommand* slotCommand(int index);
 
 }
+
+namespace commands {
+// Main-thread interaction state; does not depend on a concrete panel header.
+bool textMenuOpen();
+void setTextMenuOpen(bool open);
+}

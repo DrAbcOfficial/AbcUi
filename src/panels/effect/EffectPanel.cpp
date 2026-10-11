@@ -11,7 +11,7 @@
 
 #include <abc/CvarCmd.h>
 
-#include "../health/HealthPanel.h"
+
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
 #include "../../data/SpriteResource.h"
@@ -95,7 +95,8 @@ void EffectPanel::setHealth(int health) {
 		return;
 	// Old gCVars.pDangerHealth - one engine cvar shared by the health and
 	// effect panels (owned by the health namespace's registerCvars).
-	const float dangerValue = health::DangerHealth ? health::DangerHealth->value : 45.0f;
+	const auto* dangerCvar = abc::CVAR_GET_POINTER("hud_danger_health");
+	const float dangerValue = dangerCvar ? dangerCvar->value : 45.0f;
 	if (dangerValue > 0.0f && health < dangerValue) {
 		const float target = 1.0f - static_cast<float>(health) / dangerValue;
 		danger->SetProperty("display", "block");

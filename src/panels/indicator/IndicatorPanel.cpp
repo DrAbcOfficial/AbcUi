@@ -3,6 +3,7 @@
 #include <metahook.h>
 
 #include "IndicatorPanel.h"
+#include "../../data/HudState.h"
 
 #include <RmlUi/Core/Element.h>
 
@@ -94,6 +95,7 @@ void IndicatorPanel::onHit(const float from[3]) {
 
 void IndicatorPanel::onData(double frameTime) {
 	ClientTimeNow += frameTime;
+	if (hudstate::isHudHidden(hudstate::kHideAll)) { hide(); return; }
 
 	const int style = indicator::IndicatorStyle
 		? static_cast<int>(indicator::IndicatorStyle->value)

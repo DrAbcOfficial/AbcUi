@@ -19,7 +19,7 @@
 #include "../../data/PlayerResource.h"
 #include "../../data/WeaponResource.h"
 #include "../../framework/Commands.h"
-#include "../textmenu/TextMenuPanel.h"
+
 
 // Windows.h min/max macros fight std::min/std::max (old repo precedent).
 #undef max
@@ -32,7 +32,7 @@ namespace weaponchoose {
 WeaponChoosePanel* PanelInstance = nullptr;
 
 bool textmenuOpen() {
-	return panels::textmenu::isOpen();
+	return commands::textMenuOpen();
 }
 
 bool attackConfirm() {
@@ -335,7 +335,7 @@ bool WeaponChoosePanel::confirmSelection() {
 	// closes the bar. Rejected picks keep the bar open and let the attack
 	// through (the old m_bSelectBlock armed only on the success path).
 	const weaponres::Weapon* weapon = weaponres::selectedWeapon();
-	if (!weapon || !Visible)
+	if (!weapon || !Visible || !shouldDraw() || !weaponres::isOwned(weapon))
 		return false;
 	if (weaponres::fastSwitchOn())
 		return false;
