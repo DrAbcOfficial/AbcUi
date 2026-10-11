@@ -1,0 +1,75 @@
+#pragma once
+
+// panels::Scoreboard - the +showscores table (old CScorePanel, from:
+// ABCEnchance/src/hud/vgui/scoreboard.*, GBK->UTF-8; 1397 lines of vgui
+// SectionedListPanel machinery becomes one table rebuild per data version).
+//
+// Interaction model (old KeyInput/EnableMousePointer): +showscores shows the
+// table; MOUSE2 while visible unlocks the OS cursor (centered, old
+// EnableMousePointer) and Rml receives mouse input through the normal
+// InputBridge gate; right-click on a row opens the context menu (steam
+// profile / copy actions - the voice-mute entries died with voice_status,
+// D-04; the friend-icon overlay needs the steamapi backend's Friends
+// surface, deferred with it).
+
+#include <RmlUi/Core/Vector2.h>
+
+#include "../../framework/HudPanel.h"
+
+struct cvar_s;
+
+namespace panels {
+
+namespace scoreboard {
+// HUD_Init-time cvar registration (plan 08 §4.9); the pointers live in this
+// namespace, the panel reads them.
+void registerCvars();
+// Spine seam: true = the key serves the scoreboard (MOUSE2 pointer toggle)
+// and the engine/binding chain must not run it.
+bool onKeyEvent(int down, int keynum);
+}
+
+class ScoreboardPanel : public framework::HudPanel {
+public:
+	ScoreboardPanel();
+
+	void reset() override;
+
+protected:
+	void onDocumentReady() override;
+	void onData(double frameTime) override;
+
+private:
+	friend bool scoreboard::onKeyEvent(int down, int keynum);
+	friend class TableListener;
+	class TableListener;
+
+	// Old EnableMousePointer / KeyCodeTyped path.
+	bool answerKey(int down, int keynum);
+
+	// Old FullUpdate on show; refresh on the 0.5s period (old
+	// UPDATE_PERIOD) or a data-version bump.
+	void rebuildTable();
+	void updateHeader();
+	void openContextMenu(int clientIndex, const Rml::Vector2f& position);
+	bool overMenu(const Rml::Vector2f& position);
+	void closeContextMenu();
+	void menuAction(int action);
+	void setVisible(bool visible);
+	void setMouseMode(bool enabled);
+
+	std::string ServerName;
+	std::string NextMap;
+	int TimeEndCount = 0;
+	double TimeEndBase = 0.0;
+	double LastRefresh = 0.0;
+	double ClientTimeNow = 0.0;
+	bool Visible = false;
+	bool MouseMode = false;
+	long DataVersion = 0;
+	long AppliedVersion = -1;
+	int MenuClient = 0;
+	TableListener* Listener = nullptr;
+};
+
+}

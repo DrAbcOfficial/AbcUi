@@ -15,6 +15,7 @@
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
+#include "../data/Avatars.h"
 #include "../data/HudState.h"
 #include "../data/SpriteResource.h"
 
@@ -139,6 +140,7 @@ void init() {
 	framework::Localization::load();
 	framework::Theme::applyScale(Context);
 	sprites::vidInit();
+	avatars::init();
 	framework::Assets::verifyInstalled();
 	framework::PanelManager::initAll(Context);
 
@@ -158,6 +160,7 @@ void shutdown() {
 		renderer->UnregisterRenderCallbacks(&Callbacks);
 	framework::PanelManager::shutdown();
 	sprites::shutdown();
+	avatars::shutdown();
 	// Rml::Shutdown drains its texture database through ReleaseTexture - the
 	// single delete point for every sprite id (all went through LoadTexture).
 	// clearAdditiveTextures() before that keeps recycled ids off the additive

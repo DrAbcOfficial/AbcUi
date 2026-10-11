@@ -13,6 +13,7 @@
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
 #include "panels/gindicator/GIndicatorPanel.h"
+#include "panels/scoreboard/ScoreboardPanel.h"
 #include "panels/vote/VotePanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
@@ -166,9 +167,10 @@ static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct en
 }
 
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
-	// Batch-C UI key consumers first (vote answers): a hit swallows the key
-	// from the engine/binding chain (old Viewport::KeyInput false-return).
-	if (panels::vote::onKeyEvent(down, keynum)) {
+	// Batch-C UI key consumers first (vote answers, scoreboard pointer
+	// toggle): a hit swallows the key from the engine/binding chain (old
+	// Viewport::KeyInput false-return).
+	if (panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum)) {
 		rmlui::onKeyEvent(down, keynum);
 		return 0;
 	}
