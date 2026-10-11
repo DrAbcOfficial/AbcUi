@@ -66,6 +66,12 @@ private:
 	// UPDATE_PERIOD) or a data-version bump.
 	void rebuildTable();
 	void updateHeader();
+	// Change-gated header write (Phase 8): RmlUi SetInnerRML always rebuilds
+	// the element's text subtree (no same-string early-out), so an ungated
+	// per-frame write re-lays-out the whole document every frame - the P8
+	// benchmark measured ~18ms/frame of exactly that with the board up.
+	// `slot` addresses the applied-string cache; returns true when written.
+	bool setHeaderRml(int slot, const char* id, const std::string& rml);
 	void openContextMenu(int clientIndex, const Rml::Vector2f& position);
 	bool overMenu(const Rml::Vector2f& position);
 	void closeContextMenu();
@@ -86,6 +92,10 @@ private:
 	long AppliedVersion = -1;
 	int MenuClient = 0;
 	TableListener* Listener = nullptr;
+	// Applied-string cache for the header slots (setHeaderRml) and the last
+	// centered content height (update's vertical centering).
+	std::string HeaderCache[5];
+	float CenteredHeight = -1.0f;
 };
 
 }

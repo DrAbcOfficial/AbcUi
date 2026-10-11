@@ -357,9 +357,21 @@ void ScoreboardPanel::onDocumentReady() {
 	setVisible(false);
 }
 
+bool ScoreboardPanel::setHeaderRml(int slot, const char* id, const std::string& rml) {
+	if (slot < 0 || slot >= static_cast<int>(std::size(HeaderCache)) || HeaderCache[slot] == rml)
+		return false;
+	if (Rml::Element* node = element(id)) {
+		node->SetInnerRML(rml);
+		HeaderCache[slot] = rml;
+		return true;
+	}
+	return false;
+}
+
 void ScoreboardPanel::updateHeader() {
-	if (Rml::Element* node = element("server-name"))
-		node->SetInnerRML(framework::TextUtil::escapeRml(ServerName));
+	// Every write is change-gated (setHeaderRml): this runs per frame while
+	// the board is up.
+	setHeaderRml(0, "server-name", framework::TextUtil::escapeRml(ServerName));
 	{
 		const char* level = gEngfuncs.pfnGetLevelName();
 		const char* slash = level ? (std::max)(strrchr(level, '/'), strrchr(level, '\\')) : nullptr;
@@ -367,8 +379,7 @@ void ScoreboardPanel::updateHeader() {
 		// Old V_FileBase stripped the extension too ("mapname" not "map.bsp").
 		if (const size_t dot = base.rfind('.'); dot != std::string::npos)
 			base.resize(dot);
-		if (Rml::Element* node = element("map-name"))
-			node->SetInnerRML(framework::TextUtil::escapeRml(base));
+		setHeaderRml(1, "map-name", framework::TextUtil::escapeRml(base));
 	}
 	{
 		int connected = 0;
@@ -376,22 +387,19 @@ void ScoreboardPanel::updateHeader() {
 			if (const playerres::PlayerInfo* info = playerres::getPlayerInfo(i); info && info->isValid())
 				connected++;
 		}
-		if (Rml::Element* node = element("player-count"))
-			node->SetInnerRML(strFmt("%d/%d", connected, gEngfuncs.GetMaxClients()));
+		setHeaderRml(2, "player-count", strFmt("%d/%d", connected, gEngfuncs.GetMaxClients()));
 	}
 	{
 		// NextMap is server text - composed, never a fixed buffer.
 		const std::string label = localized("Scores_NextMap", "Next Map: ");
-		if (Rml::Element* node = element("next-map"))
-			node->SetInnerRML(framework::TextUtil::escapeRml(label + NextMap));
+		setHeaderRml(3, "next-map", framework::TextUtil::escapeRml(label + NextMap));
 	}
 	{
 		// Old OnThink: the time label kept its last value until a TimeEnd
 		// arrived (m_iTimeEndCount<=0 -> no refresh, never "00:00").
 		if (TimeEndCount > 0) {
 			const int remaining = std::max(0, TimeEndCount - static_cast<int>(ClientTimeNow - TimeEndBase));
-			if (Rml::Element* node = element("time-end"))
-				node->SetInnerRML(strFmt("%.1d:%.2d", remaining / 60, remaining % 60));
+			setHeaderRml(4, "time-end", strFmt("%.1d:%.2d", remaining / 60, remaining % 60));
 		}
 	}
 }
@@ -801,11 +809,16 @@ void ScoreboardPanel::onData(double frameTime) {
 	}
 
 	// Vertical centering (old Resize): the box hugs its content height.
+	// Change-gated (Phase 8): an unconditional SetProperty("top") would dirty
+	// the document every frame and re-layout the table with it.
 	if (Rml::Context* context = rmlui::context()) {
 		if (Rml::Element* box = element("box")) {
 			const float contentHeight = box->GetBox().GetSize(Rml::BoxArea::Content).y;
-			const float top = std::max(0.0f, (static_cast<float>(context->GetDimensions().y) - contentHeight) * 0.5f);
-			box->SetProperty("top", std::to_string(top) + "px");
+			if (contentHeight != CenteredHeight) {
+				CenteredHeight = contentHeight;
+				const float top = std::max(0.0f, (static_cast<float>(context->GetDimensions().y) - contentHeight) * 0.5f);
+				box->SetProperty("top", std::to_string(top) + "px");
+			}
 		}
 	}
 }
