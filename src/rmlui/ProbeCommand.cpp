@@ -20,6 +20,9 @@
 
 #include "RmlUiModule.h"
 #include "VGUI2ExtensionImport.h"
+namespace panels::scoreboard { extern panels::ScoreboardPanel* PanelInstance; }
+
+namespace hooks { int debugKeyEvent(int down, int keynum); }
 
 namespace rmlui {
 
@@ -305,10 +308,51 @@ void probeCommand() {
 		abc::ConsolePrint("[AbcUi] wheel: down\n");
 	}
 
+		// Deterministic client-key seam; does not pretend to be hardware input.
+		void mouseKeyCommand() {
+			const int key = gEngfuncs.Cmd_Argc() > 1 ? atoi(gEngfuncs.Cmd_Argv(1)) : K_MOUSE2;
+			const int down = gEngfuncs.Cmd_Argc() > 2 ? atoi(gEngfuncs.Cmd_Argv(2)) : 1;
+			const int result = hooks::debugKeyEvent(down, key);
+			abc::ConsolePrint("[AbcUi] input-test key=%d down=%d result=%d owner=%d cursor=%d wheel=%d\n",
+				key, down, result, uiMouseOwner(), vgui2ext::isCursorVisible(), panels::scoreboard::wantsWheel());
+		}
+
+		void inputRegressionCommand() {
+			auto* ctx = rmlui::context();
+			auto* panel = panels::scoreboard::PanelInstance;
+			if (!ctx || !panel) return;
+			int failures = 0;
+			auto check = [&](bool ok, const char* label) {
+				abc::ConsolePrint("[AbcUi] input-regression %s %s\n", ok ? "PASS" : "FAIL", label);
+				if (!ok) ++failures;
+			};
+			panel->reset();
+			check(hooks::debugKeyEvent(1, K_MOUSE2) == 1 && !uiMouseOwner(), "hidden right passes");
+			panels::scoreboard::setIntermission(true);
+			check(hooks::debugKeyEvent(1, K_MOUSE2) == 0 && uiMouseOwner(), "first right enters");
+			hooks::debugKeyEvent(0, K_MOUSE2);
+			check(vgui2ext::isCursorVisible(), "native cursor visible");
+			check(hooks::debugKeyEvent(1, K_MOUSE2) == 0 && uiMouseOwner(), "second right stays");
+			hooks::debugKeyEvent(0, K_MOUSE2);
+			check(hooks::debugKeyEvent(1, K_MOUSE1) == 0, "left attack consumed");
+			hooks::debugKeyEvent(0, K_MOUSE1);
+			panels::scoreboard::setIntermission(false);
+			check(!uiMouseOwner() && !panels::scoreboard::wantsWheel(), "intermission hide releases");
+			check(hooks::debugKeyEvent(1, K_MOUSE2) == 1, "closed right passes again");
+			panels::scoreboard::setIntermission(true);
+			hooks::debugKeyEvent(1, K_MOUSE2);
+			hooks::debugKeyEvent(0, K_MOUSE2);
+			panel->reset();
+			check(!uiMouseOwner(), "map reset releases");
+			abc::ConsolePrint("[AbcUi] input-regression failures=%d (client seam, not hardware)\n", failures);
+		}
+
 
 } // namespace
 
 void registerProbeCommand() {
+	abc::ADD_COMMAND("abc_ui_input_regression", inputRegressionCommand);
+	abc::ADD_COMMAND("abc_ui_input_key", mouseKeyCommand);
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);

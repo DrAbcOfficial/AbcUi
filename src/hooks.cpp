@@ -7,6 +7,8 @@
 #include <abc/Plugin.h>
 
 #include <keydefs.h>
+#include <usercmd.h>
+#include <in_buttons.h>
 
 #include "data/HudState.h"
 #include "data/NetworkMessages.h"
@@ -188,17 +190,13 @@ bool uiOwnsWheel(int down, int keynum) {
 } // namespace
 
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
+	const bool consumed = panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum);
 #ifndef NDEBUG
-	// Key-chain trace (P6 audit round): mouse/wheel keys are rare, print them
-	// with the consumption verdict.
 	if (keynum >= K_MOUSE2 || keynum == K_MWHEELUP || keynum == K_MWHEELDOWN)
-		abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down, keynum,
-			(panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum)) ? 1 : 0);
+		abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down, keynum, consumed ? 1 : 0);
 #endif
-	// Batch-C UI key consumers first (vote answers, scoreboard pointer
-	// toggle): a hit swallows the key from the engine/binding chain (old
-	// Viewport::KeyInput false-return).
-	if (panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum)) {
+	if (consumed) {
+		if (uiOwnsWheel(down, keynum)) rmlui::onWheel(down, keynum);
 		rmlui::onKeyEvent(down, keynum);
 		return 0;
 	}
@@ -210,6 +208,12 @@ static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) 
 	rmlui::onKeyEvent(down, keynum);
 	return gExportfuncs.HUD_Key_Event(down, keynum, pszCurrentBinding);
 }
+
+#ifndef NDEBUG
+int debugKeyEvent(int down, int keynum) {
+	return H_HUD_Key_Event(down, keynum, "");
+}
+#endif
 
 static int H_HUD_GetStudioModelInterface(int version, struct r_studio_interface_s** ppinterface,
 	struct engine_studio_api_s* pstudio) {
@@ -224,7 +228,40 @@ static void H_HUD_Shutdown() {
 	gExportfuncs.HUD_Shutdown();
 }
 
+// Keep relative mouse motion and already-held attacks out of UI mode.
+static void H_IN_Accumulate() {
+	if (!rmlui::uiMouseOwner()) gExportfuncs.IN_Accumulate();
+}
+static void H_IN_MouseEvent(int state) {
+	static int previous = 0;
+	if (rmlui::uiMouseOwner()) {
+		// Some clients generate their mouse key edges inside IN_MouseEvent.
+		// Route those edges before neutralising the game-side button mask.
+		for (int i = 0; i < 3; ++i)
+			if ((state ^ previous) & (1 << i))
+				rmlui::onKeyEvent((state & (1 << i)) != 0, K_MOUSE1 + i);
+		gExportfuncs.IN_MouseEvent(0);
+	} else {
+		gExportfuncs.IN_MouseEvent(state);
+	}
+	previous = state;
+}
+static void H_CL_CreateMove(float time, usercmd_s* cmd, int active) {
+	const bool owner = rmlui::uiMouseOwner();
+	float angles[3]{};
+	if (owner) gEngfuncs.GetViewAngles(angles);
+	gExportfuncs.CL_CreateMove(time, cmd, active);
+	if (owner) {
+		cmd->buttons &= ~(IN_ATTACK | IN_ATTACK2);
+		for (int i = 0; i < 3; ++i) cmd->viewangles[i] = angles[i];
+		gEngfuncs.SetViewAngles(angles);
+	}
+}
+
 void attachExports(cl_exportfuncs_t* pExportFuncs) {
+	pExportFuncs->IN_Accumulate = H_IN_Accumulate;
+	pExportFuncs->IN_MouseEvent = H_IN_MouseEvent;
+	pExportFuncs->CL_CreateMove = H_CL_CreateMove;
 	pExportFuncs->HUD_Init = H_HUD_Init;
 	pExportFuncs->HUD_VidInit = H_HUD_VidInit;
 	pExportFuncs->HUD_Redraw = H_HUD_Redraw;

@@ -4,6 +4,7 @@
 #include "VGUI2ExtensionImport.h"
 
 #include <ISurface2.h>
+#include <vgui/Cursor.h>
 #include <IVGUI2Extension.h>
 #include <IGameUIFuncs.h>
 
@@ -157,15 +158,20 @@ bool centerAndUnlockCursor() {
 		return false;
 	const int x = gEngfuncs.GetWindowCenterX();
 	const int y = gEngfuncs.GetWindowCenterY();
-	Surface2->SurfaceSetCursorPos(x, y);
 	Surface2->UnlockCursor();
+	Surface2->SetCursor(vgui::dc_arrow);
+	Surface2->SurfaceSetCursorPos(x, y);
+	Surface2->LockCursor();
 	return true;
 }
 
 void lockCursor() {
 	if (!Surface2)
 		return;
-	Surface2->LockCursor();
+	// Return control to VGUI, including an already-open GameUI/console.
+	Surface2->UnlockCursor();
+	Surface2->SetCursor(vgui::dc_none);
+	Surface2->CalculateMouseVisible();
 }
 
 }

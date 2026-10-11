@@ -74,9 +74,13 @@ bool loadDefaultAvatar() {
 	const int bytesPerPixel = bpp / 8;
 
 	std::vector<unsigned char> rgba(static_cast<size_t>(width) * height * 4);
+	if (bytes[1] != 0 || (bytes[17] & 0x10) != 0)
+		return false;
 	size_t src = 18 + idLength;
+	if (src > bytes.size())
+		return false;
 	if (imageType == 2) {
-		if (bytes.size() - src < rgba.size())
+		if (bytes.size() - src < static_cast<size_t>(width) * height * bytesPerPixel)
 			return false;
 		// Uncompressed rows: BGRA/BGR -> RGBA with full alpha for 24bpp.
 		for (int i = 0; i < width * height; i++) {
@@ -87,11 +91,13 @@ bool loadDefaultAvatar() {
 			rgba[i * 4 + 3] = bpp == 32 ? in[3] : 255;
 		}
 	} else {
-		const size_t srcRowBytes = static_cast<size_t>(width) * bytesPerPixel;
 		size_t dst = 0;
 		while (dst < rgba.size() && src < bytes.size()) {
 			const unsigned char header = bytes[src++];
 			const int count = (header & 0x7f) + 1;
+			if (static_cast<size_t>(count) > (rgba.size() - dst) / 4)
+				return false;
+			const size_t packetBytes = static_cast<size_t>(count) * bytesPerPixel;
 			if (header & 0x80) {
 				if (src + bytesPerPixel > bytes.size())
 					return false;
@@ -104,7 +110,7 @@ bool loadDefaultAvatar() {
 				}
 				src += bytesPerPixel;
 			} else {
-				if (src + srcRowBytes > bytes.size())
+				if (src + packetBytes > bytes.size())
 					return false;
 				for (int i = 0; i < count && dst < rgba.size(); i++) {
 					const unsigned char* in = bytes.data() + src + static_cast<size_t>(i) * bytesPerPixel;
@@ -114,9 +120,11 @@ bool loadDefaultAvatar() {
 					rgba[dst + 3] = bpp == 32 ? in[3] : 255;
 					dst += 4;
 				}
-				src += srcRowBytes;
+				src += packetBytes;
 			}
 		}
+		if (dst != rgba.size())
+			return false;
 	}
 	if (!topDown) {
 		// Stored bottom-up: flip to Rml's top-down convention.
