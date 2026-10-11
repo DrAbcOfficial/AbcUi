@@ -23,8 +23,10 @@
 	width: 122dp;
 	height: 183dp;
 	background-color: rgba(0, 0, 0, 64);
-	/* fade_time 1s (RmlUi 6.3 easing names - 08 §4.21) */
-	transition: opacity 1s ease-in;
+	/* fade_time 1s (RmlUi 6.3 easing names - 08 §4.21: ease-in does not
+	   parse - the keyword set is linear-in/quad-in/... ; a broken declaration
+	   silently disabled the fade) */
+	transition: opacity 1s linear-in;
 }
 
 #progress {

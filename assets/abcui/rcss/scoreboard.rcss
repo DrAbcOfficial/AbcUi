@@ -97,7 +97,6 @@
 	width: 552dp;
 	min-height: 300dp;
 	display: table;
-	table-layout: fixed;
 	font-family: Verdana;
 	font-size: 8dp;
 	color: #ffffff;
