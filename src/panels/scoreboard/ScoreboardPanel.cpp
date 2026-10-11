@@ -93,11 +93,11 @@ void setIntermission(bool intermission) {
 }
 
 bool wantsWheel() {
-	return PanelInstance && PanelInstance->Visible && PanelInstance->MouseMode;
+	return PanelInstance && PanelInstance->isVisible() && PanelInstance->MouseMode;
 }
 
 void setPointerMode(bool enabled) {
-	if (PanelInstance && PanelInstance->Visible)
+	if (PanelInstance && (!enabled || PanelInstance->isVisible()))
 		PanelInstance->setMouseMode(enabled);
 }
 
@@ -246,12 +246,15 @@ ScoreboardPanel::ScoreboardPanel()
 }
 
 ScoreboardPanel::~ScoreboardPanel() {
+	setMouseMode(false);
 	if (scoreboard::PanelInstance == this)
 		scoreboard::PanelInstance = nullptr;
 	delete Listener;
 }
 
 void ScoreboardPanel::reset() {
+	Intermission = false;
+	setVisible(false);
 	ServerName.clear();
 	NextMap.clear();
 	TimeEndCount = 0;
@@ -265,6 +268,8 @@ void ScoreboardPanel::reset() {
 }
 
 void ScoreboardPanel::setVisible(bool visible) {
+	if (!visible)
+		setMouseMode(false);
 	if (visible == Visible)
 		return;
 	Visible = visible;
@@ -281,13 +286,11 @@ void ScoreboardPanel::setVisible(bool visible) {
 }
 
 void ScoreboardPanel::setMouseMode(bool enabled) {
+	enabled = enabled && Visible && isVisible();
 	if (enabled == MouseMode)
 		return;
 	MouseMode = enabled;
-	// The engine-side cursor visibility never flips for this mode (P6
-	// acceptance finding: UnlockCursor leaves IsCursorVisible false) - the
-	// input bridge carries an explicit ownership bit instead (the Rml
-	// counterpart of the old vgui SetMouseInputEnabled).
+	// Ownership gates both Rml input and the client mouse/view hooks.
 	rmlui::setUiMouseOwner(enabled);
 	if (enabled) {
 		vgui2ext::centerAndUnlockCursor();
@@ -298,18 +301,15 @@ void ScoreboardPanel::setMouseMode(bool enabled) {
 }
 
 bool ScoreboardPanel::answerKey(int down, int keynum) {
-	if (!Visible || !down)
+	if (!Visible || !isVisible())
 		return false;
-	if (keynum == kMouse2 && !MouseMode) {
-		// Old EnableMousePointer(true): cursor to window center + visible.
+	if (keynum == kMouse2 && down && !MouseMode) {
+		// Enter once; subsequent right presses belong to the row context menu.
 		setMouseMode(true);
 		return true;
 	}
-	if (keynum == kMouse2 && MouseMode) {
-		setMouseMode(false);
-		return true;
-	}
-	return false;
+	return MouseMode && ((keynum >= K_MOUSE1 && keynum <= K_MOUSE5) ||
+		keynum == K_MWHEELUP || keynum == K_MWHEELDOWN);
 }
 
 void ScoreboardPanel::onDocumentReady() {
@@ -350,8 +350,10 @@ void ScoreboardPanel::onDocumentReady() {
 		Listener = new TableListener();
 		Listener->Panel = this;
 	}
-	if (Rml::Element* box = element("box"))
+	if (Rml::Element* box = element("box")) {
 		box->AddEventListener("mousedown", Listener, false);
+		box->AddEventListener("click", Listener, false);
+	}
 	setVisible(false);
 }
 
@@ -571,7 +573,6 @@ void ScoreboardPanel::rebuildTable() {
 				appendFmt(rowOpen, "' style='color: rgba(%d, %d, %d, 255);", pr, pg, pb);
 				if (!info.isThisPlayer())
 					appendFmt(rowOpen, " background-color: rgba(%d, %d, %d, 80);", pr, pg, pb);
-				rowOpen += "'";
 			}
 			appendFmt(rowOpen, "' data-client='%d'>", info.index);
 			rml += rowOpen;
@@ -771,8 +772,10 @@ void ScoreboardPanel::onData(double frameTime) {
 		return;
 
 	// Mouse mode rides visibility: closing the scoreboard always re-locks.
-	if (!Visible)
+	if (!Visible || !isVisible()) {
+		setMouseMode(false);
 		return;
+	}
 
 	updateHeader();
 	// Old OnThink: 0.5s full refresh cadence; data-version bumps refresh

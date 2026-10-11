@@ -76,7 +76,7 @@ void VotePanel::setVisible(bool visible) {
 }
 
 bool VotePanel::answerKey(int down, int keynum) {
-	if (!down || !Visible)
+	if (!down || !Visible || !isVisible() || !vote::HudVote || vote::HudVote->value <= 0)
 		return false;
 	const int yes = vote::KeyYes ? static_cast<int>(vote::KeyYes->value) : 92;
 	const int no = vote::KeyNo ? static_cast<int>(vote::KeyNo->value) : 93;
