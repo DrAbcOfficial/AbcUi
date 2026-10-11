@@ -4,7 +4,7 @@
        f0 = full screen -> 240dp wide in the 480dp design space), rendermode 5
        (kRenderTransAdd - additive via the sprframe:// mark), framerate 10;
        RightWater xpos rs1.0 hugs the right edge.
-     UnderWater/Danger: fullscreen ImagePanel (efx_darkround.tga).
+     UnderWater/Danger: fullscreen ImagePanel (efx_darkround.png).
    Colours: EffectPanel.UnderWaterColor = 80 80 80 255,
    EffectPanel.DangerColor = Red. */
 

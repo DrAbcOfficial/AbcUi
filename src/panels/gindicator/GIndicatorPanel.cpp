@@ -158,7 +158,7 @@ void GIndicatorPanel::onRedraw(double frameTime) {
 				return;
 			tracked.marker = holder.get();
 			tracked.marker->SetClass("grenade", true);
-			tracked.marker->SetAttribute("src", Rml::String("../img/grenadeicon.tga"));
+			tracked.marker->SetAttribute("src", Rml::String("../img/grenadeicon.png"));
 			container->AppendChild(std::move(holder));
 		}
 

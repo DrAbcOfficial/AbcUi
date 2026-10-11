@@ -4,7 +4,7 @@
 // from: ABCEnchance/src/hud/vgui/effect.* (GBK->UTF-8).
 //
 // Old control mapping: the two ImagePanel overlays (Danger/UnderWater, both
-// efx_darkround.tga tinted) become two full-screen imgs; the two ImageSprPanel
+// efx_darkround.png tinted) become two full-screen imgs; the two ImageSprPanel
 // water splashes (face_rainleft/right.spr, kRenderTransAdd, framerate 10)
 // become imgs whose src flips across sprframe:// URIs (SpriteResource decodes
 // the standalone .spr frames; frames upload lazily).
