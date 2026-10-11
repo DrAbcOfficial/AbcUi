@@ -181,8 +181,11 @@ void probeCommand() {
 	// icons" report localizes here in one probe run).
 	if (Rml::ElementDocument* pb = context->GetDocument("playerboard")) {
 		if (Rml::Element* tile = pb->GetElementById("tile-2")) {
+			// Subtree-scoped on purpose: the inner ids repeat per tile, and
+			// Element::GetElementById would resolve against the whole document
+			// (tile-1) - the exact bug this dump exists to catch.
 			const auto resolved = [&](const char* id) {
-				return tile->GetElementById(id) ? "ok" : "MISSING";
+				return Rml::ElementUtilities::GetElementById(tile, id) ? "ok" : "MISSING";
 			};
 			abc::ConsolePrint("[AbcUi] probe: playerboard tile-2 name=%s bar-health=%s bar-armor=%s icon-crouch=%s icon-medkit=%s icon-dead=%s\n",
 				resolved("name"), resolved("bar-health"), resolved("bar-armor"),
