@@ -7,6 +7,8 @@
 
 #include <abc/NetMsg.h>
 
+#include <cvardef.h>
+
 namespace netmsg {
 
 #pragma region events (definitions - external linkage, see the header)
@@ -30,6 +32,15 @@ abc::CallbackList<void(bool, int)> Flashlight;
 abc::CallbackList<TextMsgCallback> TextMsg;
 abc::CallbackList<void(const DamageData&)> Damage;
 abc::CallbackList<void(const PopNumData&)> PopNum;
+// Batch C additions.
+abc::CallbackList<void(int, bool)> Spectator;
+abc::CallbackList<void(const char*)> ServerName;
+abc::CallbackList<void(const char*)> NextMap;
+abc::CallbackList<void(int)> TimeEnd;
+abc::CallbackList<void(int, const char*)> Motd;
+abc::CallbackList<void(const VoteMenuData&)> VoteMenu;
+abc::CallbackList<void()> EndVote;
+abc::CallbackList<void()> ClExtrasInfo;
 #pragma endregion
 
 namespace {
@@ -57,6 +68,17 @@ pfnUserMsgHook original_Flashlight = nullptr;
 pfnUserMsgHook original_TextMsg = nullptr;
 pfnUserMsgHook original_Damage = nullptr;
 pfnUserMsgHook original_MetaHook = nullptr;
+// hud_vote gate for the VoteMenu consumer (set by panels/vote at HUD_Init;
+// null = default-on so the event still flows before the panel registers).
+cvar_t* voteEnabled = nullptr;
+pfnUserMsgHook original_Spectator = nullptr;
+pfnUserMsgHook original_ServerName = nullptr;
+pfnUserMsgHook original_NextMap = nullptr;
+pfnUserMsgHook original_TimeEnd = nullptr;
+pfnUserMsgHook original_MOTD = nullptr;
+pfnUserMsgHook original_VoteMenu = nullptr;
+pfnUserMsgHook original_EndVote = nullptr;
+pfnUserMsgHook original_ClExtrasInfo = nullptr;
 
 int __MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf) {
 	abc::MsgReader msg(pbuf, iSize);
@@ -289,6 +311,88 @@ int __MsgFunc_Damage(const char* pszName, int iSize, void* pbuf) {
 	return original_Damage(pszName, iSize, pbuf);
 }
 
+int __MsgFunc_Spectator(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	const int index = msg.readByte();
+	if (!msg.ok())
+		return original_Spectator(pszName, iSize, pbuf);
+	if (index <= 0 || index > 32)
+		return original_Spectator(pszName, iSize, pbuf);
+	const int spectating = msg.readByte();
+	if (!msg.ok())
+		return original_Spectator(pszName, iSize, pbuf);
+	Spectator(index, spectating != 0);
+	return original_Spectator(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_ServerName(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	const std::string name = msg.readString();
+	if (!msg.ok())
+		return original_ServerName(pszName, iSize, pbuf);
+	ServerName(name.c_str());
+	return original_ServerName(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_NextMap(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	const std::string map = msg.readString();
+	if (!msg.ok())
+		return original_NextMap(pszName, iSize, pbuf);
+	NextMap(map.c_str());
+	return original_NextMap(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_TimeEnd(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	const int time = msg.readLong();
+	if (!msg.ok())
+		return original_TimeEnd(pszName, iSize, pbuf);
+	TimeEnd(time);
+	return original_TimeEnd(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_MOTD(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	const int code = msg.readByte();
+	const std::string info = msg.readString();
+	if (!msg.ok())
+		return original_MOTD(pszName, iSize, pbuf);
+	Motd(code, info.c_str());
+	return original_MOTD(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_VoteMenu(const char* pszName, int iSize, void* pbuf) {
+	// Old gate: hud_vote off passes the message straight through (no event,
+	// no swallow); on, it consumes the message like ShowMenu.
+	if (!voteEnabled || voteEnabled->value <= 0)
+		return original_VoteMenu(pszName, iSize, pbuf);
+	abc::MsgReader msg(pbuf, iSize);
+	VoteMenuData data;
+	data.type = msg.readByte();
+	data.content = msg.readString();
+	data.yes = msg.readString();
+	data.no = msg.readString();
+	if (!msg.ok())
+		return original_VoteMenu(pszName, iSize, pbuf);
+	VoteMenu(data);
+	return 1;
+}
+
+int __MsgFunc_EndVote(const char* pszName, int iSize, void* pbuf) {
+	EndVote();
+	return original_EndVote(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_ClExtrasInfo(const char* pszName, int iSize, void* pbuf) {
+	// Old comment: the payload is an obfuscated blob the HUD never parsed -
+	// the event only marks "extra player data changed" (donor flags etc.),
+	// so the port chains the original and fires the refresh event.
+	const int result = original_ClExtrasInfo(pszName, iSize, pbuf);
+	ClExtrasInfo();
+	return result;
+}
+
 int __MsgFunc_MetaHook(const char* pszName, int iSize, void* pbuf) {
 	// The old plugin-to-plugin usermsg carrier (registered by the user's
 	// server-side addon; absent on vanilla servers - original may be null).
@@ -355,6 +459,19 @@ void init() {
 	// The MetaHook carrier is addon-registered; a null chain (vanilla servers)
 	// leaves every read a no-op passthrough (see __MsgFunc_MetaHook).
 	original_MetaHook = HOOK_MESSAGE(MetaHook);
+	// Batch C additions.
+	original_Spectator = HOOK_MESSAGE(Spectator);
+	original_ServerName = HOOK_MESSAGE(ServerName);
+	original_NextMap = HOOK_MESSAGE(NextMap);
+	original_TimeEnd = HOOK_MESSAGE(TimeEnd);
+	original_MOTD = HOOK_MESSAGE(MOTD);
+	original_VoteMenu = HOOK_MESSAGE(VoteMenu);
+	original_EndVote = HOOK_MESSAGE(EndVote);
+	original_ClExtrasInfo = HOOK_MESSAGE(ClExtrasInfo);
+}
+
+void setVoteGate(cvar_t* cvar) {
+	voteEnabled = cvar;
 }
 
 }

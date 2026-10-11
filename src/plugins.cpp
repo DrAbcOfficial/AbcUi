@@ -13,11 +13,12 @@
 
 #include "hooks.h"
 #include "rmlui/RmlUiModule.h"
+#include "rmlui/SteamAPI.h"
 #include "rmlui/VGUI2ExtensionImport.h"
 
 class CAbcUi : public abc::CAbcPluginBase {
 public:
-	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.5.0") {}
+	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.6.0") {}
 
 protected:
 	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
@@ -27,13 +28,16 @@ protected:
 		// needs is not usable this early (Phase 3 trace finding).
 		abc::MetaRendererInit();
 		vgui2ext::init();
+		steamapi::init();
 		hooks::locateVanillaHudList();
+		hooks::locateNativeHudPanelInfo();
 		hooks::attachExports(pExportFuncs);
 		abc::ConsolePrint("[AbcUi] loaded %s\n", Version());
 	}
 
 	void OnShutdown() override {
 		rmlui::shutdown();
+		steamapi::shutdown();
 		vgui2ext::shutdown();
 	}
 };

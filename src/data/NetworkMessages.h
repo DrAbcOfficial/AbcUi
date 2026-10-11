@@ -76,8 +76,27 @@ extern abc::CallbackList<void(bool, int)> Flashlight; // (on, battery)
 extern abc::CallbackList<TextMsgCallback> TextMsg;
 extern abc::CallbackList<void(const DamageData&)> Damage;
 extern abc::CallbackList<void(const PopNumData&)> PopNum;
+// Batch C additions.
+struct VoteMenuData {
+	int type = 0; // old VoteType enum value (1 kill, 2 kick, 3 ban, 4 map, ...)
+	std::string content; // server text (template with player/percent placeholders)
+	std::string yes;
+	std::string no;
+};
+
+extern abc::CallbackList<void(int, bool)> Spectator; // (entindex, spectating)
+extern abc::CallbackList<void(const char*)> ServerName;
+extern abc::CallbackList<void(const char*)> NextMap;
+extern abc::CallbackList<void(int)> TimeEnd; // seconds
+extern abc::CallbackList<void(int, const char*)> Motd; // (code, text chunk)
+extern abc::CallbackList<void(const VoteMenuData&)> VoteMenu;
+extern abc::CallbackList<void()> EndVote;
+extern abc::CallbackList<void()> ClExtrasInfo;
 
 // HUD_Init: installs the HookUserMsg chain. Idempotent.
 void init();
+// panels/vote hands its hud_vote cvar here (HUD_Init time) - the VoteMenu
+// consumer passes messages through while the gate is off (old IsVoteEnable).
+void setVoteGate(cvar_t* cvar);
 
 }

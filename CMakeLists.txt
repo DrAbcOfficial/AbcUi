@@ -9,6 +9,9 @@ add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
 
 set(METAHOOK_INCLUDE_DIR "${ABC_CORE_DIR}/thirdparty/MetaHook/include")
 set(VGUI2EXTENSION_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/VGUI2Extension/include")
+# Steamworks SDK (headers only - steamapi/ binds exports at runtime, no
+# steam_api.lib import; see rmlui/SteamApiNative.cpp).
+set(STEAMSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/SteamSDK")
 
 # --- FreeType (R-3) ---------------------------------------------------------
 # Static FreeType built from the pinned submodule. RmlUi locates its font
@@ -51,14 +54,19 @@ add_library(AbcUi MODULE
     src/rmlui/RmlUiModule.cpp
     src/rmlui/ProbeCommand.cpp
     src/rmlui/SourceSpewStub.cpp
+    src/rmlui/SteamAPI.cpp
+    src/rmlui/SteamApiBridge.cpp
+    src/rmlui/SteamApiNative.cpp
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
     src/framework/HudPanel.cpp
     src/framework/Localization.cpp
     src/data/HudState.cpp
     src/data/NetworkMessages.cpp
+    src/data/PlayerResource.cpp
     src/data/SpriteResource.cpp
     src/data/TextFeed.cpp
+    src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
@@ -89,6 +97,7 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage)
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).
 target_include_directories(AbcUi PRIVATE
+    "${STEAMSDK_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface/VGUI"
