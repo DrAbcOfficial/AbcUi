@@ -84,6 +84,7 @@ add_library(AbcUi MODULE
     src/panels/notice/NoticePanel.cpp
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/vote/VotePanel.cpp
+    src/panels/motd/MotdPanel.cpp
     src/panels/popnum/PopNumPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
     src/panels/textmenu/TextMenuPanel.cpp
