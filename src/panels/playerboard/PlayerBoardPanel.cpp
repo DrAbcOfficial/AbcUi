@@ -8,6 +8,7 @@
 #include "PlayerBoardPanel.h"
 
 #include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementUtilities.h>
 
 #include <algorithm>
 #include <cmath>
@@ -50,8 +51,14 @@ constexpr float kMinViewDot = 0.5f;
 // Old SetPos centered the tile on the projection (x - GetWide()/2, wide 80).
 constexpr float kTileHalfWidth = 40.0f;
 
+// Per-tile inner-element lookup. The 32 tiles intentionally repeat the same
+// inner ids ("name", "bar-health", ...) in one document, so the lookup MUST
+// stay subtree-scoped: Element::GetElementById resolves from the owner
+// document (RmlUi Element.cpp GetElementById -> GetOwnerDocument), which
+// would collapse every tile's update into tile-1's elements - all tiles
+// showing one player (the P6 user-test report).
 Rml::Element* child(Rml::Element* root, const char* id) {
-	return root ? root->GetElementById(id) : nullptr;
+	return root ? Rml::ElementUtilities::GetElementById(root, id) : nullptr;
 }
 
 // Document element ids "tile-1".."tile-32" (rml generation matches).
