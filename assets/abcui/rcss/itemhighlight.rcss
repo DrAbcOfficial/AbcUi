@@ -42,11 +42,13 @@
 	position: absolute;
 	left: 0px;
 	top: 0px;
-	width: 100%;
-	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	/* Size and line-height ride the per-frame marker box (set inline);
+	   RmlUi 6.3 flex containers measure a bare text node as zero-size (the
+	   .audit/flexprobe probe6 evidence), so the vgui Label shape - block +
+	   centered single line - is the port pattern (PlayerBoard name
+	   precedent). */
+	display: block;
+	text-align: center;
 	/* Old ItemNamePanel.res "Text": CompactaBold 20px @1080p -> 8.9 design
 	   units; Verdana bold is the loaded stand-in face. */
 	font-family: Verdana;
@@ -82,10 +84,13 @@
 	top: 0px;
 	width: 100%;
 	height: 100%;
-	display: flex;
-	align-items: center;
-	justify-content: center;
+	/* vgui Label a_center in a 24-tall box: block + centered line (flex
+	   cannot measure bare text; see the .label note). */
+	display: block;
 	text-align: center;
+	line-height: 24dp;
+	white-space: nowrap;
+	overflow: hidden;
 	font-family: Verdana;
 	font-size: 8.9dp;
 	/* Old "brighttext". */

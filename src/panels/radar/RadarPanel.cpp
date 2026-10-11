@@ -13,7 +13,6 @@
 
 #include <com_model.h>
 
-#include <abc/Console.h>
 #include <abc/CvarCmd.h>
 #include <abc/Math.h>
 #include <abc/Paths.h>

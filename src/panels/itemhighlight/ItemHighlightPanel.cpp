@@ -297,7 +297,9 @@ ItemHighlightPanel::Marker* ItemHighlightPanel::updateMarker(int entindex, int i
 	}
 
 	// Old Update: icon box scales as 45 * ratio (ratio = the old
-	// distance/range clamp - the icon grows with distance by design).
+	// distance/range clamp - the icon grows with distance by design). The
+	// label's line-height rides the live box size so the name stays centred
+	// (block + centered line, the vgui Label port pattern).
 	const float density = framework::Theme::scale();
 	const float size = kMarkerBox * density * ratio;
 	const float half = size / 2.0f;
@@ -306,6 +308,8 @@ ItemHighlightPanel::Marker* ItemHighlightPanel::updateMarker(int entindex, int i
 	marker.box->SetProperty("left", std::to_string(screen[0] - half) + "px");
 	marker.box->SetProperty("top", std::to_string(screen[1] - half) + "px");
 	marker.box->SetProperty("display", "block");
+	if (marker.label)
+		marker.label->SetProperty("line-height", std::to_string(size) + "px");
 
 	// Default (non-aim) state each frame - the aim pass re-flags the target.
 	marker.art->SetProperty("display", "block");
