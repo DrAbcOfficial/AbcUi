@@ -8,14 +8,19 @@
 
 #include "data/HudState.h"
 #include "data/NetworkMessages.h"
+#include "data/PlayerResource.h"
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
 #include "panels/gindicator/GIndicatorPanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
+#include "rmlui/SteamAPI.h"
 
 namespace hooks {
+
+engine_studio_api_s* EngineStudioApi = nullptr;
+const hudpanel_info_s* NativeHudPanelInfo = nullptr;
 
 namespace {
 
@@ -93,6 +98,7 @@ static void H_HUD_Init() {
 		netmsg::init();
 		hudstate::init();
 		weaponres::init();
+		playerres::init();
 		textfeed::init();
 		framework::PanelManager::registerPanelCvars();
 		rmlui::registerCommands();
@@ -103,6 +109,7 @@ static int H_HUD_VidInit() {
 	rebuildVanillaHudPanels();
 	int result = gExportfuncs.HUD_VidInit();
 	weaponres::reset();
+	playerres::resetAll();
 	rmlui::onVidInit();
 	return result;
 }
@@ -158,10 +165,18 @@ static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct en
 
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
 	// Observe-first: feed Rml, then always let the engine/binding chain run.
-	// Key consumption (return-1 semantics) is a batch-A/C concern
-	// (plan 05 §3.5 input routing rules).
+	// Key consumption (return-1 semantics) lands with the batch-C vote keys
+	// / scoreboard pointer routing (plan 05 §3.5 input routing rules).
 	rmlui::onKeyEvent(down, keynum);
 	return gExportfuncs.HUD_Key_Event(down, keynum, pszCurrentBinding);
+}
+
+static int H_HUD_GetStudioModelInterface(int version, struct r_studio_interface_s** ppinterface,
+	struct engine_studio_api_s* pstudio) {
+	// Old exportfuncs: mirror the engine studio API once (player info reads
+	// in data::playerres; AbcEssential holds its own copy - D-01 no sharing).
+	EngineStudioApi = pstudio;
+	return gExportfuncs.HUD_GetStudioModelInterface(version, ppinterface, pstudio);
 }
 
 static void H_HUD_Shutdown() {
@@ -175,11 +190,31 @@ void attachExports(cl_exportfuncs_t* pExportFuncs) {
 	pExportFuncs->HUD_Redraw = H_HUD_Redraw;
 	pExportFuncs->HUD_Frame = H_HUD_Frame;
 	pExportFuncs->HUD_Key_Event = H_HUD_Key_Event;
+	pExportFuncs->HUD_GetStudioModelInterface = H_HUD_GetStudioModelInterface;
 	pExportFuncs->HUD_UpdateClientData = H_HUD_UpdateClientData;
 	pExportFuncs->HUD_TxferPredictionData = H_HUD_TxferPredictionData;
 	pExportFuncs->HUD_TxferLocalOverrides = H_HUD_TxferLocalOverrides;
 	pExportFuncs->HUD_AddEntity = H_HUD_AddEntity;
 	pExportFuncs->HUD_Shutdown = H_HUD_Shutdown;
+}
+
+void locateNativeHudPanelInfo() {
+	// from: ABCEnchance exportfuncs.cpp NativeHUDPanelInfo (SC client keeps
+	// its native per-player HUD data - frags/health/armor/donor/admin - in a
+	// global array; the old sig pins the mov-imm32 that stores its address).
+	// Pattern deliberately byte-scoped; the extracted pointer is range-
+	// checked against the mirrored client image before anything reads it.
+	constexpr char pattern[] = "\xC6\x85\x8F\xFE\xFF\xFF\x01\x66\x89\x90";
+	const auto addr = static_cast<unsigned char*>(g_pMetaHookAPI->SearchPattern(
+		g_pMetaHookAPI->GetClientBase(), g_pMetaHookAPI->GetClientSize(), pattern, sizeof(pattern) - 1));
+	if (!addr)
+		abc::SysError("[AbcUi] Could not found: NativeHUDPanelInfo");
+	const DWORD clientBase = reinterpret_cast<DWORD>(g_pMetaHookAPI->GetClientBase());
+	const DWORD clientSize = g_pMetaHookAPI->GetClientSize();
+	const DWORD tableAddr = *(DWORD*)(addr + 10) + 8;
+	if (tableAddr < clientBase || tableAddr - clientBase >= clientSize)
+		abc::SysError("[AbcUi] NativeHUDPanelInfo pointer outside the client image: %08x", tableAddr);
+	NativeHudPanelInfo = reinterpret_cast<const hudpanel_info_s*>(tableAddr);
 }
 
 void locateVanillaHudList() {

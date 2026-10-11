@@ -16,6 +16,23 @@
 
 #include <metahook.h>
 
+// Batch C: the engine studio API (player mirror reads) - captured from the
+// HUD_GetStudioModelInterface chain (old exportfuncs.cpp gEngineStudio).
+// Valid after LoadClient; the struct is the engine's, never written.
+struct engine_studio_api_s;
+// Client dll's native HUD panel info row (SC native player data) - layout
+// from ABCEnchance exportfuncs.h, filled by the client dll itself.
+struct hudpanel_info_s {
+	float frags;
+	int death;
+	int classify;
+	char unknown[64];
+	float health;
+	float armor;
+	int donor;
+	int admin;
+};
+
 namespace hooks {
 
 // LoadClient time: chain our HUD_XXX implementations into the export table.
@@ -23,5 +40,12 @@ void attachExports(cl_exportfuncs_t* pExportFuncs);
 // LoadClient time: locate the client's vanilla HUD list (sig-scan; fatal on
 // miss like the old Sig_NotFound). See the suppression note in hooks.cpp.
 void locateVanillaHudList();
+// LoadClient time: locate the client's native HUD panel info array (fatal on
+// miss - same Sig_NotFound policy as the old FillAddress).
+void locateNativeHudPanelInfo();
+
+// Direct-call captures (09 §3.4): data-layer read-only access.
+extern engine_studio_api_s* EngineStudioApi;
+extern const hudpanel_info_s* NativeHudPanelInfo;
 
 }

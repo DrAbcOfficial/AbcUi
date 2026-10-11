@@ -13,3 +13,6 @@
 [submodule "thirdparty/VGUI2Extension"]
 	path = thirdparty/VGUI2Extension
 	url = https://github.com/MetaHookSv/VGUI2Extension
+[submodule "thirdparty/SteamSDK"]
+	path = thirdparty/SteamSDK
+	url = https://github.com/MetaHookSv/SteamSDK
