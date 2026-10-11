@@ -25,6 +25,7 @@
 #include "../panels/vote/VotePanel.h"
 #include "../panels/weaponchoose/WeaponChoosePanel.h"
 #include "../panels/popnum/PopNumPanel.h"
+#include "../panels/radar/RadarPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
 #include "../panels/textmenu/TextMenuPanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
@@ -63,6 +64,7 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::WeaponChoosePanel>());
 		// Batch D (render depth, plan 05 §6).
 		list.push_back(std::make_unique<panels::ItemHighlightPanel>());
+		list.push_back(std::make_unique<panels::RadarPanel>());
 		return list;
 	}();
 	return panels;
@@ -90,6 +92,8 @@ void PanelManager::registerPanelCvars() {
 	panels::weaponchoose::registerCommands();
 	// Batch D.
 	panels::itemhighlight::registerCvars();
+	panels::radar::registerCvars();
+	panels::radar::registerCommands();
 }
 
 void PanelManager::initAll(Rml::Context* context) {

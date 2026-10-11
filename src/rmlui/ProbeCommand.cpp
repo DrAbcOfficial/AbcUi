@@ -18,6 +18,7 @@
 #include "../data/NetworkMessages.h"
 #include "../data/PlayerResource.h"
 #include "../panels/itemhighlight/ItemHighlightPanel.h"
+#include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 
 #include "../rmlui/SteamAPI.h"
@@ -234,6 +235,21 @@ void probeCommand() {
 		}
 		abc::ConsolePrint("[AbcUi] probe: itemhighlight tracked=%d markers=%d doc-visible=%d\n",
 			panels::itemhighlight::debugTrackedCount(), markers, ih->IsVisible() ? 1 : 0);
+	}
+	// Radar ground truth (batch D): FBO readiness + plate state + live
+	// avatars, so a "no minimap" report splits cleanly between the FBO
+	// producer and the DOM consumer.
+	if (Rml::ElementDocument* radar = context->GetDocument("radar")) {
+		int avatars = 0;
+		if (Rml::Element* container = radar->GetElementById("avatars"))
+			avatars = container->GetNumChildren();
+		abc::ConsolePrint("[AbcUi] probe: radar fbo-tex=%d doc-visible=%d avatars=%d\n",
+			panels::radar::debugFboTexture(), radar->IsVisible() ? 1 : 0, avatars);
+		if (Rml::Element* map = radar->GetElementById("map")) {
+			abc::ConsolePrint("[AbcUi] probe: radar map src='%s' abs=(%.1f %.1f)\n",
+				map->GetAttribute<Rml::String>("src", "<none>").c_str(),
+				map->GetAbsoluteLeft(), map->GetAbsoluteTop());
+		}
 	}
 	// Mouse-chain diagnostics (P6 audit round): cursor state, the R-4 WndProc
 	// callback registration and the scoreboard pointer mode (wantsWheel =

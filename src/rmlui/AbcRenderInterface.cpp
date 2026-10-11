@@ -193,8 +193,40 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 
 	// Texture handles are surface texture ids (int namespace).
 	const int textureId = static_cast<int>(texture);
-	const uint64_t program = (textureId != 0 && AdditiveTextures.count(texture)) ? kProgramSpriteAdditive : kProgramAlphaBlend;
+	uint64_t program = (textureId != 0 && AdditiveTextures.count(texture)) ? kProgramSpriteAdditive : kProgramAlphaBlend;
+	// External masked textures (radar map): the mask id rides the registered
+	// slot, read live so a shape toggle needs no texture reload (the Rml
+	// cache holds one entry for the URI).
+	if (textureId != 0) {
+		for (const auto& [prefix, external] : ExternalTextures) {
+			if (static_cast<int>(external.Texture) != textureId || !external.MaskSlot || !*external.MaskSlot)
+				continue;
+			program |= DRAW_TEXTURED_RECT_MASK_TEXTURE_ENABLED;
+			renderer->DrawTexturedRectMask(textureId, *external.MaskSlot, vertices.data(), vertices.size(),
+				indices.data(), indices.size(), program, "AbcUi masked");
+			return;
+		}
+	}
 	renderer->DrawTexturedRect(textureId, vertices.data(), vertices.size(), indices.data(), indices.size(), program, "AbcUi");
+}
+
+void AbcRenderInterface::registerExternalTexture(const Rml::String& uriPrefix, Rml::TextureHandle texture,
+	int width, int height, const int* maskSlot) {
+	if (uriPrefix.empty() || texture == 0)
+		return;
+	ExternalTexture entry;
+	entry.Texture = texture;
+	entry.Width = width;
+	entry.Height = height;
+	entry.MaskSlot = maskSlot;
+	ExternalTextures[uriPrefix] = entry;
+	// A recycled handle must not stay marked as owned (a second
+	// registration of the same GL id after a frame-buffer regen).
+	OwnedTextures.erase(texture);
+}
+
+void AbcRenderInterface::unregisterExternalTexture(const Rml::String& uriPrefix) {
+	ExternalTextures.erase(uriPrefix);
 }
 
 void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
@@ -202,6 +234,16 @@ void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 }
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
+	// Externally-owned live textures first (radar FBO): the owner registered
+	// the URI prefix; the query suffix is a cache-bust, the current handle
+	// lives in the registry.
+	for (const auto& [prefix, external] : ExternalTextures) {
+		if (source.rfind(prefix, 0) != 0 || !external.Texture)
+			continue;
+		dimensions.x = external.Width;
+		dimensions.y = external.Height;
+		return external.Texture;
+	}
 	// Sprite URIs ("spr://<hud.txt name>", "spricon://<atlas>/<l>,<t>,<r>,<b>",
 	// "spralpha://...", "sprframe://...") resolve through the sprite data
 	// layer, never the file interface (the scheme prefix also keeps Rml from
@@ -212,6 +254,7 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
+			OwnedTextures.insert(handle);
 			// Old ImageSprPanel rendered HUD sprites kRenderTransAdd - mark
 			// the handle so RenderGeometry picks the additive program.
 			AdditiveTextures.insert(handle);
@@ -228,6 +271,7 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
+			OwnedTextures.insert(handle);
 		}
 		return handle;
 	}
@@ -237,6 +281,7 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		if (handle) {
 			dimensions.x = width;
 			dimensions.y = height;
+			OwnedTextures.insert(handle);
 			// spralpha:// is the straight-alpha crop flavor; sprframe:// files
 			// (water splash) are kRenderTransAdd like every HUD sprite.
 			if (source.rfind("sprframe://", 0) == 0)
@@ -271,6 +316,7 @@ Rml::TextureHandle AbcRenderInterface::loadFileTexture(Rml::Vector2i& dimensions
 	if (textureId == 0)
 		return 0;
 	dimensions = Rml::Vector2i(image.Width, image.Height);
+	OwnedTextures.insert(static_cast<Rml::TextureHandle>(textureId));
 	return static_cast<Rml::TextureHandle>(textureId);
 }
 
@@ -286,6 +332,7 @@ Rml::TextureHandle AbcRenderInterface::GenerateTexture(Rml::Span<const Rml::byte
 	const int textureId = UploadNewTexture(pixels.data(), dimensions.x, dimensions.y);
 	if (textureId == 0)
 		return 0;
+	OwnedTextures.insert(static_cast<Rml::TextureHandle>(textureId));
 	return static_cast<Rml::TextureHandle>(textureId);
 }
 
@@ -293,7 +340,10 @@ void AbcRenderInterface::ReleaseTexture(Rml::TextureHandle texture) {
 	if (texture == 0)
 		return;
 	AdditiveTextures.erase(texture);
-	vgui2ext::deleteTextureById(static_cast<int>(texture));
+	// Only handles this interface's texture channel created are deleted;
+	// external textures (the radar FBO) stay with their owner.
+	if (OwnedTextures.erase(texture))
+		vgui2ext::deleteTextureById(static_cast<int>(texture));
 }
 
 void AbcRenderInterface::clearAdditiveTextures() {

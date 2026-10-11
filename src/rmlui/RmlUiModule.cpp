@@ -113,6 +113,10 @@ Rml::Context* context() {
 	return Context;
 }
 
+AbcRenderInterface* renderInterface() {
+	return Callbacks.RenderInterface.get();
+}
+
 void init() {
 	if (Initialised)
 		return;
