@@ -1,15 +1,18 @@
 // rmlui::steamapi native backend - direct connection to the game's
-// steam_api.dll (user directive: the bridge lacks Friends/avatar coverage).
-// from: ABCEnchance src/core/resource/playerresource.cpp + vgui_controls/
-// avatar_image.cpp semantics, minus the import-library link: every export is
-// bound with GetProcAddress so the plugin still loads (degraded) on setups
-// without a live Steam client.
+// steam_api.dll. from: ABCEnchance src/core/resource/playerresource.cpp +
+// vgui_controls/avatar_image.cpp semantics, minus the import-library link:
+// every export is bound with GetProcAddress so the plugin still loads
+// (degraded) on setups without a live Steam client.
 //
-// Interface pointers come from the dll's SteamUser()/SteamFriends()/
-// SteamUtils() accessors; the game owns SteamAPI_Init/RunCallbacks, so this
-// backend only reads. Avatar download is the old poll-with-throttle shape:
-// GetSmallFriendAvatar returns 0 until Steam fetched the image, callers
-// retry through steamapi::avatar().
+// Interface resolution rides the MODERN entry points (SteamAPI_GetHSteamUser
+// + SteamInternal_FindOrCreateUserInterface with the header's interface
+// version strings): current steam_api.dll builds dropped the flat
+// SteamUser()/SteamFriends()/SteamUtils() C accessors (verified against the
+// SC 5.26 runtime - 941 exports, accessors absent), so the old-code flat
+// calls resolve nothing here. The game owns SteamAPI_Init/RunCallbacks, so
+// this backend only reads. Avatar download is the old poll-with-throttle
+// shape: GetSmallFriendAvatar returns < 0 until Steam fetched the image,
+// callers retry through steamapi::avatar().
 
 #include "SteamApiBackend.h"
 
@@ -28,12 +31,12 @@ namespace steamapi {
 
 namespace {
 
-using FnAccessor = void* (*)();
+using FnGetHSteamUser = int (*)();
+using FnFindOrCreateUserInterface = void* (*)(int hSteamUser, const char* version);
 
 struct BoundExports {
-	FnAccessor user = nullptr;
-	FnAccessor friends = nullptr;
-	FnAccessor utils = nullptr;
+	FnGetHSteamUser getHSteamUser = nullptr;
+	FnFindOrCreateUserInterface findOrCreateUserInterface = nullptr;
 };
 
 BoundExports Exports;
@@ -46,20 +49,26 @@ struct AvatarCacheEntry {
 	std::vector<unsigned char> rgba;
 	int width = 0;
 	int height = 0;
+	bool noAvatar = false; // steam answered "this user has no avatar" - stop polling
 };
 std::unordered_map<SteamId64, AvatarCacheEntry> AvatarCache;
 
 bool connectInterfaces() {
-	if (!Exports.user || !Exports.friends || !Exports.utils)
+	if (!Exports.getHSteamUser || !Exports.findOrCreateUserInterface)
 		return false;
-	User = static_cast<ISteamUser*>(Exports.user());
-	Friends = static_cast<ISteamFriends*>(Exports.friends());
-	Utils = static_cast<ISteamUtils*>(Exports.utils());
-	// SteamAPI_Init has not run (or failed) when the accessors yield null;
-	// treat as unavailable instead of crashing on the first vtable call.
-	if (!User || !Friends || !Utils)
+	// SteamAPI_Init has not run yet when the user handle is 0; treat as
+	// unavailable instead of crashing on the first vtable call. The facade's
+	// lazy re-probe retries once the game has initialized Steam.
+	const int hSteamUser = Exports.getHSteamUser();
+	if (!hSteamUser)
 		return false;
-	return true;
+	User = static_cast<ISteamUser*>(
+		Exports.findOrCreateUserInterface(hSteamUser, STEAMUSER_INTERFACE_VERSION));
+	Friends = static_cast<ISteamFriends*>(
+		Exports.findOrCreateUserInterface(hSteamUser, STEAMFRIENDS_INTERFACE_VERSION));
+	Utils = static_cast<ISteamUtils*>(
+		Exports.findOrCreateUserInterface(hSteamUser, STEAMUTILS_INTERFACE_VERSION));
+	return User && Friends && Utils;
 }
 
 }
@@ -70,9 +79,10 @@ SteamApiBackend* nativeBackend() {
 			const HMODULE module = GetModuleHandleA("steam_api.dll");
 			if (!module)
 				return false;
-			Exports.user = reinterpret_cast<FnAccessor>(GetProcAddress(module, "SteamUser"));
-			Exports.friends = reinterpret_cast<FnAccessor>(GetProcAddress(module, "SteamFriends"));
-			Exports.utils = reinterpret_cast<FnAccessor>(GetProcAddress(module, "SteamUtils"));
+			Exports.getHSteamUser = reinterpret_cast<FnGetHSteamUser>(
+				GetProcAddress(module, "SteamAPI_GetHSteamUser"));
+			Exports.findOrCreateUserInterface = reinterpret_cast<FnFindOrCreateUserInterface>(
+				GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
 			return connectInterfaces();
 		}
 
@@ -94,16 +104,25 @@ SteamApiBackend* nativeBackend() {
 		bool avatar(SteamId64 id, AvatarRgba& out) override {
 			if (!Friends || !Utils || !id)
 				return false;
-			int handle = Friends->GetSmallFriendAvatar(CSteamID(id));
-			if (!handle) {
-				// Not fetched yet: nudge the download (old CAvatarImage
+			AvatarCacheEntry& entry = AvatarCache[id];
+			if (entry.noAvatar)
+				return false;
+
+			const int handle = Friends->GetSmallFriendAvatar(CSteamID(id));
+			// Old LoadAvatarImage: > 0 decodes, == 0 means "user has no
+			// avatar" (stop trying), < 0 means steam is still fetching.
+			if (handle == 0) {
+				entry.noAvatar = true;
+				return false;
+			}
+			if (handle < 0) {
+				// Nudge the download (old CAvatarImage
 				// RequestUserInformation - non-friends need it for the
 				// persona/avatar to arrive at all) and let the caller retry.
 				Friends->RequestUserInformation(CSteamID(id), false);
-				return false; // steam still downloading (old k_uAvatarImageNotLoaded path)
+				return false; // steam still downloading (old k_eAvatarPending path)
 			}
 
-			AvatarCacheEntry& entry = AvatarCache[id];
 			if (entry.handle == handle && !entry.rgba.empty()) {
 				out.rgba = entry.rgba.data();
 				out.width = entry.width;

@@ -14,9 +14,12 @@
 #include <abc/Math.h>
 
 #include "../data/HudState.h"
+#include "../data/Avatars.h"
 #include "../data/NetworkMessages.h"
 #include "../data/PlayerResource.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
+
+#include "../rmlui/SteamAPI.h"
 
 #include "RmlUiModule.h"
 #include "VGUI2ExtensionImport.h"
@@ -82,6 +85,21 @@ void probeCommand() {
 		hudstate::isHudHidden(hudstate::kHideFlashlight) ? 1 : 0,
 		hudstate::debugHideTokens(),
 		hudstate::isSpectate() ? 1 : 0);
+	// Steam/avatar chain ground truth (P6 avatar round): which backend won,
+	// the id it serves, and a live fetch on the LOCAL id - that avatar is
+	// always resident, so a failure here pins the broken link (connect /
+	// handle / image decode) with no second client needed.
+	{
+		const steamapi::Backend steamBackend = steamapi::backend();
+		const steamapi::SteamId64 local = steamapi::localSteamId();
+		steamapi::AvatarRgba av;
+		const bool fetched = steamapi::avatar(local, av);
+		abc::ConsolePrint("[AbcUi] probe: steam backend=%d local=%llu fetch=%d %dx%d gen=%d\n",
+			static_cast<int>(steamBackend),
+			static_cast<unsigned long long>(local),
+			fetched ? 1 : 0, av.width, av.height,
+			avatars::generation(local));
+	}
 	// Keydown follows the context focus; print who owns it so a stuck input
 	// report localizes in one probe run.
 	if (Rml::Element* focus = context->GetFocusElement()) {

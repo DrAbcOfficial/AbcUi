@@ -778,6 +778,19 @@ void ScoreboardPanel::onData(double frameTime) {
 	}
 
 	updateHeader();
+	// Avatar download pump (old CAvatarImage::Paint retry): the steamapi
+	// fetch only lands when someone re-asks, and Rml caches textures per
+	// source string - failures included - so the row's avatar:// URL never
+	// re-resolves on its own. Poll every connected player while the board is
+	// up; a landing upload rebuilds immediately (the fresh row emits a new
+	// ?gen URL, which is what finally reaches Rml).
+	if (scoreboard::ShowAvatars && scoreboard::ShowAvatars->value > 0) {
+		for (int index = 1; index <= playerres::kMaxPlayers; index++) {
+			const playerres::PlayerInfo* info = playerres::getPlayerInfo(index);
+			if (info && info->connected && info->steamId64 && avatars::touch(info->steamId64))
+				DataVersion++;
+		}
+	}
 	// Old OnThink: 0.5s full refresh cadence; data-version bumps refresh
 	// immediately. The table only rebuilds while shown (old
 	// UpdateOnPlayerInfo IsVisible guard).
