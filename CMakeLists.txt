@@ -135,3 +135,9 @@ if(ABC_GAME_DIR)
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
         COMMENT "Deploying AbcUi.dll, FreeImage.dll and assets to ${ABC_GAME_DIR}")
 endif()
+
+option(ABC_UI_BUILD_TESTS "Build offline production helper regressions" OFF)
+if(ABC_UI_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

@@ -58,7 +58,7 @@ bool AbcSystemInterface::LogMessage(Rml::Log::Type type, const Rml::String& mess
 
 void AbcSystemInterface::SetClipboardText(const Rml::String& text) {
 	const int wideLength = MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
-	if (wideLength <= 0)
+	if (wideLength <= 0 && !text.empty())
 		return;
 	std::wstring wide(static_cast<size_t>(wideLength), L'\0');
 	MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), wide.data(), wideLength);
@@ -71,7 +71,7 @@ void AbcSystemInterface::SetClipboardText(const Rml::String& text) {
 		if (void* data = GlobalLock(handle)) {
 			memcpy(data, wide.c_str(), bytes);
 			GlobalUnlock(handle);
-			SetClipboardData(CF_UNICODETEXT, handle);
+			if (!SetClipboardData(CF_UNICODETEXT, handle)) GlobalFree(handle);
 		}
 		else {
 			GlobalFree(handle);

@@ -29,6 +29,7 @@ bool attackConfirm();
 class WeaponChoosePanel : public framework::HudPanel {
 public:
 	WeaponChoosePanel();
+	~WeaponChoosePanel() override;
 
 	void reset() override;
 

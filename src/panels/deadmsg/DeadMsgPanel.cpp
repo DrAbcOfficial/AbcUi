@@ -152,7 +152,7 @@ void DeadMsgPanel::addItem(const char* victim, const char* attacker, const char*
 	std::string templateText;
 	if (framework::Localization::translate(templateText, "DeathMsg_ConsolePrint")) {
 		abc::ConsolePrint("%s\n", abc::Format(templateText,
-			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor));
+			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor).c_str());
 	}
 }
 
