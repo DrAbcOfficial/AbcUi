@@ -46,6 +46,12 @@ void locateNativeHudPanelInfo();
 // LoadClient time: locate the client's GetClientColor accessor (fatal on
 // miss; the scoreboard/playerboard tints ride it).
 void locatePlayerColor();
+// LoadClient time: inline-hook the client's ShowVGUIMenu (sig-scan, fatal on
+// miss) so the vanilla mission-brief/MOTD windows yield to the new motd
+// panel (see the hook in hooks.cpp for the menu id gate).
+void hookVanillaMenuRoute();
+// HUD_Shutdown time: remove the ShowVGUIMenu hook (old UninstallClientHook).
+void unhookVanillaMenuRoute();
 
 // Direct-call captures (09 §3.4): data-layer read-only access.
 extern engine_studio_api_s* EngineStudioApi;

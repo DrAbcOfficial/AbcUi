@@ -19,6 +19,14 @@ namespace motd {
 void registerCvars();
 // Wheel ownership: the open motd scrolls (pagination replacement, D-17).
 bool wantsWheel();
+// The client's ShowVGUIMenu(MOTD) must stay down while hud_motd is non-zero:
+// >= 1 the new panel replaces it, < 0 suppresses both, 0 restores vanilla
+// (the old TFV_ShowVGUIMenu hook's gate).
+bool blocksVanillaWindow();
+// The hook's entry into the panel (old CViewport::ShowMOTD): shows the motd
+// under the hud_motd >= 1 gate. Null-panel safe (blocks silently, like the
+// old viewport call into a not-yet-built page).
+void showMotd();
 }
 
 class MotdPanel : public framework::HudPanel {
@@ -27,6 +35,10 @@ public:
 	~MotdPanel() override;
 
 	void reset() override;
+
+	// Old ShowMotd: the missionbriefing command chain and the
+	// ShowVGUIMenu(MOTD) hook both land here (hud_motd >= 1 gated).
+	void showMotd();
 
 protected:
 	void onDocumentReady() override;
@@ -37,8 +49,6 @@ private:
 	// showed the window; display waits for missionbriefing).
 	void append(const char* message);
 	void finishSend();
-	// Old ShowMotd (missionbriefing command): loads the map brief once.
-	void showMotd();
 	void loadMissionBrief();
 	void startCountdown();
 
