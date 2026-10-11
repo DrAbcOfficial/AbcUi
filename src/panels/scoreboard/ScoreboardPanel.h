@@ -27,11 +27,23 @@ void registerCvars();
 // Spine seam: true = the key serves the scoreboard (MOUSE2 pointer toggle)
 // and the engine/binding chain must not run it.
 bool onKeyEvent(int down, int keynum);
+// Wheel ownership: the table scrolls only in pointer mode (old vgui: the
+// scrollbar lived under the vgui cursor).
+bool wantsWheel();
+// Pointer-mode seam (abc_ui_pointer Debug instrument): injected MOUSE2 never
+// reaches the client key chain (P6 acceptance finding), so the driver flips
+// the mode directly.
+void setPointerMode(bool enabled);
+// HUD_Redraw intermission flag: shows the table (old SetInterMission ->
+// ShowPanel(intermission > 0)) and mutes +/-showscores (old !m_iInterMission
+// guards).
+void setIntermission(bool intermission);
 }
 
 class ScoreboardPanel : public framework::HudPanel {
 public:
 	ScoreboardPanel();
+	~ScoreboardPanel() override;
 
 	void reset() override;
 
@@ -41,6 +53,9 @@ protected:
 
 private:
 	friend bool scoreboard::onKeyEvent(int down, int keynum);
+	friend void scoreboard::setIntermission(bool intermission);
+	friend bool scoreboard::wantsWheel();
+	friend void scoreboard::setPointerMode(bool enabled);
 	friend class TableListener;
 	class TableListener;
 
@@ -66,6 +81,7 @@ private:
 	double ClientTimeNow = 0.0;
 	bool Visible = false;
 	bool MouseMode = false;
+	bool Intermission = false;
 	long DataVersion = 0;
 	long AppliedVersion = -1;
 	int MenuClient = 0;

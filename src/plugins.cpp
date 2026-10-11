@@ -16,12 +16,84 @@
 #include "rmlui/SteamAPI.h"
 #include "rmlui/VGUI2ExtensionImport.h"
 
+#ifndef NDEBUG
+// Debug-build assert routing (headless acceptance hardening): the CRT's
+// default assert report pops a MODAL dialog - the main loop stalls and the
+// RCON acceptance channel dies with no visible cause (P6 audit round). The
+// hook prints the report plus a resolved stack to the game console instead
+// and suppresses the dialog. Release builds keep the CRT default.
+#include <crtdbg.h>
+#include <dbghelp.h>
+
+#pragma comment(lib, "dbghelp.lib")
+
+#define ABC_UI_STACK_FRAMES 16
+
+int debugAssertReportHook(int reportType, char* message, int* returnValue) {
+	(void)reportType;
+	abc::ConsolePrint("[AbcUi][crt] %s\n", message ? message : "(no message)");
+
+	// The same lines to a file: this assert class fail-fasts after the hook
+	// returns, killing the console channel with it (P6 audit round).
+	FILE* trace = nullptr;
+	const bool toFile = fopen_s(&trace, "D:/Desktop/migration/.audit/p6-assert-stack.log", "a") == 0 && trace;
+	if (trace)
+		fprintf(trace, "=== %s", message ? message : "(no message)");
+
+	void* frames[ABC_UI_STACK_FRAMES] = {};
+	const WORD count = RtlCaptureStackBackTrace(1, ABC_UI_STACK_FRAMES, frames, nullptr);
+	static bool symbolsReady = []() {
+		return SymInitialize(GetCurrentProcess(),
+			"D:\\Desktop\\migration\\AbcUi\\build\\win32-debug\\Debug;srv*C:\\Windows\\Symbols", TRUE);
+	}();
+	for (WORD i = 0; i < count; i++) {
+		char line[320];
+		DWORD64 displacement = 0;
+		SYMBOL_INFO* symbol = static_cast<SYMBOL_INFO*>(alloca(sizeof(SYMBOL_INFO) + 128));
+		symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+		symbol->MaxNameLen = 127;
+		if (symbolsReady && SymFromAddr(GetCurrentProcess(), reinterpret_cast<DWORD64>(frames[i]), &displacement, symbol)) {
+			IMAGEHLP_LINEW64 srcLine{};
+			srcLine.SizeOfStruct = sizeof(srcLine);
+			DWORD lineDisplacement = 0;
+			if (symbolsReady && SymGetLineFromAddrW64(GetCurrentProcess(),
+					reinterpret_cast<DWORD64>(frames[i]), &lineDisplacement, &srcLine))
+				sprintf_s(line, "  %2u %s+0x%llx (%ws:%lu)", i, symbol->Name,
+					static_cast<unsigned long long>(displacement),
+					srcLine.FileName ? srcLine.FileName : L"?", srcLine.LineNumber);
+			else
+				sprintf_s(line, "  %2u %s+0x%llx", i, symbol->Name,
+					static_cast<unsigned long long>(displacement));
+		}
+		else
+			sprintf_s(line, "  %2u %p", i, frames[i]);
+		abc::ConsolePrint("[AbcUi][crt]%s\n", line);
+		if (trace) {
+			fprintf(trace, "%s\n", line);
+			fflush(trace);
+		}
+	}
+	if (trace)
+		fclose(trace);
+	if (returnValue)
+		*returnValue = 0;
+	return TRUE; // handled - no dialog, execution continues
+}
+
+void installDebugAssertHook() {
+	_CrtSetReportHook(debugAssertReportHook);
+}
+#endif // NDEBUG
+
 class CAbcUi : public abc::CAbcPluginBase {
 public:
 	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.6.0") {}
 
 protected:
 	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
+#ifndef NDEBUG
+		installDebugAssertHook();
+#endif
 		// Fatal Renderer check + interface grab (plan 05 §2 startup order).
 		// Rml assembly itself defers to the first HUD_Frame (see
 		// RmlUiModule.h): the VGUI surface texture channel the font engine

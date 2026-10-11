@@ -35,8 +35,8 @@ bool textmenuOpen() {
 	return panels::textmenu::isOpen();
 }
 
-bool PanelBlockAttack() {
-	return PanelInstance && PanelInstance->blockAttackOnce();
+bool attackConfirm() {
+	return PanelInstance && PanelInstance->attackConfirm();
 }
 
 // Old ctor default (persisted contract - never rename).
@@ -82,7 +82,12 @@ void registerCommands() {
 	}
 	if (abc::CChainedCommand* attack = commands::get("+attack")) {
 		attack->Event().append([]() {
-			return !PanelBlockAttack();
+			// Old input pair: MOUSE_LEFT press confirmed the highlight
+			// (Viewport g_EventHudMousePressed -> SelectWeapon) and that same
+			// press was swallowed (m_bSelectBlock -> BlockAttackOnce). The
+			// port keys both halves off +attack: visible bar -> confirm and
+			// consume; otherwise the attack runs.
+			return weaponchoose::attackConfirm();
 		});
 	}
 }
@@ -141,7 +146,6 @@ WeaponChoosePanel::WeaponChoosePanel()
 
 void WeaponChoosePanel::reset() {
 	Visible = false;
-	SelectBlock = false;
 	hide();
 }
 
@@ -166,7 +170,10 @@ bool WeaponChoosePanel::shouldDraw() const {
 	const playerres::PlayerInfo* localInfo = playerres::getLocalPlayerInfo();
 	if (!localInfo || localInfo->health <= 0)
 		return false;
-	// Old hud_fastswitch check (the cvar pointer lives in weaponres).
+	// Old hud_fastswitch check: the weapon command already went out from
+	// applySelection, the bar never shows.
+	if (weaponres::fastSwitchOn())
+		return false;
 	return true;
 }
 
@@ -175,13 +182,15 @@ void WeaponChoosePanel::rebuild() {
 	if (!box)
 		return;
 
-	// All owned weapons grouped by slot (old InsertWeapon slot lists).
+	// Owned weapons grouped by slot (old InsertWeapon slot lists; the
+	// registry also carries the full WeaponList - ownership filters it).
 	std::vector<const weaponres::Weapon*> bySlot[weaponres::kMaxWeaponSlot];
 	for (int id = 1; id < 32; id++) {
 		const weaponres::Weapon* weapon = weaponres::getWeapon(id);
 		if (!weapon || weapon->slot < 0 || weapon->slot >= static_cast<int>(weaponres::kMaxWeaponSlot))
 			continue;
-		// Old lists carried owned weapons only (Insert/Drop feed).
+		if (!weaponres::isOwned(weapon))
+			continue;
 		bySlot[weapon->slot].push_back(weapon);
 	}
 	for (auto& list : bySlot) {
@@ -200,12 +209,41 @@ void WeaponChoosePanel::rebuild() {
 	float maxHeight = kSlotIcon;
 	RainbowCounter = 0;
 
+	// Old item bars: abw=w/10, abx=w/20, abg=w/30, abh=h/10; fill rides the
+	// reserve count over max (scheme AmmoBar colors, empty = Red).
+	auto appendAmmoBars = [&](const weaponres::Weapon* weapon, float w, float h) {
+		const float abw = w / 10.0f;
+		const float abx = w / 20.0f;
+		const float abg = w / 30.0f;
+		const float abh = h / 10.0f;
+		const int ammoTypes[2] = { weapon->ammoType, weapon->ammo2Type };
+		const int maxes[2] = { weapon->max1, weapon->max2 };
+		for (int bar = 0; bar < 2; bar++) {
+			if (ammoTypes[bar] < 0)
+				continue;
+			const int count = weaponres::countAmmo(ammoTypes[bar]);
+			const float ratio = maxes[bar] > 0
+				? std::clamp(static_cast<float>(count) / maxes[bar], 0.0f, 1.0f)
+				: 1.0f;
+			const float bx = abx + bar * (abw + abg);
+			sprintf_s(buffer,
+				"<div class='bar-bg' style='left:%.1fdp; top:0dp; width:%.1fdp; height:%.1fdp;'></div>"
+				"<div class='bar-fill' style='left:%.1fdp; top:0dp; width:%.1fdp; height:%.1fdp; "
+				"background-color: %s;'></div>",
+				bx, abw, abh, bx, abw * ratio, abh,
+				count > 0 ? "rgba(255, 255, 0, 125)" : "rgba(255, 0, 0, 255)");
+			rml += buffer;
+		}
+	};
+
 	for (size_t slot = 0; slot < weaponres::kMaxWeaponSlot; slot++) {
 		float y = 0.0f;
-		// Slot icon row.
+		// Slot icon row (old Slot1..Slot9, Slot0 order with the matching
+		// slotN_icon assets; the icons tint by scheme SlotColor).
 		sprintf_s(buffer,
-			"<div class='slot' style='left:%.0fdp; top:0dp;'><img src='../img/weaponchoose/slot%zu_icon.tga'/></div>",
-			x, slot == 9 ? 0 : slot);
+			"<div class='slot' style='left:%.0fdp; top:0dp;'>"
+			"<img src='../img/weaponchoose/slot%zu_icon.tga' style='image-color: rgba(0, 255, 0, 125);'/></div>",
+			x, (slot + 1) % 10);
 		rml += buffer;
 		y = kSlotIcon + kGap;
 
@@ -217,20 +255,20 @@ void WeaponChoosePanel::rebuild() {
 			const float h = expanded ? kItemActiveH : kItemInactiveH;
 
 			// Old UpdateColor: ammo state picks the scheme tint, rainbow
-			// rotates the hue per item.
-			unsigned char r = 0, g = 255, b = 0;
-			unsigned char ri = 0, gi = 125, bi = 0;
+			// rotates the hue per item (ActiveColor Default, InactiveColor
+			// DefaultTransparent, EmptyColor Red, EmptyInactive 125 0 0 80).
+			unsigned char r = 0, g = 255, b = 0, a = 255;
+			unsigned char ri = 125, gi = 0, bi = 0, ai = 80;
 			if (!weaponres::hasAmmo(weapon)) {
 				r = 255, g = 0;
-				ri = 125, gi = 0;
 			}
 			if (weaponchoose::RainbowMenu && weaponchoose::RainbowMenu->value > 0) {
 				rainbowShift(RainbowCounter, r, g, b);
 				rainbowShift(RainbowCounter, ri, gi, bi);
 			}
 
-			// Active sprite while highlighted, inactive otherwise; the
-			// ammo bar pair rides the top (old item PerformLayout).
+			// Active sprite while highlighted, inactive otherwise; the ammo
+			// bar pair rides the item top (old item PerformLayout).
 			const weaponres::Weapon::SpriteSource& source = active ? weapon->active : weapon->inactive;
 			std::string img;
 			if (source.valid) {
@@ -238,14 +276,17 @@ void WeaponChoosePanel::rebuild() {
 					"<img src='spricon://%s/%d,%d,%d,%d' style='width:100%%; height:100%%; image-color: rgba(%d, %d, %d, %d);'/>",
 					source.atlas.c_str(), source.rect.left, source.rect.top,
 					source.rect.right, source.rect.bottom,
-					active ? r : ri, active ? g : gi, active ? b : bi, active ? 255 : 125);
+					active ? r : ri, active ? g : gi, active ? b : bi, active ? a : ai);
 				img = buffer;
 			}
 
 			sprintf_s(buffer,
-				"<div class='item%s' style='left:%.0fdp; top:%.0fdp; width:%.0fdp; height:%.0fdp;'>%s</div>",
-				active ? " active" : "", x, y, w, h, img.c_str());
+				"<div class='item%s' style='left:%.0fdp; top:%.0fdp; width:%.0fdp; height:%.0fdp;'>",
+				active ? " active" : "", x, y, w, h);
 			rml += buffer;
+			appendAmmoBars(weapon, w, h);
+			rml += img;
+			rml += "</div>";
 			y += h + kGap;
 			RainbowCounter++;
 		}
@@ -253,15 +294,19 @@ void WeaponChoosePanel::rebuild() {
 		x += (expanded ? kItemActiveW : kItemInactiveW) + kGap;
 	}
 
-	// Bucket frame over the highlighted item (old select_icon ImagePanel).
+	// Bucket frame over the highlighted item (old select_icon ImagePanel -
+	// the bounds came straight off the item, y included).
 	if (selected) {
+		const bool expandedCol = selected->slot == activeSlot;
 		float bx = 0.0f;
 		for (int slot = 0; slot < selected->slot; slot++) {
 			bx += (slot == activeSlot ? kItemActiveW : kItemInactiveW) + kGap;
 		}
 		sprintf_s(buffer,
-			"<img id='bucket' src='../img/weaponchoose/select_icon.tga' style='left:%.0fdp; top:%.0fdp; width:%.0fdp; height:%.0fdp;'/>",
-			bx, kSlotIcon + kGap, kItemActiveW, kItemActiveH);
+			"<img id='bucket' src='../img/weaponchoose/select_icon.tga' style='left:%.0fdp; top:%.0fdp; "
+			"width:%.0fdp; height:%.0fdp; image-color: rgba(255, 255, 0, 255);'/>",
+			bx, kSlotIcon + kGap, expandedCol ? kItemActiveW : kItemInactiveW,
+			expandedCol ? kItemActiveH : kItemInactiveH);
 		rml += buffer;
 	}
 
@@ -272,29 +317,28 @@ void WeaponChoosePanel::rebuild() {
 	}
 }
 
-void WeaponChoosePanel::confirmSelection() {
+bool WeaponChoosePanel::confirmSelection() {
 	// Old SelectWeapon: the highlighted pick must be usable (ammo or
 	// SELECTONEMPTY); confirm sends the weapon command + select sound and
-	// closes the bar.
+	// closes the bar. Rejected picks keep the bar open and let the attack
+	// through (the old m_bSelectBlock armed only on the success path).
 	const weaponres::Weapon* weapon = weaponres::selectedWeapon();
 	if (!weapon || !Visible)
-		return;
+		return false;
+	if (weaponres::fastSwitchOn())
+		return false;
 	if (!(weapon->flags & weaponres::kItemFlagSelectOnEmpty) && !weaponres::hasAmmo(weapon))
-		return;
-	char command[128];
-	sprintf_s(command, "%s\n", weapon->name.c_str());
-	gEngfuncs.pfnClientCmd(command);
+		return false;
+	gEngfuncs.pfnServerCmd(weapon->name.c_str());
 	gEngfuncs.pfnPlaySoundByName("common/wpn_select.wav", 1.0f);
 	setVisible(false);
-	SelectBlock = true;
+	return true;
 }
 
-bool WeaponChoosePanel::blockAttackOnce() {
-	if (!SelectBlock)
+bool WeaponChoosePanel::attackConfirm() {
+	if (!Visible)
 		return false;
-	SelectBlock = false;
-	confirmSelection();
-	return true;
+	return confirmSelection();
 }
 
 void WeaponChoosePanel::onDocumentReady() {

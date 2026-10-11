@@ -18,6 +18,7 @@
 #include <abc/CvarCmd.h>
 #include <abc/Render.h>
 
+#include "HudState.h"
 #include "NetworkMessages.h"
 #include "SpriteResource.h"
 
@@ -125,13 +126,11 @@ std::vector<const Weapon*> allSelectableWeapons() {
 void applySelection(const Weapon* weapon) {
 	RegistryState.selected = weapon;
 	RegistryState.selectedSlotId = weapon ? weapon->slot : kInvalidWeaponSlot;
-	if (weapon && cvar_fastswitch && cvar_fastswitch->value > 0) {
-		char command[128];
-		sprintf_s(command, "%s\n", weapon->name.c_str());
-		gEngfuncs.pfnClientCmd(command);
-	}
+	if (weapon && cvar_fastswitch && cvar_fastswitch->value > 0)
+		gEngfuncs.pfnServerCmd(weapon->name.c_str());
 	ChooseWeapon(weapon);
 }
+
 
 // client_sprite_t* lookup by name + res (old GetSpriteList helper).
 const client_sprite_t* findSpriteEntry(const client_sprite_t* list, int count,
@@ -383,6 +382,14 @@ bool hasWeapon(int slot, int pos) {
 	return getWeapon(slot, pos) && RegistryState.owned.count(getWeapon(slot, pos)->id) > 0;
 }
 
+bool isOwned(const Weapon* weapon) {
+	return weapon && RegistryState.owned.count(weapon->id) > 0;
+}
+
+bool fastSwitchOn() {
+	return cvar_fastswitch && cvar_fastswitch->value > 0;
+}
+
 const Weapon* currentWeapon() {
 	return RegistryState.curWeapon;
 }
@@ -434,6 +441,10 @@ int selectedSlot() {
 }
 
 void selectSlot(int slot, int advance, bool wheel) {
+	// Old SelectSlot entry gates: TextMenu-first (subscription site) and the
+	// HEV suit (no suit, no weapons to walk).
+	if (!hudstate::hasSuit())
+		return;
 	const std::vector<const Weapon*> pool = allSelectableWeapons();
 	if (pool.empty())
 		return;
@@ -455,12 +466,37 @@ void selectSlot(int slot, int advance, bool wheel) {
 		return;
 	}
 
-	// Same slot (or wheel): step to the neighbour position; at the slot edge
-	// the wheel rolls into the next/previous non-empty slot, the slot key
-	// wraps within the slot.
+	// Same slot (or wheel mid-slot): step to the neighbour position. At the
+	// slot edge the wheel rolls into the next/previous non-empty slot (old
+	// GetMaxPos/GetMinPos check before the step); the slot key wraps within
+	// the slot.
 	const Weapon* current = RegistryState.selected;
 	if (!current)
 		return;
+
+	if (wheel) {
+		const std::vector<const Weapon*>& ownSlot = slotWeapons(current->slot);
+		const bool atEdge = advance > 0
+			? !ownSlot.empty() && ownSlot.back() == current
+			: !ownSlot.empty() && ownSlot.front() == current;
+		if (atEdge) {
+			// Old do-while: circular next/prev non-empty slot, entering at
+			// its first (advance>0) / last position.
+			std::vector<int> nonEmpty;
+			for (int s = 0; s < static_cast<int>(kMaxWeaponSlot); s++) {
+				if (!slotWeapons(s).empty())
+					nonEmpty.push_back(s);
+			}
+			const int at = static_cast<int>(std::find(nonEmpty.begin(), nonEmpty.end(), current->slot) - nonEmpty.begin());
+			const int base = at >= 0 ? at : 0;
+			const int step = advance > 0 ? 1 : -1;
+			const int next = nonEmpty[(base + step + static_cast<int>(nonEmpty.size())) % nonEmpty.size()];
+			const std::vector<const Weapon*> target = slotWeapons(next);
+			applySelection(advance > 0 ? target.front() : target.back());
+			return;
+		}
+	}
+
 	if (!inSlot.empty() && (!wheel || current->slot == slot)) {
 		for (size_t i = 0; i < inSlot.size(); i++) {
 			if (inSlot[i] != current)
@@ -471,23 +507,6 @@ void selectSlot(int slot, int advance, bool wheel) {
 			return;
 		}
 	}
-
-	// Wheel across slots: find the neighbour non-empty slot (circular).
-	if (!wheel)
-		return;
-	std::vector<int> nonEmpty;
-	for (int s = 0; s < static_cast<int>(kMaxWeaponSlot); s++) {
-		if (!slotWeapons(s).empty())
-			nonEmpty.push_back(s);
-	}
-	if (nonEmpty.empty())
-		return;
-	const int at = static_cast<int>(std::find(nonEmpty.begin(), nonEmpty.end(), current->slot) - nonEmpty.begin());
-	const int base = at >= 0 ? at : 0;
-	const int step = advance > 0 ? 1 : -1;
-	const int next = nonEmpty[(base + step + static_cast<int>(nonEmpty.size())) % nonEmpty.size()];
-	const std::vector<const Weapon*> target = slotWeapons(next);
-	applySelection(advance > 0 ? target.front() : target.back());
 }
 
 }

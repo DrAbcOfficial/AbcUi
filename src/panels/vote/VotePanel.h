@@ -24,6 +24,7 @@ bool onKeyEvent(int down, int keynum);
 class VotePanel : public framework::HudPanel {
 public:
 	VotePanel();
+	~VotePanel() override;
 
 	void reset() override;
 

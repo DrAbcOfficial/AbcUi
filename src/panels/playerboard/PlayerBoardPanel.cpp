@@ -47,6 +47,8 @@ namespace {
 // Old Think gates (cos 60 cone, 1024u range).
 constexpr float kMaxDistance = 1024.0f;
 constexpr float kMinViewDot = 0.5f;
+// Old SetPos centered the tile on the projection (x - GetWide()/2, wide 80).
+constexpr float kTileHalfWidth = 40.0f;
 
 Rml::Element* child(Rml::Element* root, const char* id) {
 	return root ? root->GetElementById(id) : nullptr;
@@ -68,7 +70,9 @@ const char* tileId(int index) {
 void setBarWidth(Rml::Element* bar, float ratio) {
 	if (!bar)
 		return;
-	const float width = 38.0f * std::clamp(ratio, 0.0f, 1.0f);
+	// Old fill = BackGroundImage wide (67 in PlayerBoardPanel.res; the
+	// HealthImage 38 was only the initial value, overwritten per Think).
+	const float width = 67.0f * std::clamp(ratio, 0.0f, 1.0f);
 	bar->SetProperty("width", std::to_string(width) + "dp");
 }
 
@@ -128,7 +132,9 @@ bool PlayerBoardPanel::updateClientInfo(Rml::Element* tile, int entindex) {
 	// the pointer is missing).
 	const cl_entity_t* ent = gEngfuncs.GetEntityByIndex(entindex);
 	const float danger = playerboard::PlayerInfoDanger ? playerboard::PlayerInfoDanger->value : 30.0f;
-	const bool showMedkit = health >= 0.0f && health < danger;
+	// Old icon band: medkit under the danger line (but alive), dead -> skull
+	// only (the two never showed together at health==0).
+	const bool showMedkit = health > 0.0f && health < danger;
 	const bool showDead = health <= 0.0f;
 	const bool showCrouch = !showMedkit && !showDead && ent &&
 		std::fabs(ent->curstate.maxs[2] - ent->curstate.mins[2]) < 64.0f;
@@ -213,7 +219,7 @@ void PlayerBoardPanel::onRedraw(double frameTime) {
 			continue;
 		}
 
-		tile->SetProperty("left", std::to_string(screen[0]) + "px");
+		tile->SetProperty("left", std::to_string(screen[0] - kTileHalfWidth) + "px");
 		tile->SetProperty("top", std::to_string(screen[1]) + "px");
 		tile->SetProperty("display", updateClientInfo(tile, index) ? "block" : "none");
 	}

@@ -7,6 +7,7 @@
 
 #include "PlayerResource.h"
 
+#include <abc/Console.h>
 #include <com_model.h>
 #include <r_studioint.h>
 
@@ -50,6 +51,10 @@ bool PlayerInfo::isThisPlayer() const {
 }
 
 void PlayerInfo::update() {
+#ifndef NDEBUG
+	if (debugPinned)
+		return;
+#endif
 	if (!hooks::EngineStudioApi)
 		return;
 	const auto* info = reinterpret_cast<const player_info_sc_t*>(
@@ -66,17 +71,26 @@ void PlayerInfo::update() {
 	}
 	if (connected) {
 		if (steamId64 == 0 || info->m_nSteamID != steamId64) {
-			steamId64 = info->m_nSteamID;
-			// Local fallback: some engines leave the local slot's SteamID
-			// zero (old SteamUser()->GetSteamID() read).
-			if (!steamId64) {
-				const auto* local = gEngfuncs.GetLocalPlayer();
-				if (local && index == local->index)
-					steamId64 = steamapi::localSteamId();
+			// Old order: the LOCAL slot unconditionally took
+			// SteamUser()->GetSteamID() (the engine column can carry a
+			// bot/placeholder id for slot 1); everyone else the engine value.
+			const auto* local = gEngfuncs.GetLocalPlayer();
+			if (local && index == local->index) {
+				steamId64 = steamapi::localSteamId();
+				if (!steamId64)
+					steamId64 = info->m_nSteamID;
+			} else {
+				steamId64 = info->m_nSteamID;
 			}
 			// Old real-name read (GetFriendPersonaName); the active steamapi
 			// backend answers, empty when it cannot serve names.
 			realName = steamId64 ? steamapi::personaName(steamId64) : std::string();
+		}
+		else if (steamId64 && realName.empty()) {
+			// The persona surface can come up after the first read (late
+			// steam init) - re-ask while the column is empty (old code's
+			// lazy SteamFriends() accessor had the same effect).
+			realName = steamapi::personaName(steamId64);
 		}
 		topColor = info->topcolor;
 		bottomColor = info->bottomcolor;
@@ -170,5 +184,50 @@ bool isEntitySpectate(int idx) {
 	const cl_entity_t* plr = gEngfuncs.GetEntityByIndex(idx);
 	return plr ? plr->curstate.iuser1 > 0 : false;
 }
+
+#ifndef NDEBUG
+
+void debugPopulateBoard() {
+	// 31 fake teammates/opponents for the full-occupancy scoreboard runs:
+	// two teams, spread frags/deaths/hp/armor/ping, a few spectators, donor
+	// and admin coverage. Slot 1 stays the real local player.
+	static const char* kNames[] = {
+		"Alpha_Commando", "Bravo_Hunter", "Charlie_Sniper", "Delta_Medic",
+		"Echo_Engineer", "Foxtrot_Scout", "Golf_Heavy", "Hotel_Recon",
+		"India_Grenadier", "Juliet_Point", "Kilo_Rifleman", "Limo_Driver",
+		"Mike_Support", "November_Ops", "Oscar_Pilot", "Papa_Gunner",
+		"Quebec_Lurker", "Romeo_Blade", "Sierra_Fix", "Tango_Unit",
+		"Uniform_Wolf", "Victor_Crane", "Whiskey_Tac", "Xray_Node",
+		"Yankee_Foxtrot", "Zulu_Rampart", "Grunt_TwoSeven", "Raider_Nine",
+		"Warden_Four", "Cinder_Twelve", "Nomad_Sixteen",
+	};
+	for (int index = 2; index <= kMaxPlayers; index++) {
+		PlayerInfo& info = infos()[index];
+		info.reset();
+		const int n = index - 2;
+		info.index = index;
+		info.name = kNames[n];
+		info.connected = true;
+		info.model = "gordon";
+		info.team = (n % 2 == 0) ? teamres::TeamId::Team1 : teamres::TeamId::Team2;
+		info.frags = static_cast<float>((n * 7) % 40) - 5.0f;
+		info.deaths = (n * 3) % 25;
+		info.health = static_cast<float>((n * 13) % 130) - 15.0f;
+		info.armor = static_cast<float>((n * 11) % 120) - 10.0f;
+		info.ping = (n * 17) % 260;
+		info.loss = n % 5;
+		info.spectate = (n % 11) == 3;
+		info.steamId64 = 76561197960287930ull + static_cast<std::uint64_t>(index);
+		info.hideExtra = (n % 4 == 0) ? HideExtra::HideAdmin : HideExtra::No;
+		info.admin = (n == 2) ? Admin::ServerOwner : ((n == 4) ? Admin::Operator : Admin::None);
+		info.donor = static_cast<Donor>(65536 + (n % 7));
+		info.debugPinned = true;
+	}
+	netmsg::ServerName("AbcUi board instrument (fake full server)");
+	netmsg::TimeEnd(1234);
+	abc::ConsolePrint("[AbcUi] board: 31 fake players pinned (Team1/Team2, spectators, donor/admin spread)\n");
+}
+
+#endif
 
 }

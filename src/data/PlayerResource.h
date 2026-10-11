@@ -11,8 +11,9 @@
 // steamapi::personaName() (old GetFriendPersonaName) - empty while the
 // active backend cannot serve names.
 //
-// Donor/admin ride the client dll's native HUD panel info table (sig-located
-// by the spine, see hooks.h) exactly like the old g_aryNativeHUDPanelInfo.
+// Donor rides the client dll's native HUD panel info table (sig-located
+// by the spine, see hooks.h) exactly like the old g_aryNativeHUDPanelInfo;
+// admin comes off the ScoreInfo wire byte.
 
 #include <string>
 
@@ -40,9 +41,10 @@ enum class HideExtra : int {
 	HideOwner = 2,
 };
 
-// Old PlayerInfo::DONOR.
+// Old PlayerInfo::DONOR - the base is the wire value the client dll's native
+// HUD panel table stores (0x10000 + kind); the cast is direct.
 enum class Donor : int {
-	None = 0,
+	None = 65536,
 	ElectricCrowbar,
 	GoldedUzi,
 	GoldedDollar,
@@ -71,6 +73,12 @@ struct PlayerInfo {
 	bool connected = false;
 	bool spectate = false;
 	std::uint64_t steamId64 = 0;
+#ifndef NDEBUG
+	// abc_ui_board instrument: the slot identity was injected by the Debug
+	// acceptance driver - update() keeps it instead of the empty engine
+	// mirror (a local game has no real players in slots 2..32).
+	bool debugPinned = false;
+#endif
 
 	// Old IsValid: connected AND named.
 	bool isValid() const { return connected && !name.empty(); }
@@ -93,5 +101,12 @@ PlayerInfo* getLocalPlayerInfo();
 
 // Old PlayerResource::IsInSpectate: the entity's iuser1 observer flag.
 bool isEntitySpectate(int idx);
+
+#ifndef NDEBUG
+// abc_ui_board instrument: fill slots 2..32 with fake identities (mixed
+// teams/frags/health) so a local session can drive the scoreboard/table
+// interactions at full occupancy. Debug builds only.
+void debugPopulateBoard();
+#endif
 
 }

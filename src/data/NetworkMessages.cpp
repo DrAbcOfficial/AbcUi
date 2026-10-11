@@ -68,8 +68,9 @@ pfnUserMsgHook original_Flashlight = nullptr;
 pfnUserMsgHook original_TextMsg = nullptr;
 pfnUserMsgHook original_Damage = nullptr;
 pfnUserMsgHook original_MetaHook = nullptr;
-// hud_vote gate for the VoteMenu consumer (set by panels/vote at HUD_Init;
-// null = default-on so the event still flows before the panel registers).
+// hud_vote gate for the VoteMenu consumer (set by panels/vote at HUD_Init -
+// before any usermsg can arrive, so the null branch is unreachable in
+// practice; null would pass the message straight through, old IsVoteEnable).
 cvar_t* voteEnabled = nullptr;
 pfnUserMsgHook original_Spectator = nullptr;
 pfnUserMsgHook original_ServerName = nullptr;

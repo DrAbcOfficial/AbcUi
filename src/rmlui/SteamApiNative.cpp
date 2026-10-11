@@ -94,9 +94,14 @@ SteamApiBackend* nativeBackend() {
 		bool avatar(SteamId64 id, AvatarRgba& out) override {
 			if (!Friends || !Utils || !id)
 				return false;
-			const int handle = Friends->GetSmallFriendAvatar(CSteamID(id));
-			if (!handle)
+			int handle = Friends->GetSmallFriendAvatar(CSteamID(id));
+			if (!handle) {
+				// Not fetched yet: nudge the download (old CAvatarImage
+				// RequestUserInformation - non-friends need it for the
+				// persona/avatar to arrive at all) and let the caller retry.
+				Friends->RequestUserInformation(CSteamID(id), false);
 				return false; // steam still downloading (old k_uAvatarImageNotLoaded path)
+			}
 
 			AvatarCacheEntry& entry = AvatarCache[id];
 			if (entry.handle == handle && !entry.rgba.empty()) {
