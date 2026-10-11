@@ -87,7 +87,7 @@ void installDebugAssertHook() {
 
 class CAbcUi : public abc::CAbcPluginBase {
 public:
-	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.7.0") {}
+	CAbcUi() : abc::CAbcPluginBase("AbcUi", "0.8.0") {}
 
 protected:
 	void OnLoadClient(cl_exportfuncs_t* pExportFuncs) override {
