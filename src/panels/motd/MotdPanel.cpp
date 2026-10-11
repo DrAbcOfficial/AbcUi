@@ -96,10 +96,9 @@ void MotdPanel::reset() {
 	// scoreboard re-show within one map); it reloads per map by the VidInit
 	// panel reset of the old viewport - match that (fresh document state).
 	LoadedMissionBrief = false;
-	if (Rml::Element* box = element("box")) {
-		box->SetProperty("display", "none");
+	if (Rml::Element* box = element("box"))
 		box->SetProperty("opacity", "1");
-	}
+	hide();
 }
 
 void MotdPanel::append(const char* message) {
@@ -109,10 +108,9 @@ void MotdPanel::append(const char* message) {
 void MotdPanel::startCountdown() {
 	ShowTime = ClientTimeNow + kKeepTime;
 	Fading = false;
-	if (Rml::Element* box = element("box")) {
-		box->SetProperty("display", "block");
+	if (Rml::Element* box = element("box"))
 		box->SetProperty("opacity", "1");
-	}
+	show();
 }
 
 void MotdPanel::finishSend() {

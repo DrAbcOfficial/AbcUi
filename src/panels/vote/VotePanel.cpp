@@ -66,8 +66,7 @@ void VotePanel::setVisible(bool visible) {
 	if (visible == Visible)
 		return;
 	Visible = visible;
-	if (Rml::Element* box = element("box"))
-		box->SetProperty("display", visible ? "block" : "none");
+	visible ? show() : hide();
 }
 
 bool VotePanel::answerKey(int down, int keynum) {

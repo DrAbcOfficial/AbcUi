@@ -62,35 +62,52 @@ bool loadDefaultAvatar() {
 	const int height = bytes[14] | (bytes[15] << 8);
 	const int bpp = bytes[16];
 	const bool topDown = (bytes[17] & 0x20) != 0;
-	if (bpp != 32 || width <= 0 || height <= 0)
+	if ((bpp != 32 && bpp != 24) || width <= 0 || height <= 0)
 		return false;
+	const int bytesPerPixel = bpp / 8;
 
 	std::vector<unsigned char> rgba(static_cast<size_t>(width) * height * 4);
 	size_t src = 18 + idLength;
 	if (imageType == 2) {
 		if (bytes.size() - src < rgba.size())
 			return false;
-		memcpy(rgba.data(), bytes.data() + src, rgba.size());
+		// Uncompressed rows: BGRA/BGR -> RGBA with full alpha for 24bpp.
+		for (int i = 0; i < width * height; i++) {
+			const unsigned char* in = bytes.data() + src + static_cast<size_t>(i) * bytesPerPixel;
+			rgba[i * 4 + 0] = in[2];
+			rgba[i * 4 + 1] = in[1];
+			rgba[i * 4 + 2] = in[0];
+			rgba[i * 4 + 3] = bpp == 32 ? in[3] : 255;
+		}
 	} else {
+		const size_t srcRowBytes = static_cast<size_t>(width) * bytesPerPixel;
 		size_t dst = 0;
 		while (dst < rgba.size() && src < bytes.size()) {
 			const unsigned char header = bytes[src++];
 			const int count = (header & 0x7f) + 1;
 			if (header & 0x80) {
-				if (src + 4 > bytes.size())
+				if (src + bytesPerPixel > bytes.size())
 					return false;
 				for (int i = 0; i < count && dst < rgba.size(); i++) {
-					memcpy(rgba.data() + dst, bytes.data() + src, 4);
+					rgba[dst + 0] = bytes[src + 2];
+					rgba[dst + 1] = bytes[src + 1];
+					rgba[dst + 2] = bytes[src + 0];
+					rgba[dst + 3] = bpp == 32 ? bytes[src + 3] : 255;
 					dst += 4;
 				}
-				src += 4;
+				src += bytesPerPixel;
 			} else {
-				const size_t run = static_cast<size_t>(count) * 4;
-				if (src + run > bytes.size())
+				if (src + srcRowBytes > bytes.size())
 					return false;
-				memcpy(rgba.data() + dst, bytes.data() + src, (std::min)(run, rgba.size() - dst));
-				dst += run;
-				src += run;
+				for (int i = 0; i < count && dst < rgba.size(); i++) {
+					const unsigned char* in = bytes.data() + src + static_cast<size_t>(i) * bytesPerPixel;
+					rgba[dst + 0] = in[2];
+					rgba[dst + 1] = in[1];
+					rgba[dst + 2] = in[0];
+					rgba[dst + 3] = bpp == 32 ? in[3] : 255;
+					dst += 4;
+				}
+				src += srcRowBytes;
 			}
 		}
 	}
@@ -102,10 +119,6 @@ bool loadDefaultAvatar() {
 			memcpy(flipped.data() + (height - 1 - y) * stride, rgba.data() + y * stride, stride);
 		rgba = std::move(flipped);
 	}
-	// BGRA -> RGBA in place.
-	for (size_t i = 0; i + 3 < rgba.size(); i += 4)
-		std::swap(rgba[i], rgba[i + 2]);
-
 	if (!vgui2ext::available())
 		return false;
 	DefaultAvatarTexture = vgui2ext::createTexture();
