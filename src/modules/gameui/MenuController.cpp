@@ -30,7 +30,7 @@ MenuController::MenuController(services::IGameUiBackend* backend)
 	: Backend(backend) {}
 
 bool MenuController::acceptNative(EventOrigin origin, uint32_t nativeSeq) {
-	if (origin == EventOrigin::kNone || nativeSeq == 0)
+	if ((origin != EventOrigin::kBaseUi && origin != EventOrigin::kGameUi) || nativeSeq == 0)
 		return false;  // untagged: a wiring bug, not a toggle
 	const size_t index = static_cast<size_t>(origin);
 	if (nativeSeq <= LastNativeSeq[index])
@@ -180,8 +180,8 @@ void MenuController::menuToggle() {
 }
 
 void MenuController::closeMenuAndResume() {
-	if (!State.canCloseMenu())
-		return;  // no-map/loading/fatal: never closes
+	if (!State.canCloseMenu() || !State.isMenuActive())
+		return;  // no-map/loading/fatal or already closed: no backend action
 	State.pages.clear();
 	State.overlays.clear();
 	if (Backend)

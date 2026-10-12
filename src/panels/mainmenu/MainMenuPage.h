@@ -22,6 +22,7 @@
 
 #include <functional>
 #include <string>
+#include <utility>
 
 namespace Rml {
 class Event;
@@ -36,6 +37,7 @@ using ActionSink = std::function<void(const char* action)>;
 class MainMenuPage final : public framework::InteractiveDocument {
 public:
 	MainMenuPage();
+	~MainMenuPage() override;
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 

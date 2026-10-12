@@ -22,6 +22,7 @@
 // pass (T05 forbidden list).
 
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/ObserverPtr.h>
 
 #include <string>
 #include <vector>
@@ -49,6 +50,8 @@ public:
 	};
 
 	InteractiveDocument(const char* name, const char* documentPath);
+	// Subclasses with member listeners MUST call close() in their destructor
+	// body, before those members die. The base destructor is only a fallback.
 	virtual ~InteractiveDocument();
 
 	InteractiveDocument(const InteractiveDocument&) = delete;
@@ -97,7 +100,7 @@ protected:
 
 private:
 	struct ListenerBinding {
-		Rml::Element* Target;
+		Rml::ObserverPtr<Rml::Element> Target;
 		std::string Event;
 		Rml::EventListener* Listener;
 		bool Capture;

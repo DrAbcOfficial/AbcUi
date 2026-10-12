@@ -8,6 +8,7 @@
 #include <abc/Console.h>
 
 #include <cstdio>
+#include <utility>
 
 namespace framework {
 
@@ -97,14 +98,17 @@ void InteractiveDocument::hide() {
 void InteractiveDocument::close() {
 	if (!Document)
 		return;
-	// Order is the contract: no listener can observe the DOM teardown, and
-	// no binding outlives the elements they hang on.
-	for (const ListenerBinding& binding : Listeners)
-		binding.Target->RemoveEventListener(binding.Event, binding.Listener, binding.Capture);
-	Listeners.clear();
-	Document->Close();
+	// Invalidate ownership before callbacks: OnDetach/Close can re-enter.
+	Rml::ElementDocument* ClosingDocument = Document;
 	Document = nullptr;
 	Degraded = false;
+	auto Bindings = std::move(Listeners);
+	Listeners.clear();
+	for (const ListenerBinding& Binding : Bindings) {
+		if (Rml::Element* Target = Binding.Target.get())
+			Target->RemoveEventListener(Binding.Event, Binding.Listener, Binding.Capture);
+	}
+	ClosingDocument->Close();
 }
 
 bool InteractiveDocument::isVisible() const {
@@ -116,7 +120,7 @@ void InteractiveDocument::addListener(Rml::Element* target, const char* event,
 	if (!target || !listener)
 		return;
 	target->AddEventListener(event, listener, capturePhase);
-	Listeners.push_back({target, event, listener, capturePhase});
+	Listeners.push_back({target->GetObserverPtr(), event, listener, capturePhase});
 }
 
 Rml::Element* InteractiveDocument::element(const char* id) {

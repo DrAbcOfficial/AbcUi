@@ -27,6 +27,11 @@ std::string resolveLabel(std::string label) {
 MainMenuPage::MainMenuPage()
 	: InteractiveDocument("mainmenu", "abcui/rml/mainmenu.rml"), Listener(this) {}
 
+MainMenuPage::~MainMenuPage() {
+	// Rml calls OnDetach: the member listener must still be alive here.
+	close();
+}
+
 void MainMenuPage::onDocumentReady() {
 	// focus/blur do not bubble (RmlUi event spec), so each focusable element
 	// carries its own pair; click bubbles but stays per element to keep the
@@ -76,10 +81,13 @@ void MainMenuPage::handle(Rml::Event& event) {
 	const std::string action = current->GetAttribute<Rml::String>("data-action", "");
 	if (action.empty())
 		return;
-	if (Sink)
-		Sink(action.c_str());
+	// A sink can replace itself or destroy this page. Finish page work first
+	// and keep the callable alive independently of its member storage.
+	const ActionSink Action = Sink;
 	if (action == "close" || action == "return")
 		hide();
+	if (Action)
+		Action(action.c_str());
 }
 
 void MainMenuPage::updateFocusStatus(Rml::Element* focused) {

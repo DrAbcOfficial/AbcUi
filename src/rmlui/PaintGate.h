@@ -2,7 +2,8 @@
 
 // rmlui::PaintGate - the selective native-UI paint/input gate (T08 steps 1/4).
 //
-// The one proven seam (T02 §7): VFT-hook IPanel (vgui2.dll, "VGUI_Panel007")
+// The candidate seam (T02 §7; complete popup coverage still needs live proof):
+// VFT-hook IPanel (vgui2.dll, "VGUI_Panel007")
 // and drop every traversal whose IPanel::GetModuleName is a native-UI module
 // ("GameUI", "ServerBrowser" - the exact strings this install reports, T02
 // §6). The module string is read per traversal, so panel creation/destruction/
