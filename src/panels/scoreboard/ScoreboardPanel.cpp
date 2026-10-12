@@ -47,6 +47,7 @@
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
 #include "../../hooks.h"
+#include "../../rmlui/InputBridge.h"
 #include "../../rmlui/RmlUiModule.h"
 #include "../../rmlui/VGUI2ExtensionImport.h"
 
@@ -296,17 +297,40 @@ void ScoreboardPanel::setVisible(bool visible) {
 
 void ScoreboardPanel::setMouseMode(bool enabled) {
 	enabled = enabled && Visible && isVisible();
-	if (enabled == MouseMode)
+	// The router is the single ownership truth (T06); MouseMode mirrors it.
+	// After a force-release (focus loss) a re-enable must re-acquire even
+	// though this flag still reads enabled.
+	if (enabled == MouseMode && (!enabled || PointerToken.held()))
 		return;
 	MouseMode = enabled;
-	// Ownership gates both Rml input and the client mouse/view hooks.
-	rmlui::setUiMouseOwner(enabled);
+	// Ownership gates both Rml input and the client mouse/view hooks; the
+	// cursor handoff rides the same edge (old EnableMousePointer).
+	if (enabled)
+		PointerToken = rmlui::uiRouter().acquire(this, framework::uiinput::OwnerTier::kInteractiveHud);
+	else
+		PointerToken.release();
 	if (enabled) {
 		vgui2ext::centerAndUnlockCursor();
 	} else {
 		vgui2ext::lockCursor();
 		closeContextMenu();
 	}
+}
+
+// uiinput::Owner: consulted only while this panel's token is top-of-stack.
+bool ScoreboardPanel::claimsKey(int down, int keynum) {
+	(void)down;
+	return MouseMode && ((keynum >= K_MOUSE1 && keynum <= K_MOUSE5) ||
+		keynum == K_MWHEELUP || keynum == K_MWHEELDOWN);
+}
+
+bool ScoreboardPanel::claimsWheel() {
+	return MouseMode;
+}
+
+void ScoreboardPanel::onOwnershipLost() {
+	if (MouseMode)
+		setMouseMode(false);
 }
 
 bool ScoreboardPanel::answerKey(int down, int keynum) {
