@@ -93,6 +93,12 @@ void MenuController::dispatch(const MenuEvent& event) {
 		if (acceptNative(event.origin, event.nativeSeq))
 			closeConsoleOverlay();
 		break;
+	case EventKind::kMenuShown:
+		menuShown();
+		break;
+	case EventKind::kMenuHidden:
+		menuHidden();
+		break;
 	case EventKind::kPhaseChanged:
 		applyPhaseChange(event.session, event.phase);
 		break;
@@ -303,6 +309,36 @@ void MenuController::nativeHide() {
 	State.overlays.clear();
 	// No resumeGame(): the engine initiated this hide; the original
 	// unpause/hideconsole side-effects belong to the hook layer (T08).
+}
+
+void MenuController::menuShown() {
+	// Same open rows as nativeActivate without the (origin, seq) gate: the
+	// suppression bridge coalesces the dual-fired engine callbacks before its
+	// sink fires, so one event per transition arrives here (T09 wiring).
+	switch (State.phase) {
+	case BackendPhase::kInGame:
+		if (State.pages.empty())
+			State.pages.push(MenuPage::kPause);
+		return;
+	case BackendPhase::kBooting:
+	case BackendPhase::kDisconnected:
+		if (State.pages.empty())
+			State.pages.push(MenuPage::kMain);
+		return;  // already up: the sink fired once per transition anyway
+	case BackendPhase::kConnecting:
+	case BackendPhase::kLoading:
+	case BackendPhase::kFatal:
+	case BackendPhase::kShuttingDown:
+		return;  // the attempt / emergency owns the screen
+	}
+}
+
+void MenuController::menuHidden() {
+	// The bridge lowered the menu from outside the state machine's decision
+	// (focus loss, teardown): force-clear, phase kept, never a backend action.
+	// After a decided close this is the idempotent second half of the sync.
+	State.pages.clear();
+	State.overlays.clear();
 }
 
 void MenuController::applyPhaseChange(uint32_t session, BackendPhase phase) {

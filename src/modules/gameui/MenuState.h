@@ -93,6 +93,15 @@ enum class EventKind {
 	kNativeConsoleOpen,   // GameConsole activate observed
 	kNativeConsoleClose,  // GameConsole hide observed
 
+	// Bridge-sync events (T09 wiring). The suppression bridge coalesces the
+	// dual-fired engine callbacks before its sink fires, so the module sees
+	// exactly one event per menu transition - no sequence tag needed.
+	kMenuShown,  // the bridge raised the menu: idempotent open (Main no-map,
+	             // Pause in-game), nothing while an attempt/emergency holds
+	kMenuHidden, // the bridge lowered the menu from outside the state
+	             // machine's decision (focus loss, teardown): force-clear
+	             // pages and overlays, phase kept, never a backend action
+
 	// Backend state events.
 	kPhaseChanged,     // session-tagged backend phase; stale sessions dropped
 	kLoadingStarted,   // generation-tagged

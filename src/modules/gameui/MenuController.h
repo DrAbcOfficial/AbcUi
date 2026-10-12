@@ -67,6 +67,13 @@
 //   kNativeConsoleOpen    console absent      -> push Console overlay
 //   kNativeConsoleClose   console present     -> remove it
 //
+// Bridge-sync events (T09 wiring; the suppression bridge coalesces the
+// dual-fired engine callbacks before its sink fires, so these carry no
+// sequence tag - one event per menu transition):
+//   kMenuShown            idempotent open, same rows as kNativeActivate
+//   kMenuHidden           pages and overlays force-cleared, phase kept, NO
+//                         backend action (idempotent after a decided close)
+//
 // Backend events (stale = dropped silently; races resolve by generation):
 //   kPhaseChanged(s,p)    s >= session: accept and bump; kDisconnected ->
 //                         full cleanup pages=[Main] overlays+focus cleared
@@ -135,6 +142,8 @@ private:
 	void passwordSubmit(const std::string& password);
 	void nativeActivate();
 	void nativeHide();
+	void menuShown();
+	void menuHidden();
 	void applyPhaseChange(uint32_t session, BackendPhase phase);
 	void loadingStarted(uint32_t generation);
 	void loadingFinished(uint32_t generation, LoadingOutcome outcome, const std::string& reason);
