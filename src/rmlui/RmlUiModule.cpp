@@ -18,6 +18,7 @@
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
+#include "../modules/Module.h"
 #include "../data/Avatars.h"
 #include "../data/HudState.h"
 #include "../data/SpriteResource.h"
@@ -225,14 +226,24 @@ void init() {
 	abc::MetaRenderer()->RegisterRenderCallbacks(&Callbacks);
 	Initialised = true;
 	abc::ConsolePrint("[AbcUi] RmlUi %s ready (context %dx%d)\n", Rml::GetVersion().c_str(), width, height);
+
+	// Last assembly step (see modules/Module.h): DOM writes are only legal
+	// from here on, and the dispatch re-arms module shutdown for this cycle.
+	modules::registry().contextReadyAll(Context);
 }
 
 void shutdown() {
-	if (!Initialised)
+	if (!Initialised) {
+		// HUD_Init can arm modules before the first HUD_Frame creates a context.
+		modules::registry().shutdownAll();
 		return;
+	}
 	Initialised = false;
 	if (auto* renderer = abc::MetaRenderer())
 		renderer->UnregisterRenderCallbacks(&Callbacks);
+	// Modules release what they own while the context still exists (their
+	// documents die with it, never after - see modules/Module.h).
+	modules::registry().shutdownAll();
 	closeProbeDocument();
 	framework::PanelManager::shutdown();
 
@@ -272,6 +283,9 @@ void onFrame(double frameTime) {
 	InputBridge::update(Context);
 	avatars::onFrame();
 	framework::PanelManager::onFrame(frameTime);
+	// Module frames precede the update pass so their DOM edits land in the
+	// same Context::Update (order contract, modules/Module.h).
+	modules::registry().frameAll(frameTime);
 #ifndef NDEBUG
 	PerfTimer updateTimer;
 #endif
@@ -307,6 +321,7 @@ void onVidInit() {
 	Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
 		static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	framework::PanelManager::vidInitAll();
+	modules::registry().vidInitAll();
 }
 
 void onKeyEvent(int down, int keynum) {
