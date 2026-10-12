@@ -19,6 +19,11 @@ namespace vgui2ext {
 // LoadClient time; safe to call when the plugin is missing.
 void init();
 void shutdown();
+// T08 plugin-teardown-only counterpart of init(): unregisters the native-UI
+// (GameUI/GameConsole) callbacks and drops the paint gate if it is still
+// installed. NOT part of the HUD-cycle shutdown() above - the takeover has
+// no registration gaps at map changes.
+void shutdownNative();
 
 // True when the ISurface2 interface was resolved.
 bool available();
@@ -52,5 +57,11 @@ void lockCursor();
 // registered - InputBridge then drives the Rml mouse from window messages
 // instead of the async-key poll (which cannot see injected input).
 bool uiCallbacksRegistered();
+
+// T08: true once the native-UI (GameUI/GameConsole/ClientVGUI) callbacks are
+// registered - the entry-layer takeover: menu show/hide answers, ESC routing,
+// console suppression, paint-gate teardown. Engine-session scoped: registered
+// once at the first init() and removed only by shutdownNative().
+bool nativeCallbacksRegistered();
 
 }

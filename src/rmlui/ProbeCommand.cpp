@@ -25,8 +25,10 @@
 #include "../rmlui/SteamAPI.h"
 
 #include "RmlUiModule.h"
+#include "PaintGate.h"
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
+#include "../services/GameUiBridge.h"
 namespace panels::scoreboard { extern panels::ScoreboardPanel* PanelInstance; }
 
 namespace hooks { int debugKeyEvent(int down, int keynum); }
@@ -479,6 +481,36 @@ void probeCommand() {
 			}
 		}
 
+		// T08 acceptance (V01/V08 evidence): the native-UI suppression state
+		// and the before-filter/after-filter counts. Allowed for a native
+		// bucket = attempts - blocked and must be 0 while armed.
+		void nativeCommand() {
+			const auto& bridge = services::nativeUiBridge();
+			const auto c = bridge.counters();
+			abc::ConsolePrint("[AbcUi] native armed=%d gate=%d menuUp=%d page=%d baseUiKeys=%u baseUiToggles=%u\n",
+				bridge.armed() ? 1 : 0, rmlui::paintGateInstalled() ? 1 : 0,
+				bridge.menuUp() ? 1 : 0, bridge.pageShown() ? 1 : 0,
+				c.BaseUiKeyEvents, c.BaseUiToggles);
+			const char* buckets[] = {"gameui", "serverbrowser", "other"};
+			for (int i = 0; i < (int)services::PaintBucket::kCount; i++) {
+				abc::ConsolePrint("[AbcUi] native paint %s attempts=%u blocked=%u allowed=%u\n",
+					buckets[i], c.PaintAttempts[i], c.PaintBlocked[i],
+					c.PaintAttempts[i] - c.PaintBlocked[i]);
+				abc::ConsolePrint("[AbcUi] native hittest %s attempts=%u blocked=%u allowed=%u\n",
+					buckets[i], c.HitTestAttempts[i], c.HitTestBlocked[i],
+					c.HitTestAttempts[i] - c.HitTestBlocked[i]);
+			}
+			abc::ConsolePrint("[AbcUi] native input-flags-cleared=%u up=%u down=%u escRouted=%u escRepeats=%u escUps=%u\n",
+				c.InputFlagsCleared, c.MenuUpTransitions, c.MenuDownTransitions,
+				c.EscRouted, c.EscRepeatsSuppressed, c.PhysicalEscUps);
+			abc::ConsolePrint("[AbcUi] native queries exclusive=%u active=%u console=%u runFrames=%u loading=%u/%u disc=%u\n",
+				c.ExclusiveQueries, c.ActiveQueries, c.ConsoleVisibleQueries, c.RunFrames,
+				c.LoadingStarts, c.LoadingFinishes, c.Disconnects);
+			abc::ConsolePrint("[AbcUi] native engineAnswers active=%d exclusive=%d level=%d console=%d\n",
+				bridge.isGameUIActive() ? 1 : 0, bridge.hasExclusiveInput() ? 1 : 0,
+				bridge.hasLevel() ? 1 : 0, bridge.consoleVisible() ? 1 : 0);
+		}
+
 		// Element value by id (window focus loss hides the page and clears
 		// the context focus, but the document keeps its value - this reads
 		// the evidence without depending on either).
@@ -544,6 +576,7 @@ void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_input_cancel", inputCancelCommand);
 	abc::ADD_COMMAND("abc_ui_input_events", inputEventsCommand);
 	abc::ADD_COMMAND("abc_ui_value", valueCommand);
+	abc::ADD_COMMAND("abc_ui_native", nativeCommand);
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);

@@ -115,6 +115,11 @@ protected:
 		rmlui::shutdown();
 		steamapi::shutdown();
 		vgui2ext::shutdown();
+		// T08: the native-UI takeover callbacks and any still-installed
+		// paint gate come down last (plugin teardown only - the HUD-cycle
+		// shutdown() above must not drop them, or map changes would leave
+		// suppression gaps).
+		vgui2ext::shutdownNative();
 	}
 };
 

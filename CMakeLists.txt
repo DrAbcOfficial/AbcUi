@@ -51,6 +51,7 @@ add_library(AbcUi MODULE
     src/rmlui/AbcSystemInterface.cpp
     src/rmlui/InputBridge.cpp
     src/rmlui/KeyMap.cpp
+    src/rmlui/PaintGate.cpp
     src/rmlui/RmlUiModule.cpp
     src/rmlui/ProbeCommand.cpp
     src/rmlui/TextInput.cpp
@@ -79,6 +80,7 @@ add_library(AbcUi MODULE
     src/modules/UiModuleRegistry.cpp
     src/modules/gameui/GameUiModule.cpp
     src/modules/gameui/MenuController.cpp
+    src/services/GameUiBridge.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp

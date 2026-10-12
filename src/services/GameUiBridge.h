@@ -2,7 +2,9 @@
 
 // services::GameUiBridge - the typed backend seam between the pure menu state
 // machine (gameui::menu, T04) and the engine/GameUI integration layer that a
-// later task (T08/T09+) implements. T04 freezes the type contract only.
+// later task (T09+) completes. T04 froze the IGameUiBackend type contract;
+// T08 adds the native-UI suppression bridge (NativeUiBridge) on the inbound
+// side of the same seam.
 //
 // Direction of data:
 //   OUT  menu decisions      - IGameUiBackend below, injected into
@@ -59,5 +61,239 @@ public:
 	// can actually close (in-game); never unconditionally.
 	virtual void resumeGame() = 0;
 };
+
+// T08: the native-UI suppression bridge. Pure state + rules consumed by the
+// engine-coupled adapters (rmlui/VGUI2ExtensionImport.cpp entry layer and
+// rmlui/PaintGate.cpp paint/input gate); kept in its own translation unit so
+// the exact production decision logic links into offline tests (05 doc tier
+// 1) while hook/extension headers stay out of the test binary.
+//
+// What lives where (T08 hard split):
+//   - This class: the rules. Which modules are native UI; when the gate is
+//     armed; whether the menu is up; the engine-facing answers; the counters
+//     the acceptance reads.
+//   - The adapters: the seams. VFTHook install/uninstall with validation,
+//     callback registration, turning rules into Result/return values.
+//
+// Engine evidence for the entry-layer shapes (Ghidra, install hw.dll
+// e3c7f374 / GameUI.dll 99382b87; RVAs, image base 0x01d00000):
+//   - The window-level key handler (0x10460) consumes ESC itself: on ESC-down
+//     it reads IGameUI +0x2c (IsGameUIActive) and calls IBaseUI +0x1c
+//     (HideGameUI) when the menu is active and a map is loaded, otherwise
+//     IBaseUI +0x20 (ActivateGameUI); it then returns "handled", which is why
+//     physical ESC never reaches the client export chain (T06/T07 evidence).
+//   - A second toggle helper (0x16b80) does the same checks through
+//     IGameUI +0x18 (HasExclusiveInput) - the two queries must answer alike
+//     because both helpers exist (hook-contract §4: the shipped GameUI
+//     forwards one to the other; we keep them identical by construction).
+//   - IBaseUI (CBaseUI) ActivateGameUI/HideGameUI call their IGameUI
+//     counterparts and then flip the ENGINE VGUI roots themselves (0x10680
+//     activate / 0x105f0 hide). The extension proxies both layers, so
+//     intercepting the INNER (IGameUI) layer suppresses the vanilla
+//     GameUI.dll internals (panel flips, setpause/unpause/hideconsole) while
+//     the outer layer still performs the engine-root side effects - the
+//     "necessary engine side effects" the takeover must preserve.
+
+enum class NativeUiOrigin : int {
+	kBaseUi = 0,  // BaseUI-outer wrapper (engine CBaseUI Activate/Hide/Console)
+	kGameUi,      // GameUI-inner wrapper (IGameUI Activate/Hide, direct callers)
+	kGameConsole, // legacy GameConsole wrapper (console open intent)
+	kOwnUi,       // our own page show/hide action (router owner / debug seam)
+	kCount,
+};
+
+// PaintTraverse/hit-test attribution. Attempts and blocked counts are
+// tracked per bucket; the acceptance requires the two native buckets'
+// "allowed" counts (attempts - blocked) to be 0 while armed (05 doc V01/V08).
+enum class PaintBucket : int {
+	kGameUi = 0,    // module string "GameUI"
+	kServerBrowser, // module string "ServerBrowser" (Sven main-menu dialog + popups)
+	kOther,         // BaseUI roots, Client, foreign plugins - always allowed
+	kCount,
+};
+
+// One engine show/hide request decision, returned to the entry-layer adapter.
+enum class ToggleAction : int {
+	kNone,        // nothing beyond consuming (disarmed, idempotent, duplicate
+	              // dispatch of the same engine call, or a hide the vanilla
+	              // wrapper would also have skipped)
+	kOpened,      // the menu went up (page sink already ran)
+	kRouteClose,  // menu up with a page: the adapter routes one synthetic ESC
+	              // press through rmlui::routeKey so the page owner keeps its
+	              // once-per-press semantics (T06/T07: composition cancel
+	              // first, then close); the owner lowers via requestMenuDown
+	kStateClose,  // menu up without a page (Rml not ready): the adapter
+	              // lowers directly - no owner exists to route to
+};
+
+// The page side of the seam (gameui module): the bridge decides WHEN the
+// menu is up; the sink implementation owns HOW the minimal page is presented
+// and taken down. Injected once at module construction; never owned.
+class INativeMenuSink {
+public:
+	virtual ~INativeMenuSink() = default;
+	// Menu raised (cold-start Activate included): present the minimal page.
+	// Called from inside the engine callback - the implementation must not
+	// re-enter the bridge.
+	virtual void onNativeMenuShow() = 0;
+	// Menu lowered through any path (ESC route, engine hide, focus loss):
+	// take the page down.
+	virtual void onNativeMenuHide() = 0;
+};
+
+struct NativeUiCounters {
+	// Paint/input gate.
+	uint32_t PaintAttempts[(int)PaintBucket::kCount] = {};
+	uint32_t PaintBlocked[(int)PaintBucket::kCount] = {};
+	uint32_t HitTestAttempts[(int)PaintBucket::kCount] = {};
+	uint32_t HitTestBlocked[(int)PaintBucket::kCount] = {};
+	// Native panels whose keyboard/mouse input flags this plugin cleared
+	// (the input gate; steady state is a fixed number, growth means new
+	// native panels appeared).
+	uint32_t InputFlagsCleared = 0;
+	// Entry layer (IGameUI funnel).
+	uint32_t ActivateRequests[(int)NativeUiOrigin::kCount] = {};
+	uint32_t HideRequests[(int)NativeUiOrigin::kCount] = {};
+	uint32_t MenuUpTransitions = 0;
+	uint32_t MenuDownTransitions = 0;
+	uint32_t PageShows = 0;
+	uint32_t PageHides = 0;
+	// Engine-facing observability.
+	uint32_t ExclusiveQueries = 0;
+	uint32_t ActiveQueries = 0;
+	uint32_t ConsoleActivates = 0;
+	uint32_t ConsoleHides = 0;
+	uint32_t ConsoleVisibleQueries = 0;
+	uint32_t RunFrames = 0;
+	uint32_t LoadingStarts = 0;
+	uint32_t LoadingFinishes = 0;
+	uint32_t Disconnects = 0;
+	// Entry-layer actions.
+	uint32_t BaseUiToggles = 0;      // BaseUI-layer Activate/Hide observations
+	uint32_t BaseUiKeyEvents = 0;    // keys the BaseUI seam kept off the vanilla UI
+	uint32_t EscRouted = 0;          // close presses routed through the router
+	uint32_t EscRepeatsSuppressed = 0; // held-ESC repeats refused a second route
+	uint32_t PhysicalEscUps = 0;     // physical ESC releases observed
+};
+
+class NativeUiBridge {
+public:
+	// The native-UI module rule: exact, case-insensitive string identity with
+	// the two module names this install reports (T02 §6: "GameUI" for
+	// GameUI.dll panels - BasePanel/TaskBar/dialogs/console popup - and
+	// "ServerBrowser" for the Sven main-menu dialog and every popup it
+	// detaches; read through IPanel::GetModuleName so panel creation/
+	// destruction/recreation needs no cache and no VPANEL identity).
+	// Everything else - engine roots, client module, foreign plugins - passes.
+	static bool nativeUiModule(const char* module);
+
+	NativeUiBridge() = default;
+
+	// Gate lifecycle: armed by the install seam inside the BaseUI::Initialize
+	// callback (T02 §5: before GameUI::Start and the first native paint) and
+	// only ever disarmed during controlled teardown after the native UI can
+	// no longer paint (strict mode never falls back to the original UI -
+	// T08 step 7 / 03 doc fault section).
+	void arm();
+	void disarm();
+	bool armed() const { return Armed; }
+
+	// PaintTraverse gate: true = swallow the traversal (never call the
+	// original). Disarmed attempts pass untouched; attempts/blocked are
+	// counted either way so the acceptance can show both numbers.
+	bool gatePaintAttempt(const char* module);
+	// Mouse hit-test gate (IPanel::IsWithinTraverse): same rule, same counter
+	// style. A blocked hit test reports "no panel here", so the old UI can
+	// never be the mouse-over target.
+	bool gateHitTestAttempt(const char* module);
+	void noteInputFlagsCleared(uint32_t count) { Counters.InputFlagsCleared += count; }
+
+	// Menu visibility state. Both directions are idempotent and report
+	// whether a transition happened, so the sink presents/hides the page
+	// exactly once regardless of the pre+post double dispatch. MenuUp is the
+	// single truth the engine answers derive from.
+	bool requestMenuUp(NativeUiOrigin origin);
+	bool requestMenuDown(NativeUiOrigin origin);
+	bool menuUp() const { return MenuUp; }
+
+	// The inner (IGameUI) decision points, driven from the entry-layer
+	// adapter. engineHide coalesces the wrapper's duplicate dispatch
+	// (IsPost lies there, hook-contract T5) AND refuses a second close route
+	// for the same physical ESC press: the route is marked once per press and
+	// the mark clears on the physical key-up (noteEscPhysicalUp, observed at
+	// the raw surface app-event seam) or at the next menu raise. A hold
+	// therefore runs exactly one transition ("一物理按键仅一次转场", V03),
+	// while the composition case still works: press 1 cancels the
+	// composition, release, press 2 routes the close.
+	ToggleAction engineActivate();
+	ToggleAction engineHide();
+	// Physical ESC release observed (SDL key-up for the ESC keycode at the
+	// surface app-event callback; pure observation, never consumed). Also
+	// honored idempotently - the callback dispatches twice.
+	void noteEscPhysicalUp() {
+		EscPressRouted = false;
+		++Counters.PhysicalEscUps;
+	}
+	void noteBaseUiToggle() { ++Counters.BaseUiToggles; }
+	void noteBaseUiKeyEvent() { ++Counters.BaseUiKeyEvents; }
+
+	// Page sink injection (gameui module); the bridge calls
+	// onNativeMenuShow/Hide on the transitions above. Null = no page wiring.
+	void setMenuSink(INativeMenuSink* sink) { MenuSink = sink; }
+
+	// Level/session facts observed from the GameUI lifecycle callbacks; the
+	// hide gate mirrors the shipped CGameUI::HideGameUI (connected-only:
+	// a no-map ESC leaves the home page up - T04).
+	bool hasLevel() const { return HasLevel; }
+	void noteLevelLoaded() { HasLevel = true; }
+	void noteDisconnected() {
+		HasLevel = false;
+		++Counters.Disconnects;
+	}
+
+	// Derived engine-facing answers (IGameUI types: HasExclusiveInput int,
+	// IsGameUIActive bool - hook-contract T2).
+	bool isGameUIActive() const { return MenuUp; }
+	bool hasExclusiveInput() const { return MenuUp; }
+	// The legacy GameConsole is never presented in M1 (T08 step 5: the new
+	// minimal page stands in for every not-yet-completed surface; the new
+	// console is T16 and answers through its own state). No value is ever
+	// true here, so every IsConsoleVisible query reads "closed".
+	bool consoleVisible() const { return false; }
+
+	// Page mirror, driven by the sink implementation (the bridge cannot know
+	// Rml readiness). The acceptance compares it with the menu state so a
+	// page out of step is visible in the counters.
+	void notePageShown() { PageShown = true; ++Counters.PageShows; }
+	void notePageHidden() { PageShown = false; ++Counters.PageHides; }
+	bool pageShown() const { return PageShown; }
+
+	void noteEscRouted() { ++Counters.EscRouted; }
+	void noteExclusiveQuery() { ++Counters.ExclusiveQueries; }
+	void noteActiveQuery() { ++Counters.ActiveQueries; }
+	void noteConsoleActivate() { ++Counters.ConsoleActivates; }
+	void noteConsoleHide() { ++Counters.ConsoleHides; }
+	void noteConsoleVisibleQuery() { ++Counters.ConsoleVisibleQueries; }
+	void noteRunFrame() { ++Counters.RunFrames; }
+	void noteLoadingStart() { ++Counters.LoadingStarts; }
+	void noteLoadingFinish() { ++Counters.LoadingFinishes; }
+
+	// Snapshot; counters keep accumulating.
+	NativeUiCounters counters() const { return Counters; }
+
+private:
+	INativeMenuSink* MenuSink = nullptr;
+	NativeUiCounters Counters;
+	bool Armed = false;
+	bool MenuUp = false;
+	bool PageShown = false;
+	bool HasLevel = false;
+	// One close route per physical ESC press (see engineHide).
+	bool EscPressRouted = false;
+};
+
+// The production instance. The adapters (VGUI2ExtensionImport entry layer,
+// PaintGate) and the gameui module all read the same truth.
+NativeUiBridge& nativeUiBridge();
 
 }
