@@ -2,6 +2,7 @@
 #include <metahook.h>
 
 #include "RmlUiModule.h"
+#include "SteamAPI.h"
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Debugger.h>
@@ -17,6 +18,7 @@
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
+#include "../modules/Module.h"
 #include "../data/Avatars.h"
 #include "../data/HudState.h"
 #include "../data/SpriteResource.h"
@@ -25,6 +27,7 @@
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
 #include "ProbeCommand.h"
+#include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
@@ -204,7 +207,10 @@ void init() {
 
 	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
 	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
-	Context = Rml::CreateContext("abcui", Rml::Vector2i(width, height), Callbacks.RenderInterface.get());
+	// The text/IME handler is context-scoped (T07): WidgetTextInput calls its
+	// OnActivate/OnDeactivate/OnDestroy as our editors gain/lose/lose focus.
+	Context = Rml::CreateContext("abcui", Rml::Vector2i(width, height), Callbacks.RenderInterface.get(),
+		&rmlui::textInput());
 	if (!Context) {
 		abc::SysError("[AbcUi] Rml::CreateContext failed");
 		return;
@@ -224,24 +230,44 @@ void init() {
 	abc::MetaRenderer()->RegisterRenderCallbacks(&Callbacks);
 	Initialised = true;
 	abc::ConsolePrint("[AbcUi] RmlUi %s ready (context %dx%d)\n", Rml::GetVersion().c_str(), width, height);
+
+	// Last assembly step (see modules/Module.h): DOM writes are only legal
+	// from here on, and the dispatch re-arms module shutdown for this cycle.
+	modules::registry().contextReadyAll(Context);
 }
 
 void shutdown() {
-	if (!Initialised)
+	// Ownership first (T06): tokens release and the pairing cleanups run
+	// while every owner can still clean up and the context (for the synth
+	// UI keyups) still exists.
+	uiRouter().reset();
+	// Text/IME state next (T07): the handler's cached TextInputContext
+	// pointers die with the DOM below; drop them while it is alive.
+	textInputShutdown();
+	if (!Initialised) {
+		// HUD_Init can arm modules before the first HUD_Frame creates a context.
+		modules::registry().shutdownAll();
 		return;
+	}
 	Initialised = false;
 	if (auto* renderer = abc::MetaRenderer())
 		renderer->UnregisterRenderCallbacks(&Callbacks);
+	// Modules release what they own while the context still exists (their
+	// documents die with it, never after - see modules/Module.h).
+	modules::registry().shutdownAll();
+	closeProbeDocument();
 	framework::PanelManager::shutdown();
-	sprites::shutdown();
-	avatars::shutdown();
-	// Rml::Shutdown drains its texture database through ReleaseTexture - the
-	// single delete point for every sprite id (all went through LoadTexture).
+
+	// Rml::Shutdown first releases per-load borrowed/owned records; cache IDs
+	// are deleted only afterwards, including never-delivered avatar uploads.
 	// clearAdditiveTextures() before that keeps recycled ids off the additive
 	// program if any handle outside the database ever existed.
 	Callbacks.RenderInterface->clearAdditiveTextures();
 	Context = nullptr;
 	Rml::Shutdown();
+	sprites::shutdown();
+	avatars::shutdown();
+	steamapi::shutdown();
 	Callbacks.RenderInterface.reset();
 	FileInterface.reset();
 	SystemInterface.reset();
@@ -266,7 +292,11 @@ void onFrame(double frameTime) {
 			static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	}
 	InputBridge::update(Context);
+	avatars::onFrame();
 	framework::PanelManager::onFrame(frameTime);
+	// Module frames precede the update pass so their DOM edits land in the
+	// same Context::Update (order contract, modules/Module.h).
+	modules::registry().frameAll(frameTime);
 #ifndef NDEBUG
 	PerfTimer updateTimer;
 #endif
@@ -293,12 +323,16 @@ void onRedraw(double frameTime) {
 }
 
 void onVidInit() {
+	sprites::vidInit();
+	if (Initialised) for (const auto& source : Rml::GetTextureSourceList())
+		if (source.rfind("spr://",0)==0) Rml::ReleaseTexture(source);
 	if (!Initialised)
 		return;
 	framework::Theme::applyScale(Context);
 	Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
 		static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	framework::PanelManager::vidInitAll();
+	modules::registry().vidInitAll();
 }
 
 void onKeyEvent(int down, int keynum) {
@@ -309,10 +343,10 @@ void onKeyEvent(int down, int keynum) {
 
 void onWheel(int down, int keynum) {
 	// The engine delivers the wheel as down-only keynum pulses (KeyMap note);
-	// positive Rml wheel_delta = scroll away (old vgui wheel direction).
+	// positive Rml wheel_delta scrolls down (pinned Win32 backend contract).
 	if (!Initialised || !Context || !down)
 		return;
-	const float delta = keynum == K_MWHEELUP ? 1.0f : -1.0f;
+	const float delta = keynum == K_MWHEELUP ? -1.0f : 1.0f;
 	Context->ProcessMouseWheel(delta, 0);
 }
 

@@ -6,6 +6,7 @@
 #include <metahook.h>
 
 #include <RmlUi/Core.h>
+#include <RmlUi/Core/Elements/ElementFormControl.h>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
@@ -24,6 +25,7 @@
 #include "../rmlui/SteamAPI.h"
 
 #include "RmlUiModule.h"
+#include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 namespace panels::scoreboard { extern panels::ScoreboardPanel* PanelInstance; }
 
@@ -51,13 +53,13 @@ public:
 	}
 };
 ProbeInputEcho InputEcho;
+Rml::ElementDocument* ProbeDoc = nullptr;
 
 // Live font-pipeline probe (batch A acceptance aid): builds a document from
 // an inline sheet - three explicit font families plus one line styled only
 // through the file-based base.rcss. Which lines render localizes a
 // missing-text report (face lookup vs base.rcss vs document markup).
 void probeCommand() {
-	static Rml::ElementDocument* ProbeDoc = nullptr;
 	if (ProbeDoc) {
 		ProbeDoc->Close();
 		ProbeDoc = nullptr;
@@ -418,6 +420,83 @@ void probeCommand() {
 				key, down, result, uiMouseOwner(), vgui2ext::isCursorVisible(), panels::scoreboard::wantsWheel());
 		}
 
+		// T07 text seams: the same entry points the engine AppProc events
+		// drive, from a client command. Does not pretend to be an IME - the
+		// composition feed is the SDL_EVENT_TEXT_EDITING payload, the text
+		// feed is SDL_EVENT_TEXT_INPUT. Values print as raw bytes so a
+		// driver can assert byte-exact UTF-8.
+		void printFocusedValue(const char* tag) {
+			Rml::Context* ctx = rmlui::context();
+			Rml::Element* focus = ctx ? ctx->GetFocusElement() : nullptr;
+			auto* control = dynamic_cast<Rml::ElementFormControl*>(focus);
+			if (!control) {
+				abc::ConsolePrint("[AbcUi] text-test %s focus=<none>\n", tag);
+				return;
+			}
+			const Rml::String value = control->GetValue();
+			abc::ConsolePrint("[AbcUi] text-test %s tag=%s bytes=%zu value=%s composing=%d\n",
+				tag, focus->GetTagName().c_str(), value.size(), value.c_str(),
+				rmlui::textComposing() ? 1 : 0);
+		}
+
+		void inputTextCommand() {
+			const char* text = gEngfuncs.Cmd_Argc() > 1 ? gEngfuncs.Cmd_Argv(1) : "";
+			rmlui::feedTextInput(text);
+			printFocusedValue("commit");
+		}
+
+		void inputComposeCommand() {
+			const char* text = gEngfuncs.Cmd_Argc() > 1 ? gEngfuncs.Cmd_Argv(1) : "";
+			const int start = gEngfuncs.Cmd_Argc() > 2 ? atoi(gEngfuncs.Cmd_Argv(2)) : 0;
+			rmlui::feedTextEditing(text, start);
+			printFocusedValue("compose");
+		}
+
+		void inputCancelCommand() {
+			rmlui::cancelComposition();
+			printFocusedValue("cancel");
+		}
+
+		// T07 event-source counters (V07 on-machine evidence): which channel
+		// actually delivers ('appproc' = SDL text events, 'wndproc' =
+		// WM_KEY*/WM_CHAR the surface observes, 'feed' = commits into an
+		// editor vs dropped for lack of focus).
+		void inputEventsCommand() {
+			unsigned appProcTotal = 0, textInput = 0, textEditing = 0, candidates = 0;
+			unsigned wndProcTotal = 0, wndChar = 0, wndKey = 0, commits = 0, drops = 0;
+			rmlui::eventCounters(appProcTotal, textInput, textEditing, candidates,
+				wndProcTotal, wndChar, wndKey, commits, drops);
+			abc::ConsolePrint("[AbcUi] input-events appproc-total=%u text=%u editing=%u candidates=%u wndproc-total=%u char=%u key=%u feed-commit=%u drop=%u composing=%d\n",
+				appProcTotal, textInput, textEditing, candidates, wndProcTotal, wndChar, wndKey,
+				commits, drops, rmlui::textComposing() ? 1 : 0);
+			unsigned wndTypes[256] = {}, appTypes[256] = {};
+			rmlui::messageHistogram(wndTypes, appTypes);
+			for (int i = 0; i < 256; ++i) {
+				if (wndTypes[i])
+					abc::ConsolePrint("[AbcUi] input-events wnd-msg=0x%02x count=%u\n", i, wndTypes[i]);
+				if (appTypes[i])
+					abc::ConsolePrint("[AbcUi] input-events app-type=0x%02x count=%u\n", i, appTypes[i]);
+			}
+		}
+
+		// Element value by id (window focus loss hides the page and clears
+		// the context focus, but the document keeps its value - this reads
+		// the evidence without depending on either).
+		void valueCommand() {
+			Rml::Context* ctx = rmlui::context();
+			const char* id = gEngfuncs.Cmd_Argc() > 1 ? gEngfuncs.Cmd_Argv(1) : "";
+			const char* docName = gEngfuncs.Cmd_Argc() > 2 ? gEngfuncs.Cmd_Argv(2) : "mainmenu";
+			Rml::ElementDocument* doc = ctx ? ctx->GetDocument(docName) : nullptr;
+			auto* control = doc ? dynamic_cast<Rml::ElementFormControl*>(doc->GetElementById(id)) : nullptr;
+			if (!control) {
+				abc::ConsolePrint("[AbcUi] value id=%s doc=%s <none>\n", id, docName);
+				return;
+			}
+			const Rml::String value = control->GetValue();
+			abc::ConsolePrint("[AbcUi] value id=%s bytes=%zu value=%s composing=%d\n",
+				id, value.size(), value.c_str(), rmlui::textComposing() ? 1 : 0);
+		}
+
 		void inputRegressionCommand() {
 			auto* ctx = rmlui::context();
 			auto* panel = panels::scoreboard::PanelInstance;
@@ -451,9 +530,20 @@ void probeCommand() {
 
 } // namespace
 
+void closeProbeDocument() {
+#ifndef NDEBUG
+	if (ProbeDoc) { ProbeDoc->Close(); ProbeDoc = nullptr; }
+#endif
+}
+
 void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_input_regression", inputRegressionCommand);
 	abc::ADD_COMMAND("abc_ui_input_key", mouseKeyCommand);
+	abc::ADD_COMMAND("abc_ui_input_text", inputTextCommand);
+	abc::ADD_COMMAND("abc_ui_input_compose", inputComposeCommand);
+	abc::ADD_COMMAND("abc_ui_input_cancel", inputCancelCommand);
+	abc::ADD_COMMAND("abc_ui_input_events", inputEventsCommand);
+	abc::ADD_COMMAND("abc_ui_value", valueCommand);
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);
@@ -470,6 +560,12 @@ void registerProbeCommand() {
 #else // NDEBUG
 
 namespace rmlui {
+
+void closeProbeDocument() {
+#ifndef NDEBUG
+	if (ProbeDoc) { ProbeDoc->Close(); ProbeDoc = nullptr; }
+#endif
+}
 
 void registerProbeCommand() {
 }

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 4.2)
 
 project(AbcUi LANGUAGES CXX)
 
@@ -53,6 +53,7 @@ add_library(AbcUi MODULE
     src/rmlui/KeyMap.cpp
     src/rmlui/RmlUiModule.cpp
     src/rmlui/ProbeCommand.cpp
+    src/rmlui/TextInput.cpp
     src/rmlui/SourceSpewStub.cpp
     src/rmlui/SteamAPI.cpp
     src/rmlui/SteamApiBridge.cpp
@@ -60,8 +61,11 @@ add_library(AbcUi MODULE
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
     src/framework/Commands.cpp
+    src/framework/TextEncoding.cpp
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp
+    src/framework/InteractiveDocument.cpp
+    src/framework/UiInputRouter.cpp
     src/framework/Localization.cpp
     src/data/Avatars.cpp
     src/data/HudState.cpp
@@ -72,6 +76,9 @@ add_library(AbcUi MODULE
     src/data/TextFeed.cpp
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
+    src/modules/UiModuleRegistry.cpp
+    src/modules/gameui/GameUiModule.cpp
+    src/modules/gameui/MenuController.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
@@ -89,6 +96,7 @@ add_library(AbcUi MODULE
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/vote/VotePanel.cpp
     src/panels/motd/MotdPanel.cpp
+    src/panels/mainmenu/MainMenuPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/weaponchoose/WeaponChoosePanel.cpp
     src/panels/popnum/PopNumPanel.cpp
@@ -103,7 +111,8 @@ add_library(AbcUi MODULE
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )
 target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage)
+# imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
+target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32)
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).
@@ -131,6 +140,7 @@ if(ABC_GAME_DIR)
             PATTERN ".gitkeep" EXCLUDE)
     endif()
     add_custom_target(deploy
+        DEPENDS AbcUi FreeImage
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
         COMMENT "Deploying AbcUi.dll, FreeImage.dll and assets to ${ABC_GAME_DIR}")
 endif()

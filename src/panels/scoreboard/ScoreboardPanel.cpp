@@ -14,6 +14,8 @@
 #include <metahook.h>
 
 #include "ScoreboardPanel.h"
+#include "../../data/HudState.h"
+#include "../../framework/Theme.h"
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
@@ -45,6 +47,7 @@
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
 #include "../../hooks.h"
+#include "../../rmlui/InputBridge.h"
 #include "../../rmlui/RmlUiModule.h"
 #include "../../rmlui/VGUI2ExtensionImport.h"
 
@@ -249,6 +252,13 @@ ScoreboardPanel::~ScoreboardPanel() {
 	setMouseMode(false);
 	if (scoreboard::PanelInstance == this)
 		scoreboard::PanelInstance = nullptr;
+	if (Listener) {
+		if (auto* box = element("box")) {
+			box->RemoveEventListener("mousedown", Listener, false);
+			box->RemoveEventListener("click", Listener, false);
+		}
+		Listener->Panel = nullptr;
+	}
 	delete Listener;
 }
 
@@ -287,17 +297,40 @@ void ScoreboardPanel::setVisible(bool visible) {
 
 void ScoreboardPanel::setMouseMode(bool enabled) {
 	enabled = enabled && Visible && isVisible();
-	if (enabled == MouseMode)
+	// The router is the single ownership truth (T06); MouseMode mirrors it.
+	// After a force-release (focus loss) a re-enable must re-acquire even
+	// though this flag still reads enabled.
+	if (enabled == MouseMode && (!enabled || PointerToken.held()))
 		return;
 	MouseMode = enabled;
-	// Ownership gates both Rml input and the client mouse/view hooks.
-	rmlui::setUiMouseOwner(enabled);
+	// Ownership gates both Rml input and the client mouse/view hooks; the
+	// cursor handoff rides the same edge (old EnableMousePointer).
+	if (enabled)
+		PointerToken = rmlui::uiRouter().acquire(this, framework::uiinput::OwnerTier::kInteractiveHud);
+	else
+		PointerToken.release();
 	if (enabled) {
 		vgui2ext::centerAndUnlockCursor();
 	} else {
 		vgui2ext::lockCursor();
 		closeContextMenu();
 	}
+}
+
+// uiinput::Owner: consulted only while this panel's token is top-of-stack.
+bool ScoreboardPanel::claimsKey(int down, int keynum) {
+	(void)down;
+	return MouseMode && ((keynum >= K_MOUSE1 && keynum <= K_MOUSE5) ||
+		keynum == K_MWHEELUP || keynum == K_MWHEELDOWN);
+}
+
+bool ScoreboardPanel::claimsWheel() {
+	return MouseMode;
+}
+
+void ScoreboardPanel::onOwnershipLost() {
+	if (MouseMode)
+		setMouseMode(false);
 }
 
 bool ScoreboardPanel::answerKey(int down, int keynum) {
@@ -313,6 +346,9 @@ bool ScoreboardPanel::answerKey(int down, int keynum) {
 }
 
 void ScoreboardPanel::onDocumentReady() {
+	ServerName = hudstate::messages().ServerName;
+	NextMap = hudstate::messages().NextMap;
+	TimeEndCount = hudstate::messages().TimeEnd; TimeEndBase = ClientTimeNow;
 	if (abc::CChainedCommand* open = commands::get("+showscores")) {
 		subscribe(open->Event(), [this]() {
 			if (!Intermission)
@@ -582,7 +618,8 @@ void ScoreboardPanel::rebuildTable() {
 				if (!info.isThisPlayer())
 					appendFmt(rowOpen, " background-color: rgba(%d, %d, %d, 80);", pr, pg, pb);
 			}
-			appendFmt(rowOpen, "' data-client='%d'>", info.index);
+			if (rowOpen.find("style=") == std::string::npos) rowOpen += "' style='";
+			appendFmt(rowOpen, " height: %.1fpx;' data-client='%d'>", AppliedRowHeight > 0 ? AppliedRowHeight : 28.0f, info.index);
 			rml += rowOpen;
 
 			appendAvatar(info);
@@ -653,6 +690,11 @@ void ScoreboardPanel::rebuildTable() {
 	}
 
 	table->SetInnerRML(rml);
+	const float rowHeight = AppliedRowHeight > 0 ? AppliedRowHeight : 28.0f;
+	Rml::ElementList images; table->GetElementsByTagName(images,"img");
+	const float icon = std::max(1.0f,std::min(24.0f*framework::Theme::scale(),rowHeight-2.0f));
+	for(auto* image:images) { image->SetProperty("width",std::to_string(icon)+"px"); image->SetProperty("height",std::to_string(icon)+"px"); }
+	table->SetProperty("line-height",std::to_string(rowHeight)+"px");
 }
 
 void ScoreboardPanel::openContextMenu(int clientIndex, const Rml::Vector2f& position) {
@@ -698,8 +740,8 @@ void ScoreboardPanel::openContextMenu(int clientIndex, const Rml::Vector2f& posi
 	// origin, so clamp in context space first, then subtract the box offset.
 	Rml::Vector2f at = position;
 	if (Rml::Context* context = rmlui::context()) {
-		at.x = std::clamp(at.x, 0.0f, static_cast<float>(context->GetDimensions().x) - 180.0f);
-		at.y = std::clamp(at.y, 0.0f, static_cast<float>(context->GetDimensions().y) - 96.0f);
+		at.x = std::clamp(at.x, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().x) - 180.0f * framework::Theme::scale()));
+		at.y = std::clamp(at.y, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().y) - 96.0f * framework::Theme::scale()));
 	}
 	if (Rml::Element* box = element("box")) {
 		const Rml::Vector2f origin = box->GetAbsoluteOffset();
@@ -785,6 +827,17 @@ void ScoreboardPanel::onData(double frameTime) {
 		return;
 	}
 
+	const float rawMode = scoreboard::Size ? scoreboard::Size->value : 0;
+	const int mode = std::isfinite(rawMode) ? static_cast<int>(std::clamp(rawMode,0.0f,2.0f)) : 0;
+	int playerCount=0; for(int i=1;i<=playerres::kMaxPlayers;++i) { auto* info=playerres::getPlayerInfo(i); if(info && info->isValid()) ++playerCount; }
+	const float density = framework::Theme::scale();
+	const float screenHeight = rmlui::context() ? static_cast<float>(rmlui::context()->GetDimensions().y) : 1080.0f;
+	const auto spacing = [](cvar_t* cvar,float fallback) { return cvar && std::isfinite(cvar->value) && cvar->value>0 ? std::clamp(cvar->value,8.0f,128.0f) : fallback; };
+	const float normal = spacing(scoreboard::SpacingNormal,28.0f*density);
+	const float compactDefault = screenHeight<600 ? 18.0f : screenHeight<720 ? 22.0f : screenHeight<800 ? 24.0f : screenHeight<1024 ? 26.0f : 28.0f;
+	const bool compact = mode==2 || (mode==0 && (playerCount+2)*normal > 430.0f*density);
+	const float height = compact ? spacing(scoreboard::SpacingCompact,compactDefault) : normal;
+	if(height!=AppliedRowHeight) { AppliedRowHeight=height; DataVersion++; }
 	updateHeader();
 	// Avatar download pump (old CAvatarImage::Paint retry): the steamapi
 	// fetch only lands when someone re-asks, and Rml caches textures per

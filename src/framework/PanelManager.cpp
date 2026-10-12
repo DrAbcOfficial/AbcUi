@@ -3,6 +3,7 @@
 
 #include "Commands.h"
 #include "HudPanel.h"
+#include "../data/HudState.h"
 
 #include "../data/NetworkMessages.h"
 #include "../data/TextFeed.h"
@@ -34,9 +35,9 @@
 
 namespace framework {
 
-std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
+static std::vector<std::unique_ptr<HudPanel>> createPanels() {
 	// Factory list: one line per panel (plan 05 §4.1 - Viewport successor).
-	static std::vector<std::unique_ptr<HudPanel>> panels = []() {
+	return []() {
 		std::vector<std::unique_ptr<HudPanel>> list;
 		list.push_back(std::make_unique<panels::HealthPanel>());
 		list.push_back(std::make_unique<panels::FlashlightPanel>());
@@ -67,6 +68,10 @@ std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
 		list.push_back(std::make_unique<panels::RadarPanel>());
 		return list;
 	}();
+}
+
+std::vector<std::unique_ptr<HudPanel>>& PanelManager::Panels() {
+	static std::vector<std::unique_ptr<HudPanel>> panels;
 	return panels;
 }
 
@@ -99,6 +104,7 @@ void PanelManager::registerPanelCvars() {
 void PanelManager::initAll(Rml::Context* context) {
 	if (!context)
 		return;
+	if (Panels().empty()) Panels() = createPanels();
 	for (auto& panel : Panels())
 		panel->loadDocument(context);
 	abc::ConsolePrint("[AbcUi] %d panel(s) loaded\n", static_cast<int>(Panels().size()));

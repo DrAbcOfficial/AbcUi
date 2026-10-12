@@ -11,10 +11,16 @@
 // profile / copy actions - the voice-mute entries died with voice_status,
 // D-04; the friend-icon overlay needs the steamapi backend's Friends
 // surface, deferred with it).
+//
+// Ownership (T06): pointer mode is a router token at the interactive-HUD
+// tier - the panel implements framework::uiinput::Owner and the router is
+// the single ownership truth. MouseMode only mirrors the token for the
+// panel's own logic; a force-release (focus loss) re-syncs it.
 
 #include <RmlUi/Core/Vector2.h>
 
 #include "../../framework/HudPanel.h"
+#include "../../framework/UiInputRouter.h"
 
 struct cvar_s;
 
@@ -40,7 +46,7 @@ void setPointerMode(bool enabled);
 void setIntermission(bool intermission);
 }
 
-class ScoreboardPanel : public framework::HudPanel {
+class ScoreboardPanel : public framework::HudPanel, private framework::uiinput::Owner {
 public:
 	ScoreboardPanel();
 	~ScoreboardPanel() override;
@@ -79,12 +85,23 @@ private:
 	void setVisible(bool visible);
 	void setMouseMode(bool enabled);
 
+	// framework::uiinput::Owner (interactive-HUD tier): the pointer-mode key
+	// contract is answerKey's MouseMode branch. Consulted only while this
+	// panel's token is top-of-stack, so keyboard keys keep their play
+	// behavior (chat etc.) while the pointer is up.
+	bool claimsKey(int down, int keynum) override;
+	bool claimsWheel() override;
+	// Force-release (focus loss / teardown): re-sync the mirror through
+	// setMouseMode(false) - the token is stale, release() would no-op.
+	void onOwnershipLost() override;
+
 	std::string ServerName;
 	std::string NextMap;
 	int TimeEndCount = 0;
 	double TimeEndBase = 0.0;
 	double LastRefresh = 0.0;
 	double ClientTimeNow = 0.0;
+	float AppliedRowHeight = -1;
 	bool Visible = false;
 	bool MouseMode = false;
 	bool Intermission = false;
@@ -96,6 +113,8 @@ private:
 	// centered content height (update's vertical centering).
 	std::string HeaderCache[5];
 	float CenteredHeight = -1.0f;
+	// Router ownership of pointer mode (T06); MouseMode above mirrors it.
+	framework::uiinput::Token PointerToken;
 };
 
 }

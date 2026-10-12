@@ -36,6 +36,7 @@ void ensure() {
 }
 
 void shutdown() {
+	if (Active) Active->disconnect();
 	Active = nullptr;
 }
 

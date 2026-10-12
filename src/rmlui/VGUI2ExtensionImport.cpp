@@ -12,6 +12,7 @@
 #include <abc/Plugin.h>
 
 #include "RmlUiModule.h"
+#include "TextInput.h"
 
 namespace vgui2ext {
 
@@ -43,11 +44,21 @@ public:
 	void Shutdown() override {}
 	void Key_Event(int& down, int& keynum, const char*& pszCurrentBinding,
 		VGUI2Extension_CallbackContext* CallbackContext) override {}
+	// T07 text seam: the engine forwards raw SDL_Event structs here (the
+	// SDL2-based IBaseUI shape - CallEngineSurfaceAppHandler). Text events
+	// are consumed at PRE-dispatch only: the proxy repeats every event
+	// post-dispatch (07 doc item 7) and a second feed would insert the
+	// committed text twice. Observation-only otherwise - the Result is never
+	// written, the original surface keeps its own copy of every event until
+	// T08.
 	void CallEngineSurfaceAppProc(void*& pevent, void*& userData,
-		VGUI2Extension_CallbackContext* CallbackContext) override {}
+		VGUI2Extension_CallbackContext* CallbackContext) override {
+		if (!CallbackContext->IsPost)
+			rmlui::onSurfaceAppEvent(pevent);
+	}
 	void CallEngineSurfaceWndProc(void*& hwnd, unsigned int& msg, unsigned int& wparam, long& lparam,
 		VGUI2Extension_CallbackContext* CallbackContext) override {
-		rmlui::onSurfaceWndProc(msg, wparam, lparam);
+		rmlui::onSurfaceWndProc(hwnd, msg, wparam, lparam);
 	}
 	void Paint(int& x, int& y, int& right, int& bottom,
 		VGUI2Extension_CallbackContext* CallbackContext) override {}

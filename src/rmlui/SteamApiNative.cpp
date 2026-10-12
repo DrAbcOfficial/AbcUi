@@ -86,6 +86,8 @@ SteamApiBackend* nativeBackend() {
 			return connectInterfaces();
 		}
 
+		void disconnect() override { AvatarCache.clear(); Exports = {}; User=nullptr; Friends=nullptr; Utils=nullptr; }
+
 		steamapi::Backend kind() override { return steamapi::Backend::NativeApi; }
 
 		SteamId64 localSteamId() override {
@@ -97,13 +99,17 @@ SteamApiBackend* nativeBackend() {
 		std::string personaName(SteamId64 id) override {
 			if (!Friends || !id)
 				return {};
+			if (Friends->RequestUserInformation(CSteamID(id), true)) return {};
 			const char* name = Friends->GetFriendPersonaName(CSteamID(id));
+			if (name && (strcmp(name,"[unknown]")==0 || strcmp(name,"unknown")==0)) return {};
 			return name ? std::string(name) : std::string();
 		}
 
 		bool avatar(SteamId64 id, AvatarRgba& out) override {
 			if (!Friends || !Utils || !id)
 				return false;
+			if (Friends->RequestUserInformation(CSteamID(id), false)) return false;
+			if (!AvatarCache.count(id) && AvatarCache.size() >= 256) return false;
 			AvatarCacheEntry& entry = AvatarCache[id];
 			if (entry.noAvatar)
 				return false;
@@ -131,7 +137,7 @@ SteamApiBackend* nativeBackend() {
 			}
 
 			uint32_t width = 0, height = 0;
-			if (!Utils->GetImageSize(handle, &width, &height) || !width || !height)
+			if (!Utils->GetImageSize(handle, &width, &height) || !width || !height || width > 512 || height > 512)
 				return false;
 			entry.rgba.resize(static_cast<size_t>(width) * height * 4);
 			if (!Utils->GetImageRGBA(handle, entry.rgba.data(),

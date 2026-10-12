@@ -13,6 +13,8 @@ namespace avatars {
 
 void init();
 void shutdown();
+// Main-thread service pump; independent of scoreboard visibility.
+void onFrame();
 
 // Texture id for a URI load (never 0 - falls back to the default avatar);
 // width/height receive the pixel size. `triggerFetch` starts the steamapi

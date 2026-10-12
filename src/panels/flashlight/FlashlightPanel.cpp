@@ -28,6 +28,7 @@ FlashlightPanel::FlashlightPanel()
 	: HudPanel("flashlight", "abcui/rml/flashlight.rml") {}
 
 void FlashlightPanel::onDocumentReady() {
+	setFlashLight(hudstate::messages().FlashOn,hudstate::messages().FlashBattery);
 	subscribe(netmsg::Flashlight, [this](bool on, int battery) {
 		setFlashLight(on, battery);
 	});
@@ -53,13 +54,7 @@ void FlashlightPanel::reset() {
 }
 
 void FlashlightPanel::updateVisibility() {
-	// Old g_EventHudUpdateClientData: suit alone gates the panel here; hide
-	// tokens only apply through their own path (they arrive as messages and
-	// are re-evaluated there, while weapon-bit changes keep re-showing).
-	if (hudstate::hasSuit())
-		show();
-	else
-		hide();
+	applyHideToken();
 }
 
 void FlashlightPanel::applyHideToken() {

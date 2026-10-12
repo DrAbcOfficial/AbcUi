@@ -17,6 +17,7 @@
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
+#include "modules/Module.h"
 #include "panels/gindicator/GIndicatorPanel.h"
 #include "panels/itemhighlight/ItemHighlightPanel.h"
 #include "panels/motd/MotdPanel.h"
@@ -112,12 +113,14 @@ static void H_HUD_Init() {
 		textfeed::init();
 		framework::PanelManager::registerPanelCvars();
 		rmlui::registerCommands();
+		modules::registry().initAll();
 	}
 }
 
 static int H_HUD_VidInit() {
 	rebuildVanillaHudPanels();
 	int result = gExportfuncs.HUD_VidInit();
+	hudstate::reset();
 	weaponres::reset();
 	playerres::resetAll();
 	rmlui::onVidInit();
@@ -182,36 +185,31 @@ static void H_HUD_TxferPredictionData(struct entity_state_s* ps, const struct en
 
 namespace {
 
-// Wheel ownership (batch C): the engine delivers wheel pulses through
-// HUD_Key_Event; while a scrollable Rml surface is up (scoreboard pointer
-// mode, open motd) they scroll it and never reach the weapon switch.
+// Wheel claims that are NOT ownership (T06): the open motd scrolls (old
+// per-page auto-advance died with the pagination - D-17 ledger) without
+// holding UI input. Owner-backed wheel claims (scoreboard pointer mode,
+// menu pages) ride the router's wheelClaimed() inside rmlui::routeKey.
 bool uiOwnsWheel(int down, int keynum) {
 	if (!down || (keynum != K_MWHEELUP && keynum != K_MWHEELDOWN))
 		return false;
-	if (panels::scoreboard::wantsWheel())
-		return true;
 	return panels::motd::wantsWheel();
 }
 
 } // namespace
 
 static int H_HUD_Key_Event(int down, int keynum, const char* pszCurrentBinding) {
+	// Static interactive-HUD consumers stay the P6-proven pre-stage (vote
+	// answers, scoreboard pointer enter). routeKey is then the single
+	// physical injection point: the router decides UI feeds and the
+	// engine-consume flag (keydown/up pairing, auto-repeat dedup, pre-held
+	// passthrough and focus-loss cleanup live there - T06).
 	const bool consumed = panels::vote::onKeyEvent(down, keynum) || panels::scoreboard::onKeyEvent(down, keynum);
 #ifndef NDEBUG
 	if (keynum >= K_MOUSE2 || keynum == K_MWHEELUP || keynum == K_MWHEELDOWN)
 		abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down, keynum, consumed ? 1 : 0);
 #endif
-	if (consumed) {
-		if (uiOwnsWheel(down, keynum)) rmlui::onWheel(down, keynum);
-		rmlui::onKeyEvent(down, keynum);
+	if (consumed || rmlui::routeKey(down, keynum, uiOwnsWheel(down, keynum)))
 		return 0;
-	}
-	if (uiOwnsWheel(down, keynum)) {
-		rmlui::onWheel(down, keynum);
-		return 0;
-	}
-	// Observe-first: feed Rml, then let the engine/binding chain run.
-	rmlui::onKeyEvent(down, keynum);
 	return gExportfuncs.HUD_Key_Event(down, keynum, pszCurrentBinding);
 }
 

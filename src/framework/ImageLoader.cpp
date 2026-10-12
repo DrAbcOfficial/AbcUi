@@ -1,5 +1,8 @@
 // framework::ImageLoader implementation - see ImageLoader.h.
 #include "ImageLoader.h"
+#include "ResourceLimits.h"
+#include <memory>
+#include <filesystem>
 
 #include <FreeImage.h>
 
@@ -24,6 +27,7 @@ unsigned DLL_CALLCONV streamRead(void* buffer, unsigned size, unsigned count, fi
 	auto* stream = static_cast<MemoryStream*>(handle);
 	if (size == 0)
 		return 0;
+	if (stream->Cursor > stream->Size || count > ResourceLimits::MaxFileBytes / size) return 0;
 	const std::size_t requested = static_cast<std::size_t>(size) * count;
 	const std::size_t remaining = stream->Size - stream->Cursor;
 	const std::size_t copied = requested < remaining ? requested : remaining;
@@ -65,11 +69,13 @@ bool decodeToRgba(FIBITMAP* bitmap, DecodedImage& out) {
 
 	const int width = FreeImage_GetWidth(rgba);
 	const int height = FreeImage_GetHeight(rgba);
-	if (width <= 0 || height <= 0) {
+	std::size_t bytes;
+	if (!ResourceLimits::imageBytes(width,height,bytes)) {
 		FreeImage_Unload(rgba);
 		return false;
 	}
 
+	std::unique_ptr<FIBITMAP, decltype(&FreeImage_Unload)> owned(rgba,FreeImage_Unload);
 	// FreeImage scans bottom-up BGRA; the output is top-down RGBA.
 	FreeImage_FlipVertical(rgba);
 	const int stride = width * 4;
@@ -84,7 +90,6 @@ bool decodeToRgba(FIBITMAP* bitmap, DecodedImage& out) {
 			dst[x * 4 + 3] = src[x * 4 + 3];
 		}
 	}
-	FreeImage_Unload(rgba);
 	out.Width = width;
 	out.Height = height;
 	return true;
@@ -106,6 +111,9 @@ bool loadFromFile(const char* path, DecodedImage& out) {
 	out = DecodedImage();
 	if (!path || !*path)
 		return false;
+	std::error_code error;
+	const auto fileSize = std::filesystem::file_size(path,error);
+	if (error || fileSize > ResourceLimits::MaxFileBytes) return false;
 	// Signature first, extension only as the fallback for headerless
 	// formats (TGA has no magic bytes).
 	FREE_IMAGE_FORMAT format = FreeImage_GetFileType(path, 0);
@@ -118,7 +126,7 @@ bool loadFromFile(const char* path, DecodedImage& out) {
 
 bool loadFromMemory(const unsigned char* data, std::size_t size, DecodedImage& out) {
 	out = DecodedImage();
-	if (!data || size == 0)
+	if (!data || size == 0 || size > ResourceLimits::MaxFileBytes)
 		return false;
 	FreeImageIO io = {};
 	io.read_proc = streamRead;

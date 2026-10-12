@@ -8,6 +8,7 @@
 #include <abc/Paths.h>
 
 #include "../framework/ImageLoader.h"
+#include "../framework/ResourceLimits.h"
 #include "../hooks.h"
 #include "../rmlui/SteamAPI.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
@@ -69,15 +70,16 @@ bool upload(Entry& entry) {
 // is still downloading, callers re-ask until it lands. True when the RGBA
 // uploaded this call.
 bool tryFetch(Entry& entry, std::uint64_t steamId64, double now) {
-	if (!entry.rgba.empty() || now < entry.nextAttempt)
+	if (entry.textureId || now < entry.nextAttempt)
 		return false;
 	entry.nextAttempt = now + 1.0;
-	steamapi::AvatarRgba avatar;
-	if (!steamapi::avatar(steamId64, avatar) || !avatar.rgba)
-		return false;
-	entry.rgba.assign(avatar.rgba, avatar.rgba + static_cast<size_t>(avatar.width) * avatar.height * 4);
-	entry.width = avatar.width;
-	entry.height = avatar.height;
+	if (entry.rgba.empty()) {
+		steamapi::AvatarRgba avatar;
+		if (!steamapi::avatar(steamId64, avatar) || !avatar.rgba) return false;
+		size_t bytes;
+		if (!framework::ResourceLimits::imageBytes(avatar.width,avatar.height,bytes)) return false;
+		entry.rgba.assign(avatar.rgba,avatar.rgba+bytes); entry.width=avatar.width; entry.height=avatar.height;
+	}
 	if (!upload(entry))
 		return false;
 	entry.generation++;
@@ -91,10 +93,8 @@ void init() {
 }
 
 void shutdown() {
-	// Texture ids are NOT deleted here: every id reaches Rml through
-	// LoadTexture (avatar:// or the default fallback) and Rml::Shutdown
-	// releases them via ReleaseTexture (the single delete point - same
-	// lifecycle rule as the sprite module).
+	for (const auto& [id,entry] : Entries) if (entry.textureId) vgui2ext::deleteTextureById(entry.textureId);
+	if (DefaultAvatarTexture) vgui2ext::deleteTextureById(DefaultAvatarTexture);
 	Entries.clear();
 	DefaultAvatarTexture = 0;
 	DefaultAvatarWidth = 0;
@@ -102,12 +102,13 @@ void shutdown() {
 }
 
 int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFetch) {
-	if (!steamId64 || !DefaultAvatarTexture) {
+	if (!steamId64) {
 		width = DefaultAvatarWidth;
 		height = DefaultAvatarHeight;
 		return DefaultAvatarTexture;
 	}
 
+	if (!Entries.count(steamId64) && Entries.size() >= 256) { width=DefaultAvatarWidth; height=DefaultAvatarHeight; return DefaultAvatarTexture; }
 	Entry& entry = Entries[steamId64];
 	if (entry.textureId && !entry.rgba.empty()) {
 		width = entry.width;
@@ -130,9 +131,15 @@ int textureFor(std::uint64_t steamId64, int& width, int& height, bool triggerFet
 }
 
 bool touch(std::uint64_t steamId64) {
-	if (!steamId64 || !DefaultAvatarTexture)
+	if (!steamId64 || (!Entries.count(steamId64) && Entries.size() >= 256))
 		return false;
 	return tryFetch(Entries[steamId64], steamId64, NowSeconds());
+}
+
+void onFrame() {
+	if (!DefaultAvatarTexture) loadDefaultAvatar();
+	const double now = NowSeconds();
+	for (auto& [id,entry] : Entries) tryFetch(entry,id,now);
 }
 
 int generation(std::uint64_t steamId64) {

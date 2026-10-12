@@ -2,6 +2,7 @@
 // from: ABCEnchance/src/hud/vgui/textmenu.* (GBK->UTF-8).
 
 #include "TextMenuPanel.h"
+#include "../../framework/TextUtil.h"
 
 #include <RmlUi/Core/Element.h>
 
@@ -20,7 +21,7 @@ namespace textmenu {
 
 // Logical open state (old CTextMenu::IsVisible). The panel instance keeps
 // writing it in sync; bus consumers (WeaponChoose slot feed) read isOpen().
-bool MenuOpenState = false;
+
 
 abc::CChainedCommand* command(int index) {
 	if (index < 0 || index > 9)
@@ -31,7 +32,7 @@ abc::CChainedCommand* command(int index) {
 }
 
 bool isOpen() {
-	return MenuOpenState;
+	return commands::textMenuOpen();
 }
 
 } // namespace textmenu
@@ -142,6 +143,8 @@ std::string colorizeMenuRml(const std::string& text) {
 TextMenuPanel::TextMenuPanel()
 	: HudPanel("textmenu", "abcui/rml/textmenu.rml") {}
 
+TextMenuPanel::~TextMenuPanel() { commands::setTextMenuOpen(false); }
+
 void TextMenuPanel::onDocumentReady() {
 	// Invisible until a ShowMenu arrives (opacity 0, not display:none - the
 	// fade-out transition needs the element alive).
@@ -159,7 +162,7 @@ void TextMenuPanel::onDocumentReady() {
 		for (int i = 0; i < 10; i++) {
 			if (abc::CChainedCommand* chained = textmenu::command(i)) {
 				subscribe(chained->Event(), [this, i]() {
-					if (!textmenu::MenuOpenState)
+					if (!commands::textMenuOpen())
 						return true;
 					selectMenuItem(i + 1);
 					return false;
@@ -177,20 +180,17 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 	IsASMenu = ((bits >> 7) & 1) != 0;
 	ShutoffTime = displaySeconds > 0 ? ClientTimeNow + displaySeconds : -1.0;
 	if (ValidSlots) {
+		if (text.size() > 16384 || MenuString.size() > 16384-text.size()) { MenuString.clear(); reset(); return; }
 		MenuString += text;
 		if (needMore == 0) {
 			// Old: strip the leading/trailing newline runs servers send.
-			const auto isContent = [](char ch) { return ch != '\n'; };
-			const auto begin = std::find_if(MenuString.begin(), MenuString.end(), isContent);
-			const auto rend = std::find_if(MenuString.rbegin(), MenuString.rend(), isContent);
-			MenuString.erase(MenuString.begin(), begin);
-			MenuString.erase(rend.base(), MenuString.end());
+			MenuString = framework::TextUtil::trimNewlines(MenuString);
 			if (Rml::Element* menu = element("menu"))
 				menu->SetInnerRML(colorizeMenuRml(MenuString));
 			if (Rml::Element* body = getDocument())
 				fadeTo(body, true);
 			show();
-			textmenu::MenuOpenState = true;
+			commands::setTextMenuOpen(true);
 			// A fresh menu cancels a pending fade-out-hide (old StartFade(true)
 			// ran CancelAnimationsForPanel first): the server's answer to a
 			// menuselect usually lands inside the 0.2s window, and letting the
@@ -200,7 +200,7 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits, const
 		}
 	}
 	else {
-		textmenu::MenuOpenState = false;
+		commands::setTextMenuOpen(false);
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		// The document stays up for the fade-out; hide it once the opacity
@@ -217,7 +217,7 @@ void TextMenuPanel::selectMenuItem(int slot) {
 	if (slot > 0 && (ValidSlots & (1 << (slot - 1)))) {
 		sprintf_s(command, IsASMenu ? "as_menuselect %d\n" : "menuselect %d\n", slot);
 		abc::EngineClientCmd(command);
-		textmenu::MenuOpenState = false;
+		commands::setTextMenuOpen(false);
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		HideAtTime = ClientTimeNow + kFadeSeconds;
@@ -229,7 +229,7 @@ void TextMenuPanel::onData(double frameTime) {
 	ClientTimeNow += frameTime;
 	// Old OnThink shutoff.
 	if (ShutoffTime >= 0.0 && ClientTimeNow >= ShutoffTime) {
-		textmenu::MenuOpenState = false;
+		commands::setTextMenuOpen(false);
 		if (Rml::Element* body = getDocument())
 			fadeTo(body, false);
 		HideAtTime = ClientTimeNow + kFadeSeconds;
@@ -254,7 +254,7 @@ void TextMenuPanel::reset() {
 	WaitingForMore = false;
 	IsASMenu = false;
 	ValidSlots = 0;
-	textmenu::MenuOpenState = false;
+	commands::setTextMenuOpen(false);
 	HideAtTime = -1.0;
 	if (Rml::Element* menu = element("menu"))
 		menu->SetInnerRML("");

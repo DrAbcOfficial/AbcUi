@@ -109,3 +109,32 @@ Item_Longjump = Longjump
 Item_Medkit = Medkit
 Item_OxygenCan = Oxygen Can
 Item_Rad = Radiation Clear
+
+# Complete engine team/class names.
+Team_ForceNone = Unassigned
+Team_Machine = Machines
+Team_HumanPassive = Human civilians
+Team_HumanMilitary = Human military
+Team_AlienMilitary = Alien military
+Team_AlienPassive = Passive aliens
+Team_AlienMonster = Alien monsters
+Team_AlienPrey = Alien prey
+Team_AlienPredator = Alien predators
+Team_Insect = Insects
+Team_PlayerAlly = Player allies
+Team_PlayerBioweapon = Player bioweapons
+Team_AlienBioweapon = Alien bioweapons
+Team_XracePitdrone = Pit drones
+Team_XraceShock = Shock troopers
+Team_Barnacle = Barnacles
+Team_Unknown = Unknown
+
+# Main menu (T05 minimal page)
+MainMenu_Title = AbcUi menu (work in progress)
+MainMenu_Action = Action (fake)
+MainMenu_FocusNone = (no focus)
+MainMenu_Text = Text field
+MainMenu_Password = Password field
+MainMenu_Area = Multiline (max 100)
+MainMenu_Close = Close
+MainMenu_Return = Return

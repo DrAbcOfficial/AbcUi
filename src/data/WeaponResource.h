@@ -21,11 +21,14 @@
 
 #include <abc/Events.h>
 #include <wrect.h>
+#include <entity_state.h>
+#include <type_traits>
 
 struct weapon_data_s;
 
 namespace weaponres {
 
+inline constexpr int kMaxWeaponIds = std::extent_v<decltype(local_state_t::weapondata)>;
 constexpr size_t kMaxWeaponSlot = 10;
 constexpr size_t kInvalidWeaponSlot = kMaxWeaponSlot + 1;
 

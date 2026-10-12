@@ -27,6 +27,7 @@ public:
 	~VotePanel() override;
 
 	void reset() override;
+	void onData(double) override;
 
 protected:
 	void onDocumentReady() override;

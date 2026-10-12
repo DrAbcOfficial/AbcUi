@@ -9,12 +9,15 @@
 
 #include "KeyMap.h"
 #include "RmlUiModule.h"
+#include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
 
 namespace {
-// Last known mouse button states (VK_LBUTTON/VK_RBUTTON/VK_MBUTTON order).
+// Last known mouse position (the WndProc motion and the poll dedup through
+// it - the surface cursor position moves with injected SDL motion even when
+// no window message is generated).
 int LastMouseX = -1;
 int LastMouseY = -1;
 bool ShiftWasDown = false;
@@ -25,15 +28,22 @@ bool AltWasDown = false;
 // unlocked the scoreboard pointer) must not synthesize a press on the first
 // sampled frame.
 bool GateWasOpen = false;
-// Explicit ownership (scoreboard pointer mode): the engine-side cursor
-// visibility never flips for it (P6 acceptance finding), so the mode carries
-// its own gate bit.
-bool UiMouseOwner = false;
+// The opening right-click belongs to the scoreboard, not to the UI: the
+// MOUSE2 that entered pointer mode is swallowed once (exclusive edge).
 bool SuppressOpeningRight = false;
 bool DeliveredDown[3] = {};
 bool AsyncWasDown[3] = {};
 
-int modifierState();
+int modifierState() {
+	int state = 0;
+	if (ShiftWasDown)
+		state |= Rml::Input::KM_SHIFT;
+	if (CtrlWasDown)
+		state |= Rml::Input::KM_CTRL;
+	if (AltWasDown)
+		state |= Rml::Input::KM_ALT;
+	return state;
+}
 
 void mouseButton(Rml::Context* context, int button, bool down) {
 	if (button == 1 && SuppressOpeningRight) {
@@ -47,42 +57,65 @@ void mouseButton(Rml::Context* context, int button, bool down) {
 	}
 }
 
+// The router Sink: the Rml key feeds and the engine mouse-mode side effects
+// hang here, so ownership transitions are one place (T06: nested owners
+// must never fight over IN_Accumulate/cursor state).
+class ProductionSink final : public framework::uiinput::Sink {
+public:
+	void uiKeyDown(int keynum) override {
+		if (Rml::Context* context = rmlui::context())
+			InputBridge::onKeyEvent(context, 1, keynum);
+	}
+	void uiKeyUp(int keynum) override {
+		if (Rml::Context* context = rmlui::context())
+			InputBridge::onKeyEvent(context, 0, keynum);
+	}
+	void onExclusiveChange(bool exclusive) override {
+		if (exclusive) {
+			SuppressOpeningRight = true;
+			gExportfuncs.IN_DeactivateMouse();
+		} else {
+			SuppressOpeningRight = false;
+			if (auto* context = rmlui::context()) {
+				for (int i = 0; i < 3; ++i)
+					if (DeliveredDown[i]) context->ProcessMouseButtonUp(i, 0);
+				context->ProcessMouseLeave();
+			}
+			for (int i = 0; i < 3; ++i) DeliveredDown[i] = false;
+			gExportfuncs.IN_ActivateMouse();
+		}
+	}
+};
+
+ProductionSink SinkInstance;
+
 } // namespace
 
-void setUiMouseOwner(bool owner) {
-	if (owner == UiMouseOwner) return;
-	UiMouseOwner = owner;
-	GateWasOpen = false;
-	SuppressOpeningRight = owner;
-	if (owner) {
-		gExportfuncs.IN_DeactivateMouse();
-	} else {
-		if (auto* context = rmlui::context()) {
-			for (int i = 0; i < 3; ++i)
-				if (DeliveredDown[i]) context->ProcessMouseButtonUp(i, 0);
-			context->ProcessMouseLeave();
-		}
-		for (int i = 0; i < 3; ++i) DeliveredDown[i] = false;
-		gExportfuncs.IN_ActivateMouse();
-	}
+framework::uiinput::Router& uiRouter() {
+	static framework::uiinput::Router router(&SinkInstance);
+	return router;
 }
 
 bool uiMouseOwner() {
-	return UiMouseOwner;
+	return uiRouter().exclusive();
 }
 
-namespace {
-int modifierState() {
-	int state = 0;
-	if (ShiftWasDown)
-		state |= Rml::Input::KM_SHIFT;
-	if (CtrlWasDown)
-		state |= Rml::Input::KM_CTRL;
-	if (AltWasDown)
-		state |= Rml::Input::KM_ALT;
-	return state;
+bool routeKey(int down, int keynum, bool staticWheelClaim) {
+	// Wheel pulses: the top owner (menu scroll) or the static non-owning
+	// claims (motd) scroll the UI; anything else stays a weapon switch. The
+	// engine delivers wheel as down-only pulses (KeyMap note), but up edges
+	// are kept out of the keyboard state machine either way.
+	const bool wheel = keynum == K_MWHEELUP || keynum == K_MWHEELDOWN;
+	if (down && wheel) {
+		if (uiRouter().wheelClaimed() || staticWheelClaim) {
+			onWheel(down, keynum);
+			return true;
+		}
+		return false;
+	}
+	const framework::uiinput::Route route = uiRouter().onKey(down, keynum, wheel);
+	return route.consumeEngine;
 }
-} // namespace
 
 void InputBridge::update(Rml::Context* context) {
 	if (!context)
@@ -105,9 +138,9 @@ void InputBridge::update(Rml::Context* context) {
 
 void InputBridge::updateMouse(Rml::Context* context) {
 	// The VGUI cursor visibility doubles as the "GameUI owns the mouse" gate;
-	// the scoreboard pointer mode carries its own bit (engine visibility
-	// never flips for it).
-	if (!vgui2ext::isCursorVisible() && !UiMouseOwner) {
+	// UI ownership (router exclusivity) opens it regardless - the scoreboard
+	// pointer mode's engine-side visibility never flips (P6 finding).
+	if (!vgui2ext::isCursorVisible() && !uiRouter().exclusive()) {
 		GateWasOpen = false;
 		return;
 	}
@@ -123,8 +156,11 @@ void InputBridge::updateMouse(Rml::Context* context) {
 	}
 
 		// Position poll under both paths (the WndProc motion dedups through
-	// LastMouseX/Y - the surface cursor position moves with injected SDL
-	// motion even when no window message is generated).
+	// LastMouseX/Y). The surface cursor coordinates are the context's pixel
+	// space: the context dimensions follow the renderer swap chain
+	// (RmlUiModule::onVidInit), which is the same coordinate basis the
+	// surface reports - no second scaling layer on this path (dp scaling
+	// rides the context density, not the input coordinates).
 	int x = 0, y = 0;
 	if (!vgui2ext::getCursorPos(x, y))
 		return;
@@ -151,10 +187,19 @@ void InputBridge::updateMouse(Rml::Context* context) {
 bool InputBridge::onKeyEvent(Rml::Context* context, int down, int keynum) {
 	if (!context)
 		return false;
-	if (UiMouseOwner && keynum >= K_MOUSE1 && keynum <= K_MOUSE3) {
+	// Exclusive mouse keys ride the shared button-dedup state (the
+	// IN_MouseEvent edges and the poll land here too).
+	if (uiRouter().exclusive() && keynum >= K_MOUSE1 && keynum <= K_MOUSE3) {
 		mouseButton(context, keynum - K_MOUSE1, down != 0);
 		return true;
 	}
+	// IME-owned keys during a composition (T07.b): Enter commits it, ESC
+	// cancels it, Backspace edits it - the platform may also leak the edge
+	// past the IME, and feeding it to the editor a second time would close
+	// the window / delete behind the IME's back. Diagnostic return only:
+	// the router owns the engine-consume decision (T06 step 3).
+	if (compositionOwnsKey(keynum))
+		return false;
 	const Rml::Input::KeyIdentifier key = mapKeyCode(keynum);
 	if (key == Rml::Input::KI_UNKNOWN)
 		return false;
@@ -163,11 +208,28 @@ bool InputBridge::onKeyEvent(Rml::Context* context, int down, int keynum) {
 	return context->ProcessKeyUp(key, modifierState());
 }
 
-void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam) {
+void onSurfaceWndProc(const void* hwnd, unsigned int msg, unsigned int wparam, long lparam) {
+	// The surface window operand doubles as the T07 IME window cache (both
+	// dispatch directions carry the same value).
+	noteSurfaceWindow(hwnd);
+	// V07 event-source evidence: count the keyboard messages the surface
+	// actually observes (read back through abc_ui_input_events).
+	noteWndProcMessage(msg);
+
+	// Focus loss precedes the UI gate: no owner may survive into an inactive
+	// window (T06 V06). The extension dispatches this callback pre AND post
+	// (07 doc item 7) - the router release is idempotent, the second
+	// dispatch finds an empty stack and no-ops.
+	if (msg == WM_KILLFOCUS || (msg == WM_ACTIVATE && LOWORD(wparam) == WA_INACTIVE)) {
+		uiRouter().onFocusLost();
+		onWindowFocusLost();
+		return;
+	}
+
 	// Same gate as the legacy poll: normal play keeps the cursor locked and
 	// the GameUI menu keeps it visible for its own surface.
 	Rml::Context* context = rmlui::context();
-	if (!context || (!vgui2ext::isCursorVisible() && !UiMouseOwner))
+	if (!context || (!vgui2ext::isCursorVisible() && !uiRouter().exclusive()))
 		return;
 
 	switch (msg) {
@@ -198,7 +260,7 @@ void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam) {
 			mouseButton(context, 2, false);
 			break;
 		default:
-			break; // wheel rides the engine key path (hooks uiOwnsWheel)
+			break; // wheel rides the engine key path (router wheel claims)
 	}
 }
 

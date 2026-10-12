@@ -55,14 +55,7 @@ void AmmoBarPanel::reset() {
 }
 
 void AmmoBarPanel::updateVisibility() {
-	// Old g_EventHudUpdateClientData: suit (+ live weapon) gates here; the
-	// weapons hide bit only applies through the token path. The old code
-	// also dropped the panel while spectating (Viewport::SetSpectate).
-	const bool visible = hudstate::hasSuit() && !hudstate::isSpectate() && HandledWeapon;
-	if (visible)
-		show();
-	else
-		hide();
+	applyHideToken();
 }
 
 void AmmoBarPanel::applyHideToken() {
@@ -82,8 +75,7 @@ void AmmoBarPanel::refreshAmmo() {
 		updateVisibility();
 		return;
 	}
-	if (hudstate::hasSuit())
-		show();
+	applyHideToken();
 	if (!(HandledWeapon->state & kStateValid))
 		return;
 

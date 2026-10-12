@@ -24,6 +24,7 @@ bool isOpen();
 class TextMenuPanel : public framework::HudPanel {
 public:
 	TextMenuPanel();
+	~TextMenuPanel() override;
 
 protected:
 	void onDocumentReady() override;

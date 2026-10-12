@@ -135,6 +135,8 @@ std::string formatNotice(std::string msg, std::string params[4]) {
 
 int onTextMsg(int target, const char* msg, const char* param1, const char* param2,
 	const char* param3, const char* param4) {
+	// Unknown game tokens stay with the native handler (safe game-table fallback).
+	if (msg && msg[0] == '#') { std::string translated; if (!framework::Localization::translate(translated,std::string(msg+1))) return true; }
 	if (target == kPrintNotify) {
 		if (msg[0] == '\0')
 			return true;

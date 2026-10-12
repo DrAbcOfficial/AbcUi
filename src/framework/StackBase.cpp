@@ -1,6 +1,7 @@
 // framework::StackBase implementation - see StackBase.h.
 // from: ABCEnchance/src/hud/vgui/basestackpanel.* (value-semantic port).
 #include "StackBase.h"
+#include "../data/HudState.h"
 
 #include <RmlUi/Core/Element.h>
 
@@ -38,7 +39,7 @@ Rml::Element* StackBase::appendItem(const char* itemClass, const char* itemRml) 
 	entry.expireTime = clientTimeNow + StackParams.keepTime;
 	Items.push_back(entry);
 
-	while (Items.size() > static_cast<size_t>(std::max(1, StackParams.maxItems))) {
+	while (Items.size() > static_cast<size_t>((std::max)(1, StackParams.maxItems))) {
 		Container->RemoveChild(Items.front().element);
 		Items.erase(Items.begin());
 	}
@@ -47,6 +48,10 @@ Rml::Element* StackBase::appendItem(const char* itemClass, const char* itemRml) 
 
 void StackBase::tickItems(double frameTime) {
 	clientTimeNow += frameTime;
+	if (Container && Container->GetOwnerDocument()) {
+		if(hudstate::isHudHidden(hudstate::kHideAll)) Container->GetOwnerDocument()->Hide();
+		else if(!Items.empty() && !Container->GetOwnerDocument()->IsVisible()) Container->GetOwnerDocument()->Show(Rml::ModalFlag::None,Rml::FocusFlag::None);
+	}
 	if (Items.empty())
 		return;
 	for (auto itor = Items.begin(); itor != Items.end();) {

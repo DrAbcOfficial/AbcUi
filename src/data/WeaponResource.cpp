@@ -4,6 +4,7 @@
 #include <metahook.h>
 
 #include "WeaponResource.h"
+#include "../framework/ResourceLimits.h"
 
 #include <cdll_int.h>
 #include <wrect.h>
@@ -32,11 +33,7 @@ abc::CallbackList<void()> DropAllWeapons;
 namespace {
 
 constexpr int kMaxWeaponName = 128;
-constexpr int kMaxAmmoTypes = 32; // defensive bound for ammo-map reads
-// HLSDK prediction array length (weapon_data_s[] handed to
-// HUD_TxferPredictionData): weapon ids index it directly, so ids at or past
-// this bound would read out of bounds and are rejected at registration.
-constexpr int kMaxWeaponIds = 32;
+constexpr int kMaxAmmoTypes = 256; // AmmoX byte domain; -1 is the no-ammo sentinel.
 
 struct SlotData {
 	std::map<int, int> positions; // slotPos -> weapon id
@@ -162,14 +159,15 @@ void loadWeaponSprites(Weapon& weapon, const char* customSpr) {
 	weapon.zoomedCrosshair = {};
 	weapon.zoomedAutoaim = {};
 
-	char listPath[256];
-	if (customSpr && customSpr[0])
-		sprintf_s(listPath, "sprites/%s/%s.txt", customSpr, weapon.sprName.c_str());
-	else
-		sprintf_s(listPath, "sprites/%s.txt", weapon.sprName.c_str());
+	if (!framework::ResourceLimits::resourceName(weapon.sprName) ||
+		(customSpr && *customSpr && !framework::ResourceLimits::resourceName(customSpr))) return;
+	std::string listPath = "sprites/";
+	if (customSpr && *customSpr) { listPath += customSpr; listPath += '/'; }
+	listPath += weapon.sprName + ".txt";
+	if (listPath.size() >= 256) return;
 
 	int count = 0;
-	const client_sprite_t* list = gEngfuncs.pfnSPR_GetList(listPath, &count);
+	const client_sprite_t* list = gEngfuncs.pfnSPR_GetList(listPath.data(), &count);
 	if (!list) {
 		count = 0;
 		list = gEngfuncs.pfnSPR_GetList(const_cast<char*>("abcui/spr/weapon_error.txt"), &count);
@@ -225,14 +223,19 @@ void dropAllWeapons() {
 	RegistryState.available.clear();
 	RegistryState.curWeapon = nullptr;
 	RegistryState.curWeaponId = 0;
+	RegistryState.selected = nullptr;
+	RegistryState.selectedSlotId = kInvalidWeaponSlot;
+	DropAllWeapons();
 }
 
 #pragma region netmsg handlers
 void onAmmoX(int index, int count) {
+	if (index < 0 || index >= kMaxAmmoTypes || count < 0) return;
 	RegistryState.ammo[index] = count;
 }
 
 void onWeaponList(const netmsg::WeaponListData& data) {
+	if (data.id <= 0 || data.id >= kMaxWeaponIds || data.slot < 0 || data.slot >= static_cast<int>(kMaxWeaponSlot) || data.slotPos < 0 || !framework::ResourceLimits::resourceName(data.name)) return;
 	if (const auto itor = RegistryState.byId.find(data.id); itor != RegistryState.byId.end()) {
 		// Old UpdateWeapon: full replace + sprite reload, ownership kept.
 		Weapon updated;
@@ -250,7 +253,16 @@ void onWeaponList(const netmsg::WeaponListData& data) {
 		updated.clip = weapon.clip;
 		updated.clip2 = weapon.clip2;
 		updated.state = weapon.state;
+		auto oldName = RegistryState.byName.find(weapon.name);
+		if (oldName != RegistryState.byName.end() && oldName->second == weapon.id) RegistryState.byName.erase(oldName);
+		auto& oldSlot = RegistryState.slots[weapon.slot];
+		oldSlot.positions.erase(weapon.slotPos); oldSlot.updateMinMax();
 		weapon = std::move(updated);
+		RegistryState.byName[weapon.name] = weapon.id;
+		auto& newSlot = RegistryState.slots[weapon.slot];
+		while (newSlot.positions.count(weapon.slotPos)) ++weapon.slotPos;
+		newSlot.positions[weapon.slotPos] = weapon.id; newSlot.updateMinMax();
+		if (RegistryState.selected == &weapon) RegistryState.selectedSlotId = weapon.slot;
 		loadWeaponSprites(weapon, nullptr);
 		return;
 	}
@@ -297,6 +309,7 @@ void onCurWeapon(int state, int id, int clip, int clip2) {
 }
 
 void onWeaponSpr(int id, const char* sprName) {
+	if (!sprName || !framework::ResourceLimits::resourceName(sprName)) return;
 	const auto itor = RegistryState.byId.find(id);
 	if (itor == RegistryState.byId.end() || id <= 0)
 		return;
@@ -349,12 +362,13 @@ void onTxferPredictionData(const weapon_data_s* weaponDataArray) {
 		PickupWeapon(weapon);
 	for (const Weapon* weapon : dropped)
 		DropWeapon(weapon);
+	if (!dropped.empty() && RegistryState.owned.empty()) { dropAllWeapons(); return; }
 	// Current weapon pointer survives only while the weapon is still known.
 	if (RegistryState.curWeaponId && !RegistryState.byId.count(RegistryState.curWeaponId))
 		RegistryState.curWeapon = nullptr;
 	else if (RegistryState.curWeaponId)
 		RegistryState.curWeapon = &RegistryState.byId[RegistryState.curWeaponId];
-	if (RegistryState.selected && !RegistryState.byId.count(RegistryState.selected->id)) {
+	if (RegistryState.selected && !RegistryState.owned.count(RegistryState.selected->id)) {
 		RegistryState.selected = nullptr;
 		RegistryState.selectedSlotId = kInvalidWeaponSlot;
 	}

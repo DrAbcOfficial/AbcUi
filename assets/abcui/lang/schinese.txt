@@ -109,3 +109,32 @@ Item_Longjump = 远距离跳跃模块
 Item_Medkit = 医疗包
 Item_OxygenCan = 氧气罐
 Item_Rad = 消辐宁
+
+# Complete engine team/class names.
+Team_ForceNone = 未分配
+Team_Machine = 机械
+Team_HumanPassive = 人类平民
+Team_HumanMilitary = 人类军队
+Team_AlienMilitary = 异星军队
+Team_AlienPassive = 中立异星生物
+Team_AlienMonster = 异星怪物
+Team_AlienPrey = 异星猎物
+Team_AlienPredator = 异星捕食者
+Team_Insect = 昆虫
+Team_PlayerAlly = 玩家盟友
+Team_PlayerBioweapon = 玩家生物武器
+Team_AlienBioweapon = 异星生物武器
+Team_XracePitdrone = 坑道虫
+Team_XraceShock = 电击兵
+Team_Barnacle = 藤壶怪
+Team_Unknown = 未知
+
+# Main menu (T05 minimal page)
+MainMenu_Title = AbcUi 菜单（建设中）
+MainMenu_Action = 动作（假后端）
+MainMenu_FocusNone = （无焦点）
+MainMenu_Text = 文本框
+MainMenu_Password = 密码框
+MainMenu_Area = 多行（上限 100）
+MainMenu_Close = 关闭
+MainMenu_Return = 返回

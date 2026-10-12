@@ -22,10 +22,10 @@ const std::array<PredefinedTeam, kPredefinedTeamCount> PredefinedTeams = {{
 	{TeamId::AlienBioweapon, "Team_AlienBioweapon"},
 	{TeamId::XracePitdrone, "Team_XracePitdrone"},
 	{TeamId::XraceShock, "Team_XraceShock"},
-	{TeamId::Team1, "Team_Team1"},
-	{TeamId::Team2, "Team_Team2"},
-	{TeamId::Team3, "Team_Team3"},
-	{TeamId::Team4, "Team_Team4"},
+	{TeamId::Team1, "Team_Red"},
+	{TeamId::Team2, "Team_Blue"},
+	{TeamId::Team3, "Team_Green"},
+	{TeamId::Team4, "Team_Yellow"},
 	{TeamId::Barnacle, "Team_Barnacle"},
 }};
 

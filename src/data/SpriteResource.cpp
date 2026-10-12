@@ -4,6 +4,10 @@
 #include <metahook.h>
 
 #include "SpriteResource.h"
+#include "../framework/ResourceLimits.h"
+#include <filesystem>
+#include <memory>
+#include <unordered_set>
 
 #include <wrect.h>
 
@@ -66,6 +70,7 @@ std::unordered_map<std::string, int> CropTextures;
 std::unordered_map<std::string, StandaloneSpr> Standalone;
 std::unordered_map<std::string, int> FrameTextures;
 bool ChannelWarned = false;
+int HudResolution = 0;
 
 // GoldSrc keeps sprites in several search paths; the engine SPR_Load walks
 // the same list (mod dir first, then the server-downloaded and addon trees).
@@ -73,25 +78,22 @@ bool ChannelWarned = false;
 // out of it in the relative path (works for both the relative mod dir the SC
 // engine reports and an absolute one).
 std::vector<std::string> spriteSearchPaths(const std::string& relative) {
-	const std::string gamedir = abc::GameDir();
-	return {
-		abc::ModPath(relative.c_str()),
-		abc::ModPath(("../" + gamedir + "_downloads/" + relative).c_str()),
-		abc::ModPath(("../" + gamedir + "_addon/" + relative).c_str()),
-	};
+	const std::filesystem::path game = abc::GameDir();
+	return {(game / relative).string(), (game.parent_path() / (game.filename().string()+"_downloads") / relative).string(),
+		(game.parent_path() / (game.filename().string()+"_addon") / relative).string()};
 }
 
 bool readWholeFile(const std::string& path, std::vector<unsigned char>& out) {
 	FILE* file = nullptr;
 	if (fopen_s(&file, path.c_str(), "rb") != 0 || !file)
 		return false;
-	fseek(file, 0, SEEK_END);
+	std::unique_ptr<FILE, decltype(&fclose)> owned(file, fclose);
+	if (fseek(file, 0, SEEK_END) != 0) return false;
 	const long size = ftell(file);
-	fseek(file, 0, SEEK_SET);
-	out.resize(static_cast<size_t>(size));
-	const size_t read = fread(out.data(), 1, out.size(), file);
-	fclose(file);
-	return read == out.size();
+	if (size <= 0 || static_cast<size_t>(size) > framework::ResourceLimits::MaxFileBytes || fseek(file,0,SEEK_SET) != 0) return false;
+	std::vector<unsigned char> bytes(static_cast<size_t>(size));
+	if (fread(bytes.data(),1,bytes.size(),file) != bytes.size()) return false;
+	out = std::move(bytes); return true;
 }
 
 // Forward decl: standalone frame uploads share the atlas upload helper
@@ -145,7 +147,7 @@ bool loadSpr(const std::string& atlasFile, DecodedAtlas& out) {
 	}
 
 	const auto readInt = [&file](size_t offset, int& value) {
-		if (offset + 4 > file.size())
+		if (!framework::ResourceLimits::span(offset,4,file.size()))
 			return false;
 		value = static_cast<int>(file[offset]) | (static_cast<int>(file[offset + 1]) << 8) |
 			(static_cast<int>(file[offset + 2]) << 16) | (static_cast<int>(file[offset + 3]) << 24);
@@ -154,13 +156,13 @@ bool loadSpr(const std::string& atlasFile, DecodedAtlas& out) {
 
 	int signature = 0, version = 0, format = 0;
 	if (!readInt(0, signature) || signature != kSprSignature || !readInt(4, version) ||
-		version != kSprVersion || !readInt(12, format)) {
+		version != kSprVersion || !readInt(12, format) || format < 0 || format > 3) {
 		abc::ConsoleWarn("[AbcUi] unsupported sprite format: sprites/%s\n", atlasFile.c_str());
 		return false;
 	}
 
 	int frameCount = 0;
-	if (!readInt(28, frameCount) || frameCount <= 0) {
+	if (!readInt(28, frameCount) || frameCount <= 0 || frameCount > 4096) {
 		abc::ConsoleWarn("[AbcUi] sprite declares no frames: sprites/%s\n", atlasFile.c_str());
 		return false;
 	}
@@ -171,7 +173,7 @@ bool loadSpr(const std::string& atlasFile, DecodedAtlas& out) {
 		return false;
 	paletteSize = static_cast<int>(file[offset]) | (static_cast<int>(file[offset + 1]) << 8);
 	offset += 2;
-	if (paletteSize <= 0 || offset + static_cast<size_t>(paletteSize) * 3 > file.size()) {
+	if (paletteSize <= 0 || paletteSize > 256 || offset + static_cast<size_t>(paletteSize) * 3 > file.size()) {
 		abc::ConsoleWarn("[AbcUi] sprite palette corrupt: sprites/%s\n", atlasFile.c_str());
 		return false;
 	}
@@ -191,13 +193,15 @@ bool loadSpr(const std::string& atlasFile, DecodedAtlas& out) {
 				break;
 			}
 		}
-		if (truncated)
+		if (truncated || fields[0] != 0)
 			break;
 		offset += 20;
 		frameW = fields[3];
 		frameH = fields[4];
-		const long pixelCount = static_cast<long>(frameW) * frameH;
-		if (frameW <= 0 || frameH <= 0 || offset + pixelCount > file.size())
+		size_t byteCount;
+		if (!framework::ResourceLimits::imageBytes(frameW,frameH,byteCount)) break;
+		const size_t pixelCount = byteCount / 4;
+		if (!framework::ResourceLimits::span(offset,pixelCount,file.size()))
 			break;
 		pixels = file.data() + offset;
 		offset += pixelCount;
@@ -242,7 +246,7 @@ StandaloneSpr* ensureStandalone(const std::string& relativePath) {
 	}
 
 	const auto readInt = [&spr](size_t offset, int& value) {
-		if (offset + 4 > spr.file.size())
+		if (!framework::ResourceLimits::span(offset,4,spr.file.size()))
 			return false;
 		value = static_cast<int>(spr.file[offset]) | (static_cast<int>(spr.file[offset + 1]) << 8) |
 			(static_cast<int>(spr.file[offset + 2]) << 16) | (static_cast<int>(spr.file[offset + 3]) << 24);
@@ -251,12 +255,12 @@ StandaloneSpr* ensureStandalone(const std::string& relativePath) {
 
 	int signature = 0, version = 0;
 	if (!readInt(0, signature) || signature != kSprSignature || !readInt(4, version) ||
-		version != kSprVersion || !readInt(12, spr.format)) {
+		version != kSprVersion || !readInt(12, spr.format) || spr.format < 0 || spr.format > 3) {
 		abc::ConsoleWarn("[AbcUi] unsupported sprite format: %s\n", relativePath.c_str());
 		return fail();
 	}
 	int frameCount = 0;
-	if (!readInt(28, frameCount) || frameCount <= 0) {
+	if (!readInt(28, frameCount) || frameCount <= 0 || frameCount > 4096) {
 		abc::ConsoleWarn("[AbcUi] sprite declares no frames: %s\n", relativePath.c_str());
 		return fail();
 	}
@@ -266,7 +270,7 @@ StandaloneSpr* ensureStandalone(const std::string& relativePath) {
 		return fail();
 	int paletteSize = static_cast<int>(spr.file[offset]) | (static_cast<int>(spr.file[offset + 1]) << 8);
 	offset += 2 + static_cast<size_t>(paletteSize) * 3;
-	if (paletteSize <= 0 || offset > spr.file.size()) {
+	if (paletteSize <= 0 || paletteSize > 256 || offset > spr.file.size()) {
 		abc::ConsoleWarn("[AbcUi] sprite palette corrupt: %s\n", relativePath.c_str());
 		return fail();
 	}
@@ -289,8 +293,10 @@ StandaloneSpr* ensureStandalone(const std::string& relativePath) {
 		}
 		const int frameW = fields[3];
 		const int frameH = fields[4];
-		const size_t pixelCount = static_cast<size_t>(frameW) * frameH;
-		if (frameW <= 0 || frameH <= 0 || offset + 20 + pixelCount > spr.file.size())
+		size_t byteCount;
+		if (!framework::ResourceLimits::imageBytes(frameW,frameH,byteCount)) break;
+		const size_t pixelCount = byteCount / 4;
+		if (!framework::ResourceLimits::span(offset,20,spr.file.size()) || !framework::ResourceLimits::span(offset+20,pixelCount,spr.file.size()))
 			break;
 		spr.frameOffsets.push_back(offset + 20);
 		spr.framePixelCounts.push_back(pixelCount);
@@ -374,8 +380,11 @@ DecodedAtlas* ensureAtlas(const std::string& atlasFile) {
 } // namespace
 
 void vidInit() {
-	if (!HudEntries.empty())
-		return;
+	const int screenW = abc::MetaRenderer() ? static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()) : 1920;
+	const int wantedRes = screenW < 640 ? 320 : 640;
+	if (HudResolution == wantedRes && !HudEntries.empty()) return;
+	HudEntries.clear();
+	HudResolution = wantedRes;
 	// Same engine-side parse the old gSpriteRes used; entries below the 640
 	// res band are skipped exactly like the old filter (screen < 640 wide
 	// selects the 320 set - irrelevant for the 1080p+ HUD, keep 640 only
@@ -384,9 +393,6 @@ void vidInit() {
 	client_sprite_t* list = gEngfuncs.pfnSPR_GetList(const_cast<char*>("sprites/hud.txt"), &count);
 	if (!list)
 		return;
-	// Old filter (width-based, exactly as the old gSpriteRes used).
-	const int screenW = abc::MetaRenderer() ? static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()) : 1920;
-	const int wantedRes = screenW < 640 ? 320 : 640;
 	for (int i = 0; i < count; i++) {
 		if (list[i].iRes != wantedRes)
 			continue;
@@ -398,13 +404,15 @@ void vidInit() {
 }
 
 void shutdown() {
-	// Texture ids are NOT deleted here: every id this module hands out flows
-	// through AbcRenderInterface::LoadTexture into Rml's texture database, and
-	// Rml::Shutdown releases each one via ReleaseTexture (the single delete
-	// point - deleting here too double-freed the ids into the engine surface).
+	// Rml borrowed records have been released before cache-owned IDs.
+	std::unordered_set<int> ids;
+	for (const auto& [key,id] : CropTextures) ids.insert(id);
+	for (const auto& [key,id] : FrameTextures) ids.insert(id);
+	for (int id : ids) if (id) vgui2ext::deleteTextureById(id);
 	CropTextures.clear();
 	Atlases.clear();
 	HudEntries.clear();
+	HudResolution = 0;
 	Standalone.clear();
 	FrameTextures.clear();
 }
@@ -419,14 +427,10 @@ bool findHudSprite(const char* name, std::string& atlasFile, wrect_t& rect) {
 }
 
 int croppedTexture(const std::string& atlasFile, const wrect_t& rect, bool straightAlpha) {
-	// Source addressing clamps (rect parts come from hud.txt or a URI string;
-	// a negative origin would read before the atlas buffer).
-	const int left = rect.left < 0 ? 0 : rect.left;
-	const int top = rect.top < 0 ? 0 : rect.top;
-	const int width = rect.right - rect.left;
-	const int height = rect.bottom - rect.top;
-	if (width <= 0 || height <= 0)
-		return 0;
+	DecodedAtlas* atlas = ensureAtlas(atlasFile);
+	if (!atlas) return 0;
+	int left, top, width, height;
+	if (!framework::ResourceLimits::crop(rect.left,rect.top,rect.right,rect.bottom,atlas->width,atlas->height,left,top,width,height)) return 0;
 
 	// Scheme tag keeps the two blend flavors of one crop in separate texture
 	// ids (the additive mark rides the id - see AbcRenderInterface).
@@ -437,9 +441,6 @@ int croppedTexture(const std::string& atlasFile, const wrect_t& rect, bool strai
 	if (itor != CropTextures.end())
 		return itor->second;
 
-	DecodedAtlas* atlas = ensureAtlas(atlasFile);
-	if (!atlas)
-		return 0;
 
 	DecodedAtlas crop;
 	crop.width = width;
@@ -468,8 +469,9 @@ int textureForUri(const std::string& uri, int& width, int& height) {
 		wrect_t rect{};
 		if (!findHudSprite(uri.c_str() + 6, atlasFile, rect))
 			return 0;
-		width = rect.right - rect.left;
-		height = rect.bottom - rect.top;
+		const auto* atlas = ensureAtlas(atlasFile);
+		int x, y;
+		if (!atlas || !framework::ResourceLimits::crop(rect.left,rect.top,rect.right,rect.bottom,atlas->width,atlas->height,x,y,width,height)) return 0;
 		return croppedTexture(atlasFile, rect, false);
 	}
 	if (uri.rfind("spricon://", 0) == 0) {
@@ -481,8 +483,9 @@ int textureForUri(const std::string& uri, int& width, int& height) {
 		wrect_t rect{};
 		if (sscanf_s(uri.c_str() + slash + 1, "%d,%d,%d,%d", &rect.left, &rect.top, &rect.right, &rect.bottom) != 4)
 			return 0;
-		width = rect.right - rect.left;
-		height = rect.bottom - rect.top;
+		const auto* atlas = ensureAtlas(atlasFile);
+		int x, y;
+		if (!atlas || !framework::ResourceLimits::crop(rect.left,rect.top,rect.right,rect.bottom,atlas->width,atlas->height,x,y,width,height)) return 0;
 		return croppedTexture(atlasFile, rect, false);
 	}
 	if (uri.rfind("spralpha://", 0) == 0) {
@@ -495,8 +498,9 @@ int textureForUri(const std::string& uri, int& width, int& height) {
 		wrect_t rect{};
 		if (sscanf_s(uri.c_str() + slash + 1, "%d,%d,%d,%d", &rect.left, &rect.top, &rect.right, &rect.bottom) != 4)
 			return 0;
-		width = rect.right - rect.left;
-		height = rect.bottom - rect.top;
+		const auto* atlas = ensureAtlas(atlasFile);
+		int x, y;
+		if (!atlas || !framework::ResourceLimits::crop(rect.left,rect.top,rect.right,rect.bottom,atlas->width,atlas->height,x,y,width,height)) return 0;
 		return croppedTexture(atlasFile, rect, true);
 	}
 	if (uri.rfind("sprframe://", 0) == 0) {

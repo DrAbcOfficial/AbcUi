@@ -19,7 +19,7 @@
 #include "../../data/PlayerResource.h"
 #include "../../data/WeaponResource.h"
 #include "../../framework/Commands.h"
-#include "../textmenu/TextMenuPanel.h"
+
 
 // Windows.h min/max macros fight std::min/std::max (old repo precedent).
 #undef max
@@ -32,7 +32,7 @@ namespace weaponchoose {
 WeaponChoosePanel* PanelInstance = nullptr;
 
 bool textmenuOpen() {
-	return panels::textmenu::isOpen();
+	return commands::textMenuOpen();
 }
 
 bool attackConfirm() {
@@ -144,6 +144,10 @@ WeaponChoosePanel::WeaponChoosePanel()
 	weaponchoose::PanelInstance = this;
 }
 
+WeaponChoosePanel::~WeaponChoosePanel() {
+	if (weaponchoose::PanelInstance == this) weaponchoose::PanelInstance = nullptr;
+}
+
 void WeaponChoosePanel::reset() {
 	Visible = false;
 	hide();
@@ -185,7 +189,7 @@ void WeaponChoosePanel::rebuild() {
 	// Owned weapons grouped by slot (old InsertWeapon slot lists; the
 	// registry also carries the full WeaponList - ownership filters it).
 	std::vector<const weaponres::Weapon*> bySlot[weaponres::kMaxWeaponSlot];
-	for (int id = 1; id < 32; id++) {
+	for (int id = 1; id < weaponres::kMaxWeaponIds; id++) {
 		const weaponres::Weapon* weapon = weaponres::getWeapon(id);
 		if (!weapon || weapon->slot < 0 || weapon->slot >= static_cast<int>(weaponres::kMaxWeaponSlot))
 			continue;
@@ -331,7 +335,7 @@ bool WeaponChoosePanel::confirmSelection() {
 	// closes the bar. Rejected picks keep the bar open and let the attack
 	// through (the old m_bSelectBlock armed only on the success path).
 	const weaponres::Weapon* weapon = weaponres::selectedWeapon();
-	if (!weapon || !Visible)
+	if (!weapon || !Visible || !shouldDraw() || !weaponres::isOwned(weapon))
 		return false;
 	if (weaponres::fastSwitchOn())
 		return false;

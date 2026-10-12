@@ -65,6 +65,7 @@ void DeadMsgPanel::onDocumentReady() {
 
 void DeadMsgPanel::onData(double frameTime) {
 	ClientTimeNow += frameTime;
+	if (deadmsg::DeathNotice && deadmsg::DeathNotice->value <= 0) { reset(); return; }
 	Rml::Element* feed = Document ? Document->GetElementById("feed") : nullptr;
 	if (!feed)
 		return;
@@ -152,7 +153,7 @@ void DeadMsgPanel::addItem(const char* victim, const char* attacker, const char*
 	std::string templateText;
 	if (framework::Localization::translate(templateText, "DeathMsg_ConsolePrint")) {
 		abc::ConsolePrint("%s\n", abc::Format(templateText,
-			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor));
+			victim, attacker[0] == '\0' ? "Something" : attacker, inflictor).c_str());
 	}
 }
 

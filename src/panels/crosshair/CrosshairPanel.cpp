@@ -138,6 +138,7 @@ void CrosshairPanel::reset() {
 }
 
 void CrosshairPanel::hideDynamicCrosshair() {
+	if (!Document) return;
 	// Old HideDynamicCrossHair zeroed the ten panel colors; the spr img has no
 	// old counterpart (vgui simply stopped painting it) - display:none is the
 	// Rml equivalent of "not composited this frame".
@@ -256,6 +257,7 @@ void CrosshairPanel::onRedraw(double frameTime) {
 		hideDynamicCrosshair();
 		return;
 	}
+	updateCenter();
 	// Zoom autohide: dynamic parts hide, the vanilla spr still draws (old
 	// PaintBackground ran independently of this gate).
 	if (crosshair::VanillaCrosshair && crosshair::VanillaCrosshair->value != 0 &&

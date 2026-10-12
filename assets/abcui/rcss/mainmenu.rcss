@@ -1,0 +1,91 @@
+/* mainmenu.rcss - T05 minimal interactive page. Layout in dp only: the
+   context density ratio (framework::Theme::applyScale) does all scaling, so
+   no pixel assumptions live here. RmlUi ships no user-agent stylesheet -
+   every element gets its full display/tab/caret styling explicitly. */
+
+#panel {
+	position: absolute;
+	left: 48dp;
+	top: 40dp;
+	width: 340dp;
+	background-color: #101418ee;
+	border: 1dp #3a4148;
+	padding: 16dp;
+}
+
+#title {
+	display: block;
+	font-size: 16dp;
+	font-weight: bold;
+	color: #00ff00;
+	margin-bottom: 12dp;
+}
+
+#focus-status {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	height: 14dp;
+	line-height: 14dp;
+	margin-bottom: 12dp;
+}
+
+/* tab-index: auto puts the button in the tab chain (RmlUi defaults every
+   element to tab-index none); :focus is the keyboard focus visual state. */
+button {
+	display: block;
+	width: auto;
+	height: 26dp;
+	line-height: 26dp;
+	text-align: center;
+	background-color: #1c2329;
+	color: #e8e8e8;
+	font-size: 10dp;
+	border: 1dp #3a4148;
+	tab-index: auto;
+	margin-bottom: 8dp;
+}
+
+button:hover {
+	background-color: #232b32;
+}
+
+button:focus {
+	background-color: #144d14;
+	border: 1dp #00ff00;
+	color: #ffffff;
+}
+
+/* Inputs share one rule; the multiline box adds rows and line breaks. */
+#text-field, #password-field, #area-field {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 24dp;
+	line-height: 22dp;
+	background-color: #0a0d10;
+	color: #dedede;
+	font-size: 10dp;
+	padding: 0dp 6dp;
+	border: 1dp #3a4148;
+	tab-index: auto;
+	white-space: nowrap;
+	margin-bottom: 8dp;
+}
+
+#area-field {
+	height: 56dp;
+	line-height: 16dp;
+	white-space: normal;
+	overflow: hidden;
+}
+
+#text-field:focus, #password-field:focus, #area-field:focus {
+	border: 1dp #00ff00;
+	background-color: #0e1418;
+}
+
+#text-field caret, #password-field caret, #area-field caret {
+	display: inline-block;
+	background-color: #e8e8e8;
+}

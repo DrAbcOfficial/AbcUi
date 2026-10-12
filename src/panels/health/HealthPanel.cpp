@@ -43,6 +43,9 @@ HealthPanel::HealthPanel()
 	: HudPanel("health", "abcui/rml/health.rml") {}
 
 void HealthPanel::onDocumentReady() {
+	setHealth(hudstate::messages().Health);
+	setArmor(hudstate::messages().Armor);
+	setLongJump(hudstate::hasLongJump());
 	subscribe(netmsg::Health, [this](int value) {
 		setHealth(value);
 	});

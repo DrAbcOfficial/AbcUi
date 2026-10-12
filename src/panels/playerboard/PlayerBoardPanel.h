@@ -7,6 +7,7 @@
 // team, alive) holds.
 
 #include "../../framework/HudPanel.h"
+#include "../../framework/DomState.h"
 
 namespace panels {
 
@@ -27,6 +28,7 @@ protected:
 	void onRedraw(double frameTime) override;
 
 private:
+	framework::DomState AppliedDom;
 	// Old UpdateClientInfo: name/bars/icons refresh; false hides the tile.
 	bool updateClientInfo(Rml::Element* tile, int entindex);
 };
