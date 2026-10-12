@@ -128,3 +128,11 @@ Team_XracePitdrone = Drones de foso
 Team_XraceShock = Soldados eléctricos
 Team_Barnacle = Percebes
 Team_Unknown = Desconocido
+
+# Main menu (T05 minimal page)
+MainMenu_Title = Menú AbcUi (en construcción)
+MainMenu_Action = Acción (falsa)
+MainMenu_FocusNone = (sin foco)
+MainMenu_Text = Campo de texto
+MainMenu_Close = Cerrar
+MainMenu_Return = Volver

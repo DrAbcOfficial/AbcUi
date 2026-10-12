@@ -62,6 +62,7 @@ add_library(AbcUi MODULE
     src/framework/Commands.cpp
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp
+    src/framework/InteractiveDocument.cpp
     src/framework/Localization.cpp
     src/data/Avatars.cpp
     src/data/HudState.cpp
@@ -73,6 +74,7 @@ add_library(AbcUi MODULE
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
     src/modules/UiModuleRegistry.cpp
+    src/modules/gameui/GameUiModule.cpp
     src/modules/gameui/MenuController.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
@@ -91,6 +93,7 @@ add_library(AbcUi MODULE
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/vote/VotePanel.cpp
     src/panels/motd/MotdPanel.cpp
+    src/panels/mainmenu/MainMenuPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/weaponchoose/WeaponChoosePanel.cpp
     src/panels/popnum/PopNumPanel.cpp
