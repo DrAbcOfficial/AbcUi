@@ -67,3 +67,10 @@ add_executable(abc_ui_shutdown "${CMAKE_CURRENT_BINARY_DIR}/RmlUiShutdown.cpp"
 target_include_directories(abc_ui_shutdown PRIVATE "${PROJECT_SOURCE_DIR}/src")
 target_link_libraries(abc_ui_shutdown PRIVATE Abc::Core)
 add_test(NAME abc_ui_shutdown COMMAND abc_ui_shutdown)
+
+# T04: menu state machine acceptance. Compiles the production controller
+# translation unit; the recording backend fakes the GameUiBridge seam.
+add_executable(abc_ui_menu_state MenuStateMachine.cpp
+    "${PROJECT_SOURCE_DIR}/src/modules/gameui/MenuController.cpp")
+target_include_directories(abc_ui_menu_state PRIVATE "${PROJECT_SOURCE_DIR}/src")
+add_test(NAME abc_ui_menu_state COMMAND abc_ui_menu_state)
