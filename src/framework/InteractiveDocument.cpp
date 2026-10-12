@@ -91,7 +91,10 @@ void InteractiveDocument::show() {
 }
 
 void InteractiveDocument::hide() {
-	if (Document)
+	// Idempotent like show(): Rml's Hide re-dispatches the hide event and
+	// unfocuses the document every call, which would churn focus each time a
+	// sync re-hides an already hidden document.
+	if (Document && Document->IsVisible())
 		Document->Hide();
 }
 

@@ -18,6 +18,7 @@
 #include "../Module.h"
 
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Debugger.h>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
@@ -76,6 +77,47 @@ public:
 		// HUD_Init guarded block only (plan 08 §4.9 red line).
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
 #endif
+	}
+
+	void onFrame(double frameTime) override {
+		(void)frameTime;
+		// Per-frame focus guard (T09 step 5): while the menu is presented,
+		// the context focus must stay inside one of the menu documents.
+		// Foreign holders exist (the Rml debug hook document grabs the focus
+		// whenever the last menu document hides - live-verified), and a
+		// sync-time guard alone loses to thieves that act between frames.
+		// The debugger's own windows are exempt (a developer using F12 must
+		// keep their focus).
+		if (!MenuPresented || !Shell || !Context)
+			return;
+		if (Rml::Debugger::IsVisible())
+			return;  // a developer using the F12 tools keeps their focus
+		Rml::Element* focus = Context->GetFocusElement();
+		if (focus) {
+			Rml::ElementDocument* owner = focus->GetOwnerDocument();
+			// Only a VISIBLE menu document holds legitimate focus - a hidden
+			// one (stub/overlay just dismissed) is exactly the stale state
+			// this guard exists to repair.
+			if (owner && owner->IsVisible()
+				&& (owner == Shell->document() || owner == (SubStub ? SubStub->document() : nullptr)
+					|| owner == (ConsoleStub ? ConsoleStub->document() : nullptr)
+					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)))
+				return;
+		}
+		const auto& state = Controller.state();
+		if (state.overlays.contains(MenuOverlay::kConfirmQuit) && ConfirmQuit)
+			ConfirmQuit->refocusDefault();
+		else if (state.overlays.contains(MenuOverlay::kConsole) && ConsoleStub)
+			ConsoleStub->refocusDefault();
+		else if (!state.pages.empty() && Shell) {
+			if (state.pages.top() == MenuPage::kMain || state.pages.top() == MenuPage::kPause) {
+				Shell->showSection(state.pages.top() == MenuPage::kMain
+					? panels::mainmenu::MainMenuPage::Section::kMain
+					: panels::mainmenu::MainMenuPage::Section::kPause, true);
+			} else if (SubStub) {
+				SubStub->refocusDefault();
+			}
+		}
 	}
 
 	void onContextReady(Rml::Context* context) override {
@@ -212,11 +254,13 @@ private:
 			hideAllMenuDocuments();
 			return;
 		}
-		// GameMenu.res conditions ("notsingle"): the browser/create/list row
-		// follows the maxplayers fact, not any DOM observation.
+		// GameMenu.res conditions, verified against the shipped GameUI
+		// (CGameMenu::UpdateMenu 0x1000dbe0): "notsingle" rows hide only
+		// in-game+singleplayer - the no-map home always shows them, and the
+		// in-game half of the condition IS the page split (Main vs Pause).
+		// The player list row (OnlyInGame + notsingle) therefore keys on the
+		// maxplayers fact alone on the pause page.
 		const bool multiplayer = menuBackend().maxClientsFact() > 1;
-		Shell->setEntryVisible("servers", multiplayer);
-		Shell->setEntryVisible("creategame", multiplayer);
 		Shell->setEntryVisible("playerlist", multiplayer);
 
 		// Page layer: the shell carries the two home sections, every other
@@ -227,20 +271,27 @@ private:
 			const bool overlaysHoldFocus = !state.overlays.empty();
 			switch (state.pages.top()) {
 			case MenuPage::kMain:
-				Shell->showSection(panels::mainmenu::MainMenuPage::Section::kMain, !overlaysHoldFocus);
+			case MenuPage::kPause: {
 				shellVisible = true;
+				// Show before the section focus pass: Focus() needs the
+				// document visible (first presentation has no frame between).
+				// The per-frame focus guard (onFrame) re-takes the section
+				// default against focus thieves.
+				Shell->show();
+				const bool overlaysHoldFocus = !state.overlays.empty();
+				const auto section = state.pages.top() == MenuPage::kMain
+					? panels::mainmenu::MainMenuPage::Section::kMain
+					: panels::mainmenu::MainMenuPage::Section::kPause;
+				Shell->showSection(section, !overlaysHoldFocus);
 				break;
-			case MenuPage::kPause:
-				Shell->showSection(panels::mainmenu::MainMenuPage::Section::kPause, !overlaysHoldFocus);
-				shellVisible = true;
-				break;
+			}
 			default:
 				showStubPage(SubStub.get(), state.pages.top(), false);
 				break;
 			}
 		}
 		if (shellVisible)
-			Shell->show();
+			SubStub->hide();
 		else
 			Shell->hide();
 

@@ -143,6 +143,11 @@ public:
 			// Physical ESC release tracking (one close route per press).
 			notePhysicalEscUpFromEvent(pevent);
 			rmlui::onSurfaceAppEvent(pevent);
+			// T09: the menu-owned keyboard stream - with the takeover active
+			// the engine stops feeding HUD_Key_Event, so the surface SDL
+			// keys/wheel are the only physical source left; they join the
+			// same routeKey injection point (ESC excluded there).
+			rmlui::onSurfaceMenuKey(pevent);
 		}
 	}
 	void CallEngineSurfaceWndProc(void*& hwnd, unsigned int& msg, unsigned int& wparam, long& lparam,

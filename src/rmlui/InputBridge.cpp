@@ -12,6 +12,8 @@
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 
+#include "../services/GameUiBridge.h"
+
 namespace rmlui {
 
 namespace {
@@ -115,6 +117,101 @@ bool routeKey(int down, int keynum, bool staticWheelClaim) {
 	}
 	const framework::uiinput::Route route = uiRouter().onKey(down, keynum, wheel);
 	return route.consumeEngine;
+}
+
+namespace {
+
+// SDL key-event view for the menu-owned keyboard feed (SDL3-style ids,
+// SDL2-style layout - same evidence as the T07 text views and the physical
+// ESC observation in VGUI2ExtensionImport.cpp).
+constexpr unsigned kSdlMenuKeyDown = 0x300;
+constexpr unsigned kSdlMenuKeyUp = 0x301;
+constexpr unsigned kSdlMenuMouseWheel = 0x403;
+constexpr int kSdlMenuKeyEscape = 0x1B;
+
+struct SdlMenuKeyEvent {
+	unsigned Type;
+	unsigned Timestamp;
+	unsigned WindowId;
+	unsigned Which;
+	int Scancode;
+	int Key;  // SDL keycode (ASCII identity in the printable range)
+	unsigned short Mod;
+	unsigned short Raw;
+	bool Down;
+	bool Repeat;
+};
+
+struct SdlMenuWheelEvent {
+	unsigned Type;
+	unsigned Timestamp;
+	unsigned WindowId;
+	int Which;
+	int X;
+	int Y;  // >0 = scroll up (away from the user), SDL2 convention
+	unsigned Direction;
+};
+
+// SDL2 keycode -> engine keynum (keydefs.h). The printable ASCII range is
+// identity on both sides (lowercased keys); everything the UI consumes
+// beyond that is table-mapped.
+int sdlMenuKeynum(int keycode) {
+	switch (keycode) {
+	case 8:   return K_BACKSPACE;  // SDL DELETE vs engine BACKSPACE live at
+	                               // 127 on both sides but crossed: SDL
+	                               // backspace is 8, engine 127, SDL delete
+	                               // 127, engine K_DEL 148
+	case 127: return K_DEL;
+	case 273: return K_UPARROW;
+	case 274: return K_DOWNARROW;
+	case 275: return K_RIGHTARROW;
+	case 276: return K_LEFTARROW;
+	case 266: return K_PGUP;
+	case 267: return K_PGDN;
+	case 278: return K_HOME;
+	case 279: return K_END;
+	case 303: case 304: return K_SHIFT;
+	case 306: case 307: return K_CTRL;
+	case 308: case 309: return K_ALT;
+	case 0x400000AC: return K_ENTER;  // SDLK_KP_ENTER
+	default:
+		if (keycode >= 1073741882 && keycode <= 1073741893)
+			return K_F1 + (keycode - 1073741882);  // F1..F12
+		return keycode;  // printable ASCII identity (tab/enter/space included)
+	}
+}
+
+}
+
+void onSurfaceMenuKey(const void* sdlEvent) {
+	if (!sdlEvent)
+		return;
+	auto& bridge = services::nativeUiBridge();
+	// Only the menu-owned stream: with the menu down the engine delivers
+	// every edge through HUD_Key_Event (routeKey's caller in hooks.cpp) and
+	// a second feed here would double it. With the menu up the engine is
+	// silent on this chain (live-verified via a silent test binding), and
+	// the router exclusivity additionally keeps the Rml-not-ready window
+	// (menu up, no page token yet) from leaking into the bindings.
+	if (!bridge.menuUp() || !uiRouter().exclusive())
+		return;
+	const unsigned type = *static_cast<const unsigned*>(sdlEvent);
+	if (type == kSdlMenuMouseWheel) {
+		const auto* wheel = static_cast<const SdlMenuWheelEvent*>(sdlEvent);
+		if (wheel->Y == 0)
+			return;
+		routeKey(1, wheel->Y > 0 ? K_MWHEELUP : K_MWHEELDOWN, false);
+		return;
+	}
+	if (type != kSdlMenuKeyDown && type != kSdlMenuKeyUp)
+		return;
+	const auto* key = static_cast<const SdlMenuKeyEvent*>(sdlEvent);
+	// ESC stays excluded: the engine window handler consumes it and the
+	// close decision arrives as the single routed close (once-per-press
+	// latch); a second feed would make every press toggle twice.
+	if (key->Key == kSdlMenuKeyEscape)
+		return;
+	routeKey(key->Down ? 1 : 0, sdlMenuKeynum(key->Key), false);
 }
 
 void InputBridge::update(Rml::Context* context) {

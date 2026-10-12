@@ -58,6 +58,11 @@ void ConfirmQuitOverlay::WindowListener::ProcessEvent(Rml::Event& event) {
 	Owner->handle(event);
 }
 
+void ConfirmQuitOverlay::refocusDefault() {
+	if (Rml::Element* fallback = document() ? document()->GetElementById("confirm-no") : nullptr)
+		fallback->Focus();
+}
+
 MenuStubPage::MenuStubPage(const char* name, const char* documentPath)
 	: InteractiveDocument(name, documentPath), Listener(this) {}
 
@@ -94,6 +99,11 @@ void MenuStubPage::handle(Rml::Event& event) {
 
 void MenuStubPage::WindowListener::ProcessEvent(Rml::Event& event) {
 	Owner->handle(event);
+}
+
+void MenuStubPage::refocusDefault() {
+	if (Rml::Element* fallback = document() ? document()->GetElementById("stub-return") : nullptr)
+		fallback->Focus();
 }
 
 }

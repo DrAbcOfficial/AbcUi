@@ -56,6 +56,17 @@ bool uiMouseOwner();
 // (motd scroll).
 bool routeKey(int down, int keynum, bool staticWheelClaim);
 
+// T09: the SDL surface key stream (CallEngineSurfaceAppProc pre-dispatch)
+// as a routeKey source for the menu-owned keyboard. While the suppression
+// bridge holds the menu up, the engine stops delivering keys through the
+// HUD_Key_Event chain entirely (verified live: bindings stay silent), so
+// the surface stream is the only remaining physical source; this feeds it
+// into the same routeKey injection point while menuUp && router exclusive.
+// ESC is excluded - the engine window handler consumes it and its close
+// decision arrives as the single routed close; a second feed would toggle
+// twice per physical press. Wheel pulses ride the same claims as above.
+void onSurfaceMenuKey(const void* sdlEvent);
+
 class InputBridge {
 public:
 	// HUD_Frame time, before Context::Update.

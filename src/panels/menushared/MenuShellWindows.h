@@ -40,6 +40,11 @@ public:
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 
+	// Re-takes the safe default (cancel) when a focus thief (debug hook,
+	// hidden-document hand-off) took the context focus; the module's frame
+	// guard calls this.
+	void refocusDefault();
+
 protected:
 	void onDocumentReady() override;
 
@@ -72,6 +77,9 @@ public:
 	// strings already resolved by the caller ("#token" through Localization
 	// or plain text); they are copied and escaped before they reach the DOM.
 	void showFor(const char* title, const char* body);
+
+	// Re-takes the return-entry focus (module's per-frame focus guard).
+	void refocusDefault();
 
 protected:
 	void onDocumentReady() override;
