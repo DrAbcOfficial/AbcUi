@@ -15,6 +15,7 @@
 #include <vgui/Cursor.h>
 #include <IVGUI2Extension.h>
 #include <IGameUIFuncs.h>
+#include <IBaseUI.h>
 #include <keydefs.h>
 
 #include <abc/Console.h>
@@ -610,6 +611,24 @@ void lockCursor() {
 	Surface2->UnlockCursor();
 	Surface2->SetCursor(vgui::dc_none);
 	Surface2->CalculateMouseVisible();
+}
+
+bool hideGameUi() {
+	// The engine IBaseUI singleton, resolved from the same factory the
+	// extension's BaseUI_Install used - so the vtable this pointer carries is
+	// the hooked (proxied) one, and the call keeps the outer CBaseUI engine
+	// root side effects while our inner takeover answers the queries.
+	static IBaseUI* BaseUi = nullptr;
+	if (!BaseUi) {
+		const auto factory = g_pMetaHookAPI->GetEngineFactory();
+		BaseUi = factory ? (IBaseUI*)factory(BASEUI_INTERFACE_VERSION, NULL) : nullptr;
+	}
+	if (!BaseUi) {
+		abc::ConsoleWarn("[AbcUi] IBaseUI unavailable - resume cannot run the engine-side hide\n");
+		return false;
+	}
+	BaseUi->HideGameUI();
+	return true;
 }
 
 }

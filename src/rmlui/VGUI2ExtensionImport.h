@@ -64,4 +64,13 @@ bool uiCallbacksRegistered();
 // once at the first init() and removed only by shutdownNative().
 bool nativeCallbacksRegistered();
 
+// T09: the proven BaseUI-equivalent resume path. The vanilla ResumeGame
+// command falls through to IBaseUI::HideGameUI (GameUI.dll 0x1000cc30 ->
+// vtable slot 0x1c), so the replacement does the same: the call runs through
+// the engine interface the extension has VFT-hooked, which keeps the outer
+// CBaseUI engine-root side effects while the suppressed inner dispatch sees
+// the takeover's answers. Returns false only when the engine interface is
+// unavailable (logged once; the callers still lower their own state).
+bool hideGameUi();
+
 }

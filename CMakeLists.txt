@@ -81,6 +81,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/GameUiModule.cpp
     src/modules/gameui/MenuController.cpp
     src/services/GameUiBridge.cpp
+    src/services/EngineUiBackend.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
