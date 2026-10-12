@@ -44,6 +44,10 @@ void EngineUiBackend::resumeGame() {
 		Seams_.hideGameUi();  // engine root side effects (warn when absent)
 	else
 		abc::ConsoleWarn("[AbcUi] hideGameUi seam missing - resume skips the engine-side hide\n");
+	// The vanilla inner HideGameUI unpause rides here (singleplayer only):
+	// only a DECIDED close restores the simulation. Force-releases (focus
+	// loss) and the loading-end auto-hide keep the pause state untouched.
+	menuHiddenInGame();
 }
 
 void EngineUiBackend::menuShownInGame() {

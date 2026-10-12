@@ -61,6 +61,12 @@ public:
 	void menuShownInGame();
 	void menuHiddenInGame();
 
+	// The live maxplayers fact (1 = singleplayer), the same source the
+	// pause parity reads; the module feeds the GameMenu.res "notsingle"
+	// entry visibility from it. Defaults to 1 (fail closed: hide the
+	// multiplayer-only entries) while the seam is unwired.
+	int maxClientsFact() const { return Seams_.maxClients ? Seams_.maxClients() : 1; }
+
 private:
 	bool singlePlayer() const;
 	void clientCmd(const char* command);

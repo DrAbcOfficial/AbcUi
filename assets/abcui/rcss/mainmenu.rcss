@@ -89,3 +89,33 @@ button:focus {
 	display: inline-block;
 	background-color: #e8e8e8;
 }
+
+/* T09 shell: the two home sections of the state machine. Only one section
+   is ever visible (the module's sync decides); pause starts hidden so the
+   shipped document boots on the no-map home. */
+#page-main {
+	display: block;
+}
+
+#page-pause {
+	display: none;
+}
+
+/* Shared panel text of the stub/confirm windows (mainmenu.rml keeps its own
+   ids; these are the element defaults the two windows rely on). */
+p {
+	display: block;
+	font-size: 10dp;
+	color: #dedede;
+	margin-bottom: 12dp;
+}
+
+#confirm-actions {
+	display: block;
+}
+
+#confirm-actions button {
+	display: inline-block;
+	margin-right: 8dp;
+	margin-bottom: 0dp;
+}

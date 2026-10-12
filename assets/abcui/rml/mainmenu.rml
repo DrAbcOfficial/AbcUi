@@ -7,12 +7,24 @@
 	<div id="panel">
 		<h1 id="title">#MainMenu_Title</h1>
 		<div id="focus-status">#MainMenu_FocusNone</div>
-		<button id="action-button" data-action="action" data-label="#MainMenu_Action" autofocus="autofocus">#MainMenu_Action</button>
-		<input id="text-field" type="text" data-label="#MainMenu_Text"/>
-		<input id="password-field" type="password" data-label="#MainMenu_Password"/>
-		<textarea id="area-field" rows="3" maxlength="100" data-label="#MainMenu_Area"/>
-		<button id="close-button" data-action="close" data-label="#MainMenu_Close">#MainMenu_Close</button>
-		<button id="return-button" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
+		<!-- The two home sections of the state machine (gameui::menu): kMain
+		     is the no-map home, kPause the in-game one. Visibility between
+		     them is the module's sync decision, never DOM-inferred state;
+		     the browser/create/list row follows the maxplayers fact. -->
+		<div id="page-main">
+			<button id="main-servers" data-action="servers" data-label="#MainMenu_Servers">#MainMenu_Servers</button>
+			<button id="main-creategame" data-action="creategame" data-label="#MainMenu_CreateGame">#MainMenu_CreateGame</button>
+			<button id="main-settings" data-action="settings" data-label="#MainMenu_Settings">#MainMenu_Settings</button>
+			<button id="main-console" data-action="console" data-label="#MainMenu_Console">#MainMenu_Console</button>
+			<button id="main-quit" data-action="quit" data-label="#MainMenu_Quit">#MainMenu_Quit</button>
+		</div>
+		<div id="page-pause">
+			<button id="pause-resume" data-action="resume" data-label="#MainMenu_Resume">#MainMenu_Resume</button>
+			<button id="pause-disconnect" data-action="disconnect" data-label="#MainMenu_Disconnect">#MainMenu_Disconnect</button>
+			<button id="pause-playerlist" data-action="playerlist" data-label="#MainMenu_PlayerList">#MainMenu_PlayerList</button>
+			<button id="pause-settings" data-action="settings" data-label="#MainMenu_Settings">#MainMenu_Settings</button>
+			<button id="pause-quit" data-action="quit" data-label="#MainMenu_Quit">#MainMenu_Quit</button>
+		</div>
 	</div>
 </body>
 </rml>

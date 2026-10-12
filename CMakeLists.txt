@@ -100,6 +100,7 @@ add_library(AbcUi MODULE
     src/panels/vote/VotePanel.cpp
     src/panels/motd/MotdPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
+    src/panels/menushared/MenuShellWindows.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/weaponchoose/WeaponChoosePanel.cpp
     src/panels/popnum/PopNumPanel.cpp

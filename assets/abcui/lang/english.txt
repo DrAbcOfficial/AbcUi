@@ -129,12 +129,35 @@ Team_XraceShock = Shock troopers
 Team_Barnacle = Barnacles
 Team_Unknown = Unknown
 
-# Main menu (T05 minimal page)
-MainMenu_Title = AbcUi menu (work in progress)
-MainMenu_Action = Action (fake)
+# Main menu (T05 demo fixture tokens)
+MainMenu_Action = Action (demo)
 MainMenu_FocusNone = (no focus)
 MainMenu_Text = Text field
 MainMenu_Password = Password field
 MainMenu_Area = Multiline (max 100)
 MainMenu_Close = Close
 MainMenu_Return = Return
+
+# Main menu shell (T09)
+MainMenu_Title = AbcUi
+MainMenu_Servers = Find Servers
+MainMenu_CreateGame = Create Game
+MainMenu_Settings = Settings
+MainMenu_Console = Console
+MainMenu_Quit = Quit
+MainMenu_Resume = Resume Game
+MainMenu_Disconnect = Disconnect
+MainMenu_PlayerList = Player List
+MainMenu_QuitConfirmTitle = Quit game
+MainMenu_QuitConfirmBody = Really quit Sven Co-op?
+MainMenu_QuitYes = Quit
+MainMenu_QuitNo = Cancel
+
+# Not-yet-implemented stub (T09 step 2: visible parity TODOs)
+MainMenu_StubTitle = Not yet implemented
+MainMenu_StubSettings = The settings menus arrive with the settings milestone (T10-T13). Nothing was changed.
+MainMenu_StubServers = The server browser arrives with the server milestone (T17-T18). Nothing was changed.
+MainMenu_StubCreateGame = Create game arrives with the server milestone (T19). Nothing was changed.
+MainMenu_StubPlayerList = The player list arrives with the parity milestone (T20). Nothing was changed.
+MainMenu_StubConsole = The new console arrives with the console milestone (T15-T16). The legacy console stays suppressed.
+MainMenu_StubLoading = Loading and connection screens arrive with the loading milestone (T14).
