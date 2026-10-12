@@ -22,6 +22,7 @@
 
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../rmlui/InputBridge.h"
+#include "../../rmlui/TextInput.h"
 
 #ifndef NDEBUG
 #include <abc/CvarCmd.h>
@@ -91,6 +92,14 @@ private:
 		// Exactly once per physical press (the router suppresses auto-repeat
 		// here); the release pairs the just-fed ESC down inside the router.
 		if (keynum == K_ESCAPE && Page && Page->isVisible()) {
+			// T07.b ESC priority: the first press cancels a running
+			// composition instead of closing the page; the next press
+			// closes. The IME normally swallows ESC itself (the fork sends
+			// an empty SDL_EVENT_TEXT_EDITING), so this is the leak path.
+			if (rmlui::textComposing()) {
+				rmlui::cancelComposition();
+				return;
+			}
 			Page->hide();
 			PageToken.release();
 		}

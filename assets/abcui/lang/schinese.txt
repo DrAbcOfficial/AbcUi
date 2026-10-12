@@ -134,5 +134,7 @@ MainMenu_Title = AbcUi 菜单（建设中）
 MainMenu_Action = 动作（假后端）
 MainMenu_FocusNone = （无焦点）
 MainMenu_Text = 文本框
+MainMenu_Password = 密码框
+MainMenu_Area = 多行（上限 100）
 MainMenu_Close = 关闭
 MainMenu_Return = 返回

@@ -9,6 +9,7 @@
 
 #include "KeyMap.h"
 #include "RmlUiModule.h"
+#include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
@@ -192,6 +193,13 @@ bool InputBridge::onKeyEvent(Rml::Context* context, int down, int keynum) {
 		mouseButton(context, keynum - K_MOUSE1, down != 0);
 		return true;
 	}
+	// IME-owned keys during a composition (T07.b): Enter commits it, ESC
+	// cancels it, Backspace edits it - the platform may also leak the edge
+	// past the IME, and feeding it to the editor a second time would close
+	// the window / delete behind the IME's back. Diagnostic return only:
+	// the router owns the engine-consume decision (T06 step 3).
+	if (compositionOwnsKey(keynum))
+		return false;
 	const Rml::Input::KeyIdentifier key = mapKeyCode(keynum);
 	if (key == Rml::Input::KI_UNKNOWN)
 		return false;
@@ -200,13 +208,21 @@ bool InputBridge::onKeyEvent(Rml::Context* context, int down, int keynum) {
 	return context->ProcessKeyUp(key, modifierState());
 }
 
-void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam) {
+void onSurfaceWndProc(const void* hwnd, unsigned int msg, unsigned int wparam, long lparam) {
+	// The surface window operand doubles as the T07 IME window cache (both
+	// dispatch directions carry the same value).
+	noteSurfaceWindow(hwnd);
+	// V07 event-source evidence: count the keyboard messages the surface
+	// actually observes (read back through abc_ui_input_events).
+	noteWndProcMessage(msg);
+
 	// Focus loss precedes the UI gate: no owner may survive into an inactive
 	// window (T06 V06). The extension dispatches this callback pre AND post
 	// (07 doc item 7) - the router release is idempotent, the second
 	// dispatch finds an empty stack and no-ops.
 	if (msg == WM_KILLFOCUS || (msg == WM_ACTIVATE && LOWORD(wparam) == WA_INACTIVE)) {
 		uiRouter().onFocusLost();
+		onWindowFocusLost();
 		return;
 	}
 

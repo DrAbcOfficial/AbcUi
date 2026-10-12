@@ -102,3 +102,34 @@ target_link_libraries(abc_ui_interactive PRIVATE RmlUi::RmlUi Abc::Core)
 add_test(NAME abc_ui_interactive COMMAND abc_ui_interactive)
 set_tests_properties(abc_ui_interactive PROPERTIES
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/assets")
+
+# T07 step 3: UTF-8 boundary hygiene. Pure production code, no engine or
+# Rml dependency.
+add_executable(abc_ui_text_encoding TextEncoding.cpp
+    "${PROJECT_SOURCE_DIR}/src/framework/TextEncoding.cpp")
+target_include_directories(abc_ui_text_encoding PRIVATE "${PROJECT_SOURCE_DIR}/src")
+add_test(NAME abc_ui_text_encoding COMMAND abc_ui_text_encoding)
+
+# T07: text/IME pipeline acceptance. Links the production TextInput.cpp +
+# TextEncoding.cpp against a real RmlUi context (context-scoped handler
+# installed exactly like RmlUiModule does) and loads the shipped menu page
+# (validates the T07-added password/textarea fields offline). The engine
+# context accessor is supplied by the test itself; imm32 links for the
+# platform placement calls (they no-op without a game window here).
+add_executable(abc_ui_text_input TextInput.cpp
+    "${PROJECT_SOURCE_DIR}/src/rmlui/TextInput.cpp"
+    "${PROJECT_SOURCE_DIR}/src/framework/TextEncoding.cpp"
+    "${PROJECT_SOURCE_DIR}/src/framework/InteractiveDocument.cpp"
+    "${PROJECT_SOURCE_DIR}/src/framework/Localization.cpp"
+    "${PROJECT_SOURCE_DIR}/src/panels/mainmenu/MainMenuPage.cpp")
+target_include_directories(abc_ui_text_input PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+    "${METAHOOK_INCLUDE_DIR}"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/engine"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/common"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/cl_dll"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/public")
+target_link_libraries(abc_ui_text_input PRIVATE RmlUi::RmlUi Abc::Core imm32)
+add_test(NAME abc_ui_text_input COMMAND abc_ui_text_input)
+set_tests_properties(abc_ui_text_input PROPERTIES
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/assets")

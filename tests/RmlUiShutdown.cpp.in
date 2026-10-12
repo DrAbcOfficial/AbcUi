@@ -37,9 +37,12 @@ struct RendererCallbacks { std::unique_ptr<RendererInterface> RenderInterface; }
 std::unique_ptr<int> FileInterface, SystemInterface;
 void closeProbeDocument() { record("probe"); }
 // T06 ownership seam: the production shutdown body resets the input router
-// FIRST (tokens release while every owner can still clean up).
+// FIRST (tokens release while every owner can still clean up), then drops
+// the T07 text/IME state (cached TextInputContext pointers) while the DOM
+// still exists.
 struct RouterResetStub { void reset() { record("router"); } };
 RouterResetStub& uiRouter() { static RouterResetStub router; return router; }
+void textInputShutdown() { record("textinput"); }
 @ABC_UI_SHUTDOWN@
 @ABC_UI_HUD_SHUTDOWN@
 }
@@ -72,19 +75,19 @@ int main() {
 	// Exit before HUD_Init must not dispatch shutdown to an uninitialised
 	// module; the router reset still runs first on every teardown entry.
 	rmlui::shutdown();
-	expect({"router"});
+	expect({"router", "textinput"});
 	// HUD_Init -> HUD_Shutdown before the first HUD_Frame/context.
 	reg.initAll();
 	rmlui::onHudShutdown();
-	expect({"init", "router", "module"});
+	expect({"init", "router", "textinput", "module"});
 	// ExitGame enters the same production shutdown; it must be a no-op now.
 	rmlui::shutdown();
 	rmlui::onHudShutdown();
-	expect({"router", "router"});
+	expect({"router", "textinput", "router", "textinput"});
 	// Another init-only cycle must re-arm teardown without contextReady.
 	reg.initAll();
 	rmlui::shutdown();
-	expect({"init", "router", "module"});
+	expect({"init", "router", "textinput", "module"});
 	// Context creation re-arms teardown even without another HUD_Init.
 	for (int cycle = 0; cycle < 2; ++cycle) {
 		ContextAlive = true;
@@ -94,11 +97,11 @@ int main() {
 		rmlui::Callbacks.RenderInterface = std::make_unique<rmlui::RendererInterface>();
 		reg.contextReadyAll(rmlui::Context);
 		rmlui::onHudShutdown();
-		expect({"ready", "router", "unregister", "module", "probe", "panels", "textures", "context", "sprites", "avatars", "steam", "vgui"});
+		expect({"ready", "router", "textinput", "unregister", "module", "probe", "panels", "textures", "context", "sprites", "avatars", "steam", "vgui"});
 		CHECK(!ContextAlive && !rmlui::Initialised && !rmlui::Context);
 		CHECK(!rmlui::Callbacks.RenderInterface);
 		rmlui::shutdown();
-		expect({"router"});
+		expect({"router", "textinput"});
 	}
 	std::cout << "PASS: production shutdown (pre-init, no-context, repeated exit, init-only rearm, two context cycles)\n";
 }

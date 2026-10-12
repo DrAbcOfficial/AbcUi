@@ -224,7 +224,7 @@ int main() {
 		CHECK(page.document() == context->GetDocument("mainmenu"));
 		// The shipped RML must carry every id the page wires (also proves
 		// the real stylesheet parsed: id selectors fail loudly at layout).
-		for (const char* id : {"title", "focus-status", "action-button", "text-field", "close-button", "return-button"})
+		for (const char* id : {"title", "focus-status", "action-button", "text-field", "password-field", "area-field", "close-button", "return-button"})
 			CHECK(page.document()->GetElementById(id) != nullptr);
 
 		page.show();

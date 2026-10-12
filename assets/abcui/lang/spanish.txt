@@ -134,5 +134,7 @@ MainMenu_Title = Menú AbcUi (en construcción)
 MainMenu_Action = Acción (falsa)
 MainMenu_FocusNone = (sin foco)
 MainMenu_Text = Campo de texto
+MainMenu_Password = Campo de contraseña
+MainMenu_Area = Multilínea (máx. 100)
 MainMenu_Close = Cerrar
 MainMenu_Return = Volver

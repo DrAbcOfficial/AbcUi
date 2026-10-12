@@ -67,7 +67,8 @@ void onWheel(int down, int keynum);
 // Engine surface WndProc messages (vgui2ext BaseUI callback, R-4 batch C):
 // UI-level mouse motion/buttons for the Rml context, plus focus-loss
 // observation (T06). Observation-only - the message result is never set.
-void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam);
+// The hwnd operand feeds the T07 IME window cache.
+void onSurfaceWndProc(const void* hwnd, unsigned int msg, unsigned int wparam, long lparam);
 // True while any owner holds UI input (rmlui::uiRouter exclusivity): the
 // engine-side gates in hooks.cpp read this (T06 ownership stack).
 bool uiMouseOwner();

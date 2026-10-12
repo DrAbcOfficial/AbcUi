@@ -27,6 +27,7 @@
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
 #include "ProbeCommand.h"
+#include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {
@@ -206,7 +207,10 @@ void init() {
 
 	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
 	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
-	Context = Rml::CreateContext("abcui", Rml::Vector2i(width, height), Callbacks.RenderInterface.get());
+	// The text/IME handler is context-scoped (T07): WidgetTextInput calls its
+	// OnActivate/OnDeactivate/OnDestroy as our editors gain/lose/lose focus.
+	Context = Rml::CreateContext("abcui", Rml::Vector2i(width, height), Callbacks.RenderInterface.get(),
+		&rmlui::textInput());
 	if (!Context) {
 		abc::SysError("[AbcUi] Rml::CreateContext failed");
 		return;
@@ -237,6 +241,9 @@ void shutdown() {
 	// while every owner can still clean up and the context (for the synth
 	// UI keyups) still exists.
 	uiRouter().reset();
+	// Text/IME state next (T07): the handler's cached TextInputContext
+	// pointers die with the DOM below; drop them while it is alive.
+	textInputShutdown();
 	if (!Initialised) {
 		// HUD_Init can arm modules before the first HUD_Frame creates a context.
 		modules::registry().shutdownAll();
