@@ -17,6 +17,7 @@
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
+#include "modules/Module.h"
 #include "panels/gindicator/GIndicatorPanel.h"
 #include "panels/itemhighlight/ItemHighlightPanel.h"
 #include "panels/motd/MotdPanel.h"
@@ -112,6 +113,7 @@ static void H_HUD_Init() {
 		textfeed::init();
 		framework::PanelManager::registerPanelCvars();
 		rmlui::registerCommands();
+		modules::registry().initAll();
 	}
 }
 

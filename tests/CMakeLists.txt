@@ -33,3 +33,37 @@ target_include_directories(abc_ui_hook_contract PRIVATE
 target_compile_definitions(abc_ui_hook_contract PRIVATE WIN32 _MBCS STEAM_API_NODLL)
 target_compile_options(abc_ui_hook_contract PRIVATE /wd4996)
 add_test(NAME abc_ui_hook_contract COMMAND abc_ui_hook_contract)
+
+# T03: Ui module lifecycle seam. Compiles the production registry; fakes
+# record the dispatch log (no copies of the registry logic).
+add_executable(abc_ui_modules ModuleRegistry.cpp "${PROJECT_SOURCE_DIR}/src/modules/UiModuleRegistry.cpp")
+target_include_directories(abc_ui_modules PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(abc_ui_modules PRIVATE Abc::Core)
+add_test(NAME abc_ui_modules COMMAND abc_ui_modules)
+
+# Compile the production shutdown entry points, with external services faked.
+# Reconfigure on spine edits so the regression cannot silently test stale code.
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    "${PROJECT_SOURCE_DIR}/src/rmlui/RmlUiModule.cpp")
+file(READ "${PROJECT_SOURCE_DIR}/src/rmlui/RmlUiModule.cpp" ABC_UI_RMLUI_SOURCE)
+foreach(ENTRY SHUTDOWN HUD_SHUTDOWN)
+    if(ENTRY STREQUAL "SHUTDOWN")
+        set(ENTRY_NAME shutdown)
+    else()
+        set(ENTRY_NAME onHudShutdown)
+    endif()
+    string(FIND "${ABC_UI_RMLUI_SOURCE}" "void ${ENTRY_NAME}() {" ENTRY_START)
+    if(ENTRY_START LESS 0)
+        message(FATAL_ERROR "Missing production ${ENTRY_NAME} entry point")
+    endif()
+    string(SUBSTRING "${ABC_UI_RMLUI_SOURCE}" ${ENTRY_START} -1 ENTRY_TAIL)
+    string(FIND "${ENTRY_TAIL}" "\n}" ENTRY_END)
+    math(EXPR ENTRY_LENGTH "${ENTRY_END} + 2")
+    string(SUBSTRING "${ENTRY_TAIL}" 0 ${ENTRY_LENGTH} ABC_UI_${ENTRY})
+endforeach()
+configure_file(RmlUiShutdown.cpp.in RmlUiShutdown.cpp @ONLY)
+add_executable(abc_ui_shutdown "${CMAKE_CURRENT_BINARY_DIR}/RmlUiShutdown.cpp"
+    "${PROJECT_SOURCE_DIR}/src/modules/UiModuleRegistry.cpp")
+target_include_directories(abc_ui_shutdown PRIVATE "${PROJECT_SOURCE_DIR}/src")
+target_link_libraries(abc_ui_shutdown PRIVATE Abc::Core)
+add_test(NAME abc_ui_shutdown COMMAND abc_ui_shutdown)

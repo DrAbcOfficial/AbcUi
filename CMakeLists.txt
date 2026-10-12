@@ -72,6 +72,7 @@ add_library(AbcUi MODULE
     src/data/TextFeed.cpp
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
+    src/modules/UiModuleRegistry.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
