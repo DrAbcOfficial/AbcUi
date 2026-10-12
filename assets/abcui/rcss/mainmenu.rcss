@@ -56,7 +56,8 @@ button:focus {
 	color: #ffffff;
 }
 
-#text-field {
+/* Inputs share one rule; the multiline box adds rows and line breaks. */
+#text-field, #password-field, #area-field {
 	display: inline-block;
 	box-sizing: border-box;
 	width: 100%;
@@ -72,12 +73,19 @@ button:focus {
 	margin-bottom: 8dp;
 }
 
-#text-field:focus {
+#area-field {
+	height: 56dp;
+	line-height: 16dp;
+	white-space: normal;
+	overflow: hidden;
+}
+
+#text-field:focus, #password-field:focus, #area-field:focus {
 	border: 1dp #00ff00;
 	background-color: #0e1418;
 }
 
-#text-field caret {
+#text-field caret, #password-field caret, #area-field caret {
 	display: inline-block;
 	background-color: #e8e8e8;
 }

@@ -134,5 +134,7 @@ MainMenu_Title = AbcUi menu (work in progress)
 MainMenu_Action = Action (fake)
 MainMenu_FocusNone = (no focus)
 MainMenu_Text = Text field
+MainMenu_Password = Password field
+MainMenu_Area = Multiline (max 100)
 MainMenu_Close = Close
 MainMenu_Return = Return

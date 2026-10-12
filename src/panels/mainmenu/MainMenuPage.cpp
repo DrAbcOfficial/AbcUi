@@ -30,15 +30,19 @@ MainMenuPage::MainMenuPage()
 void MainMenuPage::onDocumentReady() {
 	// focus/blur do not bubble (RmlUi event spec), so each focusable element
 	// carries its own pair; click bubbles but stays per element to keep the
-	// data-action source unambiguous.
+	// data-action source unambiguous. T07 extends the set with the text
+	// acceptance fields (password, multiline) - the status line follows
+	// whichever control holds keyboard focus.
 	if (Rml::Element* button = element("action-button")) {
 		addListener(button, "click", &Listener);
 		addListener(button, "focus", &Listener);
 		addListener(button, "blur", &Listener);
 	}
-	if (Rml::Element* field = element("text-field")) {
-		addListener(field, "focus", &Listener);
-		addListener(field, "blur", &Listener);
+	for (const char* id : {"text-field", "password-field", "area-field"}) {
+		if (Rml::Element* field = element(id)) {
+			addListener(field, "focus", &Listener);
+			addListener(field, "blur", &Listener);
+		}
 	}
 	if (Rml::Element* close = element("close-button")) {
 		addListener(close, "click", &Listener);

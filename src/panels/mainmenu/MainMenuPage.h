@@ -1,7 +1,8 @@
 #pragma once
 
 // panels::mainmenu - the T05 minimal interactive page: a title, one action
-// button, a focus-visibility status line, a text field and close/return.
+// button, a focus-visibility status line, text acceptance fields (single
+// line, password, multiline) and close/return.
 //
 // Business actions never open an original GameUI window (T05 forbidden
 // list): every element carrying a data-action attribute hands the action
@@ -11,9 +12,9 @@
 // the sink so diagnostics can follow the click.
 //
 // Input reachability: the page is mouse-hit-testable through the context's
-// normal input path; keyboard arbitration does not exist before T06, and
-// typed characters only reach the text field once T07 wires text input -
-// until then the field demonstrates focus/caret only.
+// normal input path; keyboard arbitration is T06's router and text/IME
+// delivery is T07's rmlui::TextInput (focused editors receive committed
+// text, composition and caret keys; the fields demonstrate every case).
 
 #include "../../framework/InteractiveDocument.h"
 

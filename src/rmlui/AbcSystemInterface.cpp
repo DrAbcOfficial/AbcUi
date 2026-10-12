@@ -7,6 +7,7 @@
 #include <abc/Console.h>
 #include <abc/Paths.h>
 
+#include "TextInput.h"
 #include "framework/Localization.h"
 
 #include <cstdio>
@@ -100,8 +101,18 @@ void AbcSystemInterface::GetClipboardText(Rml::String& text) {
 	CloseClipboard();
 }
 
-Rml::FileHandle AbcFileInterface::Open(const Rml::String& path) {
-	// RML/RCSS/image sources are mod-relative ("abcui/..."); the process CWD
+// IME placement delegates to TextInput (the HWND resolution and the imm32
+// calls live next to the composition state machine). Pin backend reference:
+// Backends/RmlUi_Platform_Win32.cpp SystemInterface_Win32::ActivateKeyboard.
+void AbcSystemInterface::ActivateKeyboard(Rml::Vector2f caretPosition, float lineHeight) {
+	updateImePlacement(caretPosition, lineHeight);
+}
+
+// Widget blur: the composition was already cancelled through the handler's
+// OnDeactivate; there is no platform state worth resetting here.
+void AbcSystemInterface::DeactivateKeyboard() {}
+
+Rml::FileHandle AbcFileInterface::Open(const Rml::String& path) {	// RML/RCSS/image sources are mod-relative ("abcui/..."); the process CWD
 	// is the game root, so resolve through abc::Paths (plan 08 §4.11).
 	const std::string resolved = abc::ModPath(path.c_str());
 	FILE* file = nullptr;

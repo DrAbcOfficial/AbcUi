@@ -53,6 +53,7 @@ add_library(AbcUi MODULE
     src/rmlui/KeyMap.cpp
     src/rmlui/RmlUiModule.cpp
     src/rmlui/ProbeCommand.cpp
+    src/rmlui/TextInput.cpp
     src/rmlui/SourceSpewStub.cpp
     src/rmlui/SteamAPI.cpp
     src/rmlui/SteamApiBridge.cpp
@@ -60,6 +61,7 @@ add_library(AbcUi MODULE
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
     src/framework/Commands.cpp
+    src/framework/TextEncoding.cpp
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp
     src/framework/InteractiveDocument.cpp
@@ -109,7 +111,8 @@ add_library(AbcUi MODULE
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )
 target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage)
+# imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
+target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32)
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).

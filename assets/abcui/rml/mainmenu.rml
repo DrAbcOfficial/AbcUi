@@ -9,6 +9,8 @@
 		<div id="focus-status">#MainMenu_FocusNone</div>
 		<button id="action-button" data-action="action" data-label="#MainMenu_Action" autofocus="autofocus">#MainMenu_Action</button>
 		<input id="text-field" type="text" data-label="#MainMenu_Text"/>
+		<input id="password-field" type="password" data-label="#MainMenu_Password"/>
+		<textarea id="area-field" rows="3" maxlength="100" data-label="#MainMenu_Area"/>
 		<button id="close-button" data-action="close" data-label="#MainMenu_Close">#MainMenu_Close</button>
 		<button id="return-button" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
 	</div>
