@@ -1,7 +1,38 @@
-/* settings.rcss - T10 settings page. Layout in dp only (context density
-   ratio scales); element defaults are explicit because RmlUi ships no
-   user-agent stylesheet. Shared panel/button styling comes from
-   mainmenu.rcss (same #panel frame and button rules). */
+/* settings.rcss - T10 settings page, T11 key-bind section. Layout in dp
+   only (context density ratio scales); element defaults are explicit
+   because RmlUi ships no user-agent stylesheet. Shared panel/button styling
+   comes from mainmenu.rcss (same #panel frame and button rules). */
+
+/* The bind section pushes the panel past the viewport height: give it an
+   explicit dp height (the screen is exactly 480dp tall at the context's
+   density ratio - top 40 + height 400 + bottom 40) and scroll its content.
+   Both axes (RmlUi has no visible+scrollable mix: a single-axis value
+   collapses percentage widths). The action bar scrolls along - the visual
+   layout batch (T12/T13) splits header/body/footer properly. */
+body#menusettings #panel {
+	height: 400dp;
+	overflow: auto;
+}
+
+/* RmlUi builds its scrollbar elements without any user-agent styles: they
+   need explicit layout or the unstyled sliderbar overlays the content and
+   swallows every click (live-caught: the bind buttons were unreachable).
+   The sample pattern: a zero-width positioned container whose thin bar
+   juts out to the left with negative margin. */
+body#menusettings #panel scrollbarvertical {
+	z-index: 100;
+	width: 0dp;
+}
+body#menusettings #panel scrollbarvertical sliderbar {
+	margin-left: -10dp;
+	width: 10dp;
+	min-height: 24dp;
+	background-color: #3a4148;
+}
+body#menusettings #panel scrollbarvertical sliderbar:hover,
+body#menusettings #panel scrollbarvertical sliderbar:active {
+	background-color: #55606c;
+}
 
 #settings-status {
 	display: block;
@@ -14,7 +45,7 @@
 
 #rows {
 	display: block;
-	width: 100%;
+	width: 340dp;
 }
 
 /* One description-table row per block: label, control, status line. */
@@ -33,7 +64,7 @@
 .row-input {
 	display: inline-block;
 	box-sizing: border-box;
-	width: 100%;
+	width: 336dp;
 	height: 24dp;
 	line-height: 22dp;
 	background-color: #0a0d10;
@@ -92,9 +123,117 @@
 	opacity: 0.6;
 }
 
+/* T11 key-binding section: scrollable action list (47 kb_act entries),
+   one row per action with label, key list and bind/clear buttons. */
+#bind-title {
+	display: block;
+	font-size: 12dp;
+	color: #e8e8e8;
+	margin: 14dp 0dp 6dp 0dp;
+}
+
+#bind-status {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	height: 14dp;
+	line-height: 14dp;
+	margin-bottom: 6dp;
+}
+
+/* One scroll container only (the panel): a nested scroller inside the
+   panel's scroll clipped its entire content on the live build. */
+#bindrows {
+	display: block;
+	width: 336dp;
+}
+
+.bind-header {
+	display: block;
+	font-size: 9dp;
+	color: #6a7178;
+	margin: 8dp 0dp 4dp 0dp;
+}
+
+.bind-row {
+	display: block;
+	margin-bottom: 3dp;
+}
+
+.bind-line {
+	display: block;
+	height: 22dp;
+	line-height: 22dp;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.bind-label {
+	display: inline-block;
+	width: 150dp;
+	font-size: 10dp;
+	color: #e8e8e8;
+	vertical-align: middle;
+	white-space: nowrap;
+	overflow: hidden; /* long labels clip, never bleed into the key column */
+}
+
+.bind-keys {
+	display: inline-block;
+	width: 80dp;
+	font-size: 10dp;
+	color: #7ec97e;
+	vertical-align: middle;
+	white-space: nowrap;
+}
+
+.bind-row.bind-capturing .bind-keys {
+	color: #ffe08a;
+}
+
+.bind-btn {
+	display: inline-block;
+	width: auto;
+	min-width: 46dp;
+	height: 20dp;
+	line-height: 18dp;
+	text-align: center;
+	background-color: #1c2329;
+	color: #e8e8e8;
+	font-size: 9dp;
+	border: 1dp #3a4148;
+	margin: 0dp 0dp 0dp 3dp; /* mainmenu button margin-bottom would stack here */
+	vertical-align: middle;
+	tab-index: auto;
+	white-space: nowrap;
+}
+
+.bind-btn:hover {
+	background-color: #232b32;
+}
+
+.bind-btn:focus {
+	background-color: #144d14;
+	border: 1dp #00ff00;
+	color: #ffffff;
+}
+
+.bind-status {
+	display: block;
+	font-size: 8dp;
+	color: #8a9199;
+	margin-left: 144dp;
+}
+
+/* The action bar is document-level and top-anchored below the panel's fixed
+   extent (panel top 40dp + height 400dp + 8dp gap): a bar inside the
+   scroller could scroll out of view, and document-bottom anchoring resolves
+   against a document-height box that differs from the viewport. */
 #settings-actions {
 	display: block;
-	margin-top: 12dp;
+	position: absolute;
+	left: 64dp;
+	top: 448dp;
 }
 
 #settings-actions button {
@@ -103,17 +242,20 @@
 	margin-bottom: 0dp;
 }
 
-/* Page-internal confirm layers cover the panel; hidden until the page
+/* Page-internal confirm layers are document-level overlays (direct children
+   of the body, NOT of the scrollable panel - absolute layers inside the
+   scroll container scroll away with the content). Hidden until the page
    turns the display property on (the layer member tracks the state - a
    SetProperty lands at the next layout frame). */
 .settings-layer {
 	display: none;
 	position: absolute;
-	left: 0dp;
-	top: 0dp;
-	right: 0dp;
-	bottom: 0dp;
-	background-color: #101418f2;
+	left: 48dp;
+	top: 40dp;
+	width: 372dp;
+	min-height: 200dp;
+	background-color: #101418f8;
+	border: 1dp #3a4148;
 	padding: 16dp;
 }
 

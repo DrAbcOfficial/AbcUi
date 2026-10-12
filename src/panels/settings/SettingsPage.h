@@ -1,20 +1,25 @@
 #pragma once
 
-// panels::settings - the T10 basic settings page (one interactive document).
+// panels::settings - the T10 basic settings page (one interactive document),
+// extended in T11 with the key-binding section.
 //
-// The page is a PROJECTION of services::settings::SettingsModel: rows are
-// built from the model's description table, every field edit lands in the
-// model's draft, and Apply/Cancel/Reset go through the model's transaction.
-// Nothing here writes a cvar directly and no game state is inferred from the
-// DOM - the gameui module decides visibility and calls render()/requestLeave()
-// on its sync, exactly like the main-menu shell.
+// The page is a PROJECTION of services::settings::SettingsModel (cvar rows)
+// and services::settings::KeyBindModel (bind rows): rows are built from the
+// models' tables, edits land in their drafts, Apply/Cancel/Reset go through
+// the model transactions. Nothing here writes an engine value or command
+// directly and no game state is inferred from the DOM - the gameui module
+// decides visibility and calls render()/requestLeave() on its sync, exactly
+// like the main-menu shell. Bind capture itself is module-owned (router
+// kCapture token): the page only reports the fixed "bind-capture-begin"
+// intent through the sink and projects the model's capture state.
 //
-// Page-internal layers (reset confirmation, unsaved-changes prompt) are DOM
-// overlays inside this document, not controller overlays: the T04 controller
-// table is frozen and these prompts never outlive the page. The module keeps
-// owning the ESC/return decision: it calls requestLeave() before navigating
-// back, and the page either shows the unsaved prompt (intent consumed) or
-// reports the fixed "return" action through the sink.
+// Page-internal layers (reset confirmation, unsaved-changes prompt, bind
+// conflict, bind defaults confirmation) are DOM overlays inside this
+// document, not controller overlays: the T04 controller table is frozen and
+// these prompts never outlive the page. The module keeps owning the
+// ESC/return decision: it calls requestLeave() before navigating back, and
+// the page either shows the unsaved prompt (intent consumed) or reports the
+// fixed "return" action through the sink.
 //
 // Rendering rules: every dynamic string reaches the DOM through
 // Localization::translate + TextUtil::escapeRml (draft text is user input);
@@ -37,6 +42,8 @@ namespace services {
 namespace settings {
 class SettingsModel;
 struct RowView;
+class KeyBindModel;
+struct BindRowView;
 }
 }
 
@@ -44,7 +51,7 @@ namespace panels {
 namespace settings {
 
 // Same seam contract as the other menu windows: fixed page-internal action
-// names only ("return"), never user strings.
+// names only ("return", "bind-capture-begin"), never user strings.
 using ActionSink = std::function<void(const char* action)>;
 
 class SettingsPage final : public framework::InteractiveDocument {
@@ -54,6 +61,7 @@ public:
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 	void setModel(services::settings::SettingsModel* model) { Model = model; }
+	void setBindModel(services::settings::KeyBindModel* model) { BindModel = model; }
 
 	// Re-projects the whole model into the DOM. Safe while hidden. When
 	// `skipInputRow` is non-null, that row's text field keeps its exact
@@ -91,19 +99,28 @@ private:
 	void handleClick(Rml::Event& event);
 	void handleChange(Rml::Event& event);
 	void buildRows();
+	void buildBindRows();
 	void renderRow(const services::settings::RowView& view, bool skipInput);
+	void renderBindRow(const services::settings::BindRowView& view);
+	void renderBindConflict();
+	void setBindStatusSummary();
 	void setStatusSummary();
 	void applyAndReport();
 	void showLayer(const char* id);
 	void hideLayers();
 	bool layerVisible() const { return !ActiveLayer.empty(); }
+	std::string bindActionLabel(const services::settings::BindRowView& view) const;
+	// Shared resolution for one raw label string ("#Valve_X" or literal).
+	std::string bindLabelText(const std::string& label) const;
 
 	PageListener Listener;
 	ActionSink Sink;
 	services::settings::SettingsModel* Model = nullptr;
+	services::settings::KeyBindModel* BindModel = nullptr;
 	// Page-internal modal state: "" when no layer is up, else the layer's
-	// DOM id ("reset-confirm" / "leave-confirm"). The truth for event
-	// routing, kept in lockstep with the display property.
+	// DOM id ("reset-confirm" / "leave-confirm" / "bind-conflict" /
+	// "bind-reset-confirm"). The truth for event routing, kept in lockstep
+	// with the display property.
 	std::string ActiveLayer;
 };
 

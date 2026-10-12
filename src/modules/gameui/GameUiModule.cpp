@@ -22,8 +22,12 @@
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
+#include <abc/Paths.h>
 
 #include <keydefs.h>
+
+#include <cstdio>
+#include <string>
 
 #include "../../framework/Localization.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
@@ -34,6 +38,7 @@
 #include "../../rmlui/VGUI2ExtensionImport.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
+#include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
 #include "MenuController.h"
 
@@ -74,6 +79,40 @@ services::settings::SettingsModel::Seams settingsSeams() {
 	return seams;
 }
 
+// The production bind seams (T11): reads through IGameUIFuncs (the same
+// key table the bind command writes - hw.dll evidence in KeyBindModel.h),
+// writes as verbatim `bind`/`unbind` commands through pfnClientCmd. The
+// engine command buffer flushes between frames; the model's kQueued/verify
+// pair covers that beat.
+services::settings::KeyBindModel::Seams bindSeams() {
+	services::settings::KeyBindModel::Seams seams;
+	seams.bindingForKey = [](int keynum) -> const char* { return vgui2ext::keyBindingForKey(keynum); };
+	seams.keyNameForKey = [](int keynum) -> const char* { return vgui2ext::keyNameForKey(keynum); };
+	seams.keyStringToKeyNum = [](const char* name) { return vgui2ext::keyStringToKeyNum(name); };
+	seams.clientCmd = [](const char* command) {
+		abc::EngineClientCmd(command);
+		return true; // handed to the engine buffer; truth rides the re-read
+	};
+	return seams;
+}
+
+// Mod-dir text file (kb_act.lst / kb_def.lst / valve_english.txt), decoded
+// from its shipped encoding (valve_english.txt is UTF-16LE - see
+// KeyBindModel::decodeResourceText). Empty on any failure - the bind model
+// treats missing sources as fail-closed.
+std::string readModFile(const char* relativePath) {
+	FILE* file = nullptr;
+	if (fopen_s(&file, abc::ModPath(relativePath).c_str(), "rb") != 0 || !file)
+		return {};
+	std::string raw;
+	char buffer[4096];
+	size_t got = 0;
+	while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0)
+		raw.append(buffer, got);
+	fclose(file);
+	return services::settings::KeyBindModel::decodeResourceText(raw.data(), raw.size());
+}
+
 using gameui::menu::EventKind;
 using gameui::menu::MenuEvent;
 using gameui::menu::MenuOverlay;
@@ -83,8 +122,10 @@ class GameUiModule final : public modules::IUiModule, private framework::uiinput
 public:
 	GameUiModule()
 		: Controller(&menuBackend()), SettingsModel(services::settings::FirstBatchRows,
-			  services::settings::FirstBatchCount) {
+			  services::settings::FirstBatchCount),
+		  CaptureOwner(this) {
 		SettingsModel.setSeams(settingsSeams());
+		BindModel.setSeams(bindSeams());
 		modules::registry().add(this);
 		services::nativeUiBridge().setMenuSink(this);
 		Instance = this;
@@ -93,14 +134,32 @@ public:
 	const char* name() const override { return "gameui"; }
 
 	void onInit() override {
+		// T11 bind sources live in the mod dir (engine-owned data, not abcui
+		// assets): the action list, the factory defaults and the label table.
+		// Missing files degrade to an empty action table - the settings page
+		// renders the bind section as unavailable (fail-closed).
+		if (!BindModel.loadActions(readModFile("gfx/shell/kb_act.lst").c_str()))
+			abc::ConsoleWarn("[AbcUi] kb_act.lst malformed - key bindings unavailable\n");
+		BindModel.loadDefaults(readModFile("gfx/shell/kb_def.lst").c_str());
+		BindModel.loadLabels(readModFile("resource/valve_english.txt").c_str());
 #ifndef NDEBUG
 		// HUD_Init guarded block only (plan 08 §4.9 red line).
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
+		abc::ADD_COMMAND("abc_ui_bind_status", bindStatusCommand);
 #endif
 	}
 
 	void onFrame(double frameTime) override {
 		(void)frameTime;
+		if (!MenuPresented || !Shell || !Context)
+			return;
+		// T11 bind verification beat: pfnClientCmd lands in the engine
+		// command buffer, which flushes between frames. kQueued rows resolve
+		// on the first tick after Apply; a change re-projects the page once.
+		if (SettingsPresented && Settings && BindModel.hasQueued()) {
+			if (BindModel.verify())
+				Settings->render();
+		}
 		// Per-frame focus guard (T09 step 5): while the menu is presented,
 		// the context focus must stay inside one of the menu documents.
 		// Foreign holders exist (the Rml debug hook document grabs the focus
@@ -108,8 +167,6 @@ public:
 		// sync-time guard alone loses to thieves that act between frames.
 		// The debugger's own windows are exempt (a developer using F12 must
 		// keep their focus).
-		if (!MenuPresented || !Shell || !Context)
-			return;
 		if (Rml::Debugger::IsVisible())
 			return;  // a developer using the F12 tools keeps their focus
 		Rml::Element* focus = Context->GetFocusElement();
@@ -156,6 +213,7 @@ public:
 		ConsoleStub = std::make_unique<panels::menushared::MenuStubPage>("menuconsole", "abcui/rml/consolestub.rml");
 		Settings = std::make_unique<panels::settings::SettingsPage>();
 		Settings->setModel(&SettingsModel);
+		Settings->setBindModel(&BindModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
 		wire(Shell);
 		wire(SubStub);
@@ -171,8 +229,9 @@ public:
 
 	void onShutdown() override {
 		// Context still alive here: every document closes and drops its
-		// listeners before the DOM dies (module contract). The token
-		// releases first - a stale no-op when the router already reset.
+		// listeners before the DOM dies (module contract). The tokens
+		// release first - a stale no-op when the router already reset.
+		CaptureToken.release();
 		PageToken.release();
 		Shell.reset();
 		SubStub.reset();
@@ -198,6 +257,72 @@ private:
 			abc::ConsoleWarn("[AbcUi] menu document failed to load entirely (T21 strict path)\n");
 			break;
 		}
+	}
+
+	// T11 capture ownership (kCapture tier sits above the menu page). Every
+	// claimed edge is swallowed from the bindings; the InputBridge clamp
+	// silences the Rml dispatch so a captured key can neither scroll the
+	// list, re-click the button under the cursor, nor type anywhere.
+	class KeyCaptureOwner final : public framework::uiinput::Owner {
+	public:
+		explicit KeyCaptureOwner(GameUiModule* owner)
+			: Owner(owner) {}
+		bool claimsKey(int down, int keynum) override {
+			(void)down;
+			(void)keynum;
+			return true;
+		}
+		bool claimsWheel() override { return true; }
+		void onClaimedKeyDown(int keynum) override { Owner->onCapturedKeyEdge(keynum); }
+		bool onClaimedWheelPulse(int keynum) override {
+			Owner->onCapturedKeyEdge(keynum);
+			return true; // the pulse is consumed - no page scroll
+		}
+		void onOwnershipLost() override { Owner->onKeyCaptureForceLost(); }
+
+	private:
+		GameUiModule* Owner;
+	};
+
+	void startKeyCapture() {
+		if (!BindModel.capturing() || CaptureToken.held())
+			return;
+#ifndef NDEBUG
+		abc::ConsolePrint("[AbcUi] capture start row=%d\n", BindModel.captureRow());
+#endif
+		rmlui::setKeyCaptureClamp(true);
+		CaptureToken = rmlui::uiRouter().acquire(&CaptureOwner, framework::uiinput::OwnerTier::kCapture);
+		if (!CaptureToken.held()) {
+			// Unrepresentable depth (8 owners): fail closed - no session.
+			BindModel.cancelCapture();
+			rmlui::setKeyCaptureClamp(false);
+			abc::ConsoleWarn("[AbcUi] capture token unavailable (router full)\n");
+		}
+	}
+
+	void endKeyCapture() {
+		CaptureToken.release();
+		rmlui::setKeyCaptureClamp(false);
+	}
+
+	// The one captured edge of the session (router dedups auto-repeat).
+	// ESC and unknown keys end the session without a draft change; a
+	// conflict parks in the model for the page's confirmation layer.
+	void onCapturedKeyEdge(int keynum) {
+		const auto result = BindModel.captureKey(keynum);
+#ifndef NDEBUG
+		abc::ConsolePrint("[AbcUi] capture key=%d result=%d conflict=%d\n", keynum,
+			static_cast<int>(result), BindModel.conflictPending() ? 1 : 0);
+#endif
+		endKeyCapture(); // exactly one edge per session, whatever it was
+		if (Settings)
+			Settings->render();
+	}
+
+	// Force-release (focus loss / teardown): drop the session draft-free.
+	void onKeyCaptureForceLost() {
+		BindModel.cancelCapture();
+		rmlui::setKeyCaptureClamp(false);
 	}
 
 	// services::INativeMenuSink: the bridge decided the menu state; run the
@@ -238,6 +363,9 @@ private:
 		// the controller, hide the documents, release ownership. No unpause
 		// here - the simulation only resumes on a decided close
 		// (EngineUiBackend::resumeGame), never on a force-release.
+		// A running capture session ends with it (draft-free, clamp off).
+		endKeyCapture();
+		BindModel.cancelCapture();
 		Controller.dispatch(MenuEvent{EventKind::kMenuHidden});
 		hideAllMenuDocuments();
 		if (MenuPresented) {
@@ -344,15 +472,16 @@ private:
 			ConfirmQuit->hide();
 	}
 
-	// The settings page (T10): fresh engine truth on every open (untouched
-	// rows follow silently, pending drafts surface as conflicts), then the
-	// page projects the model. Re-opening after a force-dismiss keeps the
-	// drafts - the model's conflict rule prompts instead of overwriting.
+	// The settings page (T10/T11): fresh engine truth on every open (untouched
+	// rows follow silently, pending drafts survive and surface), then the
+	// page projects both models. Re-opening after a force-dismiss keeps the
+	// drafts - the models' reopen rules prompt instead of overwriting.
 	void presentSettingsPage() {
 		if (!Settings)
 			return;
 		if (!SettingsPresented) {
 			SettingsModel.snapshot();
+			BindModel.snapshot();
 			Settings->render();
 			SettingsPresented = true;
 		}
@@ -424,6 +553,13 @@ private:
 			Controller.dispatch(MenuEvent{EventKind::kConsoleToggle});
 		else if (intent == "return" || intent == "close")
 			Controller.dispatch(MenuEvent{EventKind::kBack});
+		else if (intent == "bind-capture-begin") {
+			// T11: the settings page started a capture session in the bind
+			// model; the module raises the kCapture ownership tier above the
+			// menu page so the next physical edge is captured, not played.
+			startKeyCapture();
+			return; // no controller transition - the page state already moved
+		}
 		else {
 			abc::ConsoleWarn("[AbcUi] unknown menu action \"%s\" dropped\n", intent.c_str());
 			return;
@@ -508,6 +644,49 @@ private:
 	}
 
 #ifndef NDEBUG
+	// T11 diagnostics: the capture/clamp/router state and every bind row's
+	// draft - the live-debugging counterpart of the offline model dumps.
+	static void bindStatusCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		unsigned wheelPulses = 0, wheelDelivered = 0;
+		rmlui::wheelDiagCounts(wheelPulses, wheelDelivered);
+		float panelScroll = -1.0f, panelScrollHeight = -1.0f;
+		std::string hoverId = "(none)";
+		if (self.Context) {
+			if (Rml::Element* hover = self.Context->GetHoverElement())
+				hoverId = hover->GetId().empty() ? hover->GetTagName() : hover->GetId();
+			if (self.Settings && self.Settings->document()) {
+				if (Rml::Element* panel = self.Settings->document()->GetElementById("panel")) {
+					panelScroll = panel->GetScrollTop();
+					panelScrollHeight = panel->GetScrollHeight();
+				}
+			}
+		}
+		abc::ConsolePrint("[AbcUi] binds: reads=%d capturing=%d row=%d conflict=%d token=%d clamp=%d\n",
+			self.BindModel.readsAvailable() ? 1 : 0, self.BindModel.capturing() ? 1 : 0,
+			self.BindModel.captureRow(), self.BindModel.conflictPending() ? 1 : 0,
+			self.CaptureToken.held() ? 1 : 0, rmlui::keyCaptureClampActive() ? 1 : 0);
+		abc::ConsolePrint("[AbcUi] wheel: pulses=%u delivered=%u panelScroll=%.1f scrollHeight=%.1f hover=%s\n",
+			wheelPulses, wheelDelivered, panelScroll, panelScrollHeight, hoverId.c_str());
+		for (const auto& view : self.BindModel.rows()) {
+			if (view.header)
+				continue;
+			if (view.state == services::settings::BindRowState::kClean
+				&& view.draftKeyNames.empty())
+				continue; // only active rows, keeps the dump readable
+			std::string keys;
+			for (const auto& key : view.draftKeyNames)
+				keys += key + " ";
+			abc::ConsolePrint("[AbcUi] bind %d '%s' state=%d keys=[%s]\n", view.actionIndex,
+				view.action ? view.action->Command.c_str() : "?", static_cast<int>(view.state),
+				keys.c_str());
+		}
+	}
+
 	static void menuPageCommand() {
 		if (!Instance || !Instance->Shell || !Instance->Context) {
 			abc::ConsoleWarn("[AbcUi] menu not available\n");
@@ -530,10 +709,12 @@ private:
 
 	Rml::Context* Context = nullptr;
 	gameui::menu::MenuController Controller;
-	// T10 settings domain: the description-table model (engine truth via the
-	// cvar seams) and its page projection. The model outlives the document -
-	// drafts survive a force-dismiss and conflict on the next open.
+	// T10/T11 settings domain: the description-table models (engine truth
+	// via the cvar/bind seams) and their page projections. The models
+	// outlive the documents - drafts survive a force-dismiss and re-surface
+	// on the next open.
 	services::settings::SettingsModel SettingsModel;
+	services::settings::KeyBindModel BindModel;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::menushared::MenuStubPage> ConsoleStub;
@@ -542,6 +723,10 @@ private:
 	// Router ownership while the menu is presented (T06); the document set
 	// mirrors it (dismissal / onOwnershipLost keep them in step).
 	framework::uiinput::Token PageToken;
+	// T11 key-capture session: the kCapture tier owner above the menu page,
+	// held exactly while the bind model waits for one physical edge.
+	KeyCaptureOwner CaptureOwner;
+	framework::uiinput::Token CaptureToken;
 	// Whether THIS module presented the menu (vs. the bridge being up before
 	// Rml was ready). Mirrors the bridge's PageShown.
 	bool MenuPresented = false;

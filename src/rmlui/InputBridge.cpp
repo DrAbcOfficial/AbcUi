@@ -25,6 +25,16 @@ int LastMouseY = -1;
 bool ShiftWasDown = false;
 bool CtrlWasDown = false;
 bool AltWasDown = false;
+// T11 capture-session clamp (see setKeyCaptureClamp): while a key-binding
+// capture runs, the Rml dispatch of consumed edges goes mute. Declared here
+// because mouseButton is the ONE convergence point of all three mouse paths
+// (HUD_Key_Event, WndProc messages, async poll) - clamping only the
+// onKeyEvent branch would leave two live paths into the page.
+bool KeyCaptureClamp = false;
+#ifndef NDEBUG
+unsigned WheelPulseCount = 0;
+unsigned WheelDeliverCount = 0;
+#endif
 // Visibility-gate edge: the poll below only samples while the VGUI cursor is
 // visible, so a button HELD across the gate opening (e.g. the MOUSE2 that
 // unlocked the scoreboard pointer) must not synthesize a press on the first
@@ -48,6 +58,12 @@ int modifierState() {
 }
 
 void mouseButton(Rml::Context* context, int button, bool down) {
+	if (KeyCaptureClamp) {
+		// Keep the dedup state consistent (no ghost press across the clamp
+		// window), dispatch nothing.
+		DeliveredDown[button] = down;
+		return;
+	}
 	if (button == 1 && SuppressOpeningRight) {
 		if (!down) SuppressOpeningRight = false;
 		return;
@@ -106,9 +122,15 @@ bool routeKey(int down, int keynum, bool staticWheelClaim) {
 	// Wheel pulses: the top owner (menu scroll) or the static non-owning
 	// claims (motd) scroll the UI; anything else stays a weapon switch. The
 	// engine delivers wheel as down-only pulses (KeyMap note), but up edges
-	// are kept out of the keyboard state machine either way.
+	// are kept out of the keyboard state machine either way. T11 capture
+	// seam: the top owner (capture tier) may consume the pulse first.
 	const bool wheel = keynum == K_MWHEELUP || keynum == K_MWHEELDOWN;
 	if (down && wheel) {
+#ifndef NDEBUG
+		WheelPulseCount++;
+#endif
+		if (uiRouter().onWheelPulse(keynum))
+			return true;
 		if (uiRouter().wheelClaimed() || staticWheelClaim) {
 			onWheel(down, keynum);
 			return true;
@@ -117,6 +139,44 @@ bool routeKey(int down, int keynum, bool staticWheelClaim) {
 	}
 	const framework::uiinput::Route route = uiRouter().onKey(down, keynum, wheel);
 	return route.consumeEngine;
+}
+
+bool keyCaptureClampActive() {
+	return KeyCaptureClamp;
+}
+
+void wheelDiagCounts(unsigned& pulses, unsigned& delivered) {
+#ifndef NDEBUG
+	pulses = WheelPulseCount;
+	delivered = WheelDeliverCount;
+#else
+	pulses = 0;
+	delivered = 0;
+#endif
+}
+
+void InputBridge_noteWheelDelivered() {
+#ifndef NDEBUG
+	WheelDeliverCount++;
+#endif
+}
+
+void setKeyCaptureClamp(bool clamp) {
+	if (clamp == KeyCaptureClamp)
+		return;
+	KeyCaptureClamp = clamp;
+	if (!clamp)
+		return;
+	// No ghost press across the clamp window: buttons held when the capture
+	// started are released to the UI now (the click that STARTED the session
+	// already ran; this only fires for keys held across the start).
+	if (Rml::Context* context = rmlui::context()) {
+		for (int i = 0; i < 3; ++i)
+			if (DeliveredDown[i])
+				context->ProcessMouseButtonUp(i, 0);
+	}
+	for (int i = 0; i < 3; ++i)
+		DeliveredDown[i] = false;
 }
 
 namespace {
@@ -284,6 +344,11 @@ void InputBridge::updateMouse(Rml::Context* context) {
 bool InputBridge::onKeyEvent(Rml::Context* context, int down, int keynum) {
 	if (!context)
 		return false;
+	// T11 capture clamp: the edge was consumed by the capture owner; the Rml
+	// dispatch stays silent for the whole session (mouse keys included - the
+	// captured MOUSE1 must not click whatever sits under the cursor).
+	if (KeyCaptureClamp)
+		return true;
 	// Exclusive mouse keys ride the shared button-dedup state (the
 	// IN_MouseEvent edges and the poll land here too).
 	if (uiRouter().exclusive() && keynum >= K_MOUSE1 && keynum <= K_MOUSE3) {

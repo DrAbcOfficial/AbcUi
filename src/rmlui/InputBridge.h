@@ -67,6 +67,21 @@ bool routeKey(int down, int keynum, bool staticWheelClaim);
 // twice per physical press. Wheel pulses ride the same claims as above.
 void onSurfaceMenuKey(const void* sdlEvent);
 
+// T11 capture clamp: while the key-binding capture session runs, every
+// UI-fed edge is swallowed before the Rml dispatch (no scrolling, no button
+// activation, no typing through a captured key). The router still runs its
+// pairing and the capture owner still gets its once-per-press action -
+// only the Rml feed is silenced. Enabling first releases held mouse buttons
+// so no ghost press survives across the clamp window.
+void setKeyCaptureClamp(bool clamp);
+// Diagnostics (Debug command): the clamp's current state.
+bool keyCaptureClampActive();
+// Diagnostics: how many wheel pulses reached routeKey and how many were
+// handed to Rml's ProcessMouseWheel (T11 live debugging).
+void wheelDiagCounts(unsigned& pulses, unsigned& delivered);
+// RmlUiModule::onWheel calls this right before the Context dispatch.
+void InputBridge_noteWheelDelivered();
+
 class InputBridge {
 public:
 	// HUD_Frame time, before Context::Update.

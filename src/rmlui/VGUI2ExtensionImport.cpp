@@ -597,6 +597,18 @@ const char* keyNameForKey(int keynum) {
 	return GameUIFuncs->Key_NameForKey(keynum);
 }
 
+const char* keyBindingForKey(int keynum) {
+	if (!GameUIFuncs)
+		return "";
+	return GameUIFuncs->Key_BindingForKey(keynum);
+}
+
+int keyStringToKeyNum(const char* name) {
+	if (!GameUIFuncs || !name)
+		return -1;
+	return GameUIFuncs->Key_KeyStringToKeyNum(name);
+}
+
 bool centerAndUnlockCursor() {
 	if (!Surface2)
 		return false;

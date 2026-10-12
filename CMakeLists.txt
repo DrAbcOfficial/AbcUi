@@ -83,6 +83,7 @@ add_library(AbcUi MODULE
     src/services/GameUiBridge.cpp
     src/services/EngineUiBackend.cpp
     src/services/settings/SettingsModel.cpp
+    src/services/settings/KeyBindModel.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp

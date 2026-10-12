@@ -4,24 +4,37 @@
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/settings.rcss"/>
 </head>
-<!-- T10 basic settings page. The row list is built at load time from the
-     production description table (services::settings::FirstBatchRows); this
-     skeleton only carries the fixed frame, the action bar and the two
-     page-internal confirm layers. Every dynamic string is injected escaped
-     by panels::settings::SettingsPage. -->
+<!-- T10 basic settings page, T11 key-binding section. The cvar row list is
+     built at load time from the production description table
+     (services::settings::FirstBatchRows); the bind row list from the
+     kb_act.lst action table (services::settings::KeyBindModel). These
+     skeletons only carry the fixed frames, the action bars and the
+     page-internal layers. Every dynamic string is injected escaped by
+     panels::settings::SettingsPage. -->
 <body id="menusettings">
 	<div id="panel">
 		<h1 id="title">#Settings_Title</h1>
 		<div id="settings-status"></div>
 		<div id="rows"></div>
-		<div id="settings-actions">
-			<button id="settings-apply" data-action="apply" data-label="#Settings_Apply" autofocus="autofocus">#Settings_Apply</button>
-			<button id="settings-reset" data-action="reset-defaults" data-label="#Settings_ResetDefaults">#Settings_ResetDefaults</button>
-			<button id="settings-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
-		</div>
-		<!-- Page-internal confirm layers (not controller overlays): restore
-		     defaults always confirms; leaving with unsaved drafts prompts.
-		     Safe default focus sits on the non-destructive entry. -->
+		<h2 id="bind-title">#Settings_KeysTitle</h2>
+		<div id="bind-status"></div>
+		<div id="bindrows"></div>
+	</div>
+	<div id="settings-actions">
+		<button id="settings-apply" data-action="apply" data-label="#Settings_Apply" autofocus="autofocus">#Settings_Apply</button>
+		<button id="settings-reset" data-action="reset-defaults" data-label="#Settings_ResetDefaults">#Settings_ResetDefaults</button>
+		<button id="bind-reset" data-action="bind-reset-defaults" data-label="#Settings_BindResetDefaults">#Settings_BindResetDefaults</button>
+		<button id="settings-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
+	</div>
+	<!-- Page-internal layers live OUTSIDE the scrollable panel: they
+	     anchor to the document and stay viewport-covering no matter how
+	     far the bind list is scrolled (absolute layers inside the scroll
+	     container scroll out of the visible area - live-caught). -->
+		<!-- Page-internal layers (not controller overlays): restore defaults
+		     always confirms (cvars and key bindings separately); leaving with
+		     unsaved drafts prompts; a capture landing on a bound key asks
+		     before replacing. Safe default focus sits on the non-destructive
+		     entry. -->
 		<div id="reset-confirm" class="settings-layer">
 			<p id="reset-confirm-text">#Settings_ResetConfirm</p>
 			<button id="reset-yes" data-action="reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
@@ -32,6 +45,15 @@
 			<button id="leave-discard" data-action="leave-discard" data-label="#Settings_DiscardReturn">#Settings_DiscardReturn</button>
 			<button id="leave-stay" data-action="leave-stay" data-label="#Settings_Stay" autofocus="autofocus">#Settings_Stay</button>
 		</div>
-	</div>
+		<div id="bind-conflict" class="settings-layer">
+			<p id="bind-conflict-text"></p>
+			<button id="bind-conflict-yes" data-action="bind-conflict-yes" data-label="#Settings_BindConflictYes">#Settings_BindConflictYes</button>
+			<button id="bind-conflict-no" data-action="bind-conflict-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
+		</div>
+		<div id="bind-reset-confirm" class="settings-layer">
+			<p id="bind-reset-confirm-text">#Settings_BindResetConfirm</p>
+			<button id="bind-reset-yes" data-action="bind-reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
+			<button id="bind-reset-no" data-action="bind-reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
+		</div>
 </body>
 </rml>

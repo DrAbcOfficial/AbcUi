@@ -201,6 +201,13 @@ bool Router::wheelClaimed() const {
 	return top.owner && top.owner->claimsWheel();
 }
 
+bool Router::onWheelPulse(int keynum) const {
+	if (Count == 0)
+		return false;
+	const Entry& top = Stack[topIndex()];
+	return top.owner && top.owner->onClaimedWheelPulse(keynum);
+}
+
 bool Router::exclusive() const {
 	return Count != 0;
 }

@@ -56,6 +56,10 @@ public:
 	// auto-repeat dedup). Called after the edge was fed to the UI; the owner
 	// may release its own token inside (ESC closing the menu).
 	virtual void onClaimedKeyDown(int keynum) { (void)keynum; }
+	// T11 capture seam: a claimed wheel pulse is offered to the top owner
+	// BEFORE the scroll claim applies. True = the pulse was consumed (key
+	// capture); false = the usual scroll path runs.
+	virtual bool onClaimedWheelPulse(int keynum) { (void)keynum; return false; }
 	// Force-release notification (focus loss, reset, mid-stack removal) so
 	// the owner drops its mirrored state instead of keeping a second truth.
 	// The token is already stale when this runs.
@@ -124,6 +128,9 @@ public:
 
 	// Wheel pulses scroll the UI only when the top owner claims them.
 	bool wheelClaimed() const;
+	// T11 capture seam: true when the top owner consumed the pulse (capture
+	// took the wheel edge; the scroll path must not run).
+	bool onWheelPulse(int keynum) const;
 	bool exclusive() const;
 
 	// Window focus lost: synthetic UI keyups for everything held, every

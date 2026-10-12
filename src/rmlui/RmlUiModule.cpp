@@ -347,6 +347,7 @@ void onWheel(int down, int keynum) {
 	if (!Initialised || !Context || !down)
 		return;
 	const float delta = keynum == K_MWHEELUP ? -1.0f : 1.0f;
+	InputBridge_noteWheelDelivered();
 	Context->ProcessMouseWheel(delta, 0);
 }
 

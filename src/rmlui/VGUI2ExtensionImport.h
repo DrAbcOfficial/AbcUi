@@ -46,6 +46,15 @@ const char* currentLanguage();
 // engine keynum, "" when unavailable (vote panel yes/no labels).
 const char* keyNameForKey(int keynum);
 
+// T11: IGameUIFuncs::Key_BindingForKey (vtable slot 3; hw.dll 0x01dbd2b0
+// reads the same key table the `bind` command writes) - the command bound
+// to a keynum, "" / null when unbound or unavailable.
+const char* keyBindingForKey(int keynum);
+
+// T11: IGameUIFuncs::Key_KeyStringToKeyNum (vtable slot 9) - the keynum for
+// a key name, -1 for unknown / unavailable.
+int keyStringToKeyNum(const char* name);
+
 // Centers the OS cursor on the game window and unlocks it (scoreboard
 // pointer mode; old EnableMousePointer + vgui UnlockCursor). Returns false
 // when the surface interface is missing.
