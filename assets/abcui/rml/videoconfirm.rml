@@ -1,0 +1,24 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
+	<link type="text/rcss" href="../rcss/videoconfirm.rcss"/>
+</head>
+<!-- T12 display-mode confirmation. Headline states the ACTUAL mode the
+     engine reports (never the requested one); the countdown restores the
+     previous mode on timeout. All dynamic text is injected escaped by
+     panels::settings::VideoConfirmPage. -->
+<body id="videoconfirm">
+	<div id="videoconfirm-box">
+		<h1 id="videoconfirm-title">#VideoConfirm_Title</h1>
+		<p id="videoconfirm-lead">#VideoConfirm_Lead</p>
+		<div class="videoconfirm-line"><span class="videoconfirm-key">#VideoConfirm_ActualLabel</span><span id="videoconfirm-actual"></span></div>
+		<div class="videoconfirm-line"><span class="videoconfirm-key">#VideoConfirm_RequestedLabel</span><span id="videoconfirm-requested"></span></div>
+		<p id="videoconfirm-timeout"></p>
+		<div id="videoconfirm-actions">
+			<button id="videoconfirm-keep" data-action="video-keep" data-label="#VideoConfirm_Keep">#VideoConfirm_Keep</button>
+			<button id="videoconfirm-revert" data-action="video-revert" data-label="#VideoConfirm_Revert" autofocus="autofocus">#VideoConfirm_Revert</button>
+		</div>
+	</div>
+</body>
+</rml>

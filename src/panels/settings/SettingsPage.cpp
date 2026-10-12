@@ -4,6 +4,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Elements/ElementFormControl.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 #include <RmlUi/Core/Event.h>
 
 #include <abc/Format.h>
@@ -12,6 +13,7 @@
 #include "../../framework/TextUtil.h"
 #include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
+#include "../../services/settings/VideoModeModel.h"
 
 #include <cmath>
 #include <cstdio>
@@ -46,6 +48,10 @@ constexpr const char* kActionBindResetYes = "bind-reset-yes";
 constexpr const char* kActionBindResetNo = "bind-reset-no";
 constexpr const char* kActionBindConflictYes = "bind-conflict-yes";
 constexpr const char* kActionBindConflictNo = "bind-conflict-no";
+// T12 video section. Staging runs model-direct; Apply is the module's (the
+// engine restarts and the confirmation dialog is module-presented).
+constexpr const char* kActionVideoApply = "video-apply";
+constexpr const char* kActionVideoWindowed = "video-toggle-windowed";
 
 constexpr const char* kLayerReset = "reset-confirm";
 constexpr const char* kLayerLeave = "leave-confirm";
@@ -94,9 +100,12 @@ SettingsPage::~SettingsPage() {
 
 void SettingsPage::onDocumentReady() {
 	if (Rml::ElementDocument* doc = document()) {
+		// Document-level delegation for both: row text fields commit through
+		// the data-row ancestor lookup, the T12 resolution select through its
+		// id (a #rows-scoped change listener never sees the video section -
+		// live-caught by the offline page test).
 		addListener(doc, "click", &Listener);
-		if (Rml::Element* rows = doc->GetElementById("rows"))
-			addListener(rows, "change", &Listener);
+		addListener(doc, "change", &Listener);
 	}
 	buildRows();
 	buildBindRows();
@@ -173,8 +182,143 @@ void SettingsPage::render(const char* skipInputRow) {
 			renderBindRow(view);
 		renderBindConflict();
 	}
+	// Always projected: with no model (or no query interface) the section
+	// renders its fail-closed state instead of staying silently empty.
+	renderVideoSection();
 	setStatusSummary();
 	setBindStatusSummary();
+}
+
+// The video section is a projection like the others: the resolution <select>
+// options and the windowed button come from the model's enumerated modes and
+// current actual mode, the status line says exactly what is staged, and the
+// whole block fail-closes when the query interface is missing. Only the
+// enumerated (or actual) resolutions are offerable - the model refuses
+// anything else, this only keeps the UI from offering it.
+void SettingsPage::renderVideoSection() {
+	Rml::ElementDocument* doc = document();
+	if (!doc)
+		return;
+	Rml::Element* section = doc->GetElementById("video-section");
+	if (!section)
+		return;
+	section->SetClass("video-unavailable", !VideoModel || !VideoModel->available());
+
+	Rml::Element* select = doc->GetElementById("video-resolution");
+	Rml::Element* toggle = doc->GetElementById("video-windowed");
+	Rml::Element* apply = doc->GetElementById("video-apply");
+	Rml::Element* status = doc->GetElementById("video-status");
+	// RmlUi pin: <button> instantiates as a generic Element (no form-control
+	// disabled semantics - only <input>/<select> are ElementFormControl), so
+	// buttons gate visually through the class while the click handlers above
+	// keep their own model-state guards. The select is a real form control.
+	if (!VideoModel || !VideoModel->available()) {
+		if (status)
+			status->SetInnerRML(framework::TextUtil::escapeRml(translated("#Settings_VideoUnavailable")));
+		if (select)
+			if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(select))
+				form->SetDisabled(true);
+		if (toggle)
+			toggle->SetClass("video-disabled", true);
+		if (apply) {
+			if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(apply))
+				form->SetDisabled(true);
+			apply->SetClass("video-disabled", true);
+		}
+		return;
+	}
+	// The section may have been left locked by an earlier projection: clear
+	// the lock before projecting the current state.
+	if (select)
+		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(select))
+			form->SetDisabled(false);
+
+	// The resolution options are built ONLY once the actual mode is known
+	// (a projection before the first snapshot would pollute the list with a
+	// 0x0 entry - live-caught) and rebuilt only when the set changes. The
+	// control's own Add() is used, not SetInnerRML: Add routes through the
+	// widget so the option is matchable in the SAME pass, while raw RML
+	// children only transfer on the next Context::Update (live-caught:
+	// SetAttribute("value") before the transfer leaves the raw value as the
+	// displayed text). (RmlUi pin: ElementFormControlSelect::Add ->
+	// WidgetDropDown::AddOption.)
+	auto* selectControl = select ? rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(select) : nullptr;
+	if (selectControl && VideoModel->actualKnown()) {
+		std::vector<std::pair<int, int>> options;
+		options.emplace_back(VideoModel->actual().Width, VideoModel->actual().Height);
+		for (const auto& mode : VideoModel->modes()) {
+			bool known = false;
+			for (const auto& existing : options)
+				known = known || (existing.first == mode.Width && existing.second == mode.Height);
+			if (!known)
+				options.emplace_back(mode.Width, mode.Height);
+		}
+		if (options != VideoOptionsShown) {
+			selectControl->RemoveAll();
+			for (const auto& option : options) {
+				const std::string value = std::to_string(option.first) + "x" + std::to_string(option.second);
+				selectControl->Add(framework::TextUtil::escapeRml(value), value);
+			}
+			VideoOptionsShown = options;
+		}
+	}
+
+	// Projection values: the staged target over the actual mode. Selection
+	// goes through SetSelection(index): it reconciles the widget without
+	// dispatching a change event, so no feedback loop is possible. (A raw
+	// SetAttribute("value") DOES dispatch change - the stack-overflow trap
+	// the offline test caught; kept only as the no-widget fallback.)
+	const bool stagedResolution = VideoModel->hasStaged();
+	services::settings::VideoMode target = stagedResolution ? VideoModel->stagedTarget() : VideoModel->actual();
+	if (selectControl && !VideoOptionsShown.empty()) {
+		int index = -1;
+		for (size_t i = 0; i < VideoOptionsShown.size(); ++i) {
+			if (VideoOptionsShown[i].first == target.Width && VideoOptionsShown[i].second == target.Height) {
+				index = static_cast<int>(i);
+				break;
+			}
+		}
+		if (index >= 0 && selectControl->GetSelection() != index)
+			selectControl->SetSelection(index);
+	} else if (select) {
+		const std::string value = std::to_string(target.Width) + "x" + std::to_string(target.Height);
+		if (select->GetAttribute<Rml::String>("value", "") != value)
+			select->SetAttribute("value", value);
+	}
+	if (toggle) {
+		toggle->SetInnerRML(framework::TextUtil::escapeRml(
+			translated(target.Windowed ? "#Settings_VideoWindowedOn" : "#Settings_VideoWindowedOff")));
+	}
+	// While a confirmation is outstanding the whole section is locked (the
+	// pending switch owns the engine state); otherwise the controls follow
+	// the stage.
+	const bool locked = VideoModel->awaitingConfirm();
+	const bool canApply = VideoModel->hasStaged() && !locked;
+	if (select)
+		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(select))
+			form->SetDisabled(locked);
+	if (toggle)
+		toggle->SetClass("video-disabled", locked);
+	if (apply) {
+		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(apply))
+			form->SetDisabled(!canApply);
+		apply->SetClass("video-disabled", !canApply);
+	}
+
+	if (status) {
+		std::string text = abc::Format("{0} {1}", translated("#Settings_VideoActual"),
+			services::settings::VideoModeModel::describe(VideoModel->actual()));
+		text += " | ";
+		if (VideoModel->awaitingConfirm()) {
+			text += translated("#Settings_VideoAwaiting");
+		} else if (VideoModel->hasStaged()) {
+			text += abc::Format("{0} {1}", translated("#Settings_VideoStaged"),
+				services::settings::VideoModeModel::describe(target));
+		} else {
+			text += translated("#Settings_VideoNone");
+		}
+		status->SetInnerRML(framework::TextUtil::escapeRml(text));
+	}
 }
 
 void SettingsPage::renderRow(const services::settings::RowView& view, bool skipInput) {
@@ -432,7 +576,10 @@ void SettingsPage::applyAndReport() {
 bool SettingsPage::isDirty() const {
 	const bool settingsDirty = Model && Model->isDirty();
 	const bool bindsDirty = BindModel && BindModel->isDirty();
-	return settingsDirty || bindsDirty;
+	// A staged display change is a pending write too (the module applies it
+	// through the restart-driving intent): leaving must prompt.
+	const bool videoDirty = VideoModel && VideoModel->hasStaged();
+	return settingsDirty || bindsDirty || videoDirty;
 }
 
 void SettingsPage::requestLeave() {
@@ -524,12 +671,14 @@ void SettingsPage::handleClick(Rml::Event& event) {
 	} else if (which == kActionResetNo) {
 		hideLayers();
 	} else if (which == kActionLeaveDiscard) {
-		// The discard IS the cancel: no write, drafts gone (both models),
+		// The discard IS the cancel: no write, drafts gone (all models),
 		// then return.
 		if (Model)
 			Model->cancel();
 		if (BindModel)
 			BindModel->cancel();
+		if (VideoModel)
+			VideoModel->cancelStage();
 		hideLayers();
 		render();
 		const ActionSink action2 = Sink;
@@ -594,6 +743,20 @@ void SettingsPage::handleClick(Rml::Event& event) {
 		if (BindModel)
 			BindModel->resolveConflict(false);
 		render();
+	} else if (which == kActionVideoApply) {
+		// The restart-driving apply belongs to the module (it also presents
+		// the confirmation dialog afterwards): report the fixed intent.
+		const ActionSink action2 = Sink;
+		if (action2)
+			action2(kActionVideoApply);
+		render();
+	} else if (which == kActionVideoWindowed) {
+		if (VideoModel && VideoModel->available() && !VideoModel->awaitingConfirm()) {
+			const services::settings::VideoMode target
+				= VideoModel->hasStaged() ? VideoModel->stagedTarget() : VideoModel->actual();
+			VideoModel->stageWindowed(!target.Windowed);
+		}
+		render();
 	} else if (which == kActionReturn) {
 		requestLeave(); // clean: reports through the sink; dirty: prompts
 	}
@@ -602,7 +765,29 @@ void SettingsPage::handleClick(Rml::Event& event) {
 
 void SettingsPage::handleChange(Rml::Event& event) {
 	Rml::Element* target = event.GetTargetElement();
-	if (!target || !Model)
+	if (!target)
+		return;
+	// T12 resolution select: the value is "WxH" from the enumerated option
+	// set; the model validates it again before staging.
+	if (target->GetId() == "video-resolution") {
+		if (VideoModel && VideoModel->available() && !VideoModel->awaitingConfirm()) {
+			const Rml::String text = event.GetParameter<Rml::String>("value", Rml::String());
+			const auto sep = text.find('x');
+			if (sep != Rml::String::npos) {
+				const int width = std::atoi(text.substr(0, sep).c_str());
+				const int height = std::atoi(text.substr(sep + 1).c_str());
+				// Re-entrancy guard: a programmatic SetAttribute dispatch can
+				// re-enter here with the value already staged.
+				const services::settings::VideoMode& current
+					= VideoModel->hasStaged() ? VideoModel->stagedTarget() : VideoModel->actual();
+				if (current.Width != width || current.Height != height)
+					VideoModel->stageResolution(width, height);
+			}
+		}
+		render();
+		return;
+	}
+	if (!Model)
 		return;
 	Rml::Element* entry = target;
 	while (entry && !entry->HasAttribute("data-row"))

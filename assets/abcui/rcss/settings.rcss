@@ -225,6 +225,41 @@ body#menusettings #panel scrollbarvertical sliderbar:active {
 	margin-left: 144dp;
 }
 
+/* T12 video section. A projection of the video model; when the query
+   interface is missing the block renders disabled (video-unavailable)
+   instead of pretending controls work. */
+#video-section {
+	display: block;
+	margin-top: 12dp;
+}
+
+#video-section .video-select {
+	display: inline-block;
+	width: 120dp;
+}
+
+#video-status {
+	display: block;
+	font-size: 8dp;
+	color: #8a9199;
+	margin-left: 144dp;
+	margin-top: 4dp;
+}
+
+#video-actions {
+	margin-top: 8dp;
+	margin-left: 144dp;
+}
+
+#video-section.video-unavailable #video-status {
+	color: #d8b45a;
+}
+
+#video-apply.video-disabled {
+	color: #6f757c;
+	border-color: #3a4047;
+}
+
 /* The action bar is document-level and top-anchored below the panel's fixed
    extent (panel top 40dp + height 400dp + 8dp gap): a bar inside the
    scroller could scroll out of view, and document-bottom anchoring resolves

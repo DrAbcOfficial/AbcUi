@@ -27,12 +27,14 @@
 #include <keydefs.h>
 
 #include <cstdio>
+#include <cstring>
 #include <string>
 
 #include "../../framework/Localization.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/settings/SettingsPage.h"
+#include "../../panels/settings/VideoConfirmPage.h"
 #include "../../rmlui/InputBridge.h"
 #include "../../rmlui/TextInput.h"
 #include "../../rmlui/VGUI2ExtensionImport.h"
@@ -40,7 +42,11 @@
 #include "../../services/GameUiBridge.h"
 #include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
+#include "../../services/settings/VideoModeModel.h"
+#include "../../services/settings/VideoPendingStore.h"
 #include "MenuController.h"
+
+#include <chrono>
 
 namespace gameui {
 
@@ -96,6 +102,76 @@ services::settings::KeyBindModel::Seams bindSeams() {
 	return seams;
 }
 
+// T12: the deferred `_restart`. Live-caught on the shipped engine: a
+// `_restart` that shares the command flush with the `_setvideomode` writes
+// it is meant to apply lets the in-process video re-init come up at the OLD
+// mode (the engine re-initializes the display from its startup snapshot, not
+// the freshly written registry values) - while the same writes followed by a
+// `_restart` on a LATER flush (the shipped page's own two-step behaviour, and
+// the raw-console repro) apply correctly, three live runs each way. The
+// production thunk therefore holds the restart for the next module frame:
+// the model still issues it as the last command of its transaction (offline
+// semantics unchanged), only the physical engine emission is deferred one
+// frame so the writes land in their own flush first.
+bool DeferredVideoRestart = false;
+
+// A confirmation raise queued by the same transaction that (re)starts the
+// video: presenting the page touches the Rml context, the bridge and the
+// document set - none of that may run in the same frame the engine is asked
+// to tear down and re-initialize the display (live-caught: an immediate
+// raise after the restart command left the process windowless). The frame
+// drain raises it once Context is back.
+bool DeferredVideoConfirmRaise = false;
+
+// The production video seams (T12): actual-mode/list reads through the
+// IGameUIFuncs vtable slots 5/6/7 (vgui2ext thunks), writes as the verbatim
+// engine commands through pfnClientCmd, the pending record through
+// abc::Config's atomic JSON writer, clocks through chrono.
+services::settings::VideoModeModel::Seams videoSeams() {
+	services::settings::VideoModeModel::Seams seams;
+	seams.actualMode = [](services::settings::VideoMode& out) {
+		return vgui2ext::currentVideoMode(out.Width, out.Height, out.Bpp, out.Windowed);
+	};
+	seams.modeList = [](services::settings::VideoMode* out, int max) {
+		vgui2ext::video::Mode buffer[services::settings::VideoModeModel::kMaxModes];
+		if (max > services::settings::VideoModeModel::kMaxModes)
+			max = services::settings::VideoModeModel::kMaxModes;
+		const int count = vgui2ext::videoModeList(buffer, max);
+		for (int i = 0; i < count; ++i) {
+			out[i].Width = buffer[i].Width;
+			out[i].Height = buffer[i].Height;
+			out[i].Bpp = buffer[i].Bpp;
+		}
+		return count;
+	};
+	seams.clientCmd = [](const char* command) {
+		if (command && std::strcmp(command, "_restart\n") == 0) {
+			DeferredVideoRestart = true; // never shares the flush with its writes
+			return true;
+		}
+		abc::EngineClientCmd(command);
+		return true; // handed to the engine buffer (same contract as bind writes)
+	};
+	seams.savePending = [](const services::settings::VideoPendingRecord& record) {
+		return services::settings::VideoPendingStore::save(record);
+	};
+	seams.loadPending = [](services::settings::VideoPendingRecord& out) {
+		return services::settings::VideoPendingStore::load(out);
+	};
+	seams.monotonicSeconds = [] {
+		using clock = std::chrono::steady_clock;
+		static const auto start = clock::now();
+		return std::chrono::duration<double>(clock::now() - start).count();
+	};
+	seams.wallMs = [] {
+		using clock = std::chrono::system_clock;
+		return static_cast<long long>(
+			std::chrono::duration_cast<std::chrono::milliseconds>(clock::now().time_since_epoch())
+				.count());
+	};
+	return seams;
+}
+
 // Mod-dir text file (kb_act.lst / kb_def.lst / valve_english.txt), decoded
 // from its shipped encoding (valve_english.txt is UTF-16LE - see
 // KeyBindModel::decodeResourceText). Empty on any failure - the bind model
@@ -126,6 +202,7 @@ public:
 		  CaptureOwner(this) {
 		SettingsModel.setSeams(settingsSeams());
 		BindModel.setSeams(bindSeams());
+		VideoModel.setSeams(videoSeams());
 		modules::registry().add(this);
 		services::nativeUiBridge().setMenuSink(this);
 		Instance = this;
@@ -146,11 +223,32 @@ public:
 		// HUD_Init guarded block only (plan 08 §4.9 red line).
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
 		abc::ADD_COMMAND("abc_ui_bind_status", bindStatusCommand);
+		abc::ADD_COMMAND("abc_ui_video_status", videoStatusCommand);
+		abc::ADD_COMMAND("abc_ui_video_scroll", videoScrollCommand);
+		abc::ADD_COMMAND("abc_ui_video_stage", videoStageCommand);
+		abc::ADD_COMMAND("abc_ui_video_apply", videoApplyCommand);
+		abc::ADD_COMMAND("abc_ui_video_keep", videoKeepCommand);
+		abc::ADD_COMMAND("abc_ui_video_revert", videoRevertCommand);
+		abc::ADD_COMMAND("abc_ui_video_window", videoWindowCommand);
 #endif
 	}
 
 	void onFrame(double frameTime) override {
 		(void)frameTime;
+		// T12: drain the deferred video restart FIRST and independently of
+		// menu presentation - the transaction owns it, not the page (see the
+		// DeferredVideoRestart note above).
+		const bool restartDrained = DeferredVideoRestart;
+		if (DeferredVideoRestart) {
+			DeferredVideoRestart = false;
+			abc::EngineClientCmd("_restart\n");
+		}
+		// The queued confirmation raise never shares a frame with a restart
+		// drain (see the DeferredVideoConfirmRaise note): one frame apart.
+		if (!restartDrained && DeferredVideoConfirmRaise && Context && VideoConfirm) {
+			DeferredVideoConfirmRaise = false;
+			raiseVideoConfirmation();
+		}
 		if (!MenuPresented || !Shell || !Context)
 			return;
 		// T11 bind verification beat: pfnClientCmd lands in the engine
@@ -159,6 +257,18 @@ public:
 		if (SettingsPresented && Settings && BindModel.hasQueued()) {
 			if (BindModel.verify())
 				Settings->render();
+		}
+		// T12 confirmation beat: the monotonic deadline runs on real time.
+		// The tick fires the auto-revert even when the window is hidden or
+		// unfocused - the deadline never extends. A revert/auto-resolve
+		// re-projects the dialog (or closes it) once.
+		if (VideoModel.awaitingConfirm()) {
+			const bool reverted = VideoModel.tick();
+			tickVideoTimeout();
+			if (reverted || !VideoModel.awaitingConfirm())
+				syncVideoConfirmPage();
+			else if (VideoConfirm)
+				VideoConfirm->render();
 		}
 		// Per-frame focus guard (T09 step 5): while the menu is presented,
 		// the context focus must stay inside one of the menu documents.
@@ -179,10 +289,17 @@ public:
 				&& (owner == Shell->document() || owner == (SubStub ? SubStub->document() : nullptr)
 					|| owner == (ConsoleStub ? ConsoleStub->document() : nullptr)
 					|| owner == (Settings ? Settings->document() : nullptr)
-					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)))
+					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)
+					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)))
 				return;
 		}
 		const auto& state = Controller.state();
+		// T12: the display-mode confirmation outranks every other surface -
+		// it holds the safe default focus while it is up.
+		if (VideoConfirmPresented && VideoConfirm) {
+			VideoConfirm->refocusDefault();
+			return;
+		}
 		if (state.overlays.contains(MenuOverlay::kConfirmQuit) && ConfirmQuit)
 			ConfirmQuit->refocusDefault();
 		else if (state.overlays.contains(MenuOverlay::kConsole) && ConsoleStub)
@@ -214,12 +331,21 @@ public:
 		Settings = std::make_unique<panels::settings::SettingsPage>();
 		Settings->setModel(&SettingsModel);
 		Settings->setBindModel(&BindModel);
+		Settings->setVideoModel(&VideoModel);
+		VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
+		VideoConfirm->setVideoModel(&VideoModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
 		wire(Shell);
 		wire(SubStub);
 		wire(ConsoleStub);
 		wire(Settings);
+		wire(VideoConfirm);
 		wire(ConfirmQuit);
+		// T12 startup recovery: a persisted unconfirmed-switch record drives
+		// the first presentation (confirmation window on the actual mode, or
+		// an automatic write-back of the old values). Runs once per engine
+		// session, before any menu may be raised.
+		resolveVideoRecovery();
 		// The takeover may have raised the menu before the context existed
 		// (cold-start activation runs ~1.5s ahead of Rml assembly): the
 		// pending show lands now, on the first context.
@@ -237,10 +363,12 @@ public:
 		SubStub.reset();
 		ConsoleStub.reset();
 		Settings.reset();
+		VideoConfirm.reset();
 		ConfirmQuit.reset();
 		Context = nullptr;
 		MenuPresented = false;
 		SettingsPresented = false;
+		VideoConfirmPresented = false;
 		LastStubPage = MenuPage::kMain;
 	}
 
@@ -460,8 +588,8 @@ private:
 			SettingsPresented = false;
 		}
 
-		// Overlay layer, top-most last (each show pulls to the context
-		// front); idempotent shows neither re-focus nor re-order.
+	// Overlay layer, top-most last (each show pulls to the context
+	// front); idempotent shows neither re-focus nor re-order.
 		if (state.overlays.contains(MenuOverlay::kConsole))
 			showStubPage(ConsoleStub.get(), MenuPage::kMain, true);
 		else
@@ -470,6 +598,10 @@ private:
 			ConfirmQuit->show();
 		else
 			ConfirmQuit->hide();
+		// T12: the confirmation page is the top-most layer of all - a page
+		// sync while it is up must not raise another document over it.
+		if (VideoConfirmPresented && VideoConfirm)
+			VideoConfirm->show();
 	}
 
 	// The settings page (T10/T11): fresh engine truth on every open (untouched
@@ -482,10 +614,120 @@ private:
 		if (!SettingsPresented) {
 			SettingsModel.snapshot();
 			BindModel.snapshot();
+			VideoModel.snapshot(); // fresh actual mode + enumerated list
 			Settings->render();
 			SettingsPresented = true;
 		}
 		Settings->show();
+	}
+
+	// --- T12 display-mode transaction ------------------------------------
+	// Startup recovery (onContextReady): a persisted unconfirmed-switch
+	// record either re-opens the confirmation window on the ACTUAL mode or
+	// auto-reverts to the old values (see VideoModeModel). Runs once per
+	// context; the record survives restarts, so this is the crash path too.
+	void resolveVideoRecovery() {
+		const auto outcome = VideoModel.resolveRecovery();
+		switch (outcome) {
+		case services::settings::VideoModeModel::RecoveryResult::kPending:
+			abc::ConsoleWarn("[AbcUi] display change awaiting confirmation (%s)\n",
+				services::settings::VideoModeModel::describe(VideoModel.actual()).c_str());
+			break;
+		case services::settings::VideoModeModel::RecoveryResult::kAutoReverted:
+			abc::ConsoleWarn("[AbcUi] unresolved display change restored to %s\n",
+				services::settings::VideoModeModel::describe(VideoModel.actual()).c_str());
+			break;
+		case services::settings::VideoModeModel::RecoveryResult::kAccepted:
+			abc::ConsoleWarn("[AbcUi] stale display-change record accepted as kept\n");
+			break;
+		case services::settings::VideoModeModel::RecoveryResult::kDeferred:
+			abc::ConsoleWarn("[AbcUi] display-change record kept (query interface missing)\n");
+			break;
+		case services::settings::VideoModeModel::RecoveryResult::kNoRecord:
+			break;
+		}
+		if (VideoModel.awaitingConfirm())
+			DeferredVideoConfirmRaise = true; // frame drain raises it (restart-safe)
+	}
+
+	// Applies the staged video change (Settings "video-apply" intent): the
+	// model persists the record, writes the changed commands and restarts
+	// the video in-process; the confirmation page is raised immediately (the
+	// documents survive the HUD_Shutdown/HUD_Init cycle - the record is the
+	// crash truth, these are only views).
+	void applyVideoChange() {
+		if (!VideoModel.available() || !VideoModel.hasStaged() || VideoModel.awaitingConfirm())
+			return;
+		if (!VideoModel.apply()) {
+			abc::ConsoleWarn("[AbcUi] display switch refused (record or command write failed)\n");
+			if (Settings)
+				Settings->render();
+			return;
+		}
+		// The restart is queued in the same transaction (deferred thunk) and
+		// the confirmation raise rides the frame drain: never from here.
+		DeferredVideoConfirmRaise = true;
+		if (Settings)
+			Settings->render();
+	}
+
+	void raiseVideoConfirmation() {
+		if (!VideoConfirm || !Context)
+			return;
+		// The takeover rule: the confirmation outranks everything else in
+		// the menu (it is the only way back from a bad mode). If the menu
+		// was not up, raise it through the bridge - the takeover keeps the
+		// original UI suppressed.
+		if (!MenuPresented)
+			services::nativeUiBridge().requestMenuUp(services::NativeUiOrigin::kOwnUi);
+		// The page covers the whole viewport: hide the other documents while
+		// it is up (the sync re-shows the right one when it closes).
+		if (Shell)
+			Shell->hide();
+		if (SubStub)
+			SubStub->hide();
+		if (ConsoleStub)
+			ConsoleStub->hide();
+		if (Settings)
+			Settings->hide();
+		VideoConfirmPresented = true;
+		VideoCountdownShown = VideoModel.remainingSeconds();
+		VideoConfirm->render();
+		VideoConfirm->show();
+	}
+
+	void closeVideoConfirmation() {
+		if (VideoConfirm)
+			VideoConfirm->hide();
+		VideoConfirmPresented = false;
+		VideoCountdownShown = -1;
+		if (MenuPresented)
+			syncMenuPresentation();
+	}
+
+	void syncVideoConfirmPage() {
+		if (!VideoConfirm)
+			return;
+		if (VideoModel.awaitingConfirm()) {
+			// Never raise inside a frame that issued engine commands: queue
+			// it for the frame drain (see DeferredVideoConfirmRaise).
+			if (!VideoConfirmPresented || !VideoConfirm->isVisible())
+				DeferredVideoConfirmRaise = true;
+		} else if (VideoConfirmPresented) {
+			closeVideoConfirmation();
+		}
+	}
+
+	// Countdown re-render throttle: once per second (the value only moves on
+	// second boundaries; per-frame DOM writes would be churn).
+	void tickVideoTimeout() {
+		if (!VideoConfirm || !VideoConfirmPresented)
+			return;
+		const int seconds = VideoModel.remainingSeconds();
+		if (seconds == VideoCountdownShown)
+			return;
+		VideoCountdownShown = seconds;
+		VideoConfirm->render();
 	}
 
 	// Points a stub window at one unfinished surface; kMain is the console
@@ -560,6 +802,34 @@ private:
 			startKeyCapture();
 			return; // no controller transition - the page state already moved
 		}
+		else if (intent == "video-apply") {
+			applyVideoChange();
+			return;
+		}
+		else if (intent == "video-keep") {
+			// Keep the confirmed mode; a refused confirmation stays put (the
+			// page re-renders the current truth).
+			if (VideoModel.confirm()) {
+				abc::ConsolePrint("[AbcUi] display change confirmed (%s)\n",
+					services::settings::VideoModeModel::describe(VideoModel.actual()).c_str());
+				syncVideoConfirmPage();
+			} else if (VideoConfirm) {
+				VideoConfirm->render();
+			}
+			return;
+		}
+		else if (intent == "video-revert") {
+			// Restore the previous mode; a refused write keeps the dialog up
+			// (the deadline retries every second, the record survives).
+			if (VideoModel.revert()) {
+				abc::ConsolePrint("[AbcUi] display change reverted to %s\n",
+					services::settings::VideoModeModel::describe(VideoModel.actual()).c_str());
+				syncVideoConfirmPage();
+			} else if (VideoConfirm) {
+				VideoConfirm->render();
+			}
+			return;
+		}
 		else {
 			abc::ConsoleWarn("[AbcUi] unknown menu action \"%s\" dropped\n", intent.c_str());
 			return;
@@ -580,6 +850,10 @@ private:
 			Settings->hide();
 		if (ConfirmQuit)
 			ConfirmQuit->hide();
+		// The video confirmation is NOT hidden by a generic hide: it must
+		// stay up until confirmed/reverted (a dismissal cannot silently
+		// abandon a mode the user has not confirmed). dismissMenu() calls
+		// this, so keep it visibly module-owned.
 		SettingsPresented = false;
 	}
 
@@ -615,6 +889,11 @@ private:
 			rmlui::cancelComposition();
 			return;
 		}
+		// T12: an outstanding display confirmation is modal - ESC is consumed
+		// (the dialog resolves by button or by its own deadline; a dismissal
+		// cannot silently abandon an unconfirmed mode).
+		if (VideoModel.awaitingConfirm())
+			return;
 		// The state machine owns the ESC semantics: pop one overlay, return
 		// from a sub page, or close+resume on the pause home (T04 table).
 		// The phase reconciles AFTER the toggle: a menu that survived a map
@@ -687,6 +966,139 @@ private:
 		}
 	}
 
+	// T12 diagnostics: the video seams step-by-step (query reachability,
+	// actual mode, enumerated count) without opening any page - bisects the
+	// query path from the page path during live debugging.
+	static void videoStatusCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		abc::ConsolePrint("[AbcUi] video: available=%d\n", self.VideoModel.available() ? 1 : 0);
+		services::settings::VideoMode actual;
+		const bool haveActual = vgui2ext::currentVideoMode(actual.Width, actual.Height, actual.Bpp,
+			actual.Windowed);
+		abc::ConsolePrint("[AbcUi] video: current=%d %s\n", haveActual ? 1 : 0,
+			haveActual ? services::settings::VideoModeModel::describe(actual).c_str() : "(unreadable)");
+		vgui2ext::video::Mode modes[64];
+		const int count = vgui2ext::videoModeList(modes, 64);
+		abc::ConsolePrint("[AbcUi] video: modes=%d first=%dx%d\n", count,
+			count > 0 ? modes[0].Width : 0, count > 0 ? modes[0].Height : 0);
+		self.VideoModel.snapshot();
+		abc::ConsolePrint("[AbcUi] video: snapshot actualKnown=%d staged=%d awaiting=%d\n",
+			self.VideoModel.actualKnown() ? 1 : 0, self.VideoModel.hasStaged() ? 1 : 0,
+			self.VideoModel.awaitingConfirm() ? 1 : 0);
+	}
+
+	// T12 diagnostic: scroll the settings panel (the scripted wheel injection
+	// is unreliable - T11 record; this only moves the scroll container for
+	// screenshot/verification purposes, exactly what the panelScroll field of
+	// abc_ui_bind_status reports).
+	static void videoScrollCommand() {
+		if (!Instance || !Instance->Settings || !Instance->Settings->document()) {
+			abc::ConsoleWarn("[AbcUi] settings page not open\n");
+			return;
+		}
+		Rml::Element* panel = Instance->Settings->document()->GetElementById("panel");
+		if (!panel) {
+			abc::ConsoleWarn("[AbcUi] settings panel missing\n");
+			return;
+		}
+		panel->SetScrollTop(panel->GetScrollHeight());
+		abc::ConsolePrint("[AbcUi] video: panel scrollTop=%.1f height=%.1f\n", panel->GetScrollTop(),
+			panel->GetScrollHeight());
+	}
+
+	// T12 diagnostics: drive the SAME module paths the page intents call
+	// (stage is model-direct in the page; apply/keep/revert are the module
+	// handlers) - scripted UI clicking is unreliable for the select/confirm
+	// buttons, the state machine under test is identical.
+	static void videoStageCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		self.VideoModel.snapshot();
+		// Args: width height (engine argv through the client engine funcs).
+		if (gEngfuncs.Cmd_Argc() < 3) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_video_stage <width> <height>\n");
+			return;
+		}
+		const int w = atoi(gEngfuncs.Cmd_Argv(1));
+		const int h = atoi(gEngfuncs.Cmd_Argv(2));
+		if (w <= 0 || h <= 0) {
+			abc::ConsoleWarn("[AbcUi] bad dimensions\n");
+			return;
+		}
+		if (!self.VideoModel.stageResolution(w, h)) {
+			abc::ConsoleWarn("[AbcUi] stage refused (not an enumerated mode)\n");
+			return;
+		}
+		abc::ConsolePrint("[AbcUi] video staged: %s\n",
+			services::settings::VideoModeModel::describe(self.VideoModel.stagedTarget()).c_str());
+		if (self.Settings && self.SettingsPresented)
+			self.Settings->render();
+	}
+
+	static void videoApplyCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		Instance->applyVideoChange();
+		abc::ConsolePrint("[AbcUi] video apply issued (awaiting=%d)\n",
+			Instance->VideoModel.awaitingConfirm() ? 1 : 0);
+	}
+
+	static void videoKeepCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (self.VideoModel.confirm()) {
+			abc::ConsolePrint("[AbcUi] video kept: %s\n",
+				services::settings::VideoModeModel::describe(self.VideoModel.actual()).c_str());
+			self.syncVideoConfirmPage();
+		} else {
+			abc::ConsoleWarn("[AbcUi] keep refused (kind=%d)\n",
+				static_cast<int>(self.VideoModel.confirmKind()));
+			self.syncVideoConfirmPage();
+		}
+	}
+
+	// T12 diagnostic: override the in-session confirmation window (seconds).
+	// Debug-only transport accommodation - the CLI's RCON channel rebuild
+	// after `_restart` can outlast the production 15s window, so keep/reject
+	// paths cannot be commanded before the auto-revert fires. 0 restores the
+	// production constant.
+	static void videoWindowCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		int seconds = 0;
+		if (gEngfuncs.Cmd_Argc() >= 2)
+			seconds = atoi(gEngfuncs.Cmd_Argv(1));
+		Instance->VideoModel.setConfirmWindowMsForTesting(seconds > 0 ? seconds * 1000 : 0);
+		abc::ConsolePrint("[AbcUi] video confirm window: %ds\n", seconds > 0 ? seconds : 15);
+	}
+
+	static void videoRevertCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (self.VideoModel.revert())
+			abc::ConsolePrint("[AbcUi] video reverted\n");
+		else
+			abc::ConsoleWarn("[AbcUi] revert refused/failed\n");
+		self.syncVideoConfirmPage();
+	}
+
 	static void menuPageCommand() {
 		if (!Instance || !Instance->Shell || !Instance->Context) {
 			abc::ConsoleWarn("[AbcUi] menu not available\n");
@@ -715,10 +1127,15 @@ private:
 	// on the next open.
 	services::settings::SettingsModel SettingsModel;
 	services::settings::KeyBindModel BindModel;
+	// T12 display-mode transaction: engine reads/writes + the persisted
+	// unconfirmed-switch record. Lives across HUD cycles like the other
+	// models (the record file is the crash truth; this is the cache).
+	services::settings::VideoModeModel VideoModel;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::menushared::MenuStubPage> ConsoleStub;
 	std::unique_ptr<panels::settings::SettingsPage> Settings;
+	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	// Router ownership while the menu is presented (T06); the document set
 	// mirrors it (dismissal / onOwnershipLost keep them in step).
@@ -733,6 +1150,12 @@ private:
 	// Whether the settings page is the presented surface (snapshot-on-open
 	// runs once per open, not on every sync).
 	bool SettingsPresented = false;
+	// T12: whether the confirmation page is up (module-owned truth; the DOM
+	// visibility follows it).
+	bool VideoConfirmPresented = false;
+	// Last countdown seconds value projected into the confirm page (the
+	// per-frame tick re-renders only when the shown second moves).
+	int VideoCountdownShown = -1;
 	// Monotonic phase-event sessions for reconcilePhase (the controller
 	// drops anything below its accepted session).
 	uint32_t NextPhaseSession = 1;

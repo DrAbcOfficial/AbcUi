@@ -209,3 +209,25 @@ Settings_BindBoundTo = is bound to
 Settings_BindConflictYes = Replace
 Settings_BindResetDefaults = Restore Key Defaults
 Settings_BindResetConfirm = Restore the default keys of the actions on this page? Entries pointing outside this page are left alone, and nothing is written until Apply.
+
+# T12 video settings
+Settings_VideoTitle = Video
+Settings_VideoResolution = Resolution
+Settings_VideoWindowed = Windowed mode
+Settings_VideoWindowedOn = Windowed
+Settings_VideoWindowedOff = Fullscreen
+Settings_VideoApply = Apply and Restart Video
+Settings_VideoActual = current
+Settings_VideoStaged = staged
+Settings_VideoNone = no change staged
+Settings_VideoAwaiting = a display change is awaiting confirmation
+Settings_VideoUnavailable = unavailable (display query interface missing)
+VideoConfirm_Title = Confirm display mode
+VideoConfirm_Lead = The new display mode is active. Keep it or restore the previous mode.
+VideoConfirm_NotApplied = The switch did not take effect - the current mode differs from the request. Restoring the previous mode.
+VideoConfirm_Unknown = The current display mode cannot be read. Restoring the previous mode.
+VideoConfirm_ActualLabel = actual mode:
+VideoConfirm_RequestedLabel = requested:
+VideoConfirm_Keep = Keep this mode
+VideoConfirm_Revert = Restore previous mode
+VideoConfirm_TimeoutTime = Restoring automatically in {0}s

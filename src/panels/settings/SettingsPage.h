@@ -33,6 +33,8 @@
 
 #include <functional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace Rml {
 class Event;
@@ -44,6 +46,7 @@ class SettingsModel;
 struct RowView;
 class KeyBindModel;
 struct BindRowView;
+class VideoModeModel;
 }
 }
 
@@ -62,6 +65,10 @@ public:
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 	void setModel(services::settings::SettingsModel* model) { Model = model; }
 	void setBindModel(services::settings::KeyBindModel* model) { BindModel = model; }
+	// T12 video rows: staging goes through the model directly (like the bind
+	// rows); the apply intent ("video-apply") is reported to the module, which
+	// owns the restart/confirmation presentation.
+	void setVideoModel(services::settings::VideoModeModel* model) { VideoModel = model; }
 
 	// Re-projects the whole model into the DOM. Safe while hidden. When
 	// `skipInputRow` is non-null, that row's text field keeps its exact
@@ -102,6 +109,7 @@ private:
 	void buildBindRows();
 	void renderRow(const services::settings::RowView& view, bool skipInput);
 	void renderBindRow(const services::settings::BindRowView& view);
+	void renderVideoSection();
 	void renderBindConflict();
 	void setBindStatusSummary();
 	void setStatusSummary();
@@ -117,6 +125,11 @@ private:
 	ActionSink Sink;
 	services::settings::SettingsModel* Model = nullptr;
 	services::settings::KeyBindModel* BindModel = nullptr;
+	services::settings::VideoModeModel* VideoModel = nullptr;
+	// The resolution options last projected into the <select> ("1920x1080"
+	// value strings). The mode list is engine-stable per session; the select
+	// is rebuilt only when the set actually changed (no per-render churn).
+	std::vector<std::pair<int, int>> VideoOptionsShown;
 	// Page-internal modal state: "" when no layer is up, else the layer's
 	// DOM id ("reset-confirm" / "leave-confirm" / "bind-conflict" /
 	// "bind-reset-confirm"). The truth for event routing, kept in lockstep

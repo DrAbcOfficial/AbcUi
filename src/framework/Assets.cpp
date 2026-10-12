@@ -62,6 +62,9 @@ void verifyInstalled() {
 		// T10 settings page.
 		{"abcui/rml/settings.rml", "settings document"},
 		{"abcui/rcss/settings.rcss", "settings stylesheet"},
+		// T12 video confirmation dialog.
+		{"abcui/rml/videoconfirm.rml", "video confirm document"},
+		{"abcui/rcss/videoconfirm.rcss", "video confirm stylesheet"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))

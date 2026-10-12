@@ -211,3 +211,25 @@ Settings_BindBoundTo = está asignada a
 Settings_BindConflictYes = Reemplazar
 Settings_BindResetDefaults = Restaurar teclas predeterminadas
 Settings_BindResetConfirm = ¿Restaurar las teclas predeterminadas de las acciones de esta página? Las entradas que apuntan fuera de esta página no se tocan y nada se escribe hasta aplicar.
+
+# T12 video settings
+Settings_VideoTitle = Vídeo
+Settings_VideoResolution = Resolución
+Settings_VideoWindowed = Modo ventana
+Settings_VideoWindowedOn = Ventana
+Settings_VideoWindowedOff = Pantalla completa
+Settings_VideoApply = Aplicar y reiniciar vídeo
+Settings_VideoActual = actual
+Settings_VideoStaged = preparado
+Settings_VideoNone = sin cambios preparados
+Settings_VideoAwaiting = un cambio de pantalla espera confirmación
+Settings_VideoUnavailable = no disponible (falta la interfaz de consulta)
+VideoConfirm_Title = Confirmar modo de pantalla
+VideoConfirm_Lead = El nuevo modo de pantalla está activo. Consérvalo o restaura el anterior.
+VideoConfirm_NotApplied = El cambio no surtió efecto: el modo actual difiere de la petición. Restaurando el modo anterior.
+VideoConfirm_Unknown = No se puede leer el modo de pantalla actual. Restaurando el modo anterior.
+VideoConfirm_ActualLabel = modo actual:
+VideoConfirm_RequestedLabel = solicitado:
+VideoConfirm_Keep = Conservar este modo
+VideoConfirm_Revert = Restaurar modo anterior
+VideoConfirm_TimeoutTime = Se restaurará automáticamente en {0}s

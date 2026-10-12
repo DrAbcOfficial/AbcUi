@@ -84,6 +84,8 @@ add_library(AbcUi MODULE
     src/services/EngineUiBackend.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp
+    src/services/settings/VideoModeModel.cpp
+    src/services/settings/VideoPendingStore.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
@@ -104,6 +106,7 @@ add_library(AbcUi MODULE
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
     src/panels/settings/SettingsPage.cpp
+    src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/weaponchoose/WeaponChoosePanel.cpp
     src/panels/popnum/PopNumPanel.cpp

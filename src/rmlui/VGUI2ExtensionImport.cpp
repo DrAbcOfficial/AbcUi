@@ -609,6 +609,87 @@ int keyStringToKeyNum(const char* name) {
 	return GameUIFuncs->Key_KeyStringToKeyNum(name);
 }
 
+// The engine's vmode_s is 3 x int32 {width, height, bpp} (hw.dll enumeration
+// array stride 0xc, pinned in the T12 execution record); the MetaHook header
+// only forward-declares the type, so the view is local.
+struct EngineVideoMode {
+	int Width;
+	int Height;
+	int Bpp;
+};
+
+// Engine-truthful mirror of the IGameUIFuncs vtable (T12 ABI trap): the
+// MetaHook header declares GetCurrentRenderer with THREE outputs, but the
+// shipped engine implementation (hw.dll 0x01dbddb0, reached through the
+// vtable slot at 0x01dbd310) reads SIX argument slots - (name, namelen,
+// windowed, hdmodels, addons, vid_level), each NULL-safe - and the shipped
+// GameUI calls it with six arguments (GameUI.dll FUN_1001cca0 calls slot
+// +0x1c with 6 args; the adjacent +0x18 slot with 3 for
+// GetCurrentVideoMode). Calling through the 3-arg declaration leaves the
+// last three stack slots undefined; the callee then writes through the
+// garbage "pointers" (live-caught: engine assert dump with the stack inside
+// FUN_01dbddb0 on the first settings-page open).
+//
+// The mirror keeps the declaration order (and therefore every vtable slot)
+// of IGameUIFuncs - the base-interface destructor stays the first entry,
+// which is what puts Key_NameForKey at index 2 / GetCurrentRenderer at
+// index 7, the same indices T11 pinned. Only this one signature differs.
+class EngineGameUIFuncs {
+public:
+	virtual ~EngineGameUIFuncs() = default;
+	virtual bool IsKeyDown(const char* keyname, bool& isdown) = 0;
+	virtual const char* Key_NameForKey(int keynum) = 0;
+	virtual const char* Key_BindingForKey(int keynum) = 0;
+	virtual int GetVGUI2KeyCodeForBind(const char* bind) = 0;
+	virtual void GetVideoModes(void** liststart, int* count) = 0;
+	virtual void GetCurrentVideoMode(int* wide, int* tall, int* bpp) = 0;
+	virtual void GetCurrentRenderer(char* name, int namelen, int* windowed, int* hdmodels,
+		int* addons, int* vidLevel) = 0;
+	virtual bool IsConnectedToVACSecureServer() = 0;
+	virtual int Key_KeyStringToKeyNum(const char* string) = 0;
+};
+
+bool currentVideoMode(int& width, int& height, int& bpp, bool& windowed) {
+	if (!GameUIFuncs)
+		return false;
+	int w = 0, h = 0, depth = 0;
+	GameUIFuncs->GetCurrentVideoMode(&w, &h, &depth); // 3 outputs: header matches
+	if (w <= 0 || h <= 0)
+		return false;
+	char renderer[64] = {};
+	int windowedFlag = 0;
+	// The three extra outputs (hdmodels/addons/vid_level) are out of the T12
+	// surface but MUST be passed: they are real argument slots of the engine
+	// function, not optional. Scratch locals, values unused here.
+	int hdmodels = 0, addons = 0, vidLevel = 0;
+	auto* engine = reinterpret_cast<EngineGameUIFuncs*>(GameUIFuncs);
+	engine->GetCurrentRenderer(renderer, static_cast<int>(sizeof(renderer)), &windowedFlag, &hdmodels,
+		&addons, &vidLevel);
+	width = w;
+	height = h;
+	bpp = depth;
+	windowed = windowedFlag != 0;
+	return true;
+}
+
+int videoModeList(video::Mode* out, int max) {
+	if (!GameUIFuncs || !out || max <= 0)
+		return 0;
+	EngineVideoMode* list = nullptr;
+	int count = 0;
+	GameUIFuncs->GetVideoModes(reinterpret_cast<struct vmode_s**>(&list), &count);
+	if (!list || count <= 0)
+		return 0;
+	if (count > max)
+		count = max;
+	for (int i = 0; i < count; ++i) {
+		out[i].Width = list[i].Width;
+		out[i].Height = list[i].Height;
+		out[i].Bpp = list[i].Bpp;
+	}
+	return count;
+}
+
 bool centerAndUnlockCursor() {
 	if (!Surface2)
 		return false;

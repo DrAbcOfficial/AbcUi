@@ -19,6 +19,21 @@
 		<h2 id="bind-title">#Settings_KeysTitle</h2>
 		<div id="bind-status"></div>
 		<div id="bindrows"></div>
+		<h2 id="video-title">#Settings_VideoTitle</h2>
+		<div id="video-section">
+			<div class="row" id="video-row-resolution">
+				<div class="row-label">#Settings_VideoResolution</div>
+				<select class="video-select" id="video-resolution"></select>
+			</div>
+			<div class="row" id="video-row-windowed">
+				<div class="row-label">#Settings_VideoWindowed</div>
+				<button class="row-toggle" id="video-windowed" data-action="video-toggle-windowed"></button>
+			</div>
+			<div id="video-status"></div>
+			<div id="video-actions">
+				<button id="video-apply" data-action="video-apply" data-label="#Settings_VideoApply">#Settings_VideoApply</button>
+			</div>
+		</div>
 	</div>
 	<div id="settings-actions">
 		<button id="settings-apply" data-action="apply" data-label="#Settings_Apply" autofocus="autofocus">#Settings_Apply</button>

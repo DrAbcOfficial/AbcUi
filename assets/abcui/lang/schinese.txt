@@ -211,3 +211,25 @@ Settings_BindBoundTo = 当前绑定为
 Settings_BindConflictYes = 替换
 Settings_BindResetDefaults = 恢复默认按键
 Settings_BindResetConfirm = 将本页动作的按键恢复为默认值？指向本页之外绑定（如控制台）的条目不会改动，且在点击应用前不会写入。
+
+# T12 video settings
+Settings_VideoTitle = 视频
+Settings_VideoResolution = 分辨率
+Settings_VideoWindowed = 窗口模式
+Settings_VideoWindowedOn = 窗口化
+Settings_VideoWindowedOff = 全屏
+Settings_VideoApply = 应用并重启视频
+Settings_VideoActual = 当前
+Settings_VideoStaged = 待应用
+Settings_VideoNone = 无待应用变更
+Settings_VideoAwaiting = 有显示模式变更等待确认
+Settings_VideoUnavailable = 不可用（缺少显示查询接口）
+VideoConfirm_Title = 确认显示模式
+VideoConfirm_Lead = 新的显示模式已生效。保留它，或恢复之前的模式。
+VideoConfirm_NotApplied = 切换未生效——当前模式与请求不一致。正在恢复之前的模式。
+VideoConfirm_Unknown = 无法读取当前显示模式。正在恢复之前的模式。
+VideoConfirm_ActualLabel = 实际模式：
+VideoConfirm_RequestedLabel = 请求模式：
+VideoConfirm_Keep = 保留此模式
+VideoConfirm_Revert = 恢复之前的模式
+VideoConfirm_TimeoutTime = {0} 秒后自动恢复

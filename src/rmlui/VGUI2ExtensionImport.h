@@ -55,6 +55,25 @@ const char* keyBindingForKey(int keynum);
 // a key name, -1 for unknown / unavailable.
 int keyStringToKeyNum(const char* name);
 
+namespace video {
+struct Mode {
+	int Width = 0;
+	int Height = 0;
+	int Bpp = 0;
+};
+}
+
+// T12: IGameUIFuncs::GetCurrentVideoMode / GetCurrentRenderer (slots 6/7;
+// hw.dll 0x01dbd2f0/0x01dbd310) - the ACTUAL current mode plus the windowed
+// flag. false when the engine interface is unavailable or the mode is
+// unreadable.
+bool currentVideoMode(int& width, int& height, int& bpp, bool& windowed);
+
+// T12: IGameUIFuncs::GetVideoModes (slot 5; hw.dll 0x01dbd2d0) - copies up
+// to `max` enumerated modes, returns the full enumerated count (0 when
+// unavailable). The caller owns the buffer.
+int videoModeList(video::Mode* out, int max);
+
 // Centers the OS cursor on the game window and unlocks it (scoreboard
 // pointer mode; old EnableMousePointer + vgui UnlockCursor). Returns false
 // when the surface interface is missing.
