@@ -74,3 +74,23 @@ add_executable(abc_ui_menu_state MenuStateMachine.cpp
     "${PROJECT_SOURCE_DIR}/src/modules/gameui/MenuController.cpp")
 target_include_directories(abc_ui_menu_state PRIVATE "${PROJECT_SOURCE_DIR}/src")
 add_test(NAME abc_ui_menu_state COMMAND abc_ui_menu_state)
+
+# T05: interactive-document owner acceptance. Links the real
+# InteractiveDocument/MainMenuPage translation units against static RmlUi
+# with a no-op renderer; the page case loads the shipped abcui assets (ctest
+# runs from the assets directory), so the load also validates the RML/RCSS.
+add_executable(abc_ui_interactive InteractiveDocument.cpp
+    "${PROJECT_SOURCE_DIR}/src/framework/InteractiveDocument.cpp"
+    "${PROJECT_SOURCE_DIR}/src/framework/Localization.cpp"
+    "${PROJECT_SOURCE_DIR}/src/panels/mainmenu/MainMenuPage.cpp")
+target_include_directories(abc_ui_interactive PRIVATE
+    "${PROJECT_SOURCE_DIR}/src"
+    "${METAHOOK_INCLUDE_DIR}"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/engine"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/common"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/cl_dll"
+    "${METAHOOK_INCLUDE_DIR}/HLSDK/public")
+target_link_libraries(abc_ui_interactive PRIVATE RmlUi::RmlUi Abc::Core)
+add_test(NAME abc_ui_interactive COMMAND abc_ui_interactive)
+set_tests_properties(abc_ui_interactive PROPERTIES
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}/assets")

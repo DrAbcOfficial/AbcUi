@@ -128,3 +128,11 @@ Team_XracePitdrone = Pit drones
 Team_XraceShock = Shock troopers
 Team_Barnacle = Barnacles
 Team_Unknown = Unknown
+
+# Main menu (T05 minimal page)
+MainMenu_Title = AbcUi menu (work in progress)
+MainMenu_Action = Action (fake)
+MainMenu_FocusNone = (no focus)
+MainMenu_Text = Text field
+MainMenu_Close = Close
+MainMenu_Return = Return

@@ -1,0 +1,16 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
+</head>
+<body id="mainmenu">
+	<div id="panel">
+		<h1 id="title">#MainMenu_Title</h1>
+		<div id="focus-status">#MainMenu_FocusNone</div>
+		<button id="action-button" data-action="action" data-label="#MainMenu_Action" autofocus="autofocus">#MainMenu_Action</button>
+		<input id="text-field" type="text" data-label="#MainMenu_Text"/>
+		<button id="close-button" data-action="close" data-label="#MainMenu_Close">#MainMenu_Close</button>
+		<button id="return-button" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
+	</div>
+</body>
+</rml>

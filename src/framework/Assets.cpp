@@ -56,6 +56,9 @@ void verifyInstalled() {
 		{"abcui/rml/radar.rml", "radar document"},
 		{"abcui/img/radar/radar_background.png", "radar plate art"},
 		{"abcui/img/radar/radar_mask.png", "radar square mask"},
+		// T05 interactive documents.
+		{"abcui/rml/mainmenu.rml", "main menu document"},
+		{"abcui/rcss/mainmenu.rcss", "main menu stylesheet"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))
