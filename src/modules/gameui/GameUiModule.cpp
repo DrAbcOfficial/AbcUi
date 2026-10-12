@@ -28,11 +28,13 @@
 #include "../../framework/Localization.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
+#include "../../panels/settings/SettingsPage.h"
 #include "../../rmlui/InputBridge.h"
 #include "../../rmlui/TextInput.h"
 #include "../../rmlui/VGUI2ExtensionImport.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
+#include "../../services/settings/SettingsModel.h"
 #include "MenuController.h"
 
 namespace gameui {
@@ -56,6 +58,22 @@ services::EngineUiBackend& menuBackend() {
 	return backend;
 }
 
+// The production cvar seams for the settings model (T10): reads through the
+// cvar pointer, writes through the engine Cvar_SetValue API - never a
+// concatenated "name value" command string.
+services::settings::SettingsModel::Seams settingsSeams() {
+	services::settings::SettingsModel::Seams seams;
+	seams.exists = [](const char* name) { return abc::CVAR_GET_POINTER(name) != nullptr; };
+	seams.readFloat = [](const char* name) { return abc::CVAR_GET_FLOAT(name); };
+	seams.writeFloat = [](const char* name, float value) {
+		if (!abc::CVAR_GET_POINTER(name))
+			return false;
+		abc::CVAR_SET_FLOAT(name, value);
+		return true;
+	};
+	return seams;
+}
+
 using gameui::menu::EventKind;
 using gameui::menu::MenuEvent;
 using gameui::menu::MenuOverlay;
@@ -64,7 +82,9 @@ using gameui::menu::MenuPage;
 class GameUiModule final : public modules::IUiModule, private framework::uiinput::Owner, private services::INativeMenuSink {
 public:
 	GameUiModule()
-		: Controller(&menuBackend()) {
+		: Controller(&menuBackend()), SettingsModel(services::settings::FirstBatchRows,
+			  services::settings::FirstBatchCount) {
+		SettingsModel.setSeams(settingsSeams());
 		modules::registry().add(this);
 		services::nativeUiBridge().setMenuSink(this);
 		Instance = this;
@@ -101,6 +121,7 @@ public:
 			if (owner && owner->IsVisible()
 				&& (owner == Shell->document() || owner == (SubStub ? SubStub->document() : nullptr)
 					|| owner == (ConsoleStub ? ConsoleStub->document() : nullptr)
+					|| owner == (Settings ? Settings->document() : nullptr)
 					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)))
 				return;
 		}
@@ -114,6 +135,8 @@ public:
 				Shell->showSection(state.pages.top() == MenuPage::kMain
 					? panels::mainmenu::MainMenuPage::Section::kMain
 					: panels::mainmenu::MainMenuPage::Section::kPause, true);
+			} else if (state.pages.top() == MenuPage::kSettings && Settings) {
+				Settings->refocusDefault();
 			} else if (SubStub) {
 				SubStub->refocusDefault();
 			}
@@ -131,10 +154,13 @@ public:
 		Shell = std::make_unique<panels::mainmenu::MainMenuPage>();
 		SubStub = std::make_unique<panels::menushared::MenuStubPage>("menusub", "abcui/rml/menustub.rml");
 		ConsoleStub = std::make_unique<panels::menushared::MenuStubPage>("menuconsole", "abcui/rml/consolestub.rml");
+		Settings = std::make_unique<panels::settings::SettingsPage>();
+		Settings->setModel(&SettingsModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
 		wire(Shell);
 		wire(SubStub);
 		wire(ConsoleStub);
+		wire(Settings);
 		wire(ConfirmQuit);
 		// The takeover may have raised the menu before the context existed
 		// (cold-start activation runs ~1.5s ahead of Rml assembly): the
@@ -151,9 +177,11 @@ public:
 		Shell.reset();
 		SubStub.reset();
 		ConsoleStub.reset();
+		Settings.reset();
 		ConfirmQuit.reset();
 		Context = nullptr;
 		MenuPresented = false;
+		SettingsPresented = false;
 		LastStubPage = MenuPage::kMain;
 	}
 
@@ -263,9 +291,10 @@ private:
 		const bool multiplayer = menuBackend().maxClientsFact() > 1;
 		Shell->setEntryVisible("playerlist", multiplayer);
 
-		// Page layer: the shell carries the two home sections, every other
-		// page lands on the not-yet-implemented stub (parity TODO visible,
-		// original windows never opened - T09 step 2).
+		// Page layer: the shell carries the two home sections; the settings
+		// page (T10) is the first real sub page; every other page lands on
+		// the not-yet-implemented stub (parity TODO visible, original
+		// windows never opened - T09 step 2).
 		bool shellVisible = false;
 		if (!state.pages.empty()) {
 			const bool overlaysHoldFocus = !state.overlays.empty();
@@ -285,6 +314,9 @@ private:
 				Shell->showSection(section, !overlaysHoldFocus);
 				break;
 			}
+			case MenuPage::kSettings:
+				presentSettingsPage();
+				break;
 			default:
 				showStubPage(SubStub.get(), state.pages.top(), false);
 				break;
@@ -294,6 +326,11 @@ private:
 			SubStub->hide();
 		else
 			Shell->hide();
+		if (state.pages.empty() || state.pages.top() != MenuPage::kSettings) {
+			if (Settings)
+				Settings->hide();
+			SettingsPresented = false;
+		}
 
 		// Overlay layer, top-most last (each show pulls to the context
 		// front); idempotent shows neither re-focus nor re-order.
@@ -305,6 +342,21 @@ private:
 			ConfirmQuit->show();
 		else
 			ConfirmQuit->hide();
+	}
+
+	// The settings page (T10): fresh engine truth on every open (untouched
+	// rows follow silently, pending drafts surface as conflicts), then the
+	// page projects the model. Re-opening after a force-dismiss keeps the
+	// drafts - the model's conflict rule prompts instead of overwriting.
+	void presentSettingsPage() {
+		if (!Settings)
+			return;
+		if (!SettingsPresented) {
+			SettingsModel.snapshot();
+			Settings->render();
+			SettingsPresented = true;
+		}
+		Settings->show();
 	}
 
 	// Points a stub window at one unfinished surface; kMain is the console
@@ -388,8 +440,11 @@ private:
 			SubStub->hide();
 		if (ConsoleStub)
 			ConsoleStub->hide();
+		if (Settings)
+			Settings->hide();
 		if (ConfirmQuit)
 			ConfirmQuit->hide();
+		SettingsPresented = false;
 	}
 
 	void focusLog(const char* phase) {
@@ -429,6 +484,16 @@ private:
 		// The phase reconciles AFTER the toggle: a menu that survived a map
 		// load (stale no-map phase) closes on the phase arrival instead of
 		// re-opening as Pause from the cleared stack.
+		// T10 exception: ESC on a dirty settings page is consumed by the
+		// unsaved-changes prompt (second press dismisses it = stay) - the
+		// controller's plain pop would silently discard the drafts.
+		if (Controller.state().overlays.empty()
+			&& Controller.state().pages.topIs(MenuPage::kSettings) && Settings
+			&& Settings->isDirty()) {
+			Settings->requestLeave();
+			syncMenuPresentation();
+			return;
+		}
 		Controller.dispatch(MenuEvent{EventKind::kMenuToggle});
 		reconcilePhase();
 		syncMenuPresentation();
@@ -465,9 +530,14 @@ private:
 
 	Rml::Context* Context = nullptr;
 	gameui::menu::MenuController Controller;
+	// T10 settings domain: the description-table model (engine truth via the
+	// cvar seams) and its page projection. The model outlives the document -
+	// drafts survive a force-dismiss and conflict on the next open.
+	services::settings::SettingsModel SettingsModel;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::menushared::MenuStubPage> ConsoleStub;
+	std::unique_ptr<panels::settings::SettingsPage> Settings;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	// Router ownership while the menu is presented (T06); the document set
 	// mirrors it (dismissal / onOwnershipLost keep them in step).
@@ -475,6 +545,9 @@ private:
 	// Whether THIS module presented the menu (vs. the bridge being up before
 	// Rml was ready). Mirrors the bridge's PageShown.
 	bool MenuPresented = false;
+	// Whether the settings page is the presented surface (snapshot-on-open
+	// runs once per open, not on every sync).
+	bool SettingsPresented = false;
 	// Monotonic phase-event sessions for reconcilePhase (the controller
 	// drops anything below its accepted session).
 	uint32_t NextPhaseSession = 1;

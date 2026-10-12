@@ -1,0 +1,130 @@
+/* settings.rcss - T10 settings page. Layout in dp only (context density
+   ratio scales); element defaults are explicit because RmlUi ships no
+   user-agent stylesheet. Shared panel/button styling comes from
+   mainmenu.rcss (same #panel frame and button rules). */
+
+#settings-status {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	height: 14dp;
+	line-height: 14dp;
+	margin-bottom: 10dp;
+}
+
+#rows {
+	display: block;
+	width: 100%;
+}
+
+/* One description-table row per block: label, control, status line. */
+.row {
+	display: block;
+	margin-bottom: 10dp;
+}
+
+.row-label {
+	display: block;
+	font-size: 10dp;
+	color: #e8e8e8;
+	margin-bottom: 4dp;
+}
+
+.row-input {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 24dp;
+	line-height: 22dp;
+	background-color: #0a0d10;
+	color: #dedede;
+	font-size: 10dp;
+	padding: 0dp 6dp;
+	border: 1dp #3a4148;
+	tab-index: auto;
+	white-space: nowrap;
+}
+
+.row-input:focus {
+	border: 1dp #00ff00;
+	background-color: #0e1418;
+}
+
+.row-input caret {
+	display: inline-block;
+	background-color: #e8e8e8;
+}
+
+.row-toggle {
+	display: inline-block;
+	width: auto;
+	min-width: 64dp;
+	height: 24dp;
+	line-height: 24dp;
+	text-align: center;
+	background-color: #1c2329;
+	color: #e8e8e8;
+	font-size: 10dp;
+	border: 1dp #3a4148;
+	tab-index: auto;
+}
+
+.row-toggle:hover {
+	background-color: #232b32;
+}
+
+.row-toggle:focus {
+	background-color: #144d14;
+	border: 1dp #00ff00;
+	color: #ffffff;
+}
+
+.row-status {
+	display: block;
+	font-size: 8dp;
+	color: #8a9199;
+	margin-top: 2dp;
+}
+
+/* Unavailable rows (cvar not registered): greyed, still readable. */
+.row-missing {
+	color: #6a7178;
+	opacity: 0.6;
+}
+
+#settings-actions {
+	display: block;
+	margin-top: 12dp;
+}
+
+#settings-actions button {
+	display: inline-block;
+	margin-right: 8dp;
+	margin-bottom: 0dp;
+}
+
+/* Page-internal confirm layers cover the panel; hidden until the page
+   turns the display property on (the layer member tracks the state - a
+   SetProperty lands at the next layout frame). */
+.settings-layer {
+	display: none;
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	right: 0dp;
+	bottom: 0dp;
+	background-color: #101418f2;
+	padding: 16dp;
+}
+
+.settings-layer p {
+	display: block;
+	font-size: 10dp;
+	color: #dedede;
+	margin-bottom: 12dp;
+}
+
+.settings-layer button {
+	display: inline-block;
+	margin-right: 8dp;
+}

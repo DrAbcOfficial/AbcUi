@@ -59,6 +59,9 @@ void verifyInstalled() {
 		// T05 interactive documents.
 		{"abcui/rml/mainmenu.rml", "main menu document"},
 		{"abcui/rcss/mainmenu.rcss", "main menu stylesheet"},
+		// T10 settings page.
+		{"abcui/rml/settings.rml", "settings document"},
+		{"abcui/rcss/settings.rcss", "settings stylesheet"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))
