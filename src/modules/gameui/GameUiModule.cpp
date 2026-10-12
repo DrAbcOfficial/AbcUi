@@ -4,30 +4,34 @@
 // the context, so the page is built in onContextReady and released in
 // onShutdown while the context still exists).
 //
-// The Debug-only abc_ui_menu_page command is the "not formally taken over"
-// diagnostic mode of the T05 acceptance: it toggles the page over the
-// existing menus and reuses the existing UI-mouse owner flag (the
-// scoreboard pointer-mode seam) so the page is mouse-reachable. It is NOT
-// input ownership: keyboard arbitration lands in T06, typed characters in
-// T07, and the original GameUI stays untouched (suppression is T08).
+// T06: the diagnostic page toggle rides the real input-ownership stack -
+// the module is a framework::uiinput::Owner at the menu tier. While the
+// page owns input it claims every key edge (whatever the page does not use
+// must still not leak into bindings) and the wheel; ESC runs the close
+// action exactly once per physical press (the router fires it on the down
+// transition only); keyup pairing, pre-held passthrough and focus-loss
+// cleanup are the router's. This is per-owner routing, NOT the T08
+// takeover (the original GameUI stays untouched) and not text input (T07).
 #include "../Module.h"
 
 #include <RmlUi/Core/Context.h>
 
 #include <abc/Console.h>
 
+#include <keydefs.h>
+
 #include "../../panels/mainmenu/MainMenuPage.h"
+#include "../../rmlui/InputBridge.h"
 
 #ifndef NDEBUG
 #include <abc/CvarCmd.h>
-#include "../../rmlui/RmlUiModule.h"
 #endif
 
 namespace gameui {
 
 namespace {
 
-class GameUiModule final : public modules::IUiModule {
+class GameUiModule final : public modules::IUiModule, private framework::uiinput::Owner {
 public:
 	GameUiModule() {
 		modules::registry().add(this);
@@ -68,12 +72,36 @@ public:
 
 	void onShutdown() override {
 		// Context still alive here: the page closes its document and drops
-		// every listener before the DOM dies (module contract).
+		// every listener before the DOM dies (module contract). The token
+		// releases first - a stale no-op when the router already reset.
+		PageToken.release();
 		Page.reset();
 		Context = nullptr;
 	}
 
 private:
+	// framework::uiinput::Owner (menu tier, T06).
+	bool claimsKey(int down, int keynum) override {
+		(void)down;
+		(void)keynum;
+		return true;
+	}
+	bool claimsWheel() override { return true; }
+	void onClaimedKeyDown(int keynum) override {
+		// Exactly once per physical press (the router suppresses auto-repeat
+		// here); the release pairs the just-fed ESC down inside the router.
+		if (keynum == K_ESCAPE && Page && Page->isVisible()) {
+			Page->hide();
+			PageToken.release();
+		}
+	}
+	void onOwnershipLost() override {
+		// Force-release (focus loss / teardown): stay one truth - hide the
+		// page without touching the (already stale) token.
+		if (Page && Page->isVisible())
+			Page->hide();
+	}
+
 #ifndef NDEBUG
 	static void menuPageCommand() {
 		if (!Instance || !Instance->Page || !Instance->Context) {
@@ -82,15 +110,14 @@ private:
 		}
 		if (Instance->Page->isVisible()) {
 			Instance->Page->hide();
-			rmlui::setUiMouseOwner(false);
+			Instance->PageToken.release();
 			abc::ConsolePrint("[AbcUi] menu page hidden\n");
 			return;
 		}
 		Instance->Page->show();
-		// Diagnostic reachability, not input ownership (see header note):
-		// the page must be mouse-hit-testable over the existing menus before
-		// T06 lands the real ownership stack.
-		rmlui::setUiMouseOwner(true);
+		// Real ownership token (T06): the page claims keys/wheel; mouse
+		// reachability rides the router exclusivity like the pointer mode.
+		Instance->PageToken = rmlui::uiRouter().acquire(Instance, framework::uiinput::OwnerTier::kMenu);
 		if (Rml::Element* focus = Instance->Context->GetFocusElement())
 			abc::ConsolePrint("[AbcUi] menu page shown, focus on '%s' (doc '%s')\n",
 				focus->GetId().c_str(),
@@ -104,6 +131,9 @@ private:
 
 	Rml::Context* Context = nullptr;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Page;
+	// Router ownership while the page is shown (T06); the page's visibility
+	// mirrors it (onOwnershipLost / onClaimedKeyDown keep them in step).
+	framework::uiinput::Token PageToken;
 };
 
 GameUiModule* GameUiModule::Instance = nullptr;

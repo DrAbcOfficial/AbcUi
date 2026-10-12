@@ -63,6 +63,7 @@ add_library(AbcUi MODULE
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp
     src/framework/InteractiveDocument.cpp
+    src/framework/UiInputRouter.cpp
     src/framework/Localization.cpp
     src/data/Avatars.cpp
     src/data/HudState.cpp

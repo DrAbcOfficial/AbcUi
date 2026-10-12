@@ -233,6 +233,10 @@ void init() {
 }
 
 void shutdown() {
+	// Ownership first (T06): tokens release and the pairing cleanups run
+	// while every owner can still clean up and the context (for the synth
+	// UI keyups) still exists.
+	uiRouter().reset();
 	if (!Initialised) {
 		// HUD_Init can arm modules before the first HUD_Frame creates a context.
 		modules::registry().shutdownAll();

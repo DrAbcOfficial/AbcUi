@@ -65,11 +65,11 @@ void onKeyEvent(int down, int keynum);
 // called while a scrollable UI consumer owns the wheel.
 void onWheel(int down, int keynum);
 // Engine surface WndProc messages (vgui2ext BaseUI callback, R-4 batch C):
-// UI-level mouse motion/buttons for the Rml context. Observation-only.
+// UI-level mouse motion/buttons for the Rml context, plus focus-loss
+// observation (T06). Observation-only - the message result is never set.
 void onSurfaceWndProc(unsigned int msg, unsigned int wparam, long lparam);
-// InputBridge pointer-mode ownership (scoreboard setMouseMode): forces the
-// mouse gate open even while the engine-side cursor visibility stays hidden.
-void setUiMouseOwner(bool owner);
+// True while any owner holds UI input (rmlui::uiRouter exclusivity): the
+// engine-side gates in hooks.cpp read this (T06 ownership stack).
 bool uiMouseOwner();
 // HUD_Shutdown: full teardown (context/docs die with the client state).
 void onHudShutdown();
