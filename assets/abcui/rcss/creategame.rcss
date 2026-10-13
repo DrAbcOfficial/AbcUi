@@ -1,0 +1,106 @@
+/* creategame.rcss - T19 create-local-game page. All units dp (the context
+   density ratio scales; the logical screen is 640x480dp, Theme::applyScale).
+   Every region is ABSOLUTELY positioned with explicit dp width/height - the
+   T16 console / T18 browser recipe: an in-flow auto-width block collapsed to
+   a zero-width client box on the live context. The panel is 400dp wide so it
+   fits the logical screen with margins; the map select is a real form control
+   (keyboard reachable, T13 pin). */
+
+#cg-panel {
+	position: absolute;
+	left: 110dp;
+	top: 40dp;
+	width: 420dp;
+	height: 396dp;
+	background-color: #101418ee;
+	border: 1dp #3a4148;
+}
+
+#cg-title {
+	position: absolute;
+	left: 16dp;
+	top: 10dp;
+	width: 380dp;
+	height: 24dp;
+	line-height: 24dp;
+	font-size: 16dp;
+	font-weight: bold;
+	color: #00ff00;
+}
+
+.cg-label {
+	position: absolute;
+	left: 16dp;
+	width: 90dp;
+	height: 20dp;
+	line-height: 20dp;
+	font-size: 9dp;
+	color: #c8c8c8;
+}
+
+#cg-map-label { top: 46dp; }
+#cg-players-label { top: 82dp; }
+#cg-name-label { top: 118dp; }
+#cg-password-label { top: 154dp; }
+
+#cg-map {
+	position: absolute;
+	left: 110dp;
+	top: 44dp;
+	width: 292dp;
+	height: 24dp;
+	font-size: 9dp;
+}
+
+#cg-players {
+	position: absolute;
+	left: 110dp;
+	top: 80dp;
+	width: 80dp;
+	height: 24dp;
+	font-size: 9dp;
+}
+
+#cg-name {
+	position: absolute;
+	left: 110dp;
+	top: 116dp;
+	width: 292dp;
+	height: 24dp;
+	font-size: 9dp;
+}
+
+#cg-password {
+	position: absolute;
+	left: 110dp;
+	top: 152dp;
+	width: 292dp;
+	height: 24dp;
+	font-size: 9dp;
+}
+
+#cg-hint {
+	position: absolute;
+	left: 16dp;
+	top: 190dp;
+	width: 388dp;
+	height: 40dp;
+	font-size: 9dp;
+	color: #ff8866;
+}
+
+#cg-actions {
+	position: absolute;
+	left: 16dp;
+	top: 336dp;
+	width: 388dp;
+	height: 32dp;
+}
+
+#cg-actions button {
+	display: inline-block;
+	width: 150dp;
+	height: 28dp;
+	line-height: 28dp;
+	margin-right: 10dp;
+}

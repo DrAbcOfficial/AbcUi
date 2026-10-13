@@ -19,11 +19,14 @@
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
+#include <RmlUi/Core/Elements/ElementFormControl.h>
 #include <RmlUi/Debugger.h>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
 #include <abc/Paths.h>
+#include <abc/Plugin.h>
 
 #include <keydefs.h>
 #include <ivoicetweak.h>
@@ -34,6 +37,7 @@
 
 #include "../../framework/Localization.h"
 #include "../../panels/console/ConsolePage.h"
+#include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
@@ -47,6 +51,7 @@
 #include "../../services/GameUiBridge.h"
 #include "../../services/console/ConsoleBackend.h"
 #include "../../services/console/ConsoleBuffer.h"
+#include "../../services/creategame/CreateGameModel.h"
 #include "../../services/loading/LoadingModel.h"
 #include "../../services/serverbrowser/ServerFavorites.h"
 #include "../../services/serverbrowser/ServerListModel.h"
@@ -82,6 +87,30 @@ services::EngineUiBackend& menuBackend() {
 		return created;
 	}();
 	return backend;
+}
+
+// T19: the engine seams of the create-game launcher. The cvar reads/writes go
+// through the same typed API the settings model uses (never a concatenated
+// command), the constant actions through pfnClientCmd (the module's standard
+// command seam).
+services::creategame::CreateGameModel::Seams createGameSeams() {
+	services::creategame::CreateGameModel::Seams seams;
+	seams.readCvar = [](const char* name) -> const char* {
+		const cvar_t* cvar = abc::CVAR_GET_POINTER(name);
+		return cvar ? cvar->string : nullptr;
+	};
+	seams.writeCvarString = [](const char* name, const char* value) {
+		if (!abc::CVAR_GET_POINTER(name) || !value)
+			return false;
+		abc::CVAR_SET_STRING(name, value);
+		return true;
+	};
+	seams.clientCmd = [](const char* command) {
+		if (!command)
+			return;
+		abc::EngineClientCmd(command);
+	};
+	return seams;
 }
 
 // The production cvar seams for the settings model (T10): reads through the
@@ -372,6 +401,12 @@ public:
 		BindModel.setSeams(bindSeams());
 		VideoModel.setSeams(videoSeams());
 		VoiceModel.setSeams(voiceSeams());
+		// T19: the create-game launcher (typed cvar writes + the shipped
+		// command sequence) and its backend relay. The thunk reaches the
+		// module's request value object through the Instance pointer, the
+		// same shape the Debug diagnostics use.
+		CreateGame.setSeams(createGameSeams());
+		menuBackend().setLocalGameLauncher(&GameUiModule::launchLocalGame);
 		modules::registry().add(this);
 		services::nativeUiBridge().setMenuSink(this);
 		Instance = this;
@@ -410,6 +445,13 @@ public:
 			abc::ConsoleWarn("[AbcUi] kb_act.lst malformed - key bindings unavailable\n");
 		BindModel.loadDefaults(readModFile("gfx/shell/kb_def.lst").c_str());
 		BindModel.loadLabels(readModFile("resource/valve_english.txt").c_str());
+		// T19: the map catalog. The shipped create-game page enumerates
+		// IFileSystem::FindFirst("maps/*.bsp") over the MOUNTED search paths
+		// (GameUI.dll FUN_10005630 with pathID NULL + "GAMEDOWNLOAD"); the
+		// same call here so content mounted from any search path is seen, not
+		// just one disk directory. Unreadable/missing -> empty catalog (the
+		// page then refuses every request fail-closed with CG_ErrorUnavailable).
+		loadMapCatalog();
 #ifndef NDEBUG
 		// HUD_Init guarded block only (plan 08 §4.9 red line).
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
@@ -446,6 +488,10 @@ public:
 		abc::ADD_COMMAND("abc_ui_server_favorite", serverFavoriteCommand);
 		abc::ADD_COMMAND("abc_ui_server_history", serverHistoryCommand);
 		abc::ADD_COMMAND("abc_ui_server_connect", serverConnectCommand);
+		abc::ADD_COMMAND("abc_ui_create_game_ui", createGameUiCommand);
+		abc::ADD_COMMAND("abc_ui_create_game_fill", createGameFillCommand);
+		abc::ADD_COMMAND("abc_ui_create_game_apply", createGameApplyCommand);
+		abc::ADD_COMMAND("abc_ui_create_game_probe", createGameProbeCommand);
 #endif
 	}
 
@@ -539,6 +585,7 @@ public:
 					|| owner == (Console ? Console->document() : nullptr)
 					|| owner == (Settings ? Settings->document() : nullptr)
 					|| owner == (Browser ? Browser->document() : nullptr)
+					|| owner == (CreateGamePage_ ? CreateGamePage_->document() : nullptr)
 					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)
 					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)
 					|| owner == (Loading ? Loading->document() : nullptr)
@@ -574,6 +621,8 @@ public:
 				Settings->refocusDefault();
 			} else if (state.pages.top() == MenuPage::kServers && Browser) {
 				Browser->refocusDefault();
+			} else if (state.pages.top() == MenuPage::kCreateGame && CreateGamePage_) {
+				CreateGamePage_->refocusDefault();
 			} else if (state.pages.top() == MenuPage::kLoading && Loading) {
 				Loading->refocusDefault();
 			} else if (SubStub) {
@@ -613,6 +662,8 @@ public:
 		Browser->setQuery(&ServerQueryState);
 		Browser->setListModel(&ServerListModel);
 		Browser->setFavorites(services::serverbrowser::steamFavorites());
+		// T19: the create-local-game page (was the kCreateGame stub).
+		CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
 		VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
 		VideoConfirm->setVideoModel(&VideoModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
@@ -627,6 +678,7 @@ public:
 		wire(Console);
 		wire(Settings);
 		wire(Browser);
+		wire(CreateGamePage_);
 		wire(VideoConfirm);
 		wire(ConfirmQuit);
 		wire(Loading);
@@ -670,6 +722,7 @@ public:
 		Console.reset();
 		Settings.reset();
 		Browser.reset();
+		CreateGamePage_.reset();
 		VideoConfirm.reset();
 		ConfirmQuit.reset();
 		Loading.reset();
@@ -690,6 +743,7 @@ public:
 		PasswordPresented = false;
 		PasswordReprepare = false;
 		DirectConnectPresented = false;
+		CreateGamePresented = false;
 		LastStubPage = MenuPage::kMain;
 	}
 
@@ -922,10 +976,16 @@ private:
 				// block below.
 				presentServerBrowserPage();
 				break;
+			case MenuPage::kCreateGame:
+				// T19: the real create-game page replaced the T09 stub.
+				presentCreateGamePage();
+				break;
 			case MenuPage::kLoading:
 				// Fresh projection on every sync: the attempt's values moved
-				// since the last frame (the frame drain re-renders too).
+				// since the last frame (the frame drain re-renders too). T19:
+				// a local-server start carries its own loading title.
 				if (Loading) {
+					Loading->setTitleToken(CurrentAttemptIsLocal ? "#CG_LoadingTitle" : "");
 					Loading->render();
 					Loading->show();
 					loadingVisible = true;
@@ -976,6 +1036,12 @@ private:
 			if (Browser) {
 				Browser->hide();
 				BrowserPresented = false;
+			}
+		}
+		if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame) {
+			if (CreateGamePage_) {
+				CreateGamePage_->hide();
+				CreateGamePresented = false;
 			}
 		}
 
@@ -1071,6 +1137,108 @@ private:
 			return;
 		Browser->show();
 		BrowserPresented = true;
+	}
+
+	// The create-game page (T19): fresh-open prepare() (catalog options, the
+	// live hostname default, cleared fields, re-armed Apply latch); later
+	// syncs only show. A failed attempt's request is kept module-side, so the
+	// page never needs to survive a dismiss for the retry to work.
+	void presentCreateGamePage() {
+		if (!CreateGamePage_)
+			return;
+		if (!CreateGamePresented) {
+			const char* liveName = abc::CVAR_GET_STRING("hostname");
+			CreateGamePage_->prepare(CreateGame.catalog(), liveName ? liveName : "");
+			CreateGamePresented = true;
+		}
+		CreateGamePage_->show();
+	}
+
+	// T19: the engine filesystem enumeration (the shipped dialog's own call
+	// set: "maps/*.bsp" with pathID NULL then "GAMEDOWNLOAD" - the mounted
+	// search paths, so content from any mount is seen). A missing interface
+	// leaves the catalog empty and the page fail-closes.
+	void loadMapCatalog() {
+		services::creategame::MapCatalog catalog;
+		if (abc::g_pFileSystem) {
+			const char* pathIds[] = {nullptr, "GAMEDOWNLOAD"};
+			for (const char* pathId : pathIds) {
+				FileFindHandle_t handle = FILESYSTEM_INVALID_FIND_HANDLE;
+				const char* name = abc::g_pFileSystem->FindFirst("maps/*.bsp", &handle, pathId);
+				while (name) {
+					catalog.addRawName(name);
+					name = abc::g_pFileSystem->FindNext(handle);
+				}
+				if (handle != FILESYSTEM_INVALID_FIND_HANDLE)
+					abc::g_pFileSystem->FindClose(handle);
+			}
+		} else {
+			abc::ConsoleWarn("[AbcUi] map catalog: engine filesystem unavailable\n");
+		}
+		catalog.finalize();
+		CreateGame.setCatalog(std::move(catalog));
+#ifndef NDEBUG
+		abc::ConsolePrint("[AbcUi] map catalog: %d maps\n",
+			static_cast<int>(CreateGame.catalog().size()));
+#endif
+	}
+
+	// T19: Apply. The page's four field texts are assembled into the typed
+	// request and validated by the production model BEFORE any engine call;
+	// the refusal keeps the page up with a page-local hint and zero engine
+	// calls. The accepted request is kept module-side for the retry path and
+	// dispatched as the controller's typed local-game attempt (the controller
+	// owns the generation, the Loading page and the cancel path; success is
+	// the engine's loading stream's call - never declared here).
+	void applyCreateGame() {
+		if (!CreateGamePage_)
+			return;
+		if (CreateGame.catalog().size() == 0) {
+			// No enumerated maps at all (filesystem unavailable): the request
+			// cannot be valid, name the real cause.
+			CreateGamePage_->showHint("#CG_ErrorUnavailable");
+			return;
+		}
+		services::creategame::Request request;
+		request.Map = CreateGamePage_->selectedMap();
+		request.ServerName = CreateGamePage_->serverName();
+		request.Password = CreateGamePage_->password();
+		int players = 0;
+		if (!services::creategame::CreateGameModel::parsePlayers(
+				CreateGamePage_->playersText().c_str(), players)) {
+			CreateGamePage_->showHint("#CG_ErrorPlayers");
+			return;  // nothing reaches the controller or the engine
+		}
+		request.MaxPlayers = players;
+		const auto validation =
+			services::creategame::CreateGameModel::validate(CreateGame.catalog(), request);
+		if (!validation.ok()) {
+			CreateGamePage_->showHint(hintTokenFor(validation));
+			return;  // nothing reaches the controller or the engine
+		}
+		PendingCreateGame = request;
+		PendingCreateGameValid = true;
+		Controller.dispatch(gameui::menu::makeCreateGameRequest(request.Map.c_str()));
+		finishDispatch();
+	}
+
+	static const char* hintTokenFor(const services::creategame::Validation& validation) {
+		using services::creategame::Error;
+		using services::creategame::Field;
+		switch (validation.error) {
+		case Error::kPlayersRange:
+			return "#CG_ErrorPlayers";
+		case Error::kPasswordLength:
+		case Error::kPasswordCharset:
+			return "#CG_ErrorPassword";
+		case Error::kNameEmpty:
+		case Error::kNameLength:
+		case Error::kNameCharset:
+			return "#CG_ErrorName";
+		default:
+			(void)validation.field;
+			return "#CG_ErrorMap";
+		}
 	}
 
 	// T18: the query trigger shared by the page-open beat and the page's
@@ -1303,9 +1471,6 @@ private:
 		const char* titleToken = "#MainMenu_StubTitle";
 		const char* bodyToken = "#MainMenu_StubSettings";
 		switch (page) {
-		case MenuPage::kCreateGame:
-			bodyToken = "#MainMenu_StubCreateGame";
-			break;
 		case MenuPage::kPlayerList:
 			bodyToken = "#MainMenu_StubPlayerList";
 			break;
@@ -1346,6 +1511,21 @@ private:
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kServers));
 		else if (intent == "creategame")
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kCreateGame));
+		else if (intent.rfind("cg-", 0) == 0) {
+			// T19 page-internal intents (fixed names only): Apply assembles
+			// and validates the request; Cancel is a plain back with zero
+			// engine writes (the page never held any).
+			if (intent == "cg-apply")
+				applyCreateGame();
+			else if (intent == "cg-cancel")
+				Controller.dispatch(MenuEvent{EventKind::kBack});
+			else {
+				abc::ConsoleWarn("[AbcUi] unknown create-game action \"%s\" dropped\n", intent.c_str());
+				return;
+			}
+			finishDispatch();
+			return;
+		}
 		else if (intent == "playerlist")
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
 		else if (intent == "console") {
@@ -1374,8 +1554,17 @@ private:
 			Controller.dispatch(MenuEvent{EventKind::kConnectCancel});
 		}
 		else if (intent == "error-retry") {
-			// A NEW attempt generation from the same address (kept by the
-			// model across the failure) - never a reuse of the dead one.
+			// A NEW attempt generation from the same target (kept by the
+			// model/request across the failure) - never a reuse of the dead
+			// one. T19: a failed LOCAL attempt replays its kept request
+			// through the same typed path (the launch re-runs from scratch;
+			// the phase gate keeps the double-retry honest).
+			if (PendingCreateGameValid && LastAttemptWasLocal) {
+				Controller.dispatch(
+					gameui::menu::makeCreateGameRequest(PendingCreateGame.Map.c_str()));
+				finishDispatch();
+				return;
+			}
 			const std::string address = LoadingModelState.address();
 			if (address.empty())
 				return;  // nothing to retry: the overlay stays honest
@@ -1512,14 +1701,71 @@ private:
 	}
 
 	// Post-dispatch convergence shared by the page intents and the loading
-	// drain: reconcile the attempt bookkeeping, re-render, and lower the
-	// bridge when the state machine no longer holds the menu.
+	// drain: reconcile the attempt bookkeeping, resolve a refused launch,
+	// re-render, and lower the bridge when the state machine no longer holds
+	// the menu.
 	void finishDispatch() {
 		syncAttemptState();
+		// T19: a refused local launch (cvar write failed / seams unwired)
+		// fails the attempt through the SAME typed path a connect failure
+		// uses - the error overlay with the reason token. The controller
+		// already started the attempt (generation + Loading page), so this
+		// must run after the model sync above made the generation live.
+		if (consumeLaunchFailure())
+			syncAttemptState();  // the refused attempt is over: retire + re-project
 		if (MenuPresented)
 			syncMenuPresentation();
 		if (!Controller.isMenuActive() && services::nativeUiBridge().menuUp())
 			services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
+	}
+
+	// T19: a refused launch never reaches dispatch() from inside the backend
+	// call (that would re-enter the controller mid-transition); the thunk
+	// parks the reason token here and this consumer feeds it as the typed
+	// generation-tagged failure once the dispatch returned.
+	bool consumeLaunchFailure() {
+		if (!PendingLaunchFailure)
+			return false;
+		const char* reason = PendingLaunchFailure;
+		PendingLaunchFailure = nullptr;
+		const uint32_t live = LoadingModelState.generation();
+		if (live != 0) {
+			Controller.dispatch(gameui::menu::makeLoadingFinished(live,
+				gameui::menu::LoadingOutcome::kFailed, reason));
+			return true;
+		}
+		return false;
+	}
+
+	// T19: the launcher relayed by services::EngineUiBackend::startLocalGame.
+	// It owns no state of its own: the module's kept request is the truth (the
+	// controller passed the same map token, so a mismatch means a wiring bug -
+	// fail closed rather than launching something else).
+	static bool launchLocalGame(const char* map, const char** reasonToken) {
+		if (reasonToken)
+			*reasonToken = "#CG_ErrorInternal";
+		if (!Instance || !reasonToken)
+			return false;
+		GameUiModule& self = *Instance;
+		if (!self.PendingCreateGameValid || !map
+			|| self.PendingCreateGame.Map != map) {
+			abc::ConsoleWarn("[AbcUi] local game launch mismatch (no kept request)\n");
+			return false;
+		}
+		switch (self.CreateGame.launch(self.PendingCreateGame)) {
+		case services::creategame::CreateGameModel::Launch::kLaunched:
+			return true;
+		case services::creategame::CreateGameModel::Launch::kInvalid:
+			*reasonToken = "#CG_ErrorInternal";  // validated before the dispatch; defensive
+			return false;
+		case services::creategame::CreateGameModel::Launch::kWriteFailed:
+			*reasonToken = "#CG_ErrorWrite";
+			return false;
+		case services::creategame::CreateGameModel::Launch::kUnwired:
+			*reasonToken = "#CG_ErrorInternal";
+			return false;
+		}
+		return false;
 	}
 
 	// --- T14 loading stream -------------------------------------------------
@@ -1532,6 +1778,12 @@ private:
 		if (state.phase == gameui::menu::BackendPhase::kConnecting && state.connectGeneration != 0
 			&& LoadingModelState.generation() != state.connectGeneration) {
 			LoadingModelState.startAttempt(state.connectGeneration, state.connectAddress.c_str());
+			// T19: which kind this generation came from (the loading page
+			// title); the controller retires its own attemptKind with the
+			// generation, so capture it while it is still set.
+			CurrentAttemptIsLocal = state.attemptKind == gameui::menu::AttemptKind::kLocalGame;
+			if (!CurrentAttemptIsLocal)
+				PendingCreateGameValid = false;  // a stale local request can never retry here
 			PasswordInvalid = false;
 			PasswordPrompts = 0;
 			PasswordReprepare = false;
@@ -1541,6 +1793,10 @@ private:
 			// retired generation keeps arriving and is dropped by the model's
 			// generation filter from here on.
 			LoadingModelState.retire();
+			// T19: remember the ended attempt's kind for the error overlay's
+			// retry (the controller's own attemptKind is already retired).
+			LastAttemptWasLocal = CurrentAttemptIsLocal;
+			CurrentAttemptIsLocal = false;
 			PasswordInvalid = false;
 			PasswordPrompts = 0;
 			PasswordReprepare = false;
@@ -1619,6 +1875,9 @@ private:
 					// (the shipped ConnectedToGame wrote flags=2 into Steam's
 					// store exactly here).
 					recordPendingHistory();
+					// T19: a confirmed local join consumes the kept request -
+					// nothing left to retry once the server is up.
+					PendingCreateGameValid = false;
 					Controller.dispatch(gameui::menu::makeLoadingFinished(live,
 						gameui::menu::LoadingOutcome::kSuccess, nullptr));
 				}
@@ -1687,6 +1946,10 @@ private:
 		if (Browser) {
 			Browser->hide();
 			BrowserPresented = false;
+		}
+		if (CreateGamePage_) {
+			CreateGamePage_->hide();
+			CreateGamePresented = false;
 		}
 		if (ConfirmQuit)
 			ConfirmQuit->hide();
@@ -2545,6 +2808,127 @@ private:
 		if (Rml::Element* status = doc->GetElementById("sb-status"))
 			abc::ConsolePrint("[AbcUi] browser-ui: status='%s'\n", status->GetInnerRML().c_str());
 	}
+
+	// T19 diagnostics: the create-game page's DOM truth (map option count,
+	// current field values, Apply latch) - the live projection probe.
+	static void createGameUiCommand() {
+		if (!Instance || !Instance->CreateGamePage_ || !Instance->CreateGamePage_->document()) {
+			abc::ConsoleWarn("[AbcUi] create-game page not open\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const auto& catalog = self.CreateGame.catalog();
+		abc::ConsolePrint("[AbcUi] create-game-ui: maps=%d first=%s\n",
+			static_cast<int>(catalog.size()),
+			catalog.size() > 0 ? catalog.nameAt(0).c_str() : "(none)");
+		abc::ConsolePrint("[AbcUi] create-game-ui: map='%s' players='%s' name='%s' pw=%d\n",
+			self.CreateGamePage_->selectedMap().c_str(),
+			self.CreateGamePage_->playersText().c_str(),
+			self.CreateGamePage_->serverName().c_str(),
+			self.CreateGamePage_->password().empty() ? 0 : 1);
+		abc::ConsolePrint("[AbcUi] create-game-ui: pending=%d map=%s lastLocal=%d\n",
+			self.PendingCreateGameValid ? 1 : 0,
+			self.PendingCreateGameValid ? self.PendingCreateGame.Map.c_str() : "(none)",
+			self.LastAttemptWasLocal ? 1 : 0);
+	}
+
+	// T19 diagnostics: fill the page's fields through the same values the
+	// clicks would produce, then report - the scripted-typing stand-in (T11/
+	// T13/T14 record: injected text entry is unreliable). Never bypasses the
+	// page: the fields really change, Apply still reads them.
+	// Usage: abc_ui_create_game_fill <map> <players> <name> [password]
+	static void createGameFillCommand() {
+		if (!Instance || !Instance->CreateGamePage_ || !Instance->CreateGamePage_->document()) {
+			abc::ConsoleWarn("[AbcUi] create-game page not open\n");
+			return;
+		}
+		if (gEngfuncs.Cmd_Argc() < 4) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_create_game_fill <map> <players> <name> [password]\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		Rml::ElementDocument* doc = self.CreateGamePage_->document();
+		if (Rml::ElementFormControlSelect* select =
+				rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(doc->GetElementById("cg-map"))) {
+			// Select by exact value when present, else refuse (the option set
+			// is the catalog - a fill cannot invent an entry).
+			bool found = false;
+			for (int i = 0; i < select->GetNumOptions() && !found; ++i) {
+				Rml::Element* option = select->GetOption(i);
+				if (option && option->GetAttribute<Rml::String>("value", "") == gEngfuncs.Cmd_Argv(1)) {
+					select->SetSelection(i);
+					found = true;
+				}
+			}
+			if (!found)
+				abc::ConsoleWarn("[AbcUi] map '%s' is not an enumerated option\n", gEngfuncs.Cmd_Argv(1));
+		}
+		if (Rml::ElementFormControl* control = rmlui_dynamic_cast<Rml::ElementFormControl*>(
+				doc->GetElementById("cg-players")))
+			control->SetValue(gEngfuncs.Cmd_Argv(2));
+		if (Rml::ElementFormControl* control = rmlui_dynamic_cast<Rml::ElementFormControl*>(
+				doc->GetElementById("cg-name")))
+			control->SetValue(gEngfuncs.Cmd_Argv(3));
+		if (gEngfuncs.Cmd_Argc() >= 5) {
+			if (Rml::ElementFormControl* control = rmlui_dynamic_cast<Rml::ElementFormControl*>(
+					doc->GetElementById("cg-password")))
+				control->SetValue(gEngfuncs.Cmd_Argv(4));
+		}
+		createGameUiCommand();
+	}
+
+	// T19 diagnostics: the same module path the Apply button drives (request
+	// assembly + validation + typed dispatch). The page fields are the source,
+	// exactly like a real click.
+	static void createGameApplyCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		self.applyCreateGame();
+		abc::ConsolePrint("[AbcUi] create-game apply issued: phase=%d gen=%u map=%s pending=%d\n",
+			static_cast<int>(self.Controller.state().phase), self.Controller.state().connectGeneration,
+			self.Controller.state().connectAddress.c_str(), self.PendingCreateGameValid ? 1 : 0);
+	}
+
+	// T19 diagnostics: the launch-evidence probe. Runs the launcher against a
+	// synthetic request through the REAL seams (the same model path) without
+	// touching the controller; prints the per-step outcome. Usage:
+	//   abc_ui_create_game_probe <map> <players> <name> [password]
+	static void createGameProbeCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		if (gEngfuncs.Cmd_Argc() < 4) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_create_game_probe <map> <players> <name> [password]\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		services::creategame::Request request;
+		request.Map = gEngfuncs.Cmd_Argv(1);
+		int players = 0;
+		if (!services::creategame::CreateGameModel::parsePlayers(gEngfuncs.Cmd_Argv(2), players)) {
+			abc::ConsoleWarn("[AbcUi] probe refused: bad players\n");
+			return;
+		}
+		request.MaxPlayers = players;
+		request.ServerName = gEngfuncs.Cmd_Argv(3);
+		if (gEngfuncs.Cmd_Argc() >= 5)
+			request.Password = gEngfuncs.Cmd_Argv(4);
+		const auto validation =
+			services::creategame::CreateGameModel::validate(self.CreateGame.catalog(), request);
+		abc::ConsolePrint("[AbcUi] probe validate: ok=%d error=%d field=%d\n",
+			validation.ok() ? 1 : 0, static_cast<int>(validation.error),
+			static_cast<int>(validation.field));
+		if (!validation.ok())
+			return;
+		const auto outcome = self.CreateGame.launch(request);
+		abc::ConsolePrint("[AbcUi] probe launch: outcome=%d failIdx=%d restoreFailures=%d\n",
+			static_cast<int>(outcome), self.CreateGame.lastFailIndex(),
+			self.CreateGame.lastRestoreFailures());
+	}
 #endif
 
 	static GameUiModule* Instance;
@@ -2580,9 +2964,31 @@ private:
 	// and the kServers page projection. Filter truth is module-held (the
 	// page's intents flip it), the page renders from it.
 	services::serverbrowser::ServerListModel ServerListModel;
+	// T19 create-local-game domain: the enumerated map catalog (filled onInit
+	// from the engine filesystem - the shipped dialog's own source) and the
+	// launcher (snapshot/read-back/restore inside). The catalog outlives the
+	// page; the model owns the seam wiring.
+	services::creategame::CreateGameModel CreateGame;
+	// The request of the live (or last failed) local-game attempt. The retry
+	// path replays it verbatim; Cancel/leave never writes it anywhere.
+	services::creategame::Request PendingCreateGame;
+	bool PendingCreateGameValid = false;
+	// T19 attempt-kind facts: which kind the LIVE model generation came from
+	// (drives the loading title) and which kind the last ENDED attempt was
+	// (drives the error overlay's retry). The controller retires its own
+	// attemptKind with the generation, so the module remembers the two.
+	bool CurrentAttemptIsLocal = false;
+	bool LastAttemptWasLocal = false;
+	// A refused local launch (validation passed but a cvar write failed /
+	// seams unwired): the reason token is consumed by finishDispatch, which
+	// fails the attempt through the same typed path a connect failure uses.
+	const char* PendingLaunchFailure = nullptr;
 	// Whether the kServers page is the presented surface (the frame beat's
 	// tick runs on it; drives page-leave release together with the sync edge).
 	bool BrowserPresented = false;
+	// T19: whether the kCreateGame page is the presented surface (fresh-open
+	// prepare() runs once per open; the Apply latch lives in the page).
+	bool CreateGamePresented = false;
 	// T18b: the join-memory entry of the live browser-originated attempt
 	// (consumed on the kJoined beat; retired unrecorded otherwise).
 	services::serverbrowser::FavoriteKey PendingHistory;
@@ -2598,6 +3004,7 @@ private:
 	std::unique_ptr<panels::console::ConsolePage> Console;
 	std::unique_ptr<panels::settings::SettingsPage> Settings;
 	std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
+	std::unique_ptr<panels::creategame::CreateGamePage> CreateGamePage_;  // T19 page
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	std::unique_ptr<panels::loading::LoadingPage> Loading;

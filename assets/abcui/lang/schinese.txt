@@ -390,3 +390,20 @@ SB_ConnectRefused = 无法连接:地址无效。
 SB_FavoriteAdded = 已加入收藏。
 SB_FavoriteRemoved = 已取消收藏。
 SB_FavoriteFailed = 收藏更改被拒绝。
+
+# T19 create local game
+CG_Title = 创建游戏
+CG_Map = 地图
+CG_Players = 人数
+CG_Name = 服务器名称
+CG_Password = 密码
+CG_Apply = 建立服务器
+CG_DefaultName = Sven Co-op 本地服务器
+CG_LoadingTitle = 正在启动本地服务器
+CG_ErrorMap = 请从列表中选择地图。
+CG_ErrorPlayers = 人数必须是 1 到 32 之间的整数。
+CG_ErrorName = 服务器名称不能包含引号、反斜杠或分号。
+CG_ErrorPassword = 密码不能包含空格、引号、反斜杠或分号。
+CG_ErrorWrite = 某个服务器设置无法应用;已恢复原来的值。
+CG_ErrorInternal = 本地服务器启动失败。
+CG_ErrorUnavailable = 没有可用的地图(引擎文件系统未返回任何地图)。

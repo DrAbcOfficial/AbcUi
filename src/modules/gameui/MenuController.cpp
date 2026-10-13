@@ -65,6 +65,9 @@ void MenuController::dispatch(const MenuEvent& event) {
 	case EventKind::kConnectRequested:
 		connectRequest(event.text);
 		break;
+	case EventKind::kCreateGameRequested:
+		createGameRequest(event.text);
+		break;
 	case EventKind::kConnectCancel:
 		cancelConnect();
 		break;
@@ -238,6 +241,7 @@ void MenuController::connectRequest(const std::string& address) {
 	const uint32_t generation = NextGeneration++;
 	State.connectGeneration = generation;
 	State.connectAddress = address;  // owned copy
+	State.attemptKind = AttemptKind::kConnect;
 	State.phase = BackendPhase::kConnecting;
 	State.pages.clear();
 	State.pages.push(MenuPage::kLoading);
@@ -245,6 +249,29 @@ void MenuController::connectRequest(const std::string& address) {
 	State.errorReason.clear();
 	if (Backend)
 		Backend->connect(generation, State.connectAddress.c_str());
+}
+
+// T19: a local-game start is the SAME attempt machinery as a remote connect
+// (one generation, one Loading page, one cancel path) - the payload is the
+// validated map token, and the backend decides the engine sequence. The
+// address slot carries the map name so the retry path and the loading title
+// work without a second value store.
+void MenuController::createGameRequest(const std::string& map) {
+	if (map.empty())
+		return;
+	if (!isNoMapPhase(State.phase))
+		return;
+	const uint32_t generation = NextGeneration++;
+	State.connectGeneration = generation;
+	State.connectAddress = map;  // owned copy (the attempt target)
+	State.attemptKind = AttemptKind::kLocalGame;
+	State.phase = BackendPhase::kConnecting;
+	State.pages.clear();
+	State.pages.push(MenuPage::kLoading);
+	State.overlays.clear();
+	State.errorReason.clear();
+	if (Backend)
+		Backend->startLocalGame(generation, State.connectAddress.c_str());
 }
 
 void MenuController::cancelConnect() {
@@ -457,6 +484,10 @@ void MenuController::enterDisconnected() {
 void MenuController::retireAttempt() {
 	State.connectGeneration = 0;
 	State.connectAddress.clear();
+	// The kind describes the LIVE attempt only; once it ends the module's
+	// pending value objects own the retry decision (T19: the failed attempt's
+	// request is kept module-side, exactly like PendingHistory).
+	State.attemptKind = AttemptKind::kNone;
 }
 
 }

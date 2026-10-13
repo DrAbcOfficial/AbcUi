@@ -38,6 +38,36 @@ void EngineUiBackend::connect(uint32_t generation, const char* address) {
 	clientCmd(command);
 }
 
+void EngineUiBackend::startLocalGame(uint32_t generation, const char* map) {
+	// One launch per generation (the module's request validation runs before
+	// the controller dispatch; this is the engine-edge latch behind the
+	// page's disabled state and the controller's single transition).
+	if (generation == 0 || !map || !*map) {
+		abc::ConsoleWarn("[AbcUi] local game refused (empty target), gen=%u\n", generation);
+		return;
+	}
+	if (!Launcher) {
+		// A wiring bug, not a user path: refuse WITHOUT burning the generation
+		// (a later re-attempt of the same live attempt still runs).
+		abc::ConsoleWarn("[AbcUi] local game launcher seam missing, gen=%u\n", generation);
+		return;
+	}
+	if (generation == LocalGameGeneration) {
+		abc::ConsoleWarn("[AbcUi] duplicate local game launch dropped (gen=%u)\n", generation);
+		return;
+	}
+	LocalGameGeneration = generation;
+	// The module thunk owns the request value object and the launcher; it
+	// runs the shipped sequence synchronously and answers with a fixed reason
+	// token on refusal. Nothing here declares success - the engine's loading
+	// stream owns the outcome (T19 step 5).
+	const char* reason = nullptr;
+	if (!Launcher(map, &reason)) {
+		abc::ConsoleWarn("[AbcUi] local game launch refused (gen=%u reason=%s)\n", generation,
+			reason ? reason : "(unset)");
+	}
+}
+
 void EngineUiBackend::cancelConnect(uint32_t generation) {
 	if (generation == 0 || cancelIssued(generation)) {
 		abc::ConsoleWarn("[AbcUi] duplicate connect cancel dropped (gen=%u)\n", generation);

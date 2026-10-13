@@ -1,0 +1,30 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
+	<link type="text/rcss" href="../rcss/creategame.rcss"/>
+</head>
+<!-- T19 create-local-game page (kCreateGame). The map control is filled from
+     the engine filesystem enumeration (services::creategame::MapCatalog); the
+     three fields mirror the shipped CreateMultiplayerGameServerPage entries
+     (players / name / password). Every dynamic string is injected escaped by
+     panels::creategame::CreateGamePage - none of it is markup. -->
+<body id="menucreategame">
+	<div id="cg-panel">
+		<h1 id="cg-title">#CG_Title</h1>
+		<p id="cg-map-label" class="cg-label">#CG_Map</p>
+		<select id="cg-map"></select>
+		<p id="cg-players-label" class="cg-label">#CG_Players</p>
+		<input id="cg-players" class="cg-field" type="text" data-label="#CG_Players"/>
+		<p id="cg-name-label" class="cg-label">#CG_Name</p>
+		<input id="cg-name" class="cg-field" type="text" data-label="#CG_Name"/>
+		<p id="cg-password-label" class="cg-label">#CG_Password</p>
+		<input id="cg-password" class="cg-field" type="password" data-label="#CG_Password"/>
+		<p id="cg-hint"></p>
+		<div id="cg-actions">
+			<button id="cg-apply" data-action="cg-apply" data-label="#CG_Apply">#CG_Apply</button>
+			<button id="cg-cancel" data-action="cg-cancel" data-label="#MainMenu_Return">#MainMenu_Return</button>
+		</div>
+	</div>
+</body>
+</rml>

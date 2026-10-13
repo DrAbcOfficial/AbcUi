@@ -96,6 +96,10 @@ void LoadingPage::render() {
 	Rml::ElementDocument* doc = document();
 	if (!doc || !Model)
 		return;
+	// Title: the attempt-kind token when the module set one (the T19 local
+	// start), else the shipped connect title (the document's own text node).
+	if (!TitleToken.empty())
+		setText(doc, "loading-title", resolveText(TitleToken));
 	// Status line: the engine truth when it has spoken, else the page's own
 	// "connecting" default (the few frames before the first callback).
 	const std::string status = Model->statusText().empty()

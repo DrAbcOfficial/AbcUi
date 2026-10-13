@@ -84,6 +84,7 @@ enum class EventKind {
 	kConsoleToggle,
 	kDirectConnectToggle,  // T14: push/pop the address-entry overlay
 	kConnectRequested,
+	kCreateGameRequested,  // T19: start a local game (payload = map name)
 	kConnectCancel,
 	kDisconnectRequested,
 	kQuitRequested,
@@ -120,6 +121,16 @@ enum class LoadingOutcome {
 	kPasswordRequired,
 };
 
+// T19: which kind of attempt owns the live generation. The phase/loading
+// machinery is shared (both attempts own the screen, stream the engine loading
+// events and cancel through the proven disconnect), only the retry path and
+// the loading title presentation differ.
+enum class AttemptKind {
+	kNone = 0,
+	kConnect,    // remote connect (T14/T18): retry replays the address
+	kLocalGame,  // local server start (T19): retry replays the kept request
+};
+
 enum class PointerTarget {
 	kGame,
 	kMenu,
@@ -135,10 +146,11 @@ enum class TextInputTarget {
 // Which fields carry meaning per kind:
 //   page             - kOpenPage
 //   origin/nativeSeq - the four kNative* kinds
-//   text             - kConnectRequested (address), kPasswordSubmitted
-//                      (password), kLoadingFinished (failure reason),
-//                      kFatal (reason). Data payloads only; user strings
-//                      never become command names (T04 step 2).
+//   text             - kConnectRequested (address), kCreateGameRequested
+//                      (map name), kPasswordSubmitted (password),
+//                      kLoadingFinished (failure reason), kFatal (reason).
+//                      Data payloads only; user strings never become command
+//                      names (T04 step 2).
 //   phase/session    - kPhaseChanged (session is the backend's monotonic
 //                      cycle id; anything below the accepted session is stale)
 //   generation       - kLoadingStarted, kLoadingFinished
@@ -167,6 +179,11 @@ inline MenuEvent makeOpenPage(MenuPage page) {
 inline MenuEvent makeConnectRequest(const char* address) {
 	MenuEvent event{EventKind::kConnectRequested};
 	event.text = address;
+	return event;
+}
+inline MenuEvent makeCreateGameRequest(const char* map) {
+	MenuEvent event{EventKind::kCreateGameRequested};
+	event.text = map ? map : "";
 	return event;
 }
 inline MenuEvent makeQuitResolved(bool confirmed) {
@@ -264,11 +281,16 @@ struct MenuState {
 	FixedStack<MenuOverlay, kMaxOverlays> overlays;  // top = exclusive input
 	// Highest accepted backend session; phase events below it are stale.
 	uint32_t session = 0;
-	// Live connect attempt; 0 = none. Generations are handed out by the
+	// Live connect/create attempt; 0 = none. Generations are handed out by the
 	// controller, monotonic, never reused - a cancelled/superseded attempt
 	// retires its generation and any late result for it is dropped.
 	uint32_t connectGeneration = 0;
 	std::string connectAddress;  // owned copy of the live attempt target
+	// T19: what the live (or just-finished, for the retry decision) attempt
+	// was. Set when an attempt starts; a successful/cancelled attempt clears
+	// it, a failed one KEEPS it so the error overlay's retry can replay the
+	// right kind.
+	AttemptKind attemptKind = AttemptKind::kNone;
 	std::string errorReason;     // owned copy feeding ConnectionError/Emergency
 
 	// Derived outputs (T04 step 5). The shipped GameUI implements

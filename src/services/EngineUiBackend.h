@@ -44,10 +44,33 @@
 //     it is charset-validated first (printable ASCII without space, quote,
 //     backslash or semicolon, <= 63 bytes - the engine PasswordEntry limit)
 //     so the value cannot escape its single command argument.
+//
+// T19 wires the local-game start:
+//   - startLocalGame(generation, map): the validated map token is handed to
+//     the create-game launcher seam injected by the module
+//     (services::creategame::CreateGameModel wired with cvar/command thunks).
+//     The launcher executes the shipped CCreateMultiplayerGameDialog::Apply
+//     sequence (GameUI.dll FUN_10003a10 / format 0x1007f7a0) - disconnect,
+//     sv_lan, setmaster, maxplayers, sv_password, hostname, cd fadeout,
+//     map, wait - with per-write read-back and snapshot restore on failure.
+//     This class only relays the typed call; generator/attempt lifecycle is
+//     the controller's (T19 step 5: no success declared at command time).
+//     A refused launch routes the SAME typed failure path a connect failure
+//     uses (the caller feeds a kLoadingFinished(kFailed) with the reason),
+//     never a silent no-op.
 
 #include "GameUiBridge.h"
 
 namespace services {
+
+// T19: the launcher seam. The module injects a stateless thunk that owns the
+// create-game request value object (the page's four fields, validated before
+// the controller ever sees the intent) and runs the launcher; the backend only
+// relays and enforces "one launch per generation". False = refused before or
+// at a cvar write (snapshots already restored); `reasonToken` then names the
+// error-overlay token, and the MODULE turns that into the typed
+// kLoadingFinished(kFailed) - never this class.
+using LocalGameLauncher = bool (*)(const char* map, const char** reasonToken);
 
 class EngineUiBackend final : public IGameUiBackend {
 public:
@@ -61,9 +84,14 @@ public:
 	};
 
 	void setSeams(const Seams& seams) { Seams_ = seams; }
+	// Wired separately because the thunk belongs to the module class (the
+	// request value object is module-held); must be set before the first
+	// local-game intent.
+	void setLocalGameLauncher(LocalGameLauncher launcher) { Launcher = launcher; }
 
 	// IGameUiBackend (the T04 contract, unchanged).
 	void connect(uint32_t generation, const char* address) override;
+	void startLocalGame(uint32_t generation, const char* map) override;
 	void cancelConnect(uint32_t generation) override;
 	void submitPassword(uint32_t generation, const char* password) override;
 	void disconnectFromGame() override;
@@ -90,6 +118,10 @@ private:
 	bool cancelIssued(uint32_t generation) const { return generation != 0 && generation == CanceledGeneration; }
 
 	Seams Seams_;
+	// T19: the create-game launcher thunk (module-held request) and the
+	// one-launch-per-generation latch.
+	LocalGameLauncher Launcher = nullptr;
+	uint32_t LocalGameGeneration = 0;
 	// Terminal latch: once the confirmed quit left, nothing re-executes it.
 	bool QuitIssued = false;
 	// T14: generation of the last issued connect cancel (0 = none).

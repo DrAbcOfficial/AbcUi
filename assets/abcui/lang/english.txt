@@ -388,3 +388,20 @@ SB_ConnectRefused = Could not connect: bad address.
 SB_FavoriteAdded = Added to favorites.
 SB_FavoriteRemoved = Removed from favorites.
 SB_FavoriteFailed = The favorites change was refused.
+
+# T19 create local game
+CG_Title = Create Game
+CG_Map = Map
+CG_Players = Players
+CG_Name = Server Name
+CG_Password = Password
+CG_Apply = Start Server
+CG_DefaultName = Sven Co-op listen server
+CG_LoadingTitle = Starting local server
+CG_ErrorMap = Select a map from the list.
+CG_ErrorPlayers = Player count must be a whole number between 1 and 32.
+CG_ErrorName = Enter a server name without quotes, backslashes or semicolons.
+CG_ErrorPassword = The password cannot contain spaces, quotes, backslashes or semicolons.
+CG_ErrorWrite = A server setting could not be applied; previous values were restored.
+CG_ErrorInternal = The local server could not be started.
+CG_ErrorUnavailable = No maps are available (the engine filesystem reported none).

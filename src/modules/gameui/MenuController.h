@@ -41,6 +41,13 @@
 //   kConnectRequested     Booting/Disconnected, address non-empty
 //                         -> new generation; Connecting; pages=[Loading];
 //                         overlays+focus cleared; connect(gen, address copy)
+//   kCreateGameRequested  Booting/Disconnected, map non-empty (T19)
+//                         -> new generation; Connecting; pages=[Loading];
+//                         overlays+focus cleared;
+//                         startLocalGame(gen, map copy) - the SAME attempt
+//                         machinery as a connect (one generation, one cancel
+//                         path, one loading page); the payload is the validated
+//                         map token and the backend owns the engine sequence
 //   kConnectCancel        Connecting/Loading  -> retire generation;
 //                         Disconnected; pages=[Main]; overlays cleared;
 //                         cancelConnect(gen)
@@ -144,6 +151,7 @@ private:
 	void openConsoleOverlay();
 	void closeConsoleOverlay();
 	void connectRequest(const std::string& address);
+	void createGameRequest(const std::string& map);
 	void cancelConnect();
 	void disconnectRequest();
 	void quitRequest();

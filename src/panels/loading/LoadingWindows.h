@@ -54,6 +54,11 @@ public:
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 	void setModel(const services::loading::LoadingModel* model) { Model = model; }
 
+	// T19: the attempt-kind title seam. The local-game start shows the
+	// create-game title instead of the connect one; both are "#tokens"
+	// resolved through the project table at render time (never markup).
+	void setTitleToken(const char* token) { TitleToken = token ? token : ""; }
+
 	// Projects the model's current values into the document. Called by the
 	// module after each drained engine event and on presentation.
 	void render();
@@ -79,6 +84,9 @@ private:
 	WindowListener Listener;
 	ActionSink Sink;
 	const services::loading::LoadingModel* Model = nullptr;
+	// "#token" of the current title (connect vs local-game start; empty = the
+	// shipping connect title).
+	std::string TitleToken;
 };
 
 class ConnectionErrorOverlay final : public framework::InteractiveDocument {

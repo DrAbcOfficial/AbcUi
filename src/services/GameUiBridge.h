@@ -48,6 +48,12 @@ public:
 	// loading events must carry the same generation so stale results of a
 	// superseded attempt are dropped.
 	virtual void connect(uint32_t generation, const char* address) = 0;
+	// T19: start a LOCAL server on `map` (the validated enumerated token).
+	// The backend owns the shipped launch sequence; the attempt machinery is
+	// the SAME as connect (one generation, one Loading page, one cancel), and
+	// success is still owned by the engine's loading stream - this call never
+	// declares a join.
+	virtual void startLocalGame(uint32_t generation, const char* map) = 0;
 	// Give up on the live attempt (loading cancel path).
 	virtual void cancelConnect(uint32_t generation) = 0;
 	// Password retry path of the live attempt (original password %s + retry
