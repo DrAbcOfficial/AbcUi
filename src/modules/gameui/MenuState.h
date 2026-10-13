@@ -51,12 +51,15 @@ enum class MenuPage {
 
 // Overlays (03 doc). The top-most overlay holds exclusive menu input and one
 // ESC pops exactly one layer - a confirm/password under the console is still
-// there when the console closes (T04 step 3).
+// there when the console closes (T04 step 3). T14 adds kDirectConnect: the
+// basic "host[:port]" entry reachable from the no-map home before the server
+// browser exists (T18 replaces the entry with the full flow).
 enum class MenuOverlay {
 	kConsole,
 	kConfirmQuit,
 	kPassword,
 	kConnectionError,
+	kDirectConnect,
 	kEmergency,
 };
 
@@ -79,6 +82,7 @@ enum class EventKind {
 	kMenuToggle,  // the ESC semantics: open Pause / pop top layer / resume
 	kResume,
 	kConsoleToggle,
+	kDirectConnectToggle,  // T14: push/pop the address-entry overlay
 	kConnectRequested,
 	kConnectCancel,
 	kDisconnectRequested,

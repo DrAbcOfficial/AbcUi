@@ -30,7 +30,9 @@
 //   - Hook installation and chain ownership stay with the spine/integration
 //     layer (coding rule 5); this header never names a hook.
 
+#include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace services {
 
@@ -295,5 +297,68 @@ private:
 // The production instance. The adapters (VGUI2ExtensionImport entry layer,
 // PaintGate) and the gameui module all read the same truth.
 NativeUiBridge& nativeUiBridge();
+
+// --- T14: the loading feed -------------------------------------------------
+// The IGameUI loading callbacks (slots 12..19) deliver borrowed pointers that
+// are only valid inside the synchronous callback (hook-contract T7). The
+// entry layer copies every value into this queue; the gameui module drains it
+// on its frame and feeds LoadingModel + the menu controller. The queue is
+// main-thread-only by construction (both the engine UI callbacks and the
+// module frame run on it): its job is copying and deferring, never locking.
+enum class LoadingFeedKind : int {
+	kLoadingStarted = 0,
+	kLoadingFinished,
+	kStartProgress,
+	kContinueProgress,
+	kStopProgress,
+	kStatusText,
+	kSecondaryProgress,
+	kSecondaryText,
+	kPasswordPrompt,  // T14: engine asks for the server password (+0x58)
+	kCount,
+};
+
+struct LoadingFeedEvent {
+	LoadingFeedKind kind = LoadingFeedKind::kLoadingStarted;
+	std::string text;   // resourceType / statusText / failureReason
+	std::string text2;  // resourceName / extendedReason
+	int point = 0;
+	int steps = 0;
+	float fraction = 0.0f;
+	bool error = false;
+};
+
+class LoadingFeed {
+public:
+	// Bounded: the oldest event is dropped when a burst overflows (progress is
+	// a "latest value wins" stream; the newest data must survive). Dropped
+	// counts are observable for the acceptance.
+	static constexpr size_t kCapacity = 128;
+	void push(const LoadingFeedEvent& event);
+	bool pop(LoadingFeedEvent& out);
+	uint32_t dropped() const { return Dropped; }
+
+private:
+	LoadingFeedEvent Events[kCapacity];
+	size_t Head = 0;
+	size_t Count = 0;
+	uint32_t Dropped = 0;
+};
+
+LoadingFeed& loadingFeed();
+
+// T14: the semantic step one copied engine event carries for a live attempt.
+// The module's frame drain dispatches the controller's generation-tagged
+// kinds from this classification; the offline test pins the table without
+// linking the engine-coupled module.
+enum class LoadingStep : int {
+	kNone = 0,         // value-only update (progress/status), no transition
+	kStarted,          // a LoadingStarted on the live attempt
+	kJoined,           // LoadingFinished("level") - the engine-confirmed join
+	kFailed,           // StopProgressBar(error) - failure with a reason
+	kPasswordRequired, // the engine asked for the server password
+};
+
+LoadingStep classifyLoadingEvent(const LoadingFeedEvent& event);
 
 }

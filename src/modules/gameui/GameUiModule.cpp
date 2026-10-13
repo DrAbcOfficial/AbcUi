@@ -32,6 +32,7 @@
 #include <string>
 
 #include "../../framework/Localization.h"
+#include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/settings/SettingsPage.h"
@@ -41,6 +42,7 @@
 #include "../../rmlui/VGUI2ExtensionImport.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
+#include "../../services/loading/LoadingModel.h"
 #include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
 #include "../../services/settings/VideoModeModel.h"
@@ -413,11 +415,20 @@ public:
 		abc::ADD_COMMAND("abc_ui_video_keep", videoKeepCommand);
 		abc::ADD_COMMAND("abc_ui_video_revert", videoRevertCommand);
 		abc::ADD_COMMAND("abc_ui_video_window", videoWindowCommand);
+		abc::ADD_COMMAND("abc_ui_loading_connect", loadingConnectCommand);
+		abc::ADD_COMMAND("abc_ui_loading_cancel", loadingCancelCommand);
+		abc::ADD_COMMAND("abc_ui_loading_password", loadingPasswordCommand);
+		abc::ADD_COMMAND("abc_ui_loading_status", loadingStatusCommand);
 #endif
 	}
 
 	void onFrame(double frameTime) override {
 		(void)frameTime;
+		// T14: the engine's loading stream is drained first and independently
+		// of menu presentation - the controller transitions (attempt start,
+		// loading, success/failure/password) must not wait for Rml readiness,
+		// and the drain is the ONLY consumer of the copied feed.
+		drainLoadingFeed();
 		// T12: drain the deferred video restart FIRST and independently of
 		// menu presentation - the transaction owns it, not the page (see the
 		// DeferredVideoRestart note above).
@@ -484,7 +495,11 @@ public:
 					|| owner == (ConsoleStub ? ConsoleStub->document() : nullptr)
 					|| owner == (Settings ? Settings->document() : nullptr)
 					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)
-					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)))
+					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)
+					|| owner == (Loading ? Loading->document() : nullptr)
+					|| owner == (ConnError ? ConnError->document() : nullptr)
+					|| owner == (Password ? Password->document() : nullptr)
+					|| owner == (DirectConnect ? DirectConnect->document() : nullptr)))
 				return;
 		}
 		const auto& state = Controller.state();
@@ -494,8 +509,15 @@ public:
 			VideoConfirm->refocusDefault();
 			return;
 		}
+		// T14 surfaces, top-most first (the same order the sync shows them).
 		if (state.overlays.contains(MenuOverlay::kConfirmQuit) && ConfirmQuit)
 			ConfirmQuit->refocusDefault();
+		else if (state.overlays.contains(MenuOverlay::kDirectConnect) && DirectConnect)
+			DirectConnect->refocusDefault();
+		else if (state.overlays.contains(MenuOverlay::kPassword) && Password)
+			Password->refocusDefault();
+		else if (state.overlays.contains(MenuOverlay::kConnectionError) && ConnError)
+			ConnError->refocusDefault();
 		else if (state.overlays.contains(MenuOverlay::kConsole) && ConsoleStub)
 			ConsoleStub->refocusDefault();
 		else if (!state.pages.empty() && Shell) {
@@ -505,6 +527,8 @@ public:
 					: panels::mainmenu::MainMenuPage::Section::kPause, true);
 			} else if (state.pages.top() == MenuPage::kSettings && Settings) {
 				Settings->refocusDefault();
+			} else if (state.pages.top() == MenuPage::kLoading && Loading) {
+				Loading->refocusDefault();
 			} else if (SubStub) {
 				SubStub->refocusDefault();
 			}
@@ -530,12 +554,22 @@ public:
 		VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
 		VideoConfirm->setVideoModel(&VideoModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
+		// T14 connection surfaces.
+		Loading = std::make_unique<panels::loading::LoadingPage>();
+		Loading->setModel(&LoadingModelState);
+		ConnError = std::make_unique<panels::loading::ConnectionErrorOverlay>();
+		Password = std::make_unique<panels::loading::PasswordOverlay>();
+		DirectConnect = std::make_unique<panels::loading::DirectConnectOverlay>();
 		wire(Shell);
 		wire(SubStub);
 		wire(ConsoleStub);
 		wire(Settings);
 		wire(VideoConfirm);
 		wire(ConfirmQuit);
+		wire(Loading);
+		wire(ConnError);
+		wire(Password);
+		wire(DirectConnect);
 		// T12 startup recovery: a persisted unconfirmed-switch record drives
 		// the first presentation (confirmation window on the actual mode, or
 		// an automatic write-back of the old values). Runs once per engine
@@ -563,10 +597,19 @@ public:
 		Settings.reset();
 		VideoConfirm.reset();
 		ConfirmQuit.reset();
+		Loading.reset();
+		ConnError.reset();
+		Password.reset();
+		DirectConnect.reset();
 		Context = nullptr;
 		MenuPresented = false;
 		SettingsPresented = false;
 		VideoConfirmPresented = false;
+		LoadingVisible = false;
+		ErrorPresented = false;
+		PasswordPresented = false;
+		PasswordReprepare = false;
+		DirectConnectPresented = false;
 		LastStubPage = MenuPage::kMain;
 	}
 
@@ -751,8 +794,10 @@ private:
 		// Page layer: the shell carries the two home sections; the settings
 		// page (T10) is the first real sub page; every other page lands on
 		// the not-yet-implemented stub (parity TODO visible, original
-		// windows never opened - T09 step 2).
+		// windows never opened - T09 step 2); kLoading (T14) is the live
+		// connect attempt's page.
 		bool shellVisible = false;
+		bool loadingVisible = false;
 		if (!state.pages.empty()) {
 			const bool overlaysHoldFocus = !state.overlays.empty();
 			switch (state.pages.top()) {
@@ -764,7 +809,6 @@ private:
 				// The per-frame focus guard (onFrame) re-takes the section
 				// default against focus thieves.
 				Shell->show();
-				const bool overlaysHoldFocus = !state.overlays.empty();
 				const auto section = state.pages.top() == MenuPage::kMain
 					? panels::mainmenu::MainMenuPage::Section::kMain
 					: panels::mainmenu::MainMenuPage::Section::kPause;
@@ -773,6 +817,16 @@ private:
 			}
 			case MenuPage::kSettings:
 				presentSettingsPage();
+				break;
+			case MenuPage::kLoading:
+				// Fresh projection on every sync: the attempt's values moved
+				// since the last frame (the frame drain re-renders too).
+				if (Loading) {
+					Loading->render();
+					Loading->show();
+					loadingVisible = true;
+					LoadingVisible = true;
+				}
 				break;
 			default:
 				showStubPage(SubStub.get(), state.pages.top(), false);
@@ -783,6 +837,10 @@ private:
 			SubStub->hide();
 		else
 			Shell->hide();
+		if (!loadingVisible && Loading) {
+			Loading->hide();
+			LoadingVisible = false;
+		}
 		if (state.pages.empty() || state.pages.top() != MenuPage::kSettings) {
 			if (Settings)
 				Settings->hide();
@@ -794,11 +852,46 @@ private:
 		}
 
 	// Overlay layer, top-most last (each show pulls to the context
-	// front); idempotent shows neither re-focus nor re-order.
+		// front); idempotent shows neither re-focus nor re-order.
 		if (state.overlays.contains(MenuOverlay::kConsole))
 			showStubPage(ConsoleStub.get(), MenuPage::kMain, true);
 		else
 			ConsoleStub->hide();
+		// T14 overlays. Each "presented" latch means "projected at least
+		// once for this opening" - the prepare() clears the fields exactly
+		// once per open, repeated syncs are idempotent shows.
+		if (state.overlays.contains(MenuOverlay::kConnectionError) && ConnError) {
+			if (!ErrorPresented || LastErrorReason != state.errorReason) {
+				ConnError->showFor(state.errorReason.c_str());
+				LastErrorReason = state.errorReason;
+				ErrorPresented = true;
+			}
+			ConnError->show();
+		} else if (ConnError) {
+			ConnError->hide();
+			ErrorPresented = false;
+		}
+		if (state.overlays.contains(MenuOverlay::kPassword) && Password) {
+			if (!PasswordPresented || PasswordReprepare) {
+				Password->prepare(PasswordInvalid);
+				PasswordPresented = true;
+				PasswordReprepare = false;
+			}
+			Password->show();
+		} else if (Password) {
+			Password->hide();
+			PasswordPresented = false;
+		}
+		if (state.overlays.contains(MenuOverlay::kDirectConnect) && DirectConnect) {
+			if (!DirectConnectPresented) {
+				DirectConnect->prepare();
+				DirectConnectPresented = true;
+			}
+			DirectConnect->show();
+		} else if (DirectConnect) {
+			DirectConnect->hide();
+			DirectConnectPresented = false;
+		}
 		if (state.overlays.contains(MenuOverlay::kConfirmQuit))
 			ConfirmQuit->show();
 		else
@@ -999,6 +1092,56 @@ private:
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
 		else if (intent == "console")
 			Controller.dispatch(MenuEvent{EventKind::kConsoleToggle});
+		else if (intent == "directconnect")
+			Controller.dispatch(MenuEvent{EventKind::kDirectConnectToggle});
+		else if (intent == "loading-cancel") {
+			// The proven termination action (vanilla Cancel). The model latch
+			// is the UI-edge guard (exactly one request per attempt); the
+			// controller phase gate and the backend's generation latch are
+			// the second and third guards behind it.
+			const uint32_t live = LoadingModelState.generation();
+			if (live != 0 && !LoadingModelState.requestCancel(live))
+				return;  // already latched
+			Controller.dispatch(MenuEvent{EventKind::kConnectCancel});
+		}
+		else if (intent == "error-retry") {
+			// A NEW attempt generation from the same address (kept by the
+			// model across the failure) - never a reuse of the dead one.
+			const std::string address = LoadingModelState.address();
+			if (address.empty())
+				return;  // nothing to retry: the overlay stays honest
+			Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
+		}
+		else if (intent == "error-return") {
+			Controller.dispatch(MenuEvent{EventKind::kBack});
+		}
+		else if (intent == "directconnect-connect") {
+			if (!DirectConnect)
+				return;
+			const std::string address = DirectConnect->value();
+			std::string host;
+			int port = 0;
+			if (!services::loading::LoadingModel::parseAddress(address.c_str(), host, port)) {
+				DirectConnect->showHint("#Loading_AddressInvalid");
+				return;  // stay put: nothing reaches the engine unvalidated
+			}
+			Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
+		}
+		else if (intent == "directconnect-cancel")
+			Controller.dispatch(MenuEvent{EventKind::kBack});
+		else if (intent == "password-connect") {
+			if (!Password)
+				return;
+			const std::string password = Password->value();
+			if (password.empty())
+				return;  // empty submissions are not typed intents
+			Controller.dispatch(gameui::menu::makePasswordSubmitted(password.c_str()));
+		}
+		else if (intent == "password-cancel")
+			// Vanilla parity: closing the password dialog does not kill the
+			// attempt (its backend Close only destroys the dialog). The
+			// loading page stays; its Cancel is the termination path.
+			Controller.dispatch(MenuEvent{EventKind::kBack});
 		else if (intent == "return" || intent == "close")
 			Controller.dispatch(MenuEvent{EventKind::kBack});
 		else if (intent == "bind-capture-begin") {
@@ -1040,8 +1183,142 @@ private:
 			abc::ConsoleWarn("[AbcUi] unknown menu action \"%s\" dropped\n", intent.c_str());
 			return;
 		}
-		syncMenuPresentation();
-		if (!Controller.isMenuActive())
+		finishDispatch();
+	}
+
+	// Post-dispatch convergence shared by the page intents and the loading
+	// drain: reconcile the attempt bookkeeping, re-render, and lower the
+	// bridge when the state machine no longer holds the menu.
+	void finishDispatch() {
+		syncAttemptState();
+		if (MenuPresented)
+			syncMenuPresentation();
+		if (!Controller.isMenuActive() && services::nativeUiBridge().menuUp())
+			services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
+	}
+
+	// --- T14 loading stream -------------------------------------------------
+
+	// The attempt bookkeeping between the controller (generation truth) and
+	// the loading model (presentation values). Idempotent; runs after every
+	// dispatch and inside the frame drain.
+	void syncAttemptState() {
+		const auto& state = Controller.state();
+		if (state.phase == gameui::menu::BackendPhase::kConnecting && state.connectGeneration != 0
+			&& LoadingModelState.generation() != state.connectGeneration) {
+			LoadingModelState.startAttempt(state.connectGeneration, state.connectAddress.c_str());
+			PasswordInvalid = false;
+			PasswordPrompts = 0;
+			PasswordReprepare = false;
+		}
+		if (LoadingModelState.generation() != 0 && LoadingModelState.generation() != state.connectGeneration) {
+			// The attempt ended (cancel/success/failure): the stream of the
+			// retired generation keeps arriving and is dropped by the model's
+			// generation filter from here on.
+			LoadingModelState.retire();
+			PasswordInvalid = false;
+			PasswordPrompts = 0;
+			PasswordReprepare = false;
+		}
+	}
+
+	// Drains the copied engine loading events on the main thread (the entry
+	// layer pushed borrowed-pointer copies). Model values update always; the
+	// controller transitions ride the same generation-tagged kinds the
+	// offline table pins. A late event of a retired generation is dropped by
+	// the model filter AND by the controller's generation check.
+	void drainLoadingFeed() {
+		services::LoadingFeedEvent event;
+		bool changed = false;
+		bool rendered = false;
+		while (services::loadingFeed().pop(event)) {
+			changed = true;
+			syncAttemptState();
+			const uint32_t live = LoadingModelState.generation();
+			switch (event.kind) {
+			case services::LoadingFeedKind::kLoadingStarted:
+				LoadingModelState.loadingStarted(live, event.text.c_str(), event.text2.c_str());
+				break;
+			case services::LoadingFeedKind::kLoadingFinished:
+				LoadingModelState.loadingFinished(live, event.text.c_str());
+				break;
+			case services::LoadingFeedKind::kStartProgress:
+				LoadingModelState.startProgress(live, event.text.c_str(), event.steps);
+				break;
+			case services::LoadingFeedKind::kContinueProgress:
+				LoadingModelState.continueProgress(live, event.point, event.fraction);
+				break;
+			case services::LoadingFeedKind::kStopProgress:
+				LoadingModelState.stopProgress(live, event.error);
+				break;
+			case services::LoadingFeedKind::kStatusText:
+				LoadingModelState.setStatusText(live, event.text.c_str());
+				break;
+			case services::LoadingFeedKind::kSecondaryProgress:
+				LoadingModelState.setSecondaryProgress(live, event.fraction);
+				break;
+			case services::LoadingFeedKind::kSecondaryText:
+				LoadingModelState.setSecondaryProgressText(live, event.text.c_str());
+				break;
+			case services::LoadingFeedKind::kPasswordPrompt:
+				// The engine asked for a server password (IGameUI +0x58).
+				// The first prompt of a generation = "required"; any later
+				// one = the previous password was rejected (the engine's own
+				// flag polarity is not pinned - the per-generation count is
+				// the authoritative signal for the lead line).
+				if (live != 0) {
+					PasswordInvalid = PasswordPrompts > 0;
+					++PasswordPrompts;
+					PasswordReprepare = true;  // re-prepare clears the field
+				}
+				break;
+			case services::LoadingFeedKind::kCount:
+				break;
+			}
+			// The classification is the single decision table (pinned by
+			// abc_ui_loading_model): value-only events never transition.
+			switch (services::classifyLoadingEvent(event)) {
+			case services::LoadingStep::kNone:
+				break;
+			case services::LoadingStep::kStarted:
+				if (live != 0 && Controller.state().phase == gameui::menu::BackendPhase::kConnecting)
+					Controller.dispatch(gameui::menu::makeLoadingStarted(live));
+				break;
+			case services::LoadingStep::kJoined:
+				if (live != 0)
+					Controller.dispatch(gameui::menu::makeLoadingFinished(live,
+						gameui::menu::LoadingOutcome::kSuccess, nullptr));
+				break;
+			case services::LoadingStep::kFailed: {
+				if (live == 0)
+					break;
+				const std::string& reason = event.text.empty() ? event.text2 : event.text;
+				Controller.dispatch(gameui::menu::makeLoadingFinished(live,
+					gameui::menu::LoadingOutcome::kFailed, reason.c_str()));
+				break;
+			}
+			case services::LoadingStep::kPasswordRequired:
+				if (live != 0)
+					Controller.dispatch(gameui::menu::makeLoadingFinished(live,
+						gameui::menu::LoadingOutcome::kPasswordRequired, nullptr));
+				break;
+			}
+			// The visible loading page re-projects once per drained batch
+			// (values moved); never inside the pop loop's per-event churn.
+			if (!rendered && MenuPresented && LoadingVisible && Loading) {
+				Loading->render();
+				rendered = true;
+			}
+		}
+		if (!changed)
+			return;
+		syncAttemptState();
+		if (MenuPresented)
+			syncMenuPresentation();
+		// A drained success/failure moved the controller; a no-longer-active
+		// menu lowers the bridge exactly like a decided close (T14: the
+		// loading page disappears on success through the same path).
+		if (!Controller.isMenuActive() && services::nativeUiBridge().menuUp())
 			services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
 	}
 
@@ -1056,6 +1333,21 @@ private:
 			Settings->hide();
 		if (ConfirmQuit)
 			ConfirmQuit->hide();
+		// T14 connection surfaces: hidden with the menu; a later present
+		// re-projects from the state (the latches reset here).
+		if (Loading)
+			Loading->hide();
+		if (ConnError)
+			ConnError->hide();
+		if (Password)
+			Password->hide();
+		if (DirectConnect)
+			DirectConnect->hide();
+		ErrorPresented = false;
+		PasswordPresented = false;
+		PasswordReprepare = false;
+		DirectConnectPresented = false;
+		LoadingVisible = false;
 		// The video confirmation is NOT hidden by a generic hide: it must
 		// stay up until confirmed/reverted (a dismissal cannot silently
 		// abandon a mode the user has not confirmed). dismissMenu() calls
@@ -1420,6 +1712,107 @@ private:
 		self.syncVideoConfirmPage();
 	}
 
+	// T14 diagnostics: drive the SAME module paths the page intents drive
+	// (scripted text entry into the Rml fields is unreliable with the
+	// injection tooling - T11/T13 record); the state machine under test is
+	// identical. Address validation, generation handling, cancel latching
+	// and the password chain are the production code paths.
+	static void loadingConnectCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_loading_connect <host[:port]>\n");
+			return;
+		}
+		const std::string address = gEngfuncs.Cmd_Argv(1);
+		std::string host;
+		int port = 0;
+		if (!services::loading::LoadingModel::parseAddress(address.c_str(), host, port)) {
+			abc::ConsoleWarn("[AbcUi] loading connect refused (invalid address \"%s\")\n", address.c_str());
+			return;
+		}
+		self.Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
+		self.finishDispatch();
+		abc::ConsolePrint("[AbcUi] loading connect issued: \"%s\" gen=%u phase=%d\n", address.c_str(),
+			self.LoadingModelState.generation(), static_cast<int>(self.Controller.state().phase));
+	}
+
+	static void loadingCancelCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const uint32_t live = self.LoadingModelState.generation();
+		if (live != 0 && !self.LoadingModelState.requestCancel(live)) {
+			abc::ConsoleWarn("[AbcUi] loading cancel already latched (gen=%u)\n", live);
+			return;
+		}
+		self.Controller.dispatch(MenuEvent{EventKind::kConnectCancel});
+		self.finishDispatch();
+		abc::ConsolePrint("[AbcUi] loading cancel issued (previous gen=%u, phase=%d)\n", live,
+			static_cast<int>(self.Controller.state().phase));
+	}
+
+	static void loadingPasswordCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_loading_password <password>\n");
+			return;
+		}
+		if (!self.Controller.state().overlays.contains(MenuOverlay::kPassword)) {
+			abc::ConsoleWarn("[AbcUi] no password overlay is up\n");
+			return;
+		}
+		self.Controller.dispatch(gameui::menu::makePasswordSubmitted(gEngfuncs.Cmd_Argv(1)));
+		self.finishDispatch();
+		abc::ConsolePrint("[AbcUi] loading password submitted (gen=%u)\n",
+			self.Controller.state().connectGeneration);
+	}
+
+	static void loadingStatusCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const auto& state = self.Controller.state();
+		abc::ConsolePrint("[AbcUi] loading: phase=%d gen=%u modelGen=%u canceled=%d addr=\"%s\"\n",
+			static_cast<int>(state.phase), state.connectGeneration, self.LoadingModelState.generation(),
+			self.LoadingModelState.canceled() ? 1 : 0, self.LoadingModelState.address().c_str());
+		abc::ConsolePrint("[AbcUi] loading: pages=%d overlays=%d menuPresented=%d loadingVisible=%d\n",
+			static_cast<int>(state.pages.size()), static_cast<int>(state.overlays.size()),
+			self.MenuPresented ? 1 : 0, self.LoadingVisible ? 1 : 0);
+		{
+			std::string stack = "pages=[";
+			for (const MenuPage page : state.pages)
+				stack += std::to_string(static_cast<int>(page)) + " ";
+			stack += "] overlays=[";
+			for (const MenuOverlay overlay : state.overlays)
+				stack += std::to_string(static_cast<int>(overlay)) + " ";
+			stack += "]";
+			abc::ConsolePrint("[AbcUi] loading: %s\n", stack.c_str());
+		}
+		abc::ConsolePrint("[AbcUi] loading: primary known=%d point=%d steps=%d frac=%.3f status=\"%s\"\n",
+			self.LoadingModelState.primary().Known ? 1 : 0, self.LoadingModelState.primary().Point,
+			self.LoadingModelState.primary().Steps, self.LoadingModelState.primary().Fraction,
+			self.LoadingModelState.statusText().c_str());
+		abc::ConsolePrint("[AbcUi] loading: secondary frac=%.3f text=\"%s\" resource=\"%s\" errorReason=\"%s\"\n",
+			self.LoadingModelState.secondaryFraction(), self.LoadingModelState.secondaryText().c_str(),
+			self.LoadingModelState.resourceText().c_str(), state.errorReason.c_str());
+		abc::ConsolePrint("[AbcUi] loading: hasLevel=%d feedDropped=%u passwordInvalid=%d prompts=%d\n",
+			services::nativeUiBridge().hasLevel() ? 1 : 0, services::loadingFeed().dropped(),
+			self.PasswordInvalid ? 1 : 0, self.PasswordPrompts);
+		abc::ConsolePrint("[AbcUi] loading: hookSlot22=%d\n", vgui2ext::gameUiLoadingHookInstalled() ? 1 : 0);
+	}
+
 	static void menuPageCommand() {
 		if (!Instance || !Instance->Shell || !Instance->Context) {
 			abc::ConsoleWarn("[AbcUi] menu not available\n");
@@ -1459,12 +1852,20 @@ private:
 	// unconfirmed-switch record. Lives across HUD cycles like the other
 	// models (the record file is the crash truth; this is the cache).
 	services::settings::VideoModeModel VideoModel;
+	// T14 connection domain: the presentation values of the live attempt
+	// (engine-stream copies) and the four surfaces. The model outlives the
+	// documents like the other models.
+	services::loading::LoadingModel LoadingModelState;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::menushared::MenuStubPage> ConsoleStub;
 	std::unique_ptr<panels::settings::SettingsPage> Settings;
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
+	std::unique_ptr<panels::loading::LoadingPage> Loading;
+	std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;
+	std::unique_ptr<panels::loading::PasswordOverlay> Password;
+	std::unique_ptr<panels::loading::DirectConnectOverlay> DirectConnect;
 	// Router ownership while the menu is presented (T06); the document set
 	// mirrors it (dismissal / onOwnershipLost keep them in step).
 	framework::uiinput::Token PageToken;
@@ -1481,6 +1882,23 @@ private:
 	// T12: whether the confirmation page is up (module-owned truth; the DOM
 	// visibility follows it).
 	bool VideoConfirmPresented = false;
+	// T14: per-opening projection latches (the prepare() clears input fields
+	// exactly once per open; repeated syncs are idempotent shows).
+	bool LoadingVisible = false;
+	bool ErrorPresented = false;
+	bool PasswordPresented = false;
+	bool DirectConnectPresented = false;
+	// The engine asked for a password more than once for this generation
+	// (the previous attempt was rejected): drives the "invalid" lead line.
+	bool PasswordInvalid = false;
+	// Password prompts seen for the live generation (count-based invalid
+	// logic; reset with the attempt).
+	int PasswordPrompts = 0;
+	// Set by a second prompt so the sync re-prepares (clears) the field.
+	bool PasswordReprepare = false;
+	// Last error reason projected into the connection-error overlay (a
+	// changed reason re-projects, e.g. a second failure with a new text).
+	std::string LastErrorReason;
 	// Last countdown seconds value projected into the confirm page (the
 	// per-frame tick re-renders only when the shown second moves).
 	int VideoCountdownShown = -1;

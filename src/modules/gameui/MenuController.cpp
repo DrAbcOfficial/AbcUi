@@ -59,6 +59,9 @@ void MenuController::dispatch(const MenuEvent& event) {
 	case EventKind::kConsoleToggle:
 		toggleConsoleOverlay();
 		break;
+	case EventKind::kDirectConnectToggle:
+		toggleDirectConnectOverlay();
+		break;
 	case EventKind::kConnectRequested:
 		connectRequest(event.text);
 		break;
@@ -199,6 +202,21 @@ void MenuController::toggleConsoleOverlay() {
 		State.overlays.remove(MenuOverlay::kConsole);
 	else
 		State.overlays.push(MenuOverlay::kConsole);
+}
+
+void MenuController::toggleDirectConnectOverlay() {
+	if (State.overlays.contains(MenuOverlay::kDirectConnect)) {
+		State.overlays.remove(MenuOverlay::kDirectConnect);
+		return;
+	}
+	// The address entry belongs to the no-map world (the in-game connect
+	// sequence is T17/T19's); an attempt or the emergency screen keeps the
+	// screen (same refusal set as the other open intents).
+	if (!isNoMapPhase(State.phase))
+		return;
+	if (State.overlays.contains(MenuOverlay::kEmergency))
+		return;
+	State.overlays.push(MenuOverlay::kDirectConnect);
 }
 
 void MenuController::openConsoleOverlay() {

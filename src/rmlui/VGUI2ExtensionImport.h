@@ -14,6 +14,8 @@
 // uploads and cursor polling then report unavailable (plan 05 §3.5 fallback:
 // keyboard-only panels).
 
+#include <string>
+
 namespace vgui2ext {
 
 // LoadClient time; safe to call when the plugin is missing.
@@ -60,6 +62,24 @@ int keyStringToKeyNum(const char* name);
 // ("in_mlook"/"in_jlook"). false when the interface is missing or the
 // engine rejects the name (fail-closed: the row then reads as off).
 bool isKeyDown(const char* name);
+
+// T14: the loading surfaces' password prompt. Sven's engine asks for a server
+// password through IGameUI slot +0x58 (CGameUI::ShowServerPasswordDialog,
+// GameUI.dll 0x10006c60) - a slot BEYOND the 19 methods the extension proxies,
+// so it is observed through a dedicated VFTHook on the GameUI instance
+// (installed with the paint gate, slot validated against the GameUI.dll image
+// range - fail-closed skip on layout drift, never a guessed address). The
+// borrowed string is copied into the loading feed; the vanilla dialog is not
+// created (the replacement overlay owns the prompt).
+bool gameUiLoadingHookInstalled();
+void uninstallGameUiLoadingHook();
+
+// T14: vgui::ILocalize003 from vgui2.dll (VGUI_Localize003, resolved through
+// the vgui2 factory) - resolves the engine's own "#GameUI_..." tokens (the
+// loading progress/status/failure strings the shipped dialog displays). ""
+// when the token is unknown or the interface is missing - the caller keeps
+// the raw text in that case (never a silently blanked line).
+std::string localizeToken(const char* token);
 
 namespace video {
 struct Mode {

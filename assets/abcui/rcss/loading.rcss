@@ -1,0 +1,104 @@
+/* loading.rcss - T14 connection surfaces (loading page, connection error,
+   password, direct connect). All units dp; the context density ratio does
+   the scaling (framework::Theme::applyScale). */
+
+#loading-box, #connerror-box, #password-box, #directconnect-box {
+	position: absolute;
+	left: 48dp;
+	top: 40dp;
+	width: 380dp;
+	background-color: #101418ee;
+	border: 1dp #3a4148;
+	padding: 16dp;
+}
+
+#loading-title, #connerror-title, #password-title, #directconnect-title {
+	display: block;
+	font-size: 16dp;
+	font-weight: bold;
+	color: #00ff00;
+	margin-bottom: 12dp;
+}
+
+/* The attempt target (the address the player asked for): quiet second line. */
+#loading-target {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	margin-bottom: 4dp;
+}
+
+#loading-status, #connerror-reason, #password-lead, #directconnect-lead {
+	display: block;
+	font-size: 10dp;
+	color: #dedede;
+	margin-bottom: 10dp;
+}
+
+.loading-sub {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	height: 12dp;
+	line-height: 12dp;
+	margin-bottom: 6dp;
+}
+
+/* The two engine progress channels: a filled bar the engine drives; hidden
+   until it does (the page toggles display, never fakes a fill). */
+#loading-progress, #loading-secondary {
+	display: block;
+	width: 100%;
+	height: 14dp;
+	background-color: #0a0d10;
+	border: 1dp #3a4148;
+	margin-bottom: 4dp;
+}
+
+#loading-progress fill, #loading-secondary fill {
+	background-color: #00ff00;
+}
+
+#loading-actions, #connerror-actions, #password-actions, #directconnect-actions {
+	display: block;
+	margin-top: 8dp;
+}
+
+#loading-actions button, #connerror-actions button, #password-actions button,
+#directconnect-actions button {
+	display: inline-block;
+	margin-right: 8dp;
+	margin-bottom: 0dp;
+}
+
+/* The latched cancel entry (one termination per attempt). */
+#loading-cancel.loading-disabled {
+	color: #6f757c;
+	border-color: #3a4047;
+}
+
+/* The two input fields (password retry, direct address). */
+#password-field, #directconnect-field {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 24dp;
+	line-height: 22dp;
+	background-color: #0a0d10;
+	color: #dedede;
+	font-size: 10dp;
+	padding: 0dp 6dp;
+	border: 1dp #3a4148;
+	tab-index: auto;
+	margin-bottom: 8dp;
+}
+
+#password-field:focus, #directconnect-field:focus {
+	border: 1dp #00ff00;
+	background-color: #0e1418;
+}
+
+#password-field caret, #directconnect-field caret {
+	display: inline-block;
+	background-color: #e8e8e8;
+}

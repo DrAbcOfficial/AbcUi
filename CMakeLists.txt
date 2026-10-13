@@ -82,6 +82,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/MenuController.cpp
     src/services/GameUiBridge.cpp
     src/services/EngineUiBackend.cpp
+    src/services/loading/LoadingModel.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp
     src/services/settings/VideoModeModel.cpp
@@ -106,6 +107,7 @@ add_library(AbcUi MODULE
     src/panels/motd/MotdPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
+    src/panels/loading/LoadingWindows.cpp
     src/panels/settings/SettingsPage.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp

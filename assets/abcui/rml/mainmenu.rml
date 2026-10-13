@@ -14,6 +14,7 @@
 		<div id="page-main">
 			<button id="main-servers" data-action="servers" data-label="#MainMenu_Servers">#MainMenu_Servers</button>
 			<button id="main-creategame" data-action="creategame" data-label="#MainMenu_CreateGame">#MainMenu_CreateGame</button>
+			<button id="main-connect" data-action="directconnect" data-label="#Loading_DirectConnectTitle">#Loading_DirectConnectTitle</button>
 			<button id="main-settings" data-action="settings" data-label="#MainMenu_Settings">#MainMenu_Settings</button>
 			<button id="main-console" data-action="console" data-label="#MainMenu_Console">#MainMenu_Console</button>
 			<button id="main-quit" data-action="quit" data-label="#MainMenu_Quit">#MainMenu_Quit</button>

@@ -1,24 +1,73 @@
 // services::EngineUiBackend implementation - see EngineUiBackend.h.
 #include "EngineUiBackend.h"
 
+#include "loading/LoadingModel.h"
+
 #include <abc/Console.h>
+
+#include <cstdio>
+#include <cstring>
 
 namespace services {
 
+namespace {
+
+// Password charset (see the header): printable ASCII, no space (the command
+// takes one argument), no quote/backslash (delimiter escapes) and no
+// semicolon (the engine command separator) - the value can never act as
+// anything but the single password argument.
+bool validPasswordChar(char c) {
+	if (c <= 0x20 || c > 0x7E)
+		return false;
+	return c != '"' && c != '\\' && c != ';';
+}
+
+}
+
 void EngineUiBackend::connect(uint32_t generation, const char* address) {
-	// T14/T17 wire the loading/query chain; until then the intent is typed
-	// and dropped - never a hand-built "connect %s" console string.
-	abc::ConsoleWarn("[AbcUi] connect backend not wired yet (T14/T17), dropped gen=%u addr=%s\n",
-		generation, address ? address : "");
+	// Fail closed: the address must be the validated "host[:port]" grammar
+	// before it may join the command channel as a payload.
+	std::string host;
+	int port = 0;
+	if (!loading::LoadingModel::parseAddress(address, host, port)) {
+		abc::ConsoleWarn("[AbcUi] connect refused (invalid address), gen=%u\n", generation);
+		return;
+	}
+	char command[320];
+	_snprintf_s(command, sizeof(command), _TRUNCATE, "connect %s\n", address);
+	clientCmd(command);
 }
 
 void EngineUiBackend::cancelConnect(uint32_t generation) {
-	abc::ConsoleWarn("[AbcUi] connect cancel backend not wired yet (T14), dropped gen=%u\n", generation);
+	if (generation == 0 || cancelIssued(generation)) {
+		abc::ConsoleWarn("[AbcUi] duplicate connect cancel dropped (gen=%u)\n", generation);
+		return;
+	}
+	CanceledGeneration = generation;
+	// The vanilla LoadingDialog Cancel button's verbatim command (0x10007c00).
+	clientCmd("disconnect\n");
 }
 
 void EngineUiBackend::submitPassword(uint32_t generation, const char* password) {
-	abc::ConsoleWarn("[AbcUi] password backend not wired yet (T14), dropped gen=%u\n", generation);
-	(void)password;  // never logged: the retry chain is the only consumer (T14)
+	if (generation == 0 || !password || !*password)
+		return;
+	const size_t length = std::strlen(password);
+	if (length > 63) {
+		abc::ConsoleWarn("[AbcUi] password refused (over 63 bytes), gen=%u\n", generation);
+		return;
+	}
+	for (const char* it = password; *it; ++it) {
+		if (!validPasswordChar(*it)) {
+			abc::ConsoleWarn("[AbcUi] password refused (unsupported character), gen=%u\n", generation);
+			return;
+		}
+	}
+	// The vanilla ServerPasswordDialog Connect handler's verbatim command
+	// (GameUI.dll 0x1000bca0). Never stored, never logged: the password lives
+	// only inside this call and the command buffer it fills.
+	char command[96];
+	_snprintf_s(command, sizeof(command), _TRUNCATE, "password %s\nretry\n", password);
+	clientCmd(command);
 }
 
 void EngineUiBackend::disconnectFromGame() {

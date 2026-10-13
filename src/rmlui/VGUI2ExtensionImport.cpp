@@ -15,6 +15,7 @@
 #include <vgui/Cursor.h>
 #include <IVGUI2Extension.h>
 #include <IGameUIFuncs.h>
+#include <ILocalize.h>
 #include <IBaseUI.h>
 #include <keydefs.h>
 
@@ -181,6 +182,11 @@ public:
 
 UICallbacks UICallbacksInstance;
 
+// T14 (defined below with its install/uninstall seams): the GameUI::Start
+// notification installs the Sven password-prompt slot hook; the ClientVGUI
+// Shutdown seam removes it.
+void installPasswordPromptHook();
+
 // T08 entry layer: the inner IGameUI funnel. Everything that opens or closes
 // the native menu converges here (the engine's ESC/key handlers and
 // ServerBrowser.dll all route through ActivateGameUI/HideGameUI, directly or
@@ -212,6 +218,9 @@ public:
 		(void)engineFuncs;
 		(void)interfaceVersion;
 		(void)system;
+		// T14: with GameUI.dll mapped and started, the Sven password-prompt
+		// slot gets its observation hook (see the install note above).
+		installPasswordPromptHook();
 	}
 	void Shutdown() override {
 		// Fallback only: on this extension pin the notification does NOT
@@ -315,16 +324,20 @@ public:
 	}
 
 	void LoadingStarted(const char*& resourceType, const char*& resourceName, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// Lifecycle observation (T14 consumes the values through the typed
-		// seam later); the vanilla loading dialog never opens because the
-		// paint gate is armed.
-		(void)resourceType;
-		(void)resourceName;
-		if (!CallbackContext->IsPost)
-			services::nativeUiBridge().noteLoadingStart();
+		// T14: the engine stream enters the loading feed here - the borrowed
+		// pointers are copied before the callback returns (hook-contract T7);
+		// the vanilla handler still runs (observed, never superceded): its
+		// non-visual bookkeeping stays intact and its dialog stays paint-gated.
+		if (CallbackContext->IsPost)
+			return;
+		services::nativeUiBridge().noteLoadingStart();
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kLoadingStarted;
+		event.text = resourceType ? resourceType : "";
+		event.text2 = resourceName ? resourceName : "";
+		services::loadingFeed().push(event);
 	}
 	void LoadingFinished(const char*& resourceType, const char*& resourceName, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)resourceName;
 		if (CallbackContext->IsPost)
 			return;
 		auto& bridge = services::nativeUiBridge();
@@ -333,34 +346,63 @@ public:
 		// vanilla connected-only hide gate reads.
 		if (resourceType && !_stricmp(resourceType, "level"))
 			bridge.noteLevelLoaded();
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kLoadingFinished;
+		event.text = resourceType ? resourceType : "";
+		event.text2 = resourceName ? resourceName : "";
+		services::loadingFeed().push(event);
 	}
 	void StartProgressBar(const char*& progressType, int& progressSteps, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)progressType;
-		(void)progressSteps;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			return;
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kStartProgress;
+		event.text = progressType ? progressType : "";
+		event.steps = progressSteps;
+		services::loadingFeed().push(event);
 	}
 	void ContinueProgressBar(int& progressPoint, float& progressFraction, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)progressPoint;
-		(void)progressFraction;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			return;
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kContinueProgress;
+		event.point = progressPoint;
+		event.fraction = progressFraction;
+		services::loadingFeed().push(event);
 	}
 	void StopProgressBar(bool& bError, const char*& failureReason, const char*& extendedReason, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)bError;
-		(void)failureReason;
-		(void)extendedReason;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			return;
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kStopProgress;
+		event.error = bError;
+		event.text = failureReason ? failureReason : "";
+		event.text2 = extendedReason ? extendedReason : "";
+		services::loadingFeed().push(event);
 	}
 	void SetProgressBarStatusText(const char*& statusText, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)statusText;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			return;
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kStatusText;
+		event.text = statusText ? statusText : "";
+		services::loadingFeed().push(event);
 	}
 	void SetSecondaryProgressBar(float& progress, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)progress;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			return;
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kSecondaryProgress;
+		event.fraction = progress;
+		services::loadingFeed().push(event);
 	}
 	void SetSecondaryProgressBarText(const char*& statusText, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)statusText;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			return;
+		services::LoadingFeedEvent event;
+		event.kind = services::LoadingFeedKind::kSecondaryText;
+		event.text = statusText ? statusText : "";
+		services::loadingFeed().push(event);
 	}
 	const char* GetControlModuleName() const override { return "AbcUi"; }
 };
@@ -456,6 +498,10 @@ public:
 		// on map changes, so suppression never has a gap while the original
 		// UI could still paint.
 		rmlui::uninstallPaintGate();
+		// T14: the GameUI instance is still mapped here (GameUI.dll unloads
+		// in the original CBaseUI::Shutdown, after this notification) - the
+		// password-prompt slot hook comes down with the gate.
+		uninstallGameUiLoadingHook();
 	}
 	void Start() override {}
 	void SetParent(vgui::VPANEL parent) override { (void)parent; }
@@ -467,6 +513,91 @@ public:
 };
 
 NativeClientVGUICallbacks ClientVGUICallbacksInstance;
+
+// T14: the server-password prompt rides IGameUI slot +0x58 (byte offset from
+// the vtable start; CGameUI vtable 0x10080530 + 0x58 -> 0x10006c60,
+// ShowServerPasswordDialog) - a Sven-added method BEYOND the 19 slots the
+// VGUI2Extension proxies, so it gets its own VFTHook on the same instance.
+// The replacement owns the prompt: the hook copies the borrowed server name
+// into the loading feed and does NOT call the original (the vanilla
+// ServerPasswordDialog must never be created - it is not reliably
+// paint-gated because it is created outside the proxied callback set).
+IGameUI* PasswordPromptGameUi = nullptr;
+hook_t* PasswordPromptHook = nullptr;
+// Engine-truthful view: ShowServerPasswordDialog(void* this, const char*
+// serverName, int flag) - FUN_10006c60 forwards to the dialog with
+// (name, flag): flag == 0 selects "#GameUI_ServerPasswordInvalid", nonzero
+// "#GameUI_ServerRequiresPassword" (FUN_1000bc20). Slot index 22 =
+// byte offset 0x58 (methods are 1-based; slot 0 is the destroying dtor).
+using ShowServerPasswordFn = void(__fastcall*)(void*, int, const char*, int);
+
+void __fastcall Hook_ShowServerPasswordDialog(void* pthis, int dummy, const char* serverName, int flag) {
+	(void)pthis;
+	(void)dummy;
+	services::LoadingFeedEvent event;
+	event.kind = services::LoadingFeedKind::kPasswordPrompt;
+	event.text = serverName ? serverName : "";
+	event.error = flag == 0;  // 0 = the previous password was rejected
+	services::loadingFeed().push(event);
+	// No original call: the vanilla dialog is out of the takeover's scope and
+	// its creation is not provably gated (see the note above).
+}
+
+// Installed from the GameUI::Start notification (GameUI.dll mapped, vtable
+// live; the VGUI2Extension proxy already owns slots 1..19 - index 22 does
+// not overlap). Fail-closed: a slot that does not point into the GameUI.dll
+// image means the layout drifted - skip with a warning (no guessed address,
+// no crash); the attempt stays cancellable through the loading page.
+void installPasswordPromptHook() {
+	if (PasswordPromptHook)
+		return;
+	const HMODULE gameUi = GetModuleHandleA("GameUI.dll");
+	if (!gameUi) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: GameUI.dll not loaded\n");
+		return;
+	}
+	const auto dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(gameUi);
+	const auto nt = dos->e_magic == IMAGE_DOS_SIGNATURE
+		? reinterpret_cast<const IMAGE_NT_HEADERS*>(reinterpret_cast<const BYTE*>(gameUi) + dos->e_lfanew)
+		: nullptr;
+	if (!nt || nt->Signature != IMAGE_NT_SIGNATURE) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: GameUI.dll image header invalid\n");
+		return;
+	}
+	const auto imageBase = reinterpret_cast<const BYTE*>(gameUi);
+	const auto imageEnd = imageBase + nt->OptionalHeader.SizeOfImage;
+	const auto factory = Sys_GetFactory(reinterpret_cast<HINTERFACEMODULE>(gameUi));
+	if (!factory) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: GameUI.dll has no factory\n");
+		return;
+	}
+	auto* gameUiInstance = static_cast<IGameUI*>(factory(GAMEUI_INTERFACE_VERSION, nullptr));
+	if (!gameUiInstance) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: \"%s\" unavailable\n", GAMEUI_INTERFACE_VERSION);
+		return;
+	}
+	if (!g_pMetaHookAPI) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: metahook API unavailable\n");
+		return;
+	}
+	void** vtable = *reinterpret_cast<void***>(gameUiInstance);
+	const void* slot22 = vtable[22];
+	if (slot22 < imageBase || slot22 >= imageEnd) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: IGameUI slot 22 (%p) outside the GameUI.dll image; layout drifted, skipping\n",
+			slot22);
+		return;
+	}
+	void* original = nullptr;
+	hook_t* hook = g_pMetaHookAPI->VFTHook(gameUiInstance, 0, 22,
+		reinterpret_cast<void*>(&Hook_ShowServerPasswordDialog), &original);
+	if (!hook) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: VFTHook slot 22 failed\n");
+		return;
+	}
+	PasswordPromptGameUi = gameUiInstance;
+	PasswordPromptHook = hook;
+	abc::ConsolePrint("[AbcUi] password prompt hook installed (IGameUI slot 22 -> 0x%p)\n", slot22);
+}
 
 } // namespace
 
@@ -549,6 +680,19 @@ bool nativeCallbacksRegistered() {
 	return NativeCallbacksRegistered;
 }
 
+bool gameUiLoadingHookInstalled() {
+	return PasswordPromptHook != nullptr;
+}
+
+void uninstallGameUiLoadingHook() {
+	if (PasswordPromptHook) {
+		if (g_pMetaHookAPI)
+			g_pMetaHookAPI->UnHook(PasswordPromptHook);
+		PasswordPromptHook = nullptr;
+	}
+	PasswordPromptGameUi = nullptr;
+}
+
 bool available() {
 	return Surface2 != nullptr;
 }
@@ -618,6 +762,37 @@ bool isKeyDown(const char* name) {
 	if (!GameUIFuncs->IsKeyDown(name, down))
 		return false;
 	return down;
+}
+
+std::string localizeToken(const char* token) {
+	if (!token || !*token)
+		return {};
+	// vgui2.dll's localize implementation (VGUI_Localize003 - GameUI.dll
+	// resolves its own "#GameUI_..." strings through it). Resolved lazily and
+	// cached: the interface instance is process-scoped like the surface.
+	static vgui::ILocalize* Localize = nullptr;
+	static bool Resolved = false;
+	if (!Resolved) {
+		Resolved = true;
+		const HMODULE vgui2 = GetModuleHandleA("vgui2.dll");
+		if (vgui2) {
+			const auto factory = Sys_GetFactory(reinterpret_cast<HINTERFACEMODULE>(vgui2));
+			if (factory)
+				Localize = static_cast<vgui::ILocalize*>(factory(VGUI_LOCALIZE_INTERFACE_VERSION, nullptr));
+		}
+	}
+	if (!Localize)
+		return {};
+	const wchar_t* wide = Localize->Find(token);
+	if (!wide || !*wide)
+		return {};
+	// UTF-16 -> UTF-8 (the engine localize stores UTF-16); bounded by the
+	// interface's own conversion so the codepage semantics match the shipped
+	// GameUI's display path.
+	char buffer[1024] = {};
+	if (Localize->ConvertUnicodeToANSI(wide, buffer, sizeof(buffer)) <= 0)
+		return {};
+	return buffer;
 }
 
 // The engine's vmode_s is 3 x int32 {width, height, bpp} (hw.dll enumeration

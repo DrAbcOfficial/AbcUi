@@ -128,4 +128,50 @@ NativeUiBridge& nativeUiBridge() {
 	return bridge;
 }
 
+void LoadingFeed::push(const LoadingFeedEvent& event) {
+	if (Count == kCapacity) {
+		// Drop the oldest: newest progress must survive a burst.
+		Head = (Head + 1) % kCapacity;
+		--Count;
+		++Dropped;
+	}
+	Events[(Head + Count) % kCapacity] = event;  // copies the strings
+	++Count;
+}
+
+bool LoadingFeed::pop(LoadingFeedEvent& out) {
+	if (Count == 0)
+		return false;
+	out = Events[Head];
+	Head = (Head + 1) % kCapacity;
+	--Count;
+	return true;
+}
+
+LoadingFeed& loadingFeed() {
+	static LoadingFeed feed;
+	return feed;
+}
+
+LoadingStep classifyLoadingEvent(const LoadingFeedEvent& event) {
+	switch (event.kind) {
+	case LoadingFeedKind::kLoadingStarted:
+		return LoadingStep::kStarted;
+	case LoadingFeedKind::kLoadingFinished:
+		// Only the level resource is the engine-confirmed join (the same fact
+		// the vanilla hide gate reads); anything else is bookkeeping - never
+		// assumed as "in game" (T14 step a.3).
+		return event.text == "level" ? LoadingStep::kJoined : LoadingStep::kNone;
+	case LoadingFeedKind::kStopProgress:
+		// error=false is the clean per-session teardown (T02 evidence: a
+		// StopProgressBar(error=0) precedes every new phase); only the error
+		// branch is a failure outcome.
+		return event.error ? LoadingStep::kFailed : LoadingStep::kNone;
+	case LoadingFeedKind::kPasswordPrompt:
+		return LoadingStep::kPasswordRequired;
+	default:
+		return LoadingStep::kNone;  // progress/status values only
+	}
+}
+
 }

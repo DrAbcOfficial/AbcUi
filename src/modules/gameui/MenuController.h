@@ -35,6 +35,9 @@
 //   kResume               InGame, menu up     -> close menu + resumeGame()
 //   kConsoleToggle        console absent      -> push Console overlay
 //   kConsoleToggle        console present     -> remove it, order kept
+//   kDirectConnectToggle  no-map phase        -> push/pop the DirectConnect
+//                         overlay (T14 address entry; refused while an
+//                         attempt/emergency holds the screen)
 //   kConnectRequested     Booting/Disconnected, address non-empty
 //                         -> new generation; Connecting; pages=[Loading];
 //                         overlays+focus cleared; connect(gen, address copy)
@@ -93,6 +96,11 @@
 //   kShutdown             ShuttingDown; pages/overlays/generations/strings
 //                         cleared; terminal
 //
+// T14 note: the loading stream keeps the T04 rows unchanged - the new
+// kDirectConnectToggle row is the only added intent; the engine stream is
+// translated by the module into the same generation-tagged kLoadingStarted/
+// kLoadingFinished kinds (cancel/success/failure race-safe by construction).
+//
 // Ownership: the backend pointer is borrowed and may be null (actions are
 // then dropped - presentation-only wiring); the controller never deletes it.
 
@@ -132,6 +140,7 @@ private:
 	void menuToggle();
 	void closeMenuAndResume();
 	void toggleConsoleOverlay();
+	void toggleDirectConnectOverlay();
 	void openConsoleOverlay();
 	void closeConsoleOverlay();
 	void connectRequest(const std::string& address);

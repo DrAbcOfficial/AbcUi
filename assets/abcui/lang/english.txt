@@ -321,3 +321,21 @@ Settings_VoiceLevel = input level
 Settings_VoiceIdle = not testing
 Settings_VoiceUnavailable = Voice input unavailable (no engine microphone interface)
 Settings_Unset = (unset)
+
+# T14 connection surfaces (loading page / error / password / direct connect)
+Loading_Title = Connecting
+Loading_Connecting = Contacting the server...
+Loading_Cancel = Cancel
+Loading_Return = Return
+Loading_Retry = Retry
+Loading_Connect = Connect
+Loading_ErrorTitle = Connection failed
+Loading_ErrorGeneric = The server could not be reached.
+Loading_PasswordTitle = Password required
+Loading_PasswordRequired = This server requires a password.
+Loading_PasswordInvalid = The password was rejected. Try again.
+Loading_PasswordField = Password
+Loading_DirectConnectTitle = Direct connect
+Loading_DirectConnectLead = Enter an address (host or host:port).
+Loading_AddressField = Server address
+Loading_AddressInvalid = Enter a valid address, e.g. 127.0.0.1:27015

@@ -323,3 +323,21 @@ Settings_VoiceLevel = nivel de entrada
 Settings_VoiceIdle = sin prueba activa
 Settings_VoiceUnavailable = Entrada de voz no disponible (sin interfaz de microfono del motor)
 Settings_Unset = (sin definir)
+
+# T14 connection surfaces (loading page / error / password / direct connect)
+Loading_Title = Conectando
+Loading_Connecting = Contactando con el servidor...
+Loading_Cancel = Cancelar
+Loading_Return = Volver
+Loading_Retry = Reintentar
+Loading_Connect = Conectar
+Loading_ErrorTitle = Conexion fallida
+Loading_ErrorGeneric = No se pudo alcanzar el servidor.
+Loading_PasswordTitle = Contrasena requerida
+Loading_PasswordRequired = Este servidor requiere contrasena.
+Loading_PasswordInvalid = Contrasena rechazada. Intentalo de nuevo.
+Loading_PasswordField = Contrasena
+Loading_DirectConnectTitle = Conexion directa
+Loading_DirectConnectLead = Introduce una direccion (host o host:puerto).
+Loading_AddressField = Direccion del servidor
+Loading_AddressInvalid = Introduce una direccion valida, p. ej. 127.0.0.1:27015

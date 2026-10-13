@@ -323,3 +323,21 @@ Settings_VoiceLevel = 输入电平
 Settings_VoiceIdle = 未在测试
 Settings_VoiceUnavailable = 语音输入不可用（无引擎麦克风接口）
 Settings_Unset = （未设置）
+
+# T14 connection surfaces (loading page / error / password / direct connect)
+Loading_Title = 正在连接
+Loading_Connecting = 正在联系服务器……
+Loading_Cancel = 取消
+Loading_Return = 返回
+Loading_Retry = 重试
+Loading_Connect = 连接
+Loading_ErrorTitle = 连接失败
+Loading_ErrorGeneric = 无法连接到服务器。
+Loading_PasswordTitle = 需要密码
+Loading_PasswordRequired = 此服务器需要密码。
+Loading_PasswordInvalid = 密码被拒绝，请重试。
+Loading_PasswordField = 密码
+Loading_DirectConnectTitle = 直接连接
+Loading_DirectConnectLead = 输入地址（主机 或 主机:端口）。
+Loading_AddressField = 服务器地址
+Loading_AddressInvalid = 请输入有效地址，例如 127.0.0.1:27015

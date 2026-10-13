@@ -27,8 +27,23 @@
 //     replicated: the legacy console it targets is fully suppressed by the
 //     takeover and the replacement console is T16.
 //
-// connect/cancelConnect/submitPassword stay unwired (T14/T17 own the loading
-// and query chains); they warn with context and touch no engine state.
+// T14 wires the connect chain (all verified against the installed binaries):
+//   - connect(generation, address): "connect <address>\n" - the engine's own
+//     connect command (hw.dll string table; the shipped ServerBrowser builds
+//     the same string). The address is re-validated here (fail closed) and
+//     only ever travels as this one command's payload.
+//   - cancelConnect(generation): "disconnect\n" - the verbatim command of the
+//     vanilla LoadingDialog Cancel button (GameUI.dll CLoadingDialog handler
+//     0x10007c00; its HTTP sub-state uses "httpstop\n" instead - that state
+//     is not observable through the extension-proxied callbacks, recorded as
+//     a T14 limitation). Once per generation: a repeated cancel for the same
+//     attempt issues nothing.
+//   - submitPassword(generation, password): "password %s\nretry\n" - the
+//     verbatim command of the vanilla ServerPasswordDialog Connect handler
+//     (GameUI.dll 0x1000bca0). The password is never stored and never logged;
+//     it is charset-validated first (printable ASCII without space, quote,
+//     backslash or semicolon, <= 63 bytes - the engine PasswordEntry limit)
+//     so the value cannot escape its single command argument.
 
 #include "GameUiBridge.h"
 
@@ -70,10 +85,15 @@ public:
 private:
 	bool singlePlayer() const;
 	void clientCmd(const char* command);
+	// One cancel per generation: the controller retires the attempt after the
+	// first, this latch is the second guard at the engine edge.
+	bool cancelIssued(uint32_t generation) const { return generation != 0 && generation == CanceledGeneration; }
 
 	Seams Seams_;
 	// Terminal latch: once the confirmed quit left, nothing re-executes it.
 	bool QuitIssued = false;
+	// T14: generation of the last issued connect cancel (0 = none).
+	uint32_t CanceledGeneration = 0;
 };
 
 }
