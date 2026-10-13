@@ -20,10 +20,13 @@
 #include <keydefs.h>
 
 #include <abc/Console.h>
+#include <abc/CvarCmd.h>
 #include <abc/Plugin.h>
 
 #include "PaintGate.h"
 #include "../services/GameUiBridge.h"
+#include "../services/console/ConsoleBackend.h"
+#include "../services/console/ConsoleBuffer.h"
 
 namespace vgui2ext {
 
@@ -441,8 +444,12 @@ public:
 		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
 	}
 	void Clear(VGUI2Extension_CallbackContext* CallbackContext) override {
-		// The text buffer may clear; no visual of its own.
-		(void)CallbackContext;
+		// T15: the engine's `clear` command wipes the notify context and then
+		// calls this (hw.dll 0x01d40b70 -> Clear helper -> vtable slot 4). The
+		// mirror must follow: clear() drops the cached lines AND the pending
+		// fragment, bumps the generation. The pre+post double dispatch
+		// collapses to one clear (ConsoleCapture).
+		services::console::consoleCapture().onClear(CallbackContext->IsPost);
 	}
 	void IsConsoleVisible(VGUI2Extension_CallbackContext* CallbackContext) override {
 		auto& bridge = services::nativeUiBridge();
@@ -454,15 +461,25 @@ public:
 		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
 	}
 	void Printf(IVGUI2Extension_String* str, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// Observe-only for now (T15 consumes the text through the bounded
-		// queue). Never print from inside this callback: the extension's own
-		// Printf path re-enters it (hook-contract T8).
-		(void)str;
-		(void)CallbackContext;
+		// T15: consume the formatted text into the bounded cache - a byte
+		// copy taken inside the synchronous callback (borrowed string), one
+		// cached line per engine message (the capture dedups the proxy's
+		// pre+post echo on the wrapper string identity). Result stays UNSET:
+		// the real print path runs untouched (the engine console buffer, the
+		// -condebug file log and the notify area are the engine's own).
+		// Never print from inside this callback: it would re-enter here and
+		// double-write the file log (hook-contract T8).
+		services::console::consoleCapture().onPrintf(str, str ? str->data() : nullptr,
+			str ? str->length() : 0, CallbackContext->IsPost);
 	}
 	void DPrintf(IVGUI2Extension_String* str, VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)str;
-		(void)CallbackContext;
+		// T15: same seam. DPrintf only reaches this callback when the engine's
+		// developer gate above the vtable call already passed (hw.dll
+		// FUN_01d03b90 tests the developer cvar before the slot+0x1c call),
+		// so the cache contains exactly the console's developer-mode lines;
+		// the per-line Developer flag keeps that distinction for the UI.
+		services::console::consoleCapture().onDPrintf(str, str ? str->data() : nullptr,
+			str ? str->length() : 0, CallbackContext->IsPost);
 	}
 	void SetParent(vgui::VPANEL parent, VGUI2Extension_CallbackContext* CallbackContext) override {
 		// Parent wiring is engine plumbing; the original keeps it.
@@ -599,6 +616,54 @@ void installPasswordPromptHook() {
 	abc::ConsolePrint("[AbcUi] password prompt hook installed (IGameUI slot 22 -> 0x%p)\n", slot22);
 }
 
+// --- T15: console backend production seams ----------------------------------
+// The user submission channel (services::console::ConsoleBackend) executes
+// through pfnClientCmd - the same engine command buffer the shipped console
+// entry submitted to; the engine's own command/alias chain consumes the line
+// exactly once. The enumeration seams read the REAL runtime catalogs with the
+// engine's own cursors (hw.dll exports, the ABCEnchance/Find precedent):
+// cvars via the GetFirstCvarPtr chain, commands via the
+// GetFirstCmdFunctionHandle cursor. Every name is copied by the caller before
+// the next engine call; nothing outlives the scan.
+
+std::size_t enumerateCvars(const char** out, std::size_t max) {
+	if (!out || max == 0 || !gEngfuncs.GetFirstCvarPtr)
+		return 0;
+	std::size_t count = 0;
+	for (cvar_t* cvar = gEngfuncs.GetFirstCvarPtr(); cvar && count < max; cvar = cvar->next) {
+		if (cvar->name && *cvar->name)
+			out[count++] = cvar->name;
+	}
+	return count;
+}
+
+std::size_t enumerateCommands(const char** out, std::size_t max) {
+	if (!out || max == 0 || !gEngfuncs.GetFirstCmdFunctionHandle || !gEngfuncs.GetNextCmdFunctionHandle
+		|| !gEngfuncs.GetCmdFunctionName)
+		return 0;
+	std::size_t count = 0;
+	for (unsigned int handle = gEngfuncs.GetFirstCmdFunctionHandle(); handle && count < max;
+		handle = gEngfuncs.GetNextCmdFunctionHandle(handle)) {
+		const char* name = gEngfuncs.GetCmdFunctionName(handle);
+		if (name && *name)
+			out[count++] = name;
+	}
+	return count;
+}
+
+void wireConsoleBackend() {
+	services::console::ConsoleBackend::Seams seams;
+	seams.clientCmd = [](const char* command) {
+		if (!command)
+			return false;
+		abc::EngineClientCmd(command);
+		return true;  // handed to the engine command buffer (flush between frames)
+	};
+	seams.listCvars = &enumerateCvars;
+	seams.listCommands = &enumerateCommands;
+	services::console::consoleBackend().setSeams(seams);
+}
+
 } // namespace
 
 void init() {
@@ -633,7 +698,9 @@ void init() {
 	// the NativeExtension note above). Registration happens here, before
 	// BaseUI::Initialize (T02 timeline: LoadClient -> registration ->
 	// Initialize), so the cold-start GameUI activation already funnels
-	// through them.
+	// through them. The T15 console capture rides the same registration: the
+	// earliest point this plugin can receive engine output (the cache is
+	// usable before any Rml context exists).
 	if (!NativeCallbacksRegistered) {
 		Extension->RegisterGameUICallbacks(&GameUICallbacksInstance);
 		Extension->RegisterGameConsoleCallbacks(&GameConsoleCallbacksInstance);
@@ -643,6 +710,8 @@ void init() {
 		NativeExtension = Extension;
 		NativeCallbacksRegistered = true;
 	}
+	// T15: the submission/enumeration seams of the console backend.
+	wireConsoleBackend();
 }
 
 void shutdown() {
@@ -661,6 +730,10 @@ void shutdown() {
 void shutdownNative() {
 	// Plugin teardown only (plugins.cpp OnShutdown). Fallback gate removal
 	// for paths that never reached the GameUI::Shutdown notification.
+	// T15 teardown order (strict): stop the console producers first (every
+	// later callback is a no-op), then unregister the callbacks, and only
+	// then drop the cache - no producer may push into a cache being cleared.
+	services::console::consoleCapture().detach();
 	rmlui::uninstallPaintGate();
 	if (NativeExtension && NativeCallbacksRegistered) {
 		NativeExtension->UnregisterGameUICallbacks(&GameUICallbacksInstance);
@@ -670,6 +743,7 @@ void shutdownNative() {
 	}
 	NativeExtension = nullptr;
 	services::nativeUiBridge().setMenuSink(nullptr);
+	services::console::consoleBuffer().shutdown();
 }
 
 bool uiCallbacksRegistered() {

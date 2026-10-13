@@ -29,6 +29,8 @@
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 #include "../services/GameUiBridge.h"
+#include "../services/console/ConsoleBackend.h"
+#include "../services/console/ConsoleBuffer.h"
 namespace panels::scoreboard { extern panels::ScoreboardPanel* PanelInstance; }
 
 namespace hooks { int debugKeyEvent(int down, int keynum); }
@@ -37,25 +39,113 @@ namespace rmlui {
 
 namespace {
 
-// Input-reach echo for the acceptance driver: the driver moves the engine
-// cursor / traps an engine key and asserts these lines on the stdout mirror
-// (same instrument role the retired DemoPanel played in Phase 3, but
-// Debug-builds-only and attached to the probe document).
-class ProbeInputEcho : public Rml::EventListener {
-public:
-	void ProcessEvent(Rml::Event& event) override {
-		if (event.GetId() == Rml::EventId::Keydown) {
-			abc::ConsolePrint("[AbcUi] probe key id=%d\n",
-				event.GetParameter<int>("key_identifier", 0));
+	// Input-reach echo for the acceptance driver: the driver moves the engine
+	// cursor / traps an engine key and asserts these lines on the stdout mirror
+	// (same instrument role the retired DemoPanel played in Phase 3, but
+	// Debug-builds-only and attached to the probe document).
+	class ProbeInputEcho : public Rml::EventListener {
+	public:
+		void ProcessEvent(Rml::Event& event) override {
+			if (event.GetId() == Rml::EventId::Keydown) {
+				abc::ConsolePrint("[AbcUi] probe key id=%d\n",
+					event.GetParameter<int>("key_identifier", 0));
+				return;
+			}
+			abc::ConsolePrint("[AbcUi] probe mouse %d,%d\n",
+				event.GetParameter<int>("mouse_x", 0),
+				event.GetParameter<int>("mouse_y", 0));
+		}
+	};
+	ProbeInputEcho InputEcho;
+	Rml::ElementDocument* ProbeDoc = nullptr;
+
+	// T15 diagnostics: the console cache/backend state without touching the
+	// text itself. `abc_ui_console_status` prints counters only;
+	// `abc_ui_console_dump <n>` prints the newest n cached lines through the
+	// engine console - the capture is detached around the print so the dump
+	// does not re-enter the cache or pollute it (the buffer itself stays the
+	// producer-owned mirror; the dump is a Debug instrument).
+	void consoleStatusCommand() {
+		const auto& buffer = services::console::consoleBuffer();
+		const auto& backend = services::console::consoleBackend();
+		const auto bufferStats = buffer.stats();
+		const auto backendCounters = backend.counters();
+		abc::ConsolePrint(
+			"[AbcUi] console: gen=%llu lines=%d seq=%llu fragments=%llu droppedBytes=%llu droppedLines=%llu rejectedAfterShutdown=%llu stopped=%d attached=%d\n",
+			static_cast<unsigned long long>(buffer.generation()), static_cast<int>(buffer.lineCount()),
+			static_cast<unsigned long long>(buffer.latestSequence()),
+			static_cast<unsigned long long>(bufferStats.Fragments),
+			static_cast<unsigned long long>(bufferStats.DroppedBytes),
+			static_cast<unsigned long long>(bufferStats.DroppedLines),
+			static_cast<unsigned long long>(bufferStats.RejectedAfterShutdown),
+			buffer.stopped() ? 1 : 0, services::console::consoleCapture().attached() ? 1 : 0);
+		abc::ConsolePrint(
+			"[AbcUi] console: submitted=%llu rejectedEmpty=%llu rejectedInvalid=%llu unavailable=%llu sensitiveSkipped=%llu history=%d\n",
+			static_cast<unsigned long long>(backendCounters.Executed),
+			static_cast<unsigned long long>(backendCounters.RejectedEmpty),
+			static_cast<unsigned long long>(backendCounters.RejectedInvalid),
+			static_cast<unsigned long long>(backendCounters.Unavailable),
+			static_cast<unsigned long long>(backendCounters.HistorySkippedSensitive),
+			static_cast<int>(backend.history().size()));
+	}
+
+	void consoleDumpCommand() {
+		int newest = 10;
+		if (gEngfuncs.Cmd_Argc() >= 2)
+			newest = atoi(gEngfuncs.Cmd_Argv(1));
+		if (newest <= 0)
+			newest = 10;
+		if (newest > 64)
+			newest = 64;
+		const std::uint64_t latest = services::console::consoleBuffer().latestSequence();
+		const std::uint64_t since = latest > static_cast<std::uint64_t>(newest)
+			? latest - static_cast<std::uint64_t>(newest)
+			: 0;
+		std::vector<services::console::ConsoleLine> lines;
+		const std::size_t count = services::console::consoleBuffer().copySince(since, lines,
+			static_cast<std::size_t>(newest));
+		// The dump prints through the engine console; detach the capture for
+		// the duration so the printed copy does not re-enter the cache.
+		auto& capture = services::console::consoleCapture();
+		const bool wasAttached = capture.attached();
+		if (wasAttached)
+			capture.detach();
+		for (const auto& line : lines)
+			abc::ConsolePrint("[AbcUi] console[%llu%s%s] %s\n",
+				static_cast<unsigned long long>(line.Sequence), line.Developer ? " dev" : "",
+				line.Truncated ? " trunc" : "", line.Text.c_str());
+		if (wasAttached)
+			capture.attach();
+		abc::ConsolePrint("[AbcUi] console dump: %d lines\n", static_cast<int>(count));
+	}
+
+	// T15 diagnostics: drive the REAL submission path (validation, sensitive
+	// history rule, engine command channel) from the debug console.
+	void consoleSubmitCommand() {
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_console_submit <command...>\n");
 			return;
 		}
-		abc::ConsolePrint("[AbcUi] probe mouse %d,%d\n",
-			event.GetParameter<int>("mouse_x", 0),
-			event.GetParameter<int>("mouse_y", 0));
+		std::string command;
+		for (int i = 1; i < gEngfuncs.Cmd_Argc(); ++i) {
+			if (i > 1)
+				command += ' ';
+			command += gEngfuncs.Cmd_Argv(i);
+		}
+		const auto result = services::console::consoleBackend().submit(command.c_str());
+		abc::ConsolePrint("[AbcUi] console submit result=%d \"%s\"\n", static_cast<int>(result),
+			command.c_str());
 	}
-};
-ProbeInputEcho InputEcho;
-Rml::ElementDocument* ProbeDoc = nullptr;
+
+	void consoleCompleteCommand() {
+		const char* prefix = gEngfuncs.Cmd_Argc() >= 2 ? gEngfuncs.Cmd_Argv(1) : "";
+		const auto matches = services::console::consoleBackend().complete(prefix, 64);
+		abc::ConsolePrint("[AbcUi] console complete \"%s\": %d matches\n", prefix,
+			static_cast<int>(matches.size()));
+		for (const auto& match : matches)
+			abc::ConsolePrint("[AbcUi]   %s\n", match.c_str());
+	}
+
 
 // Live font-pipeline probe (batch A acceptance aid): builds a document from
 // an inline sheet - three explicit font families plus one line styled only
@@ -586,6 +676,12 @@ void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_pointer_off", pointerOffCommand);
 	abc::ADD_COMMAND("abc_ui_wheelup", wheelUpCommand);
 	abc::ADD_COMMAND("abc_ui_wheeldown", wheelDownCommand);
+	// T15 console backend diagnostics (cache counters, dump, real submission
+	// path, read-only completion).
+	abc::ADD_COMMAND("abc_ui_console_status", consoleStatusCommand);
+	abc::ADD_COMMAND("abc_ui_console_dump", consoleDumpCommand);
+	abc::ADD_COMMAND("abc_ui_console_submit", consoleSubmitCommand);
+	abc::ADD_COMMAND("abc_ui_console_complete", consoleCompleteCommand);
 }
 
 }

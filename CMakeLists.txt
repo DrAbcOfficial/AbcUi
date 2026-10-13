@@ -82,6 +82,8 @@ add_library(AbcUi MODULE
     src/modules/gameui/MenuController.cpp
     src/services/GameUiBridge.cpp
     src/services/EngineUiBackend.cpp
+    src/services/console/ConsoleBuffer.cpp
+    src/services/console/ConsoleBackend.cpp
     src/services/loading/LoadingModel.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp

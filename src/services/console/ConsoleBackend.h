@@ -1,0 +1,106 @@
+#pragma once
+
+// services::console::ConsoleBackend - the user submission channel of the new
+// console (T15). Strictly separated from the output direction: this object
+// executes ONE engine command per submit and keeps the bounded, redacted
+// input history; it never touches the output cache (ConsoleBuffer).
+//
+// Command semantics (evidence):
+//   - Execution rides pfnClientCmd - the exact channel the shipped console
+//     entry submitted to (GameUI.dll CGameConsoleDialog "ConsoleSubmit" ->
+//     TabCatchingTextEntry handler issues the entered line through the
+//     engine client command buffer). The engine's own command/alias chain
+//     (including every CChainedCommand the engine knows: slot1..+attack)
+//     then consumes it exactly like typed input - this backend never
+//     re-implements or bypasses the chain (T15 step 4, coding rule 6).
+//   - The engine buffer flushes between frames, so submit() reports the
+//     hand-off, not completion; the effect is observed through the output
+//     stream like any other command.
+//   - Validation is fail-closed: empty (after trimming) is refused, embedded
+//     CR/LF is refused (a submission is exactly one command line - the
+//     separators must never let user text inject a second command), and the
+//     byte length is bounded. The value travels as ONE command payload.
+//   - History is bounded and classified: a command whose first token is a
+//     password-shaped name (contains "password", case-insensitive - covers
+//     password/sv_password/rcon_password/...) executes but is NEVER stored,
+//     mirroring the sh_pw discipline of "user text never lands in logs".
+//   - Completion enumerates the REAL runtime catalogs read-only through the
+//     injected seams (cvars via GetFirstCvarPtr chain, commands via the
+//     GetFirstCmdFunctionHandle cursor). Names are copied immediately - no
+//     engine pointer is kept past the call - and both the scan and the
+//     returned matches are capped.
+//
+// Engine-free by design (function-pointer seams), so the exact production
+// translation unit links into the offline acceptance test.
+
+#include <cstddef>
+#include <cstdint>
+#include <deque>
+#include <string>
+#include <vector>
+
+namespace services::console {
+
+class ConsoleBackend {
+public:
+	enum class SubmitResult : int {
+		kExecuted = 0,         // handed to the engine command channel once
+		kRejectedEmpty,        // nothing but whitespace
+		kRejectedInvalid,      // embedded newline / over the byte bound
+		kUnavailable,          // no seam or the seam reported the hand-off failed
+	};
+
+	static constexpr std::size_t kMaxHistory = 64;
+	static constexpr std::size_t kMaxCommandBytes = 255;
+	static constexpr std::size_t kMaxCompletions = 256;
+	static constexpr std::size_t kMaxEnumeration = 1024;  // per source per scan
+
+	struct Seams {
+		// Real engine command submit (pfnClientCmd wrapper); returns false
+		// when the channel could not take the command.
+		bool (*clientCmd)(const char* command) = nullptr;
+		// Read-only catalog enumeration: fills up to `max` borrowed name
+		// pointers, returns the count. Borrowed = copied by the caller before
+		// the next engine call.
+		std::size_t (*listCvars)(const char** out, std::size_t max) = nullptr;
+		std::size_t (*listCommands)(const char** out, std::size_t max) = nullptr;
+	};
+
+	struct Counters {
+		std::uint64_t Executed = 0;
+		std::uint64_t RejectedEmpty = 0;
+		std::uint64_t RejectedInvalid = 0;
+		std::uint64_t Unavailable = 0;
+		std::uint64_t HistorySkippedSensitive = 0;
+	};
+
+	void setSeams(const Seams& seams) { Seams_ = seams; }
+
+	// The one submission entry. Trims surrounding whitespace, validates, then
+	// executes exactly once through the command seam.
+	SubmitResult submit(const char* text);
+
+	// Bounded history, oldest first, newest last. Sensitive commands are
+	// absent by construction (counted in the counters instead).
+	const std::deque<std::string>& history() const { return History; }
+	void clearHistory() { History.clear(); }
+	Counters counters() const { return Stats; }
+
+	// Case-insensitive prefix completion over cvars + commands: sorted,
+	// exact-name deduplicated, capped (both the scan and the result). An
+	// empty prefix lists the catalog head.
+	std::vector<std::string> complete(const char* prefix, std::size_t max) const;
+
+private:
+	static bool sensitiveCommand(const std::string& command);
+
+	Seams Seams_;
+	std::deque<std::string> History;
+	Counters Stats;
+};
+
+// Process-scoped singleton; the production seams ride
+// rmlui/VGUI2ExtensionImport.cpp (engine integration layer).
+ConsoleBackend& consoleBackend();
+
+}
