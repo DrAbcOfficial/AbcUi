@@ -349,3 +349,44 @@ Console_Count = 行数
 Console_ConfirmLead = 粘贴内容包含多条命令，将执行命令数：
 Console_ConfirmYes = 执行
 Console_ConfirmNo = 取消
+
+# T18 服务器浏览器(列表与详情;收藏与连接随 T18b)
+SB_Title = 浏览服务器
+SB_TabInternet = 互联网
+SB_TabLan = 局域网
+SB_TabFavorites = 收藏
+SB_TabHistory = 历史
+SB_Refresh = 刷新
+SB_Stop = 停止
+SB_FilterNotEmpty = 非空
+SB_FilterNotFull = 未满
+SB_FilterSecure = 仅安全
+SB_ColumnName = 服务器名称
+SB_ColumnMap = 地图
+SB_ColumnPlayers = 玩家
+SB_ColumnPing = 延迟
+SB_Querying = 正在查询……已收到 %d 台服务器
+SB_Completed = %d 台服务器
+SB_NoServers = 没有服务器响应。
+SB_Cancelled = 已停止。已收到 %d 台服务器。
+SB_FailUnavailable = 服务器列表不可用(Steam 未运行)。
+SB_FailRejected = 服务器列表请求被拒绝。
+SB_FailTimedOut = 服务器列表查询超时。
+SB_FailMaster = 主服务器未响应。
+SB_EmptyList = 当前视图没有服务器。
+SB_DetailHint = 选择一台服务器以查看详情。
+SB_DetailQuerying = 正在向服务器查询玩家……
+SB_DetailFailed = 服务器没有应答。
+SB_NoPlayers = 没有玩家信息。
+SB_PasswordYes = 需要密码
+SB_SecureYes = VAC 保护
+
+# T18b 收藏与连接
+SB_Connect = 连接
+SB_FavoriteAdd = 加入收藏
+SB_FavoriteRemove = 取消收藏
+SB_Connecting = 正在连接 %s
+SB_ConnectRefused = 无法连接:地址无效。
+SB_FavoriteAdded = 已加入收藏。
+SB_FavoriteRemoved = 已取消收藏。
+SB_FavoriteFailed = 收藏更改被拒绝。

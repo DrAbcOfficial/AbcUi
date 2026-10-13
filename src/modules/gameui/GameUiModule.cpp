@@ -37,6 +37,7 @@
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
+#include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
 #include "../../rmlui/InputBridge.h"
@@ -47,6 +48,8 @@
 #include "../../services/console/ConsoleBackend.h"
 #include "../../services/console/ConsoleBuffer.h"
 #include "../../services/loading/LoadingModel.h"
+#include "../../services/serverbrowser/ServerFavorites.h"
+#include "../../services/serverbrowser/ServerListModel.h"
 #include "../../services/serverbrowser/ServerQuery.h"
 #include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
@@ -438,6 +441,11 @@ public:
 		abc::ADD_COMMAND("abc_ui_server_detail_cancel", serverDetailCancelCommand);
 		abc::ADD_COMMAND("abc_ui_server_refresh", serverRefreshCommand);
 		abc::ADD_COMMAND("abc_ui_server_timeout", serverTimeoutCommand);
+		abc::ADD_COMMAND("abc_ui_server_ui", serverUiCommand);
+		abc::ADD_COMMAND("abc_ui_server_select", serverSelectCommand);
+		abc::ADD_COMMAND("abc_ui_server_favorite", serverFavoriteCommand);
+		abc::ADD_COMMAND("abc_ui_server_history", serverHistoryCommand);
+		abc::ADD_COMMAND("abc_ui_server_connect", serverConnectCommand);
 #endif
 	}
 
@@ -456,6 +464,10 @@ public:
 		// status-edge log rides the same beat.
 		ServerQueryState.pump();
 		logServerQueryChange();
+		// T18: the browser page's projection beat (sync + bounded re-render on
+		// change). Runs on the presented latch like the other pages.
+		if (MenuPresented && BrowserPresented && Browser)
+			Browser->tick();
 		// T12: drain the deferred video restart FIRST and independently of
 		// menu presentation - the transaction owns it, not the page (see the
 		// DeferredVideoRestart note above).
@@ -526,6 +538,7 @@ public:
 				&& (owner == Shell->document() || owner == (SubStub ? SubStub->document() : nullptr)
 					|| owner == (Console ? Console->document() : nullptr)
 					|| owner == (Settings ? Settings->document() : nullptr)
+					|| owner == (Browser ? Browser->document() : nullptr)
 					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)
 					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)
 					|| owner == (Loading ? Loading->document() : nullptr)
@@ -559,6 +572,8 @@ public:
 					: panels::mainmenu::MainMenuPage::Section::kPause, true);
 			} else if (state.pages.top() == MenuPage::kSettings && Settings) {
 				Settings->refocusDefault();
+			} else if (state.pages.top() == MenuPage::kServers && Browser) {
+				Browser->refocusDefault();
 			} else if (state.pages.top() == MenuPage::kLoading && Loading) {
 				Loading->refocusDefault();
 			} else if (SubStub) {
@@ -591,6 +606,13 @@ public:
 		Settings->setBindModel(&BindModel);
 		Settings->setVideoModel(&VideoModel);
 		Settings->setVoiceModel(&VoiceModel);
+		// T18: the server browser page (was the kServers stub). The query is
+		// the module's T17 member; the list model is the module-owned view;
+		// the favorites store is Steam's authoritative one (T18b).
+		Browser = std::make_unique<panels::serverbrowser::ServerBrowserPage>();
+		Browser->setQuery(&ServerQueryState);
+		Browser->setListModel(&ServerListModel);
+		Browser->setFavorites(services::serverbrowser::steamFavorites());
 		VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
 		VideoConfirm->setVideoModel(&VideoModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
@@ -604,6 +626,7 @@ public:
 		wire(SubStub);
 		wire(Console);
 		wire(Settings);
+		wire(Browser);
 		wire(VideoConfirm);
 		wire(ConfirmQuit);
 		wire(Loading);
@@ -646,6 +669,7 @@ public:
 		SubStub.reset();
 		Console.reset();
 		Settings.reset();
+		Browser.reset();
 		VideoConfirm.reset();
 		ConfirmQuit.reset();
 		Loading.reset();
@@ -892,6 +916,12 @@ private:
 			case MenuPage::kSettings:
 				presentSettingsPage();
 				break;
+			case MenuPage::kServers:
+				// T18: the real browser replaced the T09 stub. tick() runs on
+				// the frame beat; the fresh-open query trigger is the T17
+				// block below.
+				presentServerBrowserPage();
+				break;
 			case MenuPage::kLoading:
 				// Fresh projection on every sync: the attempt's values moved
 				// since the last frame (the frame drain re-renders too).
@@ -907,22 +937,19 @@ private:
 				break;
 			}
 		}
-		// T17: the server page's query ownership. The T18 browser will live
-		// at kServers; until it lands the stub stands in, but the production
-		// lifecycle is already in effect: opening the page is the user's
-		// trigger and starts the Internet list query (the default browser
-		// tab), leaving the page releases every handle (release implies
-		// cancel for a still-live query). Exiting the game releases through
-		// onShutdown's model shutdown.
+		// T17: the server page's query ownership. The T18 browser lives at
+		// kServers; opening the page is the user's trigger and starts the
+		// ACTIVE TAB's list query (Internet on first open; a live request of
+		// the same open is not re-triggered), leaving the page releases every
+		// handle (release implies cancel for a still-live query). Exiting the
+		// game releases through onShutdown's model shutdown.
 		const bool serverPageOpen = !state.pages.empty()
 			&& state.pages.top() == MenuPage::kServers;
 		if (serverPageOpen && !ServerPageOpen) {
-			// Fresh opening: start the user-triggered query. A live request
-			// is left alone (re-entering the same open is not a re-trigger).
-			if (ServerQueryState.listRequest() == 0 && !ServerQueryState.closed()) {
-				ServerQueryState.begin(services::serverbrowser::QueryKind::Internet);
-				logServerQueryChange();
-			}
+			// Fresh opening: start the user-triggered query for the active
+			// tab with the current filter pairs.
+			if (ServerQueryState.listRequest() == 0 && !ServerQueryState.closed())
+				beginServerQuery(ServerQueryState.kind());
 		} else if (ServerPageOpen && !serverPageOpen) {
 			releaseServerPageQueries();
 			logServerQueryChange();
@@ -944,6 +971,12 @@ private:
 			// the settings page stops it (the original's PageHide guarantee,
 			// extended to the controller-driven leave path).
 			VoiceModel.stopTest();
+		}
+		if (state.pages.empty() || state.pages.top() != MenuPage::kServers) {
+			if (Browser) {
+				Browser->hide();
+				BrowserPresented = false;
+			}
 		}
 
 		// Overlay layer, top-most last (each show pulls to the context
@@ -1029,6 +1062,80 @@ private:
 			SettingsPresented = true;
 		}
 		Settings->show();
+	}
+
+	// The server browser page (T18): state-driven, no snapshot step - the
+	// query state is the truth and the frame beat projects it.
+	void presentServerBrowserPage() {
+		if (!Browser)
+			return;
+		Browser->show();
+		BrowserPresented = true;
+	}
+
+	// T18: the query trigger shared by the page-open beat and the page's
+	// tab/refresh/filter intents. `kind` is the active tab; the filter pairs
+	// ride the view model's ServerFilter (the shipped master keys).
+	void beginServerQuery(services::serverbrowser::QueryKind kind) {
+		if (ServerQueryState.closed())
+			return;
+		services::serverbrowser::FilterPair pairs[8];
+		const int count = ServerListModel.filter().buildPairs(pairs, 8);
+		ServerQueryState.begin(kind, count > 0 ? pairs : nullptr, count);
+		logServerQueryChange();
+	}
+
+	// T18b: connect the selected server through the T14 attempt path (the
+	// same typed request the direct-connect overlay uses; the browser never
+	// issues "connect" itself). The address is built from the snapshot tuple
+	// and revalidated by LoadingModel::parseAddress before any engine call.
+	void connectSelectedServer() {
+		const auto* selected = ServerListModel.selectedEntry(ServerQueryState);
+		if (!selected || !selected->responded) {
+			abc::ConsoleWarn("[AbcUi] server connect refused (no responded selection)\n");
+			return;
+		}
+		const std::string address = services::serverbrowser::buildConnectAddress(*selected);
+		std::string host;
+		int port = 0;
+		if (address.empty() || !services::loading::LoadingModel::parseAddress(address.c_str(), host, port)) {
+			abc::ConsoleWarn("[AbcUi] server connect refused (unrepresentable address)\n");
+			return;
+		}
+		// The join-success memory entry (the shipped ConnectedToGame records
+		// flags=2 into Steam's own store; see ServerFavorites.h). Kept for the
+		// live attempt only - a cancel/failure retires it.
+		PendingHistory = services::serverbrowser::favoriteKeyOf(*selected);
+		PendingHistoryValid = PendingHistory.valid();
+		Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
+		finishDispatch();
+	}
+
+	// T18b: add/remove the selected server in Steam's authoritative store,
+	// with an immediate read-back (both operations re-read the record; a
+	// refused write never reports success). The page re-projects from the
+	// store on the next tick.
+	void toggleSelectedFavorite() {
+		const auto* selected = ServerListModel.selectedEntry(ServerQueryState);
+		if (!selected) {
+			abc::ConsoleWarn("[AbcUi] favorite toggle refused (no selection)\n");
+			return;
+		}
+		auto* favorites = services::serverbrowser::steamFavorites();
+		const auto key = services::serverbrowser::favoriteKeyOf(*selected);
+		if (!key.valid()) {
+			abc::ConsoleWarn("[AbcUi] favorite toggle refused (unrepresentable address)\n");
+			return;
+		}
+		const bool wasFavorite = favorites->isFavorite(key.ip, key.connPort, key.queryPort);
+		const bool ok = wasFavorite
+			? favorites->removeFavorite(key.ip, key.connPort, key.queryPort)
+			: favorites->addFavorite(key.ip, key.connPort, key.queryPort);
+		abc::ConsolePrint("[AbcUi] favorite %s \"%s\": %s (count=%d)\n",
+			wasFavorite ? "remove" : "add", selected->name.c_str(), ok ? "OK" : "REFUSED",
+			favorites->favoriteCount());
+		if (Browser)
+			Browser->tick();  // re-project the button state from the store
 	}
 
 	// --- T12 display-mode transaction ------------------------------------
@@ -1196,9 +1303,6 @@ private:
 		const char* titleToken = "#MainMenu_StubTitle";
 		const char* bodyToken = "#MainMenu_StubSettings";
 		switch (page) {
-		case MenuPage::kServers:
-			bodyToken = "#MainMenu_StubServers";
-			break;
 		case MenuPage::kCreateGame:
 			bodyToken = "#MainMenu_StubCreateGame";
 			break;
@@ -1316,6 +1420,62 @@ private:
 			startKeyCapture();
 			return; // no controller transition - the page state already moved
 		}
+		else if (intent.rfind("sb-", 0) == 0) {
+			// T18 browser intents (fixed page-internal names only): the query
+			// lifecycle entries. Row/sort/paging never reach here (the page
+			// resolves them against its models directly).
+			using services::serverbrowser::QueryKind;
+			if (intent == "sb-tab-internet")
+				beginServerQuery(QueryKind::Internet);
+			else if (intent == "sb-tab-lan")
+				beginServerQuery(QueryKind::Lan);
+			else if (intent == "sb-tab-favorites")
+				beginServerQuery(QueryKind::Favorites);
+			else if (intent == "sb-tab-history")
+				beginServerQuery(QueryKind::History);
+			else if (intent == "sb-refresh") {
+				// The shipped Refresh button semantics (T17 pin): RefreshQuery
+				// on a live handle; a fresh request when nothing is live.
+				if (ServerQueryState.listRequest() != 0)
+					ServerQueryState.refreshAll();
+				else
+					beginServerQuery(ServerQueryState.kind());
+				logServerQueryChange();
+			}
+			else if (intent == "sb-stop") {
+				ServerQueryState.cancel();
+				logServerQueryChange();
+			}
+			else if (intent == "sb-filter-empty" || intent == "sb-filter-full"
+				|| intent == "sb-filter-secure") {
+				// The view model owns the filter truth; a toggle re-issues the
+				// list query with the new master pairs (the original's filter
+				// apply). Client-side the same rules re-project immediately.
+				services::serverbrowser::ServerFilter filter = ServerListModel.filter();
+				if (intent == "sb-filter-empty")
+					filter.hideEmpty = !filter.hideEmpty;
+				else if (intent == "sb-filter-full")
+					filter.hideFull = !filter.hideFull;
+				else
+					filter.secureOnly = !filter.secureOnly;
+				ServerListModel.setFilter(filter);
+				beginServerQuery(ServerQueryState.kind());
+			}
+			else if (intent == "sb-connect") {
+				connectSelectedServer();
+				return;
+			}
+			else if (intent == "sb-favorite-toggle") {
+				toggleSelectedFavorite();
+				return;
+			}
+			else {
+				abc::ConsoleWarn("[AbcUi] unknown menu action \"%s\" dropped\n", intent.c_str());
+				return;
+			}
+			finishDispatch();
+			return;
+		}
 		else if (intent == "video-apply") {
 			applyVideoChange();
 			return;
@@ -1384,6 +1544,10 @@ private:
 			PasswordInvalid = false;
 			PasswordPrompts = 0;
 			PasswordReprepare = false;
+			// T18b: an attempt that ends without the join beat retires the
+			// pending history entry unrecorded (only a real join writes it).
+			if (PendingHistoryValid)
+				PendingHistoryValid = false;
 		}
 	}
 
@@ -1450,9 +1614,14 @@ private:
 					Controller.dispatch(gameui::menu::makeLoadingStarted(live));
 				break;
 			case services::LoadingStep::kJoined:
-				if (live != 0)
+				if (live != 0) {
+					// T18b: the engine-confirmed join is the history moment
+					// (the shipped ConnectedToGame wrote flags=2 into Steam's
+					// store exactly here).
+					recordPendingHistory();
 					Controller.dispatch(gameui::menu::makeLoadingFinished(live,
 						gameui::menu::LoadingOutcome::kSuccess, nullptr));
+				}
 				break;
 			case services::LoadingStep::kFailed: {
 				if (live == 0)
@@ -1487,6 +1656,23 @@ private:
 			services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
 	}
 
+	// T18b: the pending history record of the live browser-originated attempt.
+	// Set on connectSelectedServer, consumed exactly once on the join-success
+	// beat; a failed/cancelled attempt retires it unrecorded (the shipped
+	// ConnectedToGame never fires for those either).
+	void recordPendingHistory() {
+		if (!PendingHistoryValid)
+			return;
+		PendingHistoryValid = false;
+		auto* favorites = services::serverbrowser::steamFavorites();
+		const bool ok = favorites->addHistory(PendingHistory.ip, PendingHistory.connPort,
+			PendingHistory.queryPort);
+		abc::ConsolePrint("[AbcUi] history record %u.%u.%u.%u:%u: %s\n",
+			PendingHistory.ip >> 24, (PendingHistory.ip >> 16) & 0xff,
+			(PendingHistory.ip >> 8) & 0xff, PendingHistory.ip & 0xff, PendingHistory.connPort,
+			ok ? "OK" : "FAILED");
+	}
+
 	void hideAllMenuDocuments() {
 		if (Shell)
 			Shell->hide();
@@ -1498,6 +1684,10 @@ private:
 		}
 		if (Settings)
 			Settings->hide();
+		if (Browser) {
+			Browser->hide();
+			BrowserPresented = false;
+		}
 		if (ConfirmQuit)
 			ConfirmQuit->hide();
 		// T14 connection surfaces: hidden with the menu; a later present
@@ -2214,6 +2404,75 @@ private:
 		serverStatusCommand();
 	}
 
+	// T18b diagnostics: the SAME module path the page's favorite button
+	// drives (the selected server's store toggle with read-back).
+	static void serverFavoriteCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		auto* favorites = services::serverbrowser::steamFavorites();
+		abc::ConsolePrint("[AbcUi] favorites: available=%d favCount=%d histCount=%d\n",
+			favorites->available() ? 1 : 0, favorites->favoriteCount(),
+			favorites->historyCount());
+		const auto* selected = self.ServerListModel.selectedEntry(self.ServerQueryState);
+		if (!selected) {
+			abc::ConsoleWarn("[AbcUi] favorites: no selection (use abc_ui_server_select first)\n");
+			return;
+		}
+		const auto key = services::serverbrowser::favoriteKeyOf(*selected);
+		abc::ConsolePrint("[AbcUi] favorites: selected=\"%s\" key=%u.%u.%u.%u:%u/%u favorited=%d\n",
+			selected->name.c_str(), key.ip >> 24, (key.ip >> 16) & 0xff, (key.ip >> 8) & 0xff,
+			key.ip & 0xff, key.connPort, key.queryPort,
+			favorites->isFavorite(key.ip, key.connPort, key.queryPort) ? 1 : 0);
+	}
+
+	// T18b diagnostics: force a history record exactly like the join beat
+	// (the shipped ConnectedToGame entry). Usage: abc_ui_server_history <ip> <connPort> <queryPort>
+	static void serverHistoryCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		if (gEngfuncs.Cmd_Argc() < 4) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_history <ip> <connPort> <queryPort>\n");
+			return;
+		}
+		// ip accepts dotted quads (the same text form the UI shows).
+		unsigned a = 0, b = 0, c = 0, d = 0;
+		if (std::sscanf(gEngfuncs.Cmd_Argv(1), "%u.%u.%u.%u", &a, &b, &c, &d) != 4) {
+			abc::ConsoleWarn("[AbcUi] bad ip\n");
+			return;
+		}
+		const uint32_t ip = (a << 24) | (b << 16) | (c << 8) | d;
+		const uint16_t conn = static_cast<uint16_t>(atoi(gEngfuncs.Cmd_Argv(2)));
+		const uint16_t query = static_cast<uint16_t>(atoi(gEngfuncs.Cmd_Argv(3)));
+		auto* favorites = services::serverbrowser::steamFavorites();
+		const bool ok = favorites->addHistory(ip, conn, query);
+		abc::ConsolePrint("[AbcUi] history %u.%u.%u.%u:%u/%u: %s (histCount=%d)\n", a, b, c, d, conn,
+			query, ok ? "OK" : "FAILED", favorites->historyCount());
+	}
+
+	// T18b diagnostics: the SAME connect path the page's connect button
+	// drives (selected server -> typed T14 attempt + pending history).
+	static void serverConnectCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const auto* selected = self.ServerListModel.selectedEntry(self.ServerQueryState);
+		if (!selected) {
+			abc::ConsoleWarn("[AbcUi] connect: no selection\n");
+			return;
+		}
+		self.connectSelectedServer();
+		abc::ConsolePrint("[AbcUi] connect issued: phase=%d addr=\"%s\"\n",
+			static_cast<int>(self.Controller.state().phase),
+			self.Controller.state().connectAddress.c_str());
+	}
+
 	// T17 diagnostics: temporarily shorten the deadline (ms; 0 restores the
 	// 30s default) - the live timeout-path probe (a healthy Internet query
 	// never hits the deadline on its own).
@@ -2231,6 +2490,60 @@ private:
 		self.ServerQueryState.setTimeoutMs(
 			ms > 0 ? static_cast<uint32_t>(ms) : services::serverbrowser::kDefaultTimeoutMs);
 		abc::ConsolePrint("[AbcUi] server timeout set to %d ms\n", ms > 0 ? ms : 30000);
+	}
+
+	// T18 diagnostics: the SAME path a row click drives (select by stable
+	// key, then the single-slot player query). T11/T12/T14 precedent: the
+	// scripted click injection is unreliable in this harness, the module
+	// path under test is identical. Usage: abc_ui_server_select <row>
+	static void serverSelectCommand() {
+		if (!Instance || !Instance->Browser || !Instance->Browser->document()) {
+			abc::ConsoleWarn("[AbcUi] browser page not open\n");
+			return;
+		}
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_select <row>\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const int row = atoi(gEngfuncs.Cmd_Argv(1));
+		self.ServerListModel.selectRow(row);
+		const auto* selected = self.ServerListModel.selectedEntry(self.ServerQueryState);
+		if (!selected) {
+			abc::ConsoleWarn("[AbcUi] no server at row %d\n", row);
+			return;
+		}
+		const uint64_t handle = self.ServerQueryState.requestPlayers(*selected);
+		abc::ConsolePrint("[AbcUi] server select row=%d key=%llu name=\"%s\" detail=%s\n", row,
+			static_cast<unsigned long long>(self.ServerListModel.selectedKey()),
+			selected->name.c_str(), handle ? "STARTED" : "FAILED");
+	}
+
+	// T18 diagnostics: the browser page's DOM truth (row count, first-row
+	// geometry, visible flags) - the live projection probe.
+	static void serverUiCommand() {
+		if (!Instance || !Instance->Browser || !Instance->Browser->document()) {
+			abc::ConsoleWarn("[AbcUi] browser page not open\n");
+			return;
+		}
+		Rml::ElementDocument* doc = Instance->Browser->document();
+		Rml::Element* list = doc->GetElementById("sb-list");
+		abc::ConsolePrint("[AbcUi] browser-ui: doc=%s list=%s\n", doc->IsVisible() ? "visible" : "hidden",
+			list ? "found" : "missing");
+		if (list) {
+			abc::ConsolePrint("[AbcUi] browser-ui: rows=%d scroll=%d client=%.1fx%.1f\n",
+				list->GetNumChildren(), list->GetScrollTop(), list->GetClientWidth(),
+				list->GetClientHeight());
+			if (list->HasChildNodes()) {
+				Rml::Element* first = list->GetFirstChild();
+				abc::ConsolePrint("[AbcUi] browser-ui: first=<%s> pos=%.1f,%.1f size=%.1fx%.1f visible=%d\n",
+					first->GetTagName().c_str(), first->GetAbsoluteLeft(),
+					first->GetAbsoluteTop(), first->GetClientWidth(),
+					first->GetClientHeight(), first->IsVisible() ? 1 : 0);
+			}
+		}
+		if (Rml::Element* status = doc->GetElementById("sb-status"))
+			abc::ConsolePrint("[AbcUi] browser-ui: status='%s'\n", status->GetInnerRML().c_str());
 	}
 #endif
 
@@ -2263,6 +2576,17 @@ private:
 	// Steam adapter is injected in onInit; the model owns generations,
 	// cancellation/release and the deadline). The T18 browser consumes it.
 	services::serverbrowser::ServerQuery ServerQueryState;
+	// T18 browser: the filter/sort/paging view model over the query snapshot
+	// and the kServers page projection. Filter truth is module-held (the
+	// page's intents flip it), the page renders from it.
+	services::serverbrowser::ServerListModel ServerListModel;
+	// Whether the kServers page is the presented surface (the frame beat's
+	// tick runs on it; drives page-leave release together with the sync edge).
+	bool BrowserPresented = false;
+	// T18b: the join-memory entry of the live browser-originated attempt
+	// (consumed on the kJoined beat; retired unrecorded otherwise).
+	services::serverbrowser::FavoriteKey PendingHistory;
+	bool PendingHistoryValid = false;
 	// Whether the kServers page is the top menu page (fresh-open projection
 	// latch by analogy with the settings page; drives page-leave release).
 	bool ServerPageOpen = false;
@@ -2273,6 +2597,7 @@ private:
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::console::ConsolePage> Console;
 	std::unique_ptr<panels::settings::SettingsPage> Settings;
+	std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	std::unique_ptr<panels::loading::LoadingPage> Loading;

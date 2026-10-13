@@ -349,3 +349,44 @@ Console_Count = Lineas
 Console_ConfirmLead = Este pegado contiene varios comandos. Ejecutar
 Console_ConfirmYes = Ejecutar
 Console_ConfirmNo = Cancelar
+
+# T18 navegador de servidores (lista y detalles; favoritos y conexion con T18b)
+SB_Title = Buscar servidores
+SB_TabInternet = Internet
+SB_TabLan = LAN
+SB_TabFavorites = Favoritos
+SB_TabHistory = Historial
+SB_Refresh = Actualizar
+SB_Stop = Detener
+SB_FilterNotEmpty = No vacios
+SB_FilterNotFull = No llenos
+SB_FilterSecure = Solo seguros
+SB_ColumnName = Servidor
+SB_ColumnMap = Mapa
+SB_ColumnPlayers = Jugadores
+SB_ColumnPing = Ping
+SB_Querying = Consultando... %d servidores recibidos
+SB_Completed = %d servidores
+SB_NoServers = Ningun servidor respondio.
+SB_Cancelled = Detenido. %d servidores recibidos.
+SB_FailUnavailable = Lista de servidores no disponible (Steam no esta activo).
+SB_FailRejected = La solicitud de la lista fue rechazada.
+SB_FailTimedOut = La lista de servidores agoto el tiempo de espera.
+SB_FailMaster = El servidor maestro no respondio.
+SB_EmptyList = No hay servidores en la vista.
+SB_DetailHint = Selecciona un servidor para ver detalles.
+SB_DetailQuerying = Pidiendo jugadores al servidor...
+SB_DetailFailed = El servidor no contesto.
+SB_NoPlayers = Sin informacion de jugadores.
+SB_PasswordYes = Requiere contrasena
+SB_SecureYes = Protegido por VAC
+
+# T18b favoritos y conexion
+SB_Connect = Conectar
+SB_FavoriteAdd = Anadir a favoritos
+SB_FavoriteRemove = Quitar de favoritos
+SB_Connecting = Conectando a %s
+SB_ConnectRefused = No se pudo conectar: direccion invalida.
+SB_FavoriteAdded = Anadido a favoritos.
+SB_FavoriteRemoved = Quitado de favoritos.
+SB_FavoriteFailed = El cambio de favoritos fue rechazado.

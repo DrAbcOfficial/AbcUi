@@ -347,3 +347,44 @@ Console_Count = Lines
 Console_ConfirmLead = This paste contains multiple commands. Execute
 Console_ConfirmYes = Execute
 Console_ConfirmNo = Cancel
+
+# T18 server browser (list window / details; favorites+connect arrive with T18b)
+SB_Title = Find Servers
+SB_TabInternet = Internet
+SB_TabLan = LAN
+SB_TabFavorites = Favorites
+SB_TabHistory = History
+SB_Refresh = Refresh
+SB_Stop = Stop
+SB_FilterNotEmpty = Not empty
+SB_FilterNotFull = Not full
+SB_FilterSecure = Secure only
+SB_ColumnName = Server Name
+SB_ColumnMap = Map
+SB_ColumnPlayers = Players
+SB_ColumnPing = Ping
+SB_Querying = Querying... %d servers so far
+SB_Completed = %d servers
+SB_NoServers = No servers responded.
+SB_Cancelled = Stopped. %d servers received so far.
+SB_FailUnavailable = The server list is unavailable (Steam is not running).
+SB_FailRejected = The server list request was refused.
+SB_FailTimedOut = The server list timed out.
+SB_FailMaster = The master server did not respond.
+SB_EmptyList = No servers in view.
+SB_DetailHint = Select a server to see its details.
+SB_DetailQuerying = Asking the server for players...
+SB_DetailFailed = The server did not answer.
+SB_NoPlayers = No players reported.
+SB_PasswordYes = Password required
+SB_SecureYes = VAC secure
+
+# T18b favorites and connect
+SB_Connect = Connect
+SB_FavoriteAdd = Add to Favorites
+SB_FavoriteRemove = Remove from Favorites
+SB_Connecting = Connecting to %s
+SB_ConnectRefused = Could not connect: bad address.
+SB_FavoriteAdded = Added to favorites.
+SB_FavoriteRemoved = Removed from favorites.
+SB_FavoriteFailed = The favorites change was refused.

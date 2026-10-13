@@ -32,6 +32,7 @@
 // only after the backend confirms silence" rule.
 
 #include "ServerQuery.h"
+#include "ServerFavorites.h"
 
 #include <Windows.h>
 
@@ -40,6 +41,7 @@
 
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <deque>
 #include <memory>
 #include <mutex>
@@ -58,6 +60,7 @@ struct Bindings {
 	FnGetHSteamUser getHSteamUser = nullptr;
 	FnFindOrCreateUserInterface findOrCreateUserInterface = nullptr;
 	ISteamMatchmakingServers* servers = nullptr;
+	ISteamMatchmaking* matchmaking = nullptr;  // "SteamMatchMaking009" (favorites)
 	ISteamUtils* utils = nullptr;
 	uint32_t appId = 0;
 	bool moduleProbed = false;
@@ -106,6 +109,59 @@ struct EventQueue {
 EventQueue& queue() {
 	static EventQueue instance;
 	return instance;
+}
+
+// The shared lazy binding (module probe -> hSteamUser -> interfaces). The
+// favorites store and the query provider need overlapping sets; the query
+// provider additionally requires the list interface. Never calls
+// Init/Shutdown/RunCallbacks - the engine owns those (T17a evidence).
+bool ensureBindings(bool requireServers) {
+	Bindings& b = bindings();
+	if (!b.moduleProbed) {
+		b.moduleProbed = true;
+		const HMODULE module = GetModuleHandleA("steam_api.dll");
+		if (module) {
+			b.getHSteamUser = reinterpret_cast<FnGetHSteamUser>(
+				GetProcAddress(module, "SteamAPI_GetHSteamUser"));
+			b.findOrCreateUserInterface = reinterpret_cast<FnFindOrCreateUserInterface>(
+				GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
+		}
+	}
+	if (!b.getHSteamUser || !b.findOrCreateUserInterface)
+		return false;
+	const int user = b.getHSteamUser();
+	if (!user) {
+		// SteamAPI_Init has not run yet: report unavailable and re-probe on
+		// the next call (the engine's lazy path, same as avatars).
+		b.servers = nullptr;
+		b.utils = nullptr;
+		b.matchmaking = nullptr;
+		return false;
+	}
+	if (!b.servers)
+		b.servers = static_cast<ISteamMatchmakingServers*>(b.findOrCreateUserInterface(
+			user, STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION));
+	if (!b.matchmaking) {
+		// The shipped browser's favorites backend (0x1000c090 stub binds
+		// exactly this version string).
+		b.matchmaking = static_cast<ISteamMatchmaking*>(
+			b.findOrCreateUserInterface(user, STEAMMATCHMAKING_INTERFACE_VERSION));
+	}
+	if (!b.utils) {
+		// hw.dll/serverbrowser.dll bind "SteamUtils009" (present in the
+		// installed runtime); the header alias is the second attempt.
+		b.utils = static_cast<ISteamUtils*>(b.findOrCreateUserInterface(user, "SteamUtils009"));
+		if (!b.utils)
+			b.utils = static_cast<ISteamUtils*>(
+				b.findOrCreateUserInterface(user, STEAMUTILS_INTERFACE_VERSION));
+	}
+	if (!b.appId && b.utils)
+		b.appId = b.utils->GetAppID();
+	if (!b.appId)
+		b.appId = readSteamAppIdFile();
+	if (requireServers && !b.servers)
+		return false;
+	return b.appId != 0;
 }
 
 // One list request's response sink. Steam guarantees no callback after
@@ -234,48 +290,7 @@ class SteamQueryProvider final : public IServerQueryProvider {
 public:
 	// --- interface binding --------------------------------------------------
 
-	bool ensureBound() {
-		Bindings& b = bindings();
-		if (!b.moduleProbed) {
-			b.moduleProbed = true;
-			const HMODULE module = GetModuleHandleA("steam_api.dll");
-			if (module) {
-				b.getHSteamUser = reinterpret_cast<FnGetHSteamUser>(
-					GetProcAddress(module, "SteamAPI_GetHSteamUser"));
-				b.findOrCreateUserInterface = reinterpret_cast<FnFindOrCreateUserInterface>(
-					GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
-			}
-		}
-		if (!b.getHSteamUser || !b.findOrCreateUserInterface)
-			return false;
-		const int user = b.getHSteamUser();
-		if (!user) {
-			// SteamAPI_Init has not run yet: report unavailable and re-probe
-			// on the next call (the engine's lazy path, same as avatars).
-			b.servers = nullptr;
-			b.utils = nullptr;
-			return false;
-		}
-		if (!b.servers)
-			b.servers = static_cast<ISteamMatchmakingServers*>(b.findOrCreateUserInterface(
-				user, STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION));
-		if (!b.servers)
-			return false;
-		if (!b.utils) {
-			// hw.dll/serverbrowser.dll bind "SteamUtils009" (present in the
-			// installed runtime); the header alias is the second attempt.
-			b.utils = static_cast<ISteamUtils*>(
-				b.findOrCreateUserInterface(user, "SteamUtils009"));
-			if (!b.utils)
-				b.utils = static_cast<ISteamUtils*>(
-					b.findOrCreateUserInterface(user, STEAMUTILS_INTERFACE_VERSION));
-		}
-		if (!b.appId && b.utils)
-			b.appId = b.utils->GetAppID();
-		if (!b.appId)
-			b.appId = readSteamAppIdFile();
-		return b.appId != 0;
-	}
+	bool ensureBound() { return ensureBindings(true); }
 
 	bool available() override { return ensureBound(); }
 
@@ -518,10 +533,131 @@ private:
 	uint64_t NextTag = 1;
 };
 
+// T18b: the favorites/history adapter. Steam IS the authoritative store
+// (see ServerFavorites.h for the shipped-binary evidence): the same records
+// the Favorites/History list queries read back. No file of ours, no second
+// truth. Every operation fail-closes to false/0 when Steam is unavailable.
+class SteammFavorites final : public IServerFavorites {
+public:
+	bool available() override { return ensureBindings(false) && bindings().matchmaking != nullptr; }
+
+	bool isFavorite(uint32_t ip, uint16_t connPort, uint16_t queryPort) override {
+		if (!available())
+			return false;
+		return findRecord(ip, connPort, queryPort, k_unFavoriteFlagFavorite) >= 0;
+	}
+
+	bool addFavorite(uint32_t ip, uint16_t connPort, uint16_t queryPort) override {
+		if (!available() || ip == 0)
+			return false;
+		Bindings& b = bindings();
+		const int result = b.matchmaking->AddFavoriteGame(b.appId, ip, connPort, queryPort,
+			k_unFavoriteFlagFavorite, static_cast<uint32>(nowUnix()));
+		if (result < 0)
+			return false;
+		// Read-back: the SDK returns the index of the record it wrote; the
+		// authoritative re-read is what the caller trusts (T18b step b.2
+		// "收藏增删立即回读核对").
+		return findRecord(ip, connPort, queryPort, k_unFavoriteFlagFavorite) >= 0;
+	}
+
+	bool removeFavorite(uint32_t ip, uint16_t connPort, uint16_t queryPort) override {
+		if (!available() || ip == 0)
+			return false;
+		Bindings& b = bindings();
+		if (!b.matchmaking->RemoveFavoriteGame(b.appId, ip, connPort, queryPort,
+				k_unFavoriteFlagFavorite))
+			return false;
+		return findRecord(ip, connPort, queryPort, k_unFavoriteFlagFavorite) < 0;
+	}
+
+	bool addHistory(uint32_t ip, uint16_t connPort, uint16_t queryPort) override {
+		if (!available() || ip == 0)
+			return false;
+		Bindings& b = bindings();
+		// The shipped ConnectedToGame handler's exact call (0x1000ef00
+		// delegates to this shape with flags=2 and the current time).
+		const int result = b.matchmaking->AddFavoriteGame(b.appId, ip, connPort, queryPort,
+			k_unFavoriteFlagHistory, static_cast<uint32>(nowUnix()));
+		return result >= 0;
+	}
+
+	int favoriteCount() override {
+		if (!available())
+			return 0;
+		return countRecords(k_unFavoriteFlagFavorite);
+	}
+
+	int historyCount() override {
+		if (!available())
+			return 0;
+		return countRecords(k_unFavoriteFlagHistory);
+	}
+
+private:
+	static int64_t nowUnix() {
+		return static_cast<int64_t>(std::time(nullptr));
+	}
+
+	int countRecords(uint32 flags) {
+		Bindings& b = bindings();
+		const int total = b.matchmaking->GetFavoriteGameCount();
+		int count = 0;
+		for (int i = 0; i < total; ++i) {
+			AppId_t appid = 0;
+			uint32 ip = 0;
+			uint16 connPort = 0;
+			uint16 queryPort = 0;
+			uint32 recordFlags = 0;
+			uint32 lastPlayed = 0;
+			if (!b.matchmaking->GetFavoriteGame(i, &appid, &ip, &connPort, &queryPort,
+					&recordFlags, &lastPlayed))
+				continue;
+			if (recordFlags & flags)
+				++count;
+		}
+		return count;
+	}
+
+	// The index of the first record matching the tuple and carrying `flags`;
+	// -1 when absent. A zero queryPort in the probe matches the stored value
+	// only when the store has none either (the shipped read-back compares the
+	// tuple as stored; a stale record with queryPort 0 is matched by port
+	// fallback at the call site, favoriteKeyOf).
+	int findRecord(uint32_t ip, uint16_t connPort, uint16_t queryPort, uint32 flags) {
+		Bindings& b = bindings();
+		const int total = b.matchmaking->GetFavoriteGameCount();
+		for (int i = 0; i < total; ++i) {
+			AppId_t appid = 0;
+			uint32 recordIp = 0;
+			uint16 recordConn = 0;
+			uint16 recordQuery = 0;
+			uint32 recordFlags = 0;
+			uint32 lastPlayed = 0;
+			if (!b.matchmaking->GetFavoriteGame(i, &appid, &recordIp, &recordConn, &recordQuery,
+					&recordFlags, &lastPlayed))
+				continue;
+			if (!(recordFlags & flags))
+				continue;
+			if (recordIp != ip || recordConn != connPort)
+				continue;
+			if (recordQuery != queryPort)
+				continue;
+			return i;
+		}
+		return -1;
+	}
+};
+
 }
 
 IServerQueryProvider* steamQueryProvider() {
 	static SteamQueryProvider instance;
+	return &instance;
+}
+
+IServerFavorites* steamFavorites() {
+	static SteammFavorites instance;
 	return &instance;
 }
 

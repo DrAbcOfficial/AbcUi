@@ -1,0 +1,310 @@
+/* serverbrowser.rcss - T18 server browser page. All units dp (the context
+   density ratio scales; the logical screen is 640x480dp, Theme::applyScale).
+   Every region is ABSOLUTELY positioned with explicit dp width/height - the
+   same recipe the T16 console history uses: an in-flow auto-width block
+   collapsed to a zero-width client box on the live context (rows painted,
+   hits landed on a stray scrollbar track; recorded in execution/T18.md).
+   The panel is 560dp wide so it fits the logical screen with its margins.
+   The list is a bounded scrolling window (64 rows in the DOM max - the T18a
+   render cap; paging reaches the rest). */
+
+#sb-panel {
+	position: absolute;
+	left: 40dp;
+	top: 24dp;
+	width: 560dp;
+	height: 430dp;
+	background-color: #101418ee;
+	border: 1dp #3a4148;
+}
+
+#sb-title {
+	position: absolute;
+	left: 16dp;
+	top: 8dp;
+	width: 300dp;
+	height: 22dp;
+	line-height: 22dp;
+	font-size: 16dp;
+	font-weight: bold;
+	color: #00ff00;
+}
+
+#sb-tabs {
+	position: absolute;
+	left: 16dp;
+	top: 34dp;
+	width: 520dp;
+	height: 24dp;
+}
+
+#sb-tabs button {
+	display: inline-block;
+	width: auto;
+	height: 24dp;
+	line-height: 24dp;
+	margin-right: 6dp;
+	margin-bottom: 0dp;
+	padding-left: 10dp;
+	padding-right: 10dp;
+}
+
+#sb-tabs button.sb-active {
+	background-color: #144d14;
+	border: 1dp #00ff00;
+	color: #ffffff;
+}
+
+#sb-toolbar {
+	position: absolute;
+	left: 16dp;
+	top: 62dp;
+	width: 520dp;
+	height: 24dp;
+}
+
+#sb-toolbar button {
+	display: inline-block;
+	width: auto;
+	height: 24dp;
+	line-height: 24dp;
+	margin-right: 6dp;
+	margin-bottom: 0dp;
+	padding-left: 10dp;
+	padding-right: 10dp;
+}
+
+#sb-spacer {
+	display: inline-block;
+	width: 16dp;
+}
+
+/* Filter toggles show their state; disabled entries are dimmed. */
+#sb-toolbar button.sb-on {
+	background-color: #144d14;
+	border: 1dp #00ff00;
+	color: #ffffff;
+}
+
+#sb-toolbar button.sb-disabled, #sb-paging button.sb-disabled {
+	color: #6f757c;
+	border-color: #3a4047;
+}
+
+/* Column header row: sortable buttons above the list, grid-aligned with the
+   row cells (both use the same column widths, sum 506dp <= 526dp content). */
+#sb-header {
+	position: absolute;
+	left: 16dp;
+	top: 92dp;
+	width: 526dp;
+	height: 20dp;
+	background-color: #161c22;
+	border: 1dp #3a4148;
+}
+
+.sb-col {
+	display: inline-block;
+	height: 18dp;
+	line-height: 18dp;
+	background-color: transparent;
+	border: 0dp #3a4148;
+	text-align: left;
+	margin-bottom: 0dp;
+	padding: 0dp;
+	vertical-align: top;
+}
+
+.sb-col:hover {
+	background-color: #232b32;
+}
+
+.sb-col:focus {
+	background-color: #232b32;
+}
+
+.c-name {
+	width: 226dp;
+}
+
+.c-map {
+	width: 130dp;
+}
+
+.c-players {
+	width: 90dp;
+}
+
+.c-ping {
+	width: 60dp;
+}
+
+/* Sort direction: the active column lights up (an arrow glyph would need a
+   font feature the shipped faces do not carry). */
+.sb-sort-asc {
+	color: #00ff00;
+	font-weight: bold;
+}
+
+.sb-sort-desc {
+	color: #e8c020;
+	font-weight: bold;
+}
+
+/* The row window: the only scrolling region (absolute; explicit box). */
+#sb-list {
+	position: absolute;
+	left: 16dp;
+	top: 112dp;
+	width: 526dp;
+	height: 190dp;
+	overflow: auto;
+	background-color: #0d1114;
+	border: 1dp #3a4148;
+}
+
+.sb-row {
+	display: block;
+	width: 508dp;
+	height: 18dp;
+	line-height: 18dp;
+	font-size: 9dp;
+	overflow: hidden;
+}
+
+.sb-row:nth-child(even) {
+	background-color: #11161b;
+}
+
+.sb-row.sb-selected {
+	background-color: #144d14;
+}
+
+.sb-row span {
+	display: inline-block;
+	height: 18dp;
+	vertical-align: top;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* The password marker rides the name cell (detail panel spells it out). */
+.m-flag {
+	color: #e8c020;
+}
+
+.sb-empty, .sb-hint {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	padding: 6dp;
+}
+
+#sb-paging {
+	position: absolute;
+	left: 16dp;
+	top: 306dp;
+	width: 526dp;
+	height: 22dp;
+}
+
+#sb-paging button {
+	display: inline-block;
+	width: 24dp;
+	height: 22dp;
+	line-height: 22dp;
+	margin-right: 6dp;
+	margin-bottom: 0dp;
+}
+
+#sb-page-label {
+	display: inline-block;
+	height: 22dp;
+	line-height: 22dp;
+	font-size: 9dp;
+	color: #8a9199;
+	vertical-align: top;
+}
+
+/* Detail panel: the selected server + its player list (single slot). */
+#sb-detail-box {
+	position: absolute;
+	left: 16dp;
+	top: 332dp;
+	width: 526dp;
+	height: 64dp;
+	background-color: #161c22;
+	border: 1dp #3a4148;
+	padding: 6dp;
+	overflow: hidden;
+}
+
+#sb-detail-info h2, #sb-detail-name {
+	display: block;
+	font-size: 11dp;
+	font-weight: bold;
+	color: #dedede;
+	margin-bottom: 2dp;
+}
+
+.sb-detail-line {
+	display: block;
+	font-size: 9dp;
+	color: #8a9199;
+	margin-bottom: 2dp;
+}
+
+.sb-player {
+	display: block;
+	height: 12dp;
+	line-height: 12dp;
+	font-size: 8.5dp;
+}
+
+.sb-player span {
+	display: inline-block;
+	height: 12dp;
+	vertical-align: top;
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.dp-name {
+	width: 260dp;
+}
+
+.dp-score {
+	width: 90dp;
+}
+
+.dp-time {
+	width: 60dp;
+}
+
+#sb-status {
+	position: absolute;
+	left: 16dp;
+	top: 402dp;
+	width: 526dp;
+	height: 12dp;
+	font-size: 9dp;
+	color: #dedede;
+}
+
+#sb-actions {
+	position: absolute;
+	left: 40dp;
+	top: 458dp;
+	width: 560dp;
+	height: 22dp;
+}
+
+#sb-actions button {
+	display: inline-block;
+	width: auto;
+	height: 22dp;
+	line-height: 22dp;
+	padding-left: 12dp;
+	padding-right: 12dp;
+	margin-bottom: 0dp;
+}

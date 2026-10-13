@@ -1,0 +1,54 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
+	<link type="text/rcss" href="../rcss/serverbrowser.rcss"/>
+</head>
+<!-- T18 server browser page (kServers). The four tab entries mirror the
+     shipped browser's list kinds (Internet/LAN/Favorites/History); the list
+     window, the detail panel and every dynamic string are injected by
+     panels::serverbrowser::ServerBrowserPage (escaped). The connect /
+     favorites actions arrive with T18b; until then this page lists, filters,
+     sorts and inspects. -->
+<body id="menuserverbrowser">
+	<div id="sb-panel">
+		<h1 id="sb-title">#SB_Title</h1>
+		<div id="sb-tabs">
+			<button id="sb-tab-internet" data-action="sb-tab-internet">#SB_TabInternet</button>
+			<button id="sb-tab-lan" data-action="sb-tab-lan">#SB_TabLan</button>
+			<button id="sb-tab-favorites" data-action="sb-tab-favorites">#SB_TabFavorites</button>
+			<button id="sb-tab-history" data-action="sb-tab-history">#SB_TabHistory</button>
+		</div>
+		<div id="sb-toolbar">
+			<button id="sb-refresh" data-action="sb-refresh">#SB_Refresh</button>
+			<button id="sb-stop" data-action="sb-stop">#SB_Stop</button>
+			<span id="sb-spacer"></span>
+			<button id="sb-filter-empty" data-action="sb-filter-empty">#SB_FilterNotEmpty</button>
+			<button id="sb-filter-full" data-action="sb-filter-full">#SB_FilterNotFull</button>
+			<button id="sb-filter-secure" data-action="sb-filter-secure">#SB_FilterSecure</button>
+		</div>
+		<div id="sb-header">
+			<button id="sb-col-name" class="sb-col c-name" data-action="sb-sort" data-column="name">#SB_ColumnName</button>
+			<button id="sb-col-map" class="sb-col c-map" data-action="sb-sort" data-column="map">#SB_ColumnMap</button>
+			<button id="sb-col-players" class="sb-col c-players" data-action="sb-sort" data-column="players">#SB_ColumnPlayers</button>
+			<button id="sb-col-ping" class="sb-col c-ping" data-action="sb-sort" data-column="ping">#SB_ColumnPing</button>
+		</div>
+		<div id="sb-list"></div>
+		<div id="sb-paging">
+			<button id="sb-page-prev" data-action="sb-page-prev">&lt;</button>
+			<span id="sb-page-label"></span>
+			<button id="sb-page-next" data-action="sb-page-next">&gt;</button>
+		</div>
+		<div id="sb-detail-box">
+			<div id="sb-detail-info"></div>
+			<div id="sb-detail-players"></div>
+		</div>
+		<p id="sb-status"></p>
+	</div>
+	<div id="sb-actions">
+		<button id="sb-connect" data-action="sb-connect" data-label="#SB_Connect" autofocus="autofocus">#SB_Connect</button>
+		<button id="sb-favorite-toggle" data-action="sb-favorite-toggle" data-label="#SB_FavoriteAdd">#SB_FavoriteAdd</button>
+		<button id="sb-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
+	</div>
+</body>
+</rml>
