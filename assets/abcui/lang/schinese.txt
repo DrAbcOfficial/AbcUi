@@ -407,3 +407,14 @@ CG_ErrorPassword = 密码不能包含空格、引号、反斜杠或分号。
 CG_ErrorWrite = 某个服务器设置无法应用;已恢复原来的值。
 CG_ErrorInternal = 本地服务器启动失败。
 CG_ErrorUnavailable = 没有可用的地图(引擎文件系统未返回任何地图)。
+
+# T20 player list
+PL_Title = 玩家列表
+PL_Mute = 静音该玩家
+PL_Unmute = 取消静音
+PL_MuteUnavailable = 此安装不支持玩家静音。
+PL_You = (你)
+PL_Bot = (机器人)
+PL_Spectating = (观察者)
+PL_MutedLabel = (已静音)
+PL_Empty = 游戏内没有其他玩家。

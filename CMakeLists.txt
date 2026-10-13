@@ -89,6 +89,8 @@ add_library(AbcUi MODULE
     src/services/serverbrowser/ServerListModel.cpp
     src/services/serverbrowser/ServerFavorites.cpp
     src/services/creategame/CreateGameModel.cpp
+    src/services/playerlist/PlayerListModel.cpp
+    src/services/playerlist/MuteBackend.cpp
     src/services/loading/LoadingModel.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp
@@ -118,6 +120,7 @@ add_library(AbcUi MODULE
     src/panels/console/ConsolePage.cpp
     src/panels/serverbrowser/ServerBrowserPage.cpp
     src/panels/creategame/CreateGamePage.cpp
+    src/panels/playerlist/PlayerListPage.cpp
     src/panels/settings/SettingsPage.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp

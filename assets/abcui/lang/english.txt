@@ -405,3 +405,14 @@ CG_ErrorPassword = The password cannot contain spaces, quotes, backslashes or se
 CG_ErrorWrite = A server setting could not be applied; previous values were restored.
 CG_ErrorInternal = The local server could not be started.
 CG_ErrorUnavailable = No maps are available (the engine filesystem reported none).
+
+# T20 player list
+PL_Title = Player List
+PL_Mute = Mute Voice
+PL_Unmute = Unmute Voice
+PL_MuteUnavailable = Player muting is unavailable on this install.
+PL_You = (you)
+PL_Bot = (bot)
+PL_Spectating = (spectating)
+PL_MutedLabel = (muted)
+PL_Empty = No other players in the game.

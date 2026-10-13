@@ -45,6 +45,28 @@ inline std::string escapeRml(std::string text) {
 	return out;
 }
 
+// Attribute-value variant: additionally escapes the quote characters that
+// would close a double-quoted attribute. escapeRml alone is sufficient only
+// for TEXT NODES; a server-derived string placed inside an attribute
+// (data-*, title, value) needs this one, or a quote in the name escapes its
+// attribute and injects markup (T20 finding: the player list carries names
+// in data- attributes for the click payload).
+inline std::string escapeRmlAttribute(std::string text) {
+	std::string out;
+	out.reserve(text.size() + 8);
+	for (char c : text) {
+		switch (c) {
+			case '&': out += "&amp;"; break;
+			case '<': out += "&lt;"; break;
+			case '>': out += "&gt;"; break;
+			case '"': out += "&quot;"; break;
+			case '\'': out += "&#39;"; break;
+			default: out += c;
+		}
+	}
+	return out;
+}
+
 }
 
 }

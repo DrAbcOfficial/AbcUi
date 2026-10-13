@@ -1,0 +1,112 @@
+/* playerlist.rcss - T20 player list page. All units dp (the context density
+   ratio scales; the logical screen is 640x480dp, Theme::applyScale). Every
+   region is ABSOLUTELY positioned with explicit dp width/height - the T16
+   console / T18 browser / T19 create-game recipe (an in-flow auto-width block
+   collapsed to a zero-width client box on the live context). The panel is
+   420dp wide; the list is a bounded scrolling window. */
+
+#pl-panel {
+	position: absolute;
+	left: 108dp;
+	top: 32dp;
+	width: 424dp;
+	height: 416dp;
+	background-color: #101418ee;
+	border: 1dp #3a4148;
+}
+
+#pl-title {
+	position: absolute;
+	left: 16dp;
+	top: 8dp;
+	width: 392dp;
+	height: 24dp;
+	line-height: 24dp;
+	font-size: 16dp;
+	font-weight: bold;
+	color: #00ff00;
+}
+
+#pl-list {
+	position: absolute;
+	left: 16dp;
+	top: 40dp;
+	width: 392dp;
+	height: 300dp;
+	overflow-y: auto;
+	background-color: #0a0d10;
+	border: 1dp #2a3138;
+}
+
+.pl-row {
+	display: block;
+	width: 100%;
+	height: 22dp;
+	line-height: 22dp;
+	padding-left: 8dp;
+	font-size: 9dp;
+	color: #d8d8d8;
+}
+
+.pl-row.pl-selected {
+	background-color: #144d14;
+	color: #ffffff;
+}
+
+.pl-name {
+	display: inline;
+}
+
+.pl-state {
+	display: inline;
+	margin-left: 8dp;
+	color: #9aa8b0;
+}
+
+#pl-empty {
+	display: block;
+	width: 100%;
+	height: 22dp;
+	line-height: 22dp;
+	padding-left: 8dp;
+	font-size: 9dp;
+	color: #9aa8b0;
+}
+
+#pl-status {
+	position: absolute;
+	left: 16dp;
+	top: 344dp;
+	width: 392dp;
+	height: 18dp;
+	font-size: 8.5dp;
+	color: #ff8866;
+}
+
+#pl-actions {
+	position: absolute;
+	left: 16dp;
+	top: 368dp;
+	width: 392dp;
+	height: 32dp;
+}
+
+#pl-actions button {
+	display: inline-block;
+	height: 28dp;
+	line-height: 28dp;
+	margin-right: 10dp;
+}
+
+#pl-mute {
+	width: 200dp;
+}
+
+#pl-close {
+	width: 120dp;
+}
+
+#pl-actions button.pl-disabled {
+	color: #6a7278;
+	background-color: #161a1e;
+}

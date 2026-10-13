@@ -407,3 +407,14 @@ CG_ErrorPassword = La contrasena no puede contener espacios, comillas, barras in
 CG_ErrorWrite = No se pudo aplicar un ajuste del servidor; se restauraron los valores anteriores.
 CG_ErrorInternal = No se pudo iniciar el servidor local.
 CG_ErrorUnavailable = No hay mapas disponibles (el sistema de archivos del motor no devolvio ninguno).
+
+# T20 player list
+PL_Title = Lista de jugadores
+PL_Mute = Silenciar voz
+PL_Unmute = Quitar silencio
+PL_MuteUnavailable = Silenciar jugadores no esta disponible en esta instalacion.
+PL_You = (tu)
+PL_Bot = (bot)
+PL_Spectating = (espectador)
+PL_MutedLabel = (silenciado)
+PL_Empty = No hay otros jugadores en la partida.

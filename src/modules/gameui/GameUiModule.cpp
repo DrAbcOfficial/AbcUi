@@ -41,18 +41,22 @@
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
+#include "../../panels/playerlist/PlayerListPage.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
 #include "../../rmlui/InputBridge.h"
 #include "../../rmlui/TextInput.h"
 #include "../../rmlui/VGUI2ExtensionImport.h"
+#include "../../data/PlayerResource.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
 #include "../../services/console/ConsoleBackend.h"
 #include "../../services/console/ConsoleBuffer.h"
 #include "../../services/creategame/CreateGameModel.h"
 #include "../../services/loading/LoadingModel.h"
+#include "../../services/playerlist/MuteBackend.h"
+#include "../../services/playerlist/PlayerListModel.h"
 #include "../../services/serverbrowser/ServerFavorites.h"
 #include "../../services/serverbrowser/ServerListModel.h"
 #include "../../services/serverbrowser/ServerQuery.h"
@@ -109,6 +113,50 @@ services::creategame::CreateGameModel::Seams createGameSeams() {
 		if (!command)
 			return;
 		abc::EngineClientCmd(command);
+	};
+	return seams;
+}
+
+// T20: the roster + mute seams of the player-list model. The roster reads the
+// AbcUi player resource (data::playerres, the same store every other HUD
+// panel uses) and maps each occupied slot onto the model's identity tuple.
+// The mute backend is the shipped GameClientExports001 probe (MuteBackend.h);
+// `available()` gates the whole surface, so a missing interface is reported
+// as "unavailable" instead of a fabricated success.
+services::playerlist::PlayerListModel::Seams playerListSeams() {
+	services::playerlist::PlayerListModel::Seams seams;
+	seams.roster = [](services::playerlist::RosterEntry* out, int max) {
+		int count = 0;
+		for (int i = 1; i <= playerres::kMaxPlayers && count < max; ++i) {
+			const playerres::PlayerInfo* info = playerres::getPlayerInfo(i);
+			if (!info || !info->isValid())
+				continue;
+			services::playerlist::RosterEntry& entry = out[count++];
+			entry = services::playerlist::RosterEntry{};
+			entry.index = i;
+			entry.name = info->name;
+			entry.steamId64 = info->steamId64;
+			entry.local = info->isThisPlayer();
+			entry.spectating = info->spectate;
+			// The shipped row fill tagged bots through the engine's "*bot"
+			// player-info value (FUN_10015e30 reads PlayerInfo_ValueForKey
+			// (index, "*bot") and compares against "1"): the same key through
+			// the same engine call, so the classification matches the shipped
+			// dialog exactly.
+			const char* bot = gEngfuncs.PlayerInfo_ValueForKey(i, "*bot");
+			entry.bot = bot && std::strcmp(bot, "1") == 0;
+		}
+		return count;
+	};
+	seams.muteAvailable = [] { return services::playerlist::muteBackend()->available(); };
+	seams.isMuted = [](const services::playerlist::RosterEntry& entry) {
+		return services::playerlist::muteBackend()->isMuted(entry.index);
+	};
+	seams.mute = [](const services::playerlist::RosterEntry& entry) {
+		return services::playerlist::muteBackend()->mute(entry.index);
+	};
+	seams.unmute = [](const services::playerlist::RosterEntry& entry) {
+		return services::playerlist::muteBackend()->unmute(entry.index);
 	};
 	return seams;
 }
@@ -407,6 +455,9 @@ public:
 		// same shape the Debug diagnostics use.
 		CreateGame.setSeams(createGameSeams());
 		menuBackend().setLocalGameLauncher(&GameUiModule::launchLocalGame);
+		// T20: the player-list model's roster/mute seams (playerres + the
+		// shipped GameClientExports001 probe).
+		PlayerList.setSeams(playerListSeams());
 		modules::registry().add(this);
 		services::nativeUiBridge().setMenuSink(this);
 		Instance = this;
@@ -492,6 +543,10 @@ public:
 		abc::ADD_COMMAND("abc_ui_create_game_fill", createGameFillCommand);
 		abc::ADD_COMMAND("abc_ui_create_game_apply", createGameApplyCommand);
 		abc::ADD_COMMAND("abc_ui_create_game_probe", createGameProbeCommand);
+		abc::ADD_COMMAND("abc_ui_playerlist_ui", playerListUiCommand);
+		abc::ADD_COMMAND("abc_ui_playerlist_select", playerListSelectCommand);
+		abc::ADD_COMMAND("abc_ui_playerlist_mute", playerListMuteCommand);
+		abc::ADD_COMMAND("abc_ui_playerlist_open", playerListOpenCommand);
 #endif
 	}
 
@@ -514,6 +569,15 @@ public:
 		// change). Runs on the presented latch like the other pages.
 		if (MenuPresented && BrowserPresented && Browser)
 			Browser->tick();
+		// T20: the player list's frame beat. The roster and every muted state
+		// are read through the backend per frame while the page is up (the
+		// shipped dialog refreshed on a timer; a read-through keeps the
+		// displayed mute labels honest with zero cache). render() no-ops when
+		// the model's revision did not move.
+		if (MenuPresented && PlayerListPresented && PlayerListPage_) {
+			if (PlayerList.refresh())
+				PlayerListPage_->render();
+		}
 		// T12: drain the deferred video restart FIRST and independently of
 		// menu presentation - the transaction owns it, not the page (see the
 		// DeferredVideoRestart note above).
@@ -586,6 +650,7 @@ public:
 					|| owner == (Settings ? Settings->document() : nullptr)
 					|| owner == (Browser ? Browser->document() : nullptr)
 					|| owner == (CreateGamePage_ ? CreateGamePage_->document() : nullptr)
+					|| owner == (PlayerListPage_ ? PlayerListPage_->document() : nullptr)
 					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)
 					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)
 					|| owner == (Loading ? Loading->document() : nullptr)
@@ -623,6 +688,8 @@ public:
 				Browser->refocusDefault();
 			} else if (state.pages.top() == MenuPage::kCreateGame && CreateGamePage_) {
 				CreateGamePage_->refocusDefault();
+			} else if (state.pages.top() == MenuPage::kPlayerList && PlayerListPage_) {
+				PlayerListPage_->refocusDefault();
 			} else if (state.pages.top() == MenuPage::kLoading && Loading) {
 				Loading->refocusDefault();
 			} else if (SubStub) {
@@ -664,6 +731,9 @@ public:
 		Browser->setFavorites(services::serverbrowser::steamFavorites());
 		// T19: the create-local-game page (was the kCreateGame stub).
 		CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
+		// T20: the player-list page (was the kPlayerList stub).
+		PlayerListPage_ = std::make_unique<panels::playerlist::PlayerListPage>();
+		PlayerListPage_->setModel(&PlayerList);
 		VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
 		VideoConfirm->setVideoModel(&VideoModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
@@ -679,6 +749,7 @@ public:
 		wire(Settings);
 		wire(Browser);
 		wire(CreateGamePage_);
+		wire(PlayerListPage_);
 		wire(VideoConfirm);
 		wire(ConfirmQuit);
 		wire(Loading);
@@ -723,6 +794,7 @@ public:
 		Settings.reset();
 		Browser.reset();
 		CreateGamePage_.reset();
+		PlayerListPage_.reset();
 		VideoConfirm.reset();
 		ConfirmQuit.reset();
 		Loading.reset();
@@ -744,6 +816,7 @@ public:
 		PasswordReprepare = false;
 		DirectConnectPresented = false;
 		CreateGamePresented = false;
+		PlayerListPresented = false;
 		LastStubPage = MenuPage::kMain;
 	}
 
@@ -980,6 +1053,12 @@ private:
 				// T19: the real create-game page replaced the T09 stub.
 				presentCreateGamePage();
 				break;
+			case MenuPage::kPlayerList:
+				// T20: the real player list replaced the T09 stub. Fresh
+				// roster+mute read on every sync (read-through; the frame beat
+				// re-reads while presented).
+				presentPlayerListPage();
+				break;
 			case MenuPage::kLoading:
 				// Fresh projection on every sync: the attempt's values moved
 				// since the last frame (the frame drain re-renders too). T19:
@@ -1042,6 +1121,12 @@ private:
 			if (CreateGamePage_) {
 				CreateGamePage_->hide();
 				CreateGamePresented = false;
+			}
+		}
+		if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList) {
+			if (PlayerListPage_) {
+				PlayerListPage_->hide();
+				PlayerListPresented = false;
 			}
 		}
 
@@ -1239,6 +1324,77 @@ private:
 			(void)validation.field;
 			return "#CG_ErrorMap";
 		}
+	}
+
+	// --- T20 player list -------------------------------------------------------
+
+	// The player-list page: read-through projection of the model. Every sync
+	// re-reads the roster + mute states (no page cache is a truth), then the
+	// page re-projects only when the model's revision moved.
+	void presentPlayerListPage() {
+		if (!PlayerListPage_)
+			return;
+		PlayerList.refresh();
+		PlayerListPage_->render();
+		PlayerListPage_->show();
+		PlayerListPresented = true;
+	}
+
+	// T20: a row click. The payload carries (index, steamId64, name) - the
+	// model rebuilds the identity key from it and revalidates against the LIVE
+	// snapshot (the roster may have moved since the page rendered; a vanished
+	// identity makes select() a no-op instead of retargeting the action).
+	void selectPlayerRow(const char* payload) {
+		if (!payload)
+			return;
+		int index = 0;
+		unsigned long long steamId = 0;
+		char name[256] = {};
+		if (std::sscanf(payload, "%d:%llu:%255[^\n]", &index, &steamId, name) < 2)
+			return;
+		services::playerlist::RosterEntry probe;
+		probe.index = index;
+		probe.steamId64 = static_cast<std::uint64_t>(steamId);
+		probe.name = name;
+		const services::playerlist::SelectionKey key =
+			services::playerlist::SelectionKey::forEntry(probe);
+		PlayerList.select(key);
+		PlayerListPage_->render();
+	}
+
+	// T20: the mute toggle. The model owns the whole discipline: identity
+	// revalidation, the backend call, and the read-back that decides success
+	// (T20.a step 3 - never an optimistic display). The console line is the
+	// live-verification observable; the page re-projects from the read-back.
+	void togglePlayerMute() {
+		bool mutedAfter = false;
+		const auto result = PlayerList.toggleMuted(mutedAfter);
+		switch (result) {
+		case services::playerlist::ToggleError::kNone:
+			abc::ConsolePrint("[AbcUi] player mute %s: idx=%d now=%d\n",
+				mutedAfter ? "MUTED" : "UNMUTED",
+				PlayerList.selectedEntry() ? PlayerList.selectedEntry()->index : 0,
+				mutedAfter ? 1 : 0);
+			break;
+		case services::playerlist::ToggleError::kUnavailable:
+			abc::ConsoleWarn("[AbcUi] player mute unavailable on this install (no %s)\n",
+				"GameClientExports001");
+			break;
+		case services::playerlist::ToggleError::kNoSelection:
+			abc::ConsoleWarn("[AbcUi] player mute refused (no selection)\n");
+			break;
+		case services::playerlist::ToggleError::kIdentityChanged:
+			abc::ConsoleWarn("[AbcUi] player mute refused (selected player left or is a bot)\n");
+			break;
+		case services::playerlist::ToggleError::kReadbackFailed:
+			abc::ConsoleWarn("[AbcUi] player mute refused (backend did not change state)\n");
+			break;
+		case services::playerlist::ToggleError::kLocalPlayer:
+			abc::ConsoleWarn("[AbcUi] player mute refused (local player)\n");
+			break;
+		}
+		if (PlayerListPage_)
+			PlayerListPage_->render();
 	}
 
 	// T18: the query trigger shared by the page-open beat and the page's
@@ -1471,9 +1627,6 @@ private:
 		const char* titleToken = "#MainMenu_StubTitle";
 		const char* bodyToken = "#MainMenu_StubSettings";
 		switch (page) {
-		case MenuPage::kPlayerList:
-			bodyToken = "#MainMenu_StubPlayerList";
-			break;
 		case MenuPage::kLoading:
 			bodyToken = "#MainMenu_StubLoading";
 			break;
@@ -1528,6 +1681,24 @@ private:
 		}
 		else if (intent == "playerlist")
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
+		else if (intent.rfind("pl-", 0) == 0) {
+			// T20 page-internal intents: a row selection carries the identity
+			// payload; the mute toggle and close are bare intents. Nothing
+			// here reaches the engine except through the model's revalidated
+			// backend call.
+			if (intent.rfind("pl-row:", 0) == 0)
+				selectPlayerRow(intent.c_str() + 7);
+			else if (intent == "pl-mute")
+				togglePlayerMute();
+			else if (intent == "pl-close")
+				Controller.dispatch(MenuEvent{EventKind::kBack});
+			else {
+				abc::ConsoleWarn("[AbcUi] unknown player-list action \"%s\" dropped\n", intent.c_str());
+				return;
+			}
+			finishDispatch();
+			return;
+		}
 		else if (intent == "console") {
 			// T16: the main-menu console entry toggles the replacement
 			// console through the bridge (the same funnel as the engine
@@ -1950,6 +2121,10 @@ private:
 		if (CreateGamePage_) {
 			CreateGamePage_->hide();
 			CreateGamePresented = false;
+		}
+		if (PlayerListPage_) {
+			PlayerListPage_->hide();
+			PlayerListPresented = false;
 		}
 		if (ConfirmQuit)
 			ConfirmQuit->hide();
@@ -2929,6 +3104,101 @@ private:
 			static_cast<int>(outcome), self.CreateGame.lastFailIndex(),
 			self.CreateGame.lastRestoreFailures());
 	}
+
+	// T20 diagnostics: the player-list model truth + the DOM projection (row
+	// count, first row geometry) - the live probe for the page and the mute
+	// backend's availability.
+	static void playerListUiCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		self.PlayerList.refresh();
+		abc::ConsolePrint("[AbcUi] playerlist: mute=%d gen=%u rows=%d rev=%llu sel=%d\n",
+			self.PlayerList.muteAvailable() ? 1 : 0, self.PlayerList.generation(),
+			static_cast<int>(self.PlayerList.roster().size()),
+			static_cast<unsigned long long>(self.PlayerList.revision()),
+			self.PlayerList.selection().valid() ? 1 : 0);
+		for (const auto& entry : self.PlayerList.roster()) {
+			abc::ConsolePrint(
+				"[AbcUi] playerlist row: idx=%d name=\"%s\" steam=%llu local=%d bot=%d spec=%d muted=%d\n",
+				entry.index, entry.name.c_str(),
+				static_cast<unsigned long long>(entry.steamId64), entry.local ? 1 : 0,
+				entry.bot ? 1 : 0, entry.spectating ? 1 : 0, entry.muted ? 1 : 0);
+		}
+		if (self.PlayerListPage_ && self.PlayerListPage_->document()) {
+			Rml::ElementDocument* doc = self.PlayerListPage_->document();
+			Rml::Element* list = doc->GetElementById("pl-list");
+			abc::ConsolePrint("[AbcUi] playerlist-ui: doc=%s list=%s rows=%d\n",
+				doc->IsVisible() ? "visible" : "hidden", list ? "found" : "missing",
+				list ? list->GetNumChildren() : -1);
+			if (Rml::Element* mute = doc->GetElementById("pl-mute"))
+				abc::ConsolePrint("[AbcUi] playerlist-ui: muteLabel='%s' disabled=%d\n",
+					mute->GetInnerRML().c_str(), mute->IsClassSet("pl-disabled") ? 1 : 0);
+		}
+	}
+
+	// T20 diagnostics: select a row by entity slot through the same model path
+	// a row click drives. Usage: abc_ui_playerlist_select <index>
+	static void playerListSelectCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_playerlist_select <index>\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const int index = atoi(gEngfuncs.Cmd_Argv(1));
+		self.PlayerList.refresh();
+		for (const auto& entry : self.PlayerList.roster()) {
+			if (entry.index != index)
+				continue;
+			self.PlayerList.select(services::playerlist::SelectionKey::forEntry(entry));
+			abc::ConsolePrint("[AbcUi] playerlist select idx=%d name=\"%s\"\n", entry.index,
+				entry.name.c_str());
+			if (self.PlayerListPage_)
+				self.PlayerListPage_->render();
+			return;
+		}
+		abc::ConsoleWarn("[AbcUi] playerlist: no player at index %d\n", index);
+	}
+
+	// T20 diagnostics: open the kPlayerList page through the SAME module path
+	// the pause-menu entry drives (the scripted-click stand-in: injected mouse
+	// coordinates land offset in this harness - T18/T19 record - the module
+	// route under test is identical).
+	static void playerListOpenCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (!self.MenuPresented)
+			services::nativeUiBridge().requestMenuUp(services::NativeUiOrigin::kOwnUi);
+		self.Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
+		self.finishDispatch();
+		abc::ConsolePrint("[AbcUi] playerlist open: pages=%d presented=%d doc=%s\n",
+			static_cast<int>(self.Controller.state().pages.size()),
+			self.PlayerListPresented ? 1 : 0,
+			(self.PlayerListPage_ && self.PlayerListPage_->document()
+				&& self.PlayerListPage_->document()->IsVisible()) ? "visible" : "hidden");
+		playerListUiCommand();
+	}
+
+	// T20 diagnostics: the SAME mute toggle the page button drives (identity
+	// revalidation + backend call + read-back).
+	static void playerListMuteCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		Instance->togglePlayerMute();
+		playerListUiCommand();
+	}
+
 #endif
 
 	static GameUiModule* Instance;
@@ -2989,6 +3259,11 @@ private:
 	// T19: whether the kCreateGame page is the presented surface (fresh-open
 	// prepare() runs once per open; the Apply latch lives in the page).
 	bool CreateGamePresented = false;
+	// T20 player list: the identity/selection/mute model (roster from the AbcUi
+	// player resource, muted state read through the shipped GameClientExports001
+	// probe) and whether its page is the presented surface.
+	services::playerlist::PlayerListModel PlayerList;
+	bool PlayerListPresented = false;
 	// T18b: the join-memory entry of the live browser-originated attempt
 	// (consumed on the kJoined beat; retired unrecorded otherwise).
 	services::serverbrowser::FavoriteKey PendingHistory;
@@ -3005,6 +3280,7 @@ private:
 	std::unique_ptr<panels::settings::SettingsPage> Settings;
 	std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
 	std::unique_ptr<panels::creategame::CreateGamePage> CreateGamePage_;  // T19 page
+	std::unique_ptr<panels::playerlist::PlayerListPage> PlayerListPage_;  // T20 page
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	std::unique_ptr<panels::loading::LoadingPage> Loading;
