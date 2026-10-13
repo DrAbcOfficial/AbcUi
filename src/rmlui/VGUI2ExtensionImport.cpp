@@ -609,6 +609,17 @@ int keyStringToKeyNum(const char* name) {
 	return GameUIFuncs->Key_KeyStringToKeyNum(name);
 }
 
+bool isKeyDown(const char* name) {
+	if (!GameUIFuncs || !name)
+		return false;
+	bool down = false;
+	// IGameUIFuncs slot 1 (hw.dll 0x01dbd370, T12 vtable pin): returns
+	// success and writes the state; only a true+true pair counts as down.
+	if (!GameUIFuncs->IsKeyDown(name, down))
+		return false;
+	return down;
+}
+
 // The engine's vmode_s is 3 x int32 {width, height, bpp} (hw.dll enumeration
 // array stride 0xc, pinned in the T12 execution record); the MetaHook header
 // only forward-declares the type, so the view is local.

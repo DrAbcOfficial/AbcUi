@@ -34,6 +34,27 @@
 				<button id="video-apply" data-action="video-apply" data-label="#Settings_VideoApply">#Settings_VideoApply</button>
 			</div>
 		</div>
+		<!-- T13 voice section: the voice cvar rows (voice_scale /
+		     voice_modenable) ride the #rows table above; these are the
+		     IVoiceTweak hardware rows. The ids are page contracts; the
+		     whole section fail-closes when the engine interface is
+		     missing. -->
+		<h2 id="voice-title">#Settings_VoiceTitle</h2>
+		<div id="voice-section">
+			<div class="row" id="voice-row-volume">
+				<div class="row-label">#Settings_MicVolume</div>
+				<input class="row-input" type="text" id="voice-mic-volume"/>
+			</div>
+			<div class="row" id="voice-row-boost">
+				<div class="row-label">#Settings_MicBoost</div>
+				<button class="row-toggle" id="voice-mic-boost" data-action="voice-mic-boost"></button>
+			</div>
+			<div class="row" id="voice-row-test">
+				<div class="row-label">#Settings_MicTest</div>
+				<button class="row-toggle" id="voice-mic-test" data-action="voice-test"></button>
+			</div>
+			<div id="voice-status"></div>
+		</div>
 	</div>
 	<div id="settings-actions">
 		<button id="settings-apply" data-action="apply" data-label="#Settings_Apply" autofocus="autofocus">#Settings_Apply</button>

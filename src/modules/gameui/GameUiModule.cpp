@@ -25,6 +25,7 @@
 #include <abc/Paths.h>
 
 #include <keydefs.h>
+#include <ivoicetweak.h>
 
 #include <cstdio>
 #include <cstring>
@@ -44,9 +45,13 @@
 #include "../../services/settings/SettingsModel.h"
 #include "../../services/settings/VideoModeModel.h"
 #include "../../services/settings/VideoPendingStore.h"
+#include "../../services/settings/VoiceModel.h"
 #include "MenuController.h"
 
 #include <chrono>
+#include <deque>
+
+#include <io.h>
 
 namespace gameui {
 
@@ -81,6 +86,60 @@ services::settings::SettingsModel::Seams settingsSeams() {
 			return false;
 		abc::CVAR_SET_FLOAT(name, value);
 		return true;
+	};
+	// T13 string rows: real engine cvar string writes (the original page
+	// sent `name "%s"` / `model %s` commands; the model validated tokens
+	// BEFORE either path - and the direct API keeps user text out of the
+	// command channel entirely).
+	seams.writeString = [](const char* name, const char* value) {
+		if (!abc::CVAR_GET_POINTER(name) || !value)
+			return false;
+		abc::CVAR_SET_STRING(name, value);
+		return true;
+	};
+	seams.readString = [](const char* name) -> const char* {
+		const cvar_t* cvar = abc::CVAR_GET_POINTER(name);
+		return cvar ? cvar->string : nullptr;
+	};
+	// T13 command toggles (in_mlook/in_jlook): IGameUIFuncs::IsKeyDown for
+	// the truth, the engine command channel for +mlook/-mlook (buffered -
+	// the model's kQueued settle covers the flush beat).
+	seams.isKeyDown = [](const char* stateName) { return vgui2ext::isKeyDown(stateName); };
+	seams.clientCmd = [](const char* command) {
+		if (!command)
+			return false;
+		abc::EngineClientCmd(command);
+		return true;
+	};
+	return seams;
+}
+
+// T13 voice seams (IVoiceTweak through cl_enginefuncs.pVoiceTweak - the
+// interface slot the shipped GameUI voice page reads at engine slot +0x15c).
+// Everything null-guards: a missing interface fail-closes the voice section
+// in the model's snapshot.
+services::settings::VoiceModel::Seams voiceSeams() {
+	services::settings::VoiceModel::Seams seams;
+	seams.tweakInterface = []() -> void* { return gEngfuncs.pVoiceTweak; };
+	seams.startTest = []() -> int {
+		return gEngfuncs.pVoiceTweak ? gEngfuncs.pVoiceTweak->StartVoiceTweakMode() : 0;
+	};
+	seams.stopTest = []() {
+		if (gEngfuncs.pVoiceTweak)
+			gEngfuncs.pVoiceTweak->EndVoiceTweakMode();
+	};
+	seams.getControl = [](int which) -> float {
+		return gEngfuncs.pVoiceTweak ? gEngfuncs.pVoiceTweak->GetControlFloat(
+			static_cast<VoiceTweakControl>(which)) : 0.0f;
+	};
+	seams.setControl = [](int which, float value) -> bool {
+		if (!gEngfuncs.pVoiceTweak)
+			return false;
+		gEngfuncs.pVoiceTweak->SetControlFloat(static_cast<VoiceTweakControl>(which), value);
+		return true;
+	};
+	seams.speakingVolume = []() -> int {
+		return gEngfuncs.pVoiceTweak ? gEngfuncs.pVoiceTweak->GetSpeakingVolume() : 0;
 	};
 	return seams;
 }
@@ -194,15 +253,115 @@ using gameui::menu::MenuEvent;
 using gameui::menu::MenuOverlay;
 using gameui::menu::MenuPage;
 
+// --- T13 option scans --------------------------------------------------------
+// The multiplayer enumerations (model directories, spraypaint bitmaps) come
+// from the mod dir exactly like the shipped GameUI list fills (COptionsSub*
+// ctor helpers scanned models/player/*.* / logos/* through the engine
+// filesystem with the GAME path). Plain directory enumeration on the trusted
+// mod path; both scans are read-only and bounded.
+
+// Directories under <mod>/<relativeDir> (model list = models/player), names
+// sorted, dot entries skipped.
+std::vector<std::string> scanModDirectories(const char* relativeDir) {
+	std::vector<std::string> names;
+	_finddata_t data;
+	const std::string mask = abc::ModPath(relativeDir) + "/*";
+	const intptr_t handle = _findfirst(mask.c_str(), &data);
+	if (handle == -1)
+		return names;
+	do {
+		if ((data.attrib & _A_SUBDIR) && data.name[0] != '.')
+			names.push_back(data.name);
+	} while (_findnext(handle, &data) == 0);
+	_findclose(handle);
+	std::sort(names.begin(), names.end());
+	if (names.size() > 512)
+		names.resize(512);
+	return names;
+}
+
+// File basenames (extension stripped) under <mod>/<relativeDir>; skips the
+// engine's remapped.bmp helper exactly like the original spray list.
+std::vector<std::string> scanModFileBasenames(const char* relativeDir) {
+	std::vector<std::string> names;
+	_finddata_t data;
+	const std::string mask = abc::ModPath(relativeDir) + "/*";
+	const intptr_t handle = _findfirst(mask.c_str(), &data);
+	if (handle == -1)
+		return names;
+	do {
+		if (data.attrib & _A_SUBDIR)
+			continue;
+		const std::string name = data.name;
+		if (name.empty() || name[0] == '.' || name == "remapped.bmp")
+			continue;
+		const auto dot = name.rfind('.');
+		names.push_back(dot == std::string::npos ? name : name.substr(0, dot));
+	} while (_findnext(handle, &data) == 0);
+	_findclose(handle);
+	std::sort(names.begin(), names.end());
+	if (names.size() > 512)
+		names.resize(512);
+	return names;
+}
+
+// The advanced-rows table: the shipped user.scr is the live source (the
+// original MultiplayerAdvancedDialog parses it the same way); the localized
+// sibling (<gamedir>_<lang>/user.scr) wins when present - the engine's own
+// search order. Read failure or an empty parse keeps the static mirror of
+// the shipped script (AdvancedScriptRows). The arena outlives the model.
+struct AdvancedTable {
+	services::settings::SettingsModel::UserScrTable parsed;
+	std::vector<services::settings::SettingRow> rows;
+	bool valid = false;
+};
+
+AdvancedTable buildAdvancedTable() {
+	AdvancedTable table;
+	// Localized variant first (svencoop_schinese ships translated prompts):
+	// the path is CWD-relative like abc::ModPath - the engine mounts the
+	// language directory next to the mod directory.
+	std::string text;
+	{
+		const char* language = vgui2ext::currentLanguage();
+		if (language && *language && std::strcmp(language, "english") != 0) {
+			std::string path = abc::GameDir();
+			path += "_";
+			path += language;
+			path += "/user.scr";
+			FILE* file = nullptr;
+			if (fopen_s(&file, path.c_str(), "rb") == 0 && file) {
+				char buffer[4096];
+				size_t got = 0;
+				while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0)
+					text.append(buffer, got);
+				fclose(file);
+			}
+		}
+	}
+	if (text.empty())
+		text = readModFile("user.scr");
+	if (services::settings::SettingsModel::parseUserScr(text.c_str(), table.parsed)
+		&& !table.parsed.Rows.empty()) {
+		table.rows = table.parsed.Rows;
+		table.valid = true;
+		return table;
+	}
+	// Static fallback: the exact mirror of the shipped script.
+	table.rows.assign(services::settings::AdvancedScriptRows,
+		services::settings::AdvancedScriptRows + services::settings::AdvancedScriptCount);
+	table.valid = true;
+	return table;
+}
+
 class GameUiModule final : public modules::IUiModule, private framework::uiinput::Owner, private services::INativeMenuSink {
 public:
 	GameUiModule()
-		: Controller(&menuBackend()), SettingsModel(services::settings::FirstBatchRows,
-			  services::settings::FirstBatchCount),
-		  CaptureOwner(this) {
+		: Controller(&menuBackend()), CaptureOwner(this) {
 		SettingsModel.setSeams(settingsSeams());
 		BindModel.setSeams(bindSeams());
 		VideoModel.setSeams(videoSeams());
+		VoiceModel.setSeams(voiceSeams());
 		modules::registry().add(this);
 		services::nativeUiBridge().setMenuSink(this);
 		Instance = this;
@@ -211,6 +370,24 @@ public:
 	const char* name() const override { return "gameui"; }
 
 	void onInit() override {
+		// T13 description table: the first batch + the advanced rows from the
+		// live (localized) user.scr - the shipped script is the same source
+		// the original advanced dialog parses. A failed parse keeps the
+		// static mirror of the shipped script (buildAdvancedTable), so the
+		// table is never empty. Must run before the first snapshot (page
+		// present) - the model owns row POINTERS into SettingsTable/Advanced,
+		// both module members that outlive the model.
+		Advanced = buildAdvancedTable();
+		SettingsTable.assign(services::settings::FirstBatchRows,
+			services::settings::FirstBatchRows + services::settings::FirstBatchCount);
+		SettingsTable.insert(SettingsTable.end(), Advanced.rows.begin(), Advanced.rows.end());
+		SettingsModel.setTable(SettingsTable.data(), static_cast<int>(SettingsTable.size()));
+		// The multiplayer enumerations: directories (models/player) and the
+		// spray basenames (logos) - the same scans the shipped list fills
+		// run; empty scans leave the rows readable but unchangeable (the
+		// live engine value stays selectable).
+		SettingsModel.setStringOptions("model", scanModDirectories("models/player"));
+		SettingsModel.setStringOptions("cl_logofile", scanModFileBasenames("logos"));
 		// T11 bind sources live in the mod dir (engine-owned data, not abcui
 		// assets): the action list, the factory defaults and the label table.
 		// Missing files degrade to an empty action table - the settings page
@@ -223,6 +400,12 @@ public:
 		// HUD_Init guarded block only (plan 08 §4.9 red line).
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
 		abc::ADD_COMMAND("abc_ui_bind_status", bindStatusCommand);
+		abc::ADD_COMMAND("abc_ui_settings_status", settingsStatusCommand);
+		abc::ADD_COMMAND("abc_ui_settings_apply", settingsApplyCommand);
+		abc::ADD_COMMAND("abc_ui_voice_status", voiceStatusCommand);
+		abc::ADD_COMMAND("abc_ui_voice_boost", voiceBoostCommand);
+		abc::ADD_COMMAND("abc_ui_voice_test", voiceTestCommand);
+		abc::ADD_COMMAND("abc_ui_voice_apply", voiceApplyCommand);
 		abc::ADD_COMMAND("abc_ui_video_status", videoStatusCommand);
 		abc::ADD_COMMAND("abc_ui_video_scroll", videoScrollCommand);
 		abc::ADD_COMMAND("abc_ui_video_stage", videoStageCommand);
@@ -256,6 +439,17 @@ public:
 		// on the first tick after Apply; a change re-projects the page once.
 		if (SettingsPresented && Settings && BindModel.hasQueued()) {
 			if (BindModel.verify())
+				Settings->render();
+		}
+		// T13: the same beat covers the cvar model's kCommandToggle rows
+		// (+mlook/-mlook settle against IsKeyDown) and the mic-test meter
+		// (the level readout is the GetSpeakingVolume truth, one render per
+		// frame while the session is up - not an animation).
+		if (SettingsPresented && Settings && (SettingsModel.hasQueued() || VoiceModel.testing())) {
+			if (SettingsModel.hasQueued())
+				SettingsModel.snapshot();
+			Settings->renderVoiceSection();
+			if (SettingsModel.hasQueued())
 				Settings->render();
 		}
 		// T12 confirmation beat: the monotonic deadline runs on real time.
@@ -332,6 +526,7 @@ public:
 		Settings->setModel(&SettingsModel);
 		Settings->setBindModel(&BindModel);
 		Settings->setVideoModel(&VideoModel);
+		Settings->setVoiceModel(&VoiceModel);
 		VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
 		VideoConfirm->setVideoModel(&VideoModel);
 		ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
@@ -357,6 +552,9 @@ public:
 		// Context still alive here: every document closes and drops its
 		// listeners before the DOM dies (module contract). The tokens
 		// release first - a stale no-op when the router already reset.
+		// The mic test is a device resource: stop it before anything tears
+		// down (the pairing guarantee covers the shutdown path too).
+		VoiceModel.stopTest();
 		CaptureToken.release();
 		PageToken.release();
 		Shell.reset();
@@ -494,6 +692,9 @@ private:
 		// A running capture session ends with it (draft-free, clamp off).
 		endKeyCapture();
 		BindModel.cancelCapture();
+		// T13b: menu focus loss ends the mic test with it (the device
+		// session must never outlive the surface that owns it).
+		VoiceModel.stopTest();
 		Controller.dispatch(MenuEvent{EventKind::kMenuHidden});
 		hideAllMenuDocuments();
 		if (MenuPresented) {
@@ -586,6 +787,10 @@ private:
 			if (Settings)
 				Settings->hide();
 			SettingsPresented = false;
+			// T13b: the mic test is a page-scoped device session - leaving
+			// the settings page stops it (the original's PageHide guarantee,
+			// extended to the controller-driven leave path).
+			VoiceModel.stopTest();
 		}
 
 	// Overlay layer, top-most last (each show pulls to the context
@@ -615,6 +820,7 @@ private:
 			SettingsModel.snapshot();
 			BindModel.snapshot();
 			VideoModel.snapshot(); // fresh actual mode + enumerated list
+			VoiceModel.snapshot(); // fresh device floats + interface presence
 			Settings->render();
 			SettingsPresented = true;
 		}
@@ -925,8 +1131,123 @@ private:
 #ifndef NDEBUG
 	// T11 diagnostics: the capture/clamp/router state and every bind row's
 	// draft - the live-debugging counterpart of the offline model dumps.
-	static void bindStatusCommand() {
+	// Debug-only voice diagnostics (T13b): device floats vs drafts + the
+	// test session state. One line, no DOM reads - the model is the truth.
+	static void voiceStatusCommand() {
 		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		abc::ConsolePrint("[AbcUi] voice available=%d testing=%d mic=%.3f micDraft=%.3f micDirty=%d boost=%d boostDraft=%d boostDirty=%d level=%.3f\n",
+			self.VoiceModel.available() ? 1 : 0, self.VoiceModel.testing() ? 1 : 0,
+			self.VoiceModel.micVolume(), self.VoiceModel.micVolumeDraft(),
+			self.VoiceModel.micDirty() ? 1 : 0, self.VoiceModel.micBoost() ? 1 : 0,
+			self.VoiceModel.micBoostDraft() ? 1 : 0, self.VoiceModel.micBoostDirty() ? 1 : 0,
+			self.VoiceModel.speakingLevel());
+	}
+
+	// Debug-only: flip the boost draft from the console (the mouse path probe
+	// when injected clicks are unreliable).
+	static void voiceBoostCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (!self.VoiceModel.available()) {
+			abc::ConsoleWarn("[AbcUi] voice unavailable\n");
+			return;
+		}
+		const bool current = self.VoiceModel.micBoostDirty() ? self.VoiceModel.micBoostDraft()
+															 : self.VoiceModel.micBoost();
+		self.VoiceModel.setMicBoostDraft(!current);
+		if (self.Settings)
+			self.Settings->renderVoiceSection();
+		voiceStatusCommand();
+	}
+
+	// Debug-only: drive the microphone test start/stop through the REAL
+	// engine interface (StartVoiceTweakMode) - the device evidence probe.
+	static void voiceTestCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (self.VoiceModel.testing()) {
+			self.VoiceModel.stopTest();
+			abc::ConsolePrint("[AbcUi] voice test STOPPED\n");
+		} else if (self.VoiceModel.startTest()) {
+			abc::ConsolePrint("[AbcUi] voice test STARTED (engine accepted the tweak mode)\n");
+		} else {
+			abc::ConsoleWarn("[AbcUi] voice test REFUSED (no device / engine returned 0)\n");
+		}
+		if (self.Settings)
+			self.Settings->renderVoiceSection();
+		voiceStatusCommand();
+	}
+
+	// Debug-only: apply the pending voice drafts exactly like the page's
+	// Apply button does (per-control write + read-back).
+	static void voiceApplyCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (!self.VoiceModel.available()) {
+			abc::ConsoleWarn("[AbcUi] voice unavailable\n");
+			return;
+		}
+		const bool micOk = self.VoiceModel.applyMicVolume();
+		const bool boostOk = self.VoiceModel.applyMicBoost();
+		abc::ConsolePrint("[AbcUi] voice apply mic=%d boost=%d\n", micOk ? 1 : 0, boostOk ? 1 : 0);
+		if (self.Settings)
+			self.Settings->renderVoiceSection();
+		voiceStatusCommand();
+	}
+
+	// Debug-only: run the settings model's apply() exactly like the page's
+	// Apply button (write + read-back per row) and print per-row outcomes.
+	static void settingsApplyCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		const auto results = self.SettingsModel.apply();
+		abc::ConsolePrint("[AbcUi] settings apply rows=%d\n", static_cast<int>(results.size()));
+		for (const auto& result : results)
+			abc::ConsolePrint("[AbcUi] apply '%s' outcome=%d\n", result.cvar.c_str(),
+				static_cast<int>(result.outcome));
+		if (self.Settings)
+			self.Settings->render();
+		settingsStatusCommand();
+	}
+
+	// Debug-only dump of the T13 description-table state: one line per row
+	// (cvar, kind, state, draft/engine text) plus the voice interface facts.
+	static void settingsStatusCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		abc::ConsolePrint("[AbcUi] settings rows=%d voice=%d testing=%d mic=%.2f boost=%d\n",
+			static_cast<int>(self.SettingsModel.rows().size()), self.VoiceModel.available() ? 1 : 0,
+			self.VoiceModel.testing() ? 1 : 0, self.VoiceModel.micVolume(),
+			self.VoiceModel.micBoost() ? 1 : 0);
+		for (const auto& view : self.SettingsModel.rows()) {
+			if (view.state == services::settings::RowState::kMissing)
+				continue; // registered rows only, keeps the dump readable
+			abc::ConsolePrint("[AbcUi] row '%s' kind=%d state=%d draft='%s' engine='%s'\n",
+				view.row->Cvar, static_cast<int>(view.row->Kind), static_cast<int>(view.state),
+				view.draftText.c_str(), view.engineText.empty() ? "" : view.engineText.c_str());
+		}
+	}
+
+	static void bindStatusCommand() {		if (!Instance) {
 			abc::ConsoleWarn("[AbcUi] no module instance\n");
 			return;
 		}
@@ -1127,6 +1448,13 @@ private:
 	// on the next open.
 	services::settings::SettingsModel SettingsModel;
 	services::settings::KeyBindModel BindModel;
+	// T13: the description-table storage (static rows + the parsed user.scr
+	// arena) and the IVoiceTweak hardware model. Both outlive the documents;
+	// SettingsTable must not be mutated after onInit (the model keeps row
+	// pointers into it).
+	std::vector<services::settings::SettingRow> SettingsTable;
+	AdvancedTable Advanced;
+	services::settings::VoiceModel VoiceModel;
 	// T12 display-mode transaction: engine reads/writes + the persisted
 	// unconfirmed-switch record. Lives across HUD cycles like the other
 	// models (the record file is the crash truth; this is the cache).

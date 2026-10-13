@@ -32,11 +32,13 @@
 #include <RmlUi/Core/EventListener.h>
 
 #include <functional>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace Rml {
+class Element;
 class Event;
 }
 
@@ -47,6 +49,7 @@ struct RowView;
 class KeyBindModel;
 struct BindRowView;
 class VideoModeModel;
+class VoiceModel;
 }
 }
 
@@ -69,11 +72,17 @@ public:
 	// rows); the apply intent ("video-apply") is reported to the module, which
 	// owns the restart/confirmation presentation.
 	void setVideoModel(services::settings::VideoModeModel* model) { VideoModel = model; }
+	// T13 voice section: cvar rows ride the settings model, the hardware
+	// rows (mic volume/boost/test) ride this model.
+	void setVoiceModel(services::settings::VoiceModel* model) { VoiceModel_ = model; }
 
 	// Re-projects the whole model into the DOM. Safe while hidden. When
 	// `skipInputRow` is non-null, that row's text field keeps its exact
 	// editor state (the change-commit path passes the row it came from).
 	void render(const char* skipInputRow = nullptr);
+	// Cheap voice-only re-projection for the mic-test meter beat (the full
+	// render() rewrites every row - too heavy per frame).
+	void renderVoiceSection();
 
 	// True while Apply would still change (or has failed to change)
 	// something: the module's ESC/return guard asks before discarding.
@@ -120,16 +129,33 @@ private:
 	std::string bindActionLabel(const services::settings::BindRowView& view) const;
 	// Shared resolution for one raw label string ("#Valve_X" or literal).
 	std::string bindLabelText(const std::string& label) const;
+	// The options last projected into one row <select> (cvar -> values);
+	// selects rebuild only when the set changed (the T12 Add()-vs-inline
+	// RmlUi pin applies to every select on this page).
+	const std::vector<std::string>* shownSelectValues(const std::string& cvar) const;
+	void setShownSelectValues(const std::string& cvar, std::vector<std::string> values);
 
 	PageListener Listener;
 	ActionSink Sink;
 	services::settings::SettingsModel* Model = nullptr;
 	services::settings::KeyBindModel* BindModel = nullptr;
 	services::settings::VideoModeModel* VideoModel = nullptr;
+	services::settings::VoiceModel* VoiceModel_ = nullptr;
 	// The resolution options last projected into the <select> ("1920x1080"
 	// value strings). The mode list is engine-stable per session; the select
 	// is rebuilt only when the set actually changed (no per-render churn).
 	std::vector<std::pair<int, int>> VideoOptionsShown;
+	std::map<std::string, std::vector<std::string>> SelectValuesShown;
+	// The mic-volume field of the change commit currently in flight (its
+	// caret/IME state must survive the status refresh, like the row inputs).
+	Rml::Element* VoiceVolumeSkipField = nullptr;
+	// Re-entrancy guard: the row selects dispatch change while render()
+	// builds their options (the T12 Add() pin) - the change handler must
+	// not start a nested render pass from inside one.
+	bool InRender_ = false;
+	// The cvar whose section header was last projected (header dividers are
+	// emitted on section changes while building rows).
+	std::string LastSectionBuilt;
 	// Page-internal modal state: "" when no layer is up, else the layer's
 	// DOM id ("reset-confirm" / "leave-confirm" / "bind-conflict" /
 	// "bind-reset-confirm"). The truth for event routing, kept in lockstep

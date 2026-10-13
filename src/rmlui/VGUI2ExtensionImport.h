@@ -55,6 +55,12 @@ const char* keyBindingForKey(int keynum);
 // a key name, -1 for unknown / unavailable.
 int keyStringToKeyNum(const char* name);
 
+// T13: IGameUIFuncs::IsKeyDown (vtable slot 1, hw.dll 0x01dbd370) - the
+// button-state query behind the original voice/mouse command toggles
+// ("in_mlook"/"in_jlook"). false when the interface is missing or the
+// engine rejects the name (fail-closed: the row then reads as off).
+bool isKeyDown(const char* name);
+
 namespace video {
 struct Mode {
 	int Width = 0;

@@ -117,8 +117,7 @@ body#menusettings #panel scrollbarvertical sliderbar:active {
 	margin-top: 2dp;
 }
 
-/* Unavailable rows (cvar not registered): greyed, still readable. */
-.row-missing {
+/* Unavailable rows (cvar not registered): greyed, still readable. */.row-missing {
 	color: #6a7178;
 	opacity: 0.6;
 }
@@ -258,6 +257,56 @@ body#menusettings #panel scrollbarvertical sliderbar:active {
 #video-apply.video-disabled {
 	color: #6f757c;
 	border-color: #3a4047;
+}
+
+/* T13: section headers between the description-table groups (the table is
+   grouped by the original Options pages), and the per-row enum selects. */
+.section-header {
+	display: block;
+	font-size: 11dp;
+	color: #9fd49f;
+	margin-top: 14dp;
+	margin-bottom: 8dp;
+	border-bottom: 1dp #2c333a;
+	padding-bottom: 2dp;
+}
+
+.row-select {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 200dp;
+	height: 24dp;
+	line-height: 22dp;
+	background-color: #0a0d10;
+	color: #dedede;
+	font-size: 10dp;
+	padding: 0dp 6dp;
+	border: 1dp #3a4148;
+	tab-index: auto;
+}
+
+/* T13 voice section: same frame as the video section; the test button and
+   boost share the row-toggle look, the status line carries the live level
+   readout (a plain number - no fake meter animation). */
+#voice-section {
+	display: block;
+	margin-top: 12dp;
+}
+
+#voice-section .row-input {
+	width: 200dp;
+}
+
+#voice-status {
+	display: block;
+	font-size: 8dp;
+	color: #8a9199;
+	margin-left: 144dp;
+	margin-top: 4dp;
+}
+
+#voice-section.video-unavailable #voice-status {
+	color: #d8b45a;
 }
 
 /* The action bar is document-level and top-anchored below the panel's fixed

@@ -86,6 +86,7 @@ add_library(AbcUi MODULE
     src/services/settings/KeyBindModel.cpp
     src/services/settings/VideoModeModel.cpp
     src/services/settings/VideoPendingStore.cpp
+    src/services/settings/VoiceModel.cpp
     src/framework/PanelManager.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
