@@ -1,0 +1,182 @@
+/* console.rcss - T16 replacement console overlay. Layout in dp only (the
+   context density ratio scales; the logical screen is 640x480dp at every
+   resolution - Theme::applyScale), matching the other pages' convention.
+   Fixed-size top band (the classic console look): header, scrolling
+   history, overlay suggestion list / confirm pane, command row. Only the
+   history scrolls. */
+
+#console-box {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 640dp;
+	height: 320dp;
+	background-color: #101418f0;
+	border-bottom: 1dp #3a4148;
+}
+
+#console-header {
+	position: relative;
+	display: block;
+	height: 18dp;
+	padding-left: 6dp;
+	padding-right: 6dp;
+	border-bottom: 1dp #2a3036;
+}
+
+#console-title {
+	display: inline-block;
+	height: 18dp;
+	line-height: 18dp;
+	font-size: 9dp;
+	color: #00ff00;
+}
+
+#console-count {
+	display: inline-block;
+	height: 18dp;
+	line-height: 18dp;
+	margin-left: 12dp;
+	font-size: 9dp;
+	color: #8a9199;
+}
+
+#console-close {
+	position: absolute;
+	right: 0dp;
+	top: 1dp;
+	height: 16dp;
+	min-width: 0dp;
+	font-size: 8dp;
+	padding-left: 6dp;
+	padding-right: 6dp;
+}
+
+/* The output history: the only scrolling region; monospaced so columns in
+   engine output survive. */
+#console-history {
+	position: absolute;
+	left: 0dp;
+	top: 21dp;
+	width: 640dp;
+	height: 276dp;
+	overflow: auto;
+	padding-left: 6dp;
+	padding-right: 6dp;
+}
+
+/* No wrapping: engine lines are fixed-height rows (a wrapped long line
+   would overlap the fixed 12dp row height - live-caught). Long lines are
+   clipped by the container's horizontal scroll; the container scrolls on
+   both axes (explicit dp width, so the percentage-collapse trap does not
+   apply). */
+.console-line {
+	display: block;
+	height: 12dp;
+	white-space: nowrap;
+	font-family: Consolas;
+	font-size: 9dp;
+	line-height: 12dp;
+	color: #dedede;
+}
+
+.console-line.console-dev {
+	color: #9aa2ab;
+}
+
+/* Completion list: floats above the history bottom, capped visually. */
+#console-suggestions {
+	position: absolute;
+	left: 6dp;
+	top: 200dp;
+	width: 240dp;
+	max-height: 96dp;
+	overflow-y: auto;
+	background-color: #0a0d10f0;
+	border: 1dp #3a4148;
+}
+
+.console-suggestion {
+	display: block;
+	height: 12dp;
+	font-family: Consolas;
+	font-size: 9dp;
+	line-height: 12dp;
+	padding-left: 4dp;
+	padding-right: 4dp;
+	color: #dedede;
+}
+
+.console-suggestion.selected {
+	background-color: #2a4a6a;
+}
+
+/* The multi-line paste confirmation pane (modal over the box). */
+#console-confirm {
+	position: absolute;
+	left: 40dp;
+	top: 24dp;
+	width: 560dp;
+	height: 260dp;
+	background-color: #181d22f8;
+	border: 1dp #3a4148;
+	padding: 10dp;
+}
+
+#console-confirm-lead {
+	display: block;
+	font-size: 10dp;
+	color: #ffd700;
+	margin-bottom: 6dp;
+}
+
+#console-confirm-text {
+	display: block;
+	width: 540dp;
+	height: 180dp;
+	overflow-y: auto;
+	font-family: Consolas;
+	font-size: 9dp;
+	line-height: 12dp;
+	color: #dedede;
+	white-space: pre-wrap;
+	margin-bottom: 6dp;
+}
+
+#console-confirm-actions button {
+	display: inline-block;
+	margin-right: 8dp;
+}
+
+#console-input-row {
+	position: absolute;
+	left: 0dp;
+	top: 297dp;
+	width: 640dp;
+	height: 21dp;
+	border-top: 1dp #2a3036;
+}
+
+#console-prompt {
+	display: inline-block;
+	width: 10dp;
+	height: 20dp;
+	line-height: 20dp;
+	font-family: Consolas;
+	font-size: 9dp;
+	color: #00ff00;
+	padding-left: 6dp;
+}
+
+#console-input {
+	display: inline-block;
+	width: 612dp;
+	height: 18dp;
+	line-height: 18dp;
+	font-family: Consolas;
+	font-size: 9dp;
+	background-color: #0a0d10;
+	border: 1dp #3a4148;
+	color: #dedede;
+	padding-left: 4dp;
+}

@@ -341,3 +341,11 @@ Loading_DirectConnectTitle = Conexion directa
 Loading_DirectConnectLead = Introduce una direccion (host o host:puerto).
 Loading_AddressField = Direccion del servidor
 Loading_AddressInvalid = Introduce una direccion valida, p. ej. 127.0.0.1:27015
+
+# Replacement console (T16)
+Console_Title = Consola
+Console_Close = Cerrar
+Console_Count = Lineas
+Console_ConfirmLead = Este pegado contiene varios comandos. Ejecutar
+Console_ConfirmYes = Ejecutar
+Console_ConfirmNo = Cancelar

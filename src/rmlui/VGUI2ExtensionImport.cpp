@@ -65,10 +65,10 @@ void writePluginBool(VGUI2Extension_CallbackContext* ctx, bool value) {
 		*static_cast<bool*>(ctx->pPluginReturnValue) = value;
 }
 
-// SDL key-event view for the physical ESC release observation (SDL3-style
-// ids, SDL2-style layout - same evidence as TextInput.cpp's text views).
-// Observation only: the extension's own handler owns real dispatch; this
-// seam never writes Result.
+// SDL key-event view for the physical ESC release AND the T16 no-map
+// console close (SDL3-style ids, SDL2-style layout - same evidence as
+// TextInput.cpp's text views). Observation only: the extension's own
+// handler owns real dispatch; this seam never writes Result.
 constexpr unsigned kSdlEventKeyDown = 0x300;
 constexpr unsigned kSdlEventKeyUp = 0x301;
 constexpr int kSdlKeycodeEscape = 0x1B;
@@ -91,6 +91,25 @@ void notePhysicalEscUpFromEvent(const void* event) {
 	if (key->Type != kSdlEventKeyUp || key->Key != kSdlKeycodeEscape)
 		return;
 	services::nativeUiBridge().noteEscPhysicalUp();
+}
+
+// T16 close route for the no-map console: with no level loaded the engine's
+// window handler turns ESC into ActivateGameUI (a no-op once the menu is
+// up), so the single routed close that serves the in-game case never
+// happens. This observation (pre-dispatch, Result untouched - the engine
+// keeps consuming ESC itself) covers exactly that gap: menu up, console
+// presented, no level, one close per physical press (the shared
+// EscPressRouted latch, cleared by the key-up above and at every raise).
+void notePhysicalEscDownFromEvent(const void* event) {
+	const auto* key = static_cast<const SdlKeyEvent*>(event);
+	if (key->Type != kSdlEventKeyDown || key->Key != kSdlKeycodeEscape || key->Repeat)
+		return;
+	auto& bridge = services::nativeUiBridge();
+	if (!bridge.armed() || !bridge.menuUp() || !bridge.consoleRequested() || bridge.hasLevel())
+		return;
+	if (!bridge.consumeEscRoute())
+		return;
+	bridge.requestConsoleClose(services::NativeUiOrigin::kGameConsole);
 }
 
 // R-4 callback path (batch C): the engine surface WndProc sees every UI-level
@@ -144,8 +163,11 @@ public:
 		VGUI2Extension_CallbackContext* CallbackContext) override {
 		(void)userData;
 		if (!CallbackContext->IsPost) {
-			// Physical ESC release tracking (one close route per press).
+			// Physical ESC release tracking (one close route per press);
+			// T16: the ESC-down path closes the no-map console (see the
+			// helper) - both observation-only, Result untouched.
 			notePhysicalEscUpFromEvent(pevent);
+			notePhysicalEscDownFromEvent(pevent);
 			rmlui::onSurfaceAppEvent(pevent);
 			// T09: the menu-owned keyboard stream - with the takeover active
 			// the engine stops feeding HUD_Key_Event, so the surface SDL
@@ -179,8 +201,16 @@ public:
 		(void)CallbackContext;
 		services::nativeUiBridge().noteBaseUiToggle();
 	}
-	void HideConsole(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
-	void ShowConsole(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
+	void HideConsole(VGUI2Extension_CallbackContext* CallbackContext) override {
+		// T16: the outer Show/HideConsole bodies only flip the engine's own
+		// console-toggle flag and forward to IGameConsole, so the native side
+		// stays (engine flag parity) and the inner GameConsole callbacks own
+		// the takeover. Observation only here.
+		(void)CallbackContext;
+	}
+	void ShowConsole(VGUI2Extension_CallbackContext* CallbackContext) override {
+		(void)CallbackContext;
+	}
 };
 
 UICallbacks UICallbacksInstance;
@@ -421,27 +451,38 @@ public:
 	int GetAltitude() const override { return 0; }
 
 	void Activate(VGUI2Extension_CallbackContext* CallbackContext) override {
+		// T16: the entry funnel of the replacement console. The startup
+		// -console/-toconsole path calls this directly (hw.dll native
+		// BaseUI::Initialize -> GameConsole::Activate); before the arm the
+		// bridge latches the intent and vanilla proceeds (pre-arm window),
+		// after the arm the call is consumed. The ` command path (the engine
+		// `toggleconsole`/`-condebug` chain -> IBaseUI::ShowConsole -> the
+		// real CBaseUI -> this proxied IGameConsole instance) lands here as
+		// well, so one funnel owns every engine-side open.
 		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return;
-		if (!CallbackContext->IsPost) {
+		if (!CallbackContext->IsPost)
 			bridge.noteConsoleActivate();
-			// The console is not a page in M1: the minimal page is what a
-			// console activation shows while T16 is unimplemented.
-			bridge.requestMenuUp(services::NativeUiOrigin::kGameConsole);
+		bridge.requestConsoleOpen(services::NativeUiOrigin::kGameConsole);
+		if (bridge.armed()) {
+			// The toggle key's own committed character ("`"/"~" from SDL
+			// text input) belongs to the toggle, never to a focused editor
+			// (vanilla parity: the key does not type). Arm the swallow here
+			// so the engine-driven open cannot leak the character into the
+			// freshly focused editor either.
+			rmlui::swallowToggleKeyText();
+			CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
 		}
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
 	}
 	void Initialize(VGUI2Extension_CallbackContext* CallbackContext) override {
 		(void)CallbackContext;
 	}
 	void Hide(VGUI2Extension_CallbackContext* CallbackContext) override {
 		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return;
 		if (!CallbackContext->IsPost)
 			bridge.noteConsoleHide();
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
+		bridge.requestConsoleClose(services::NativeUiOrigin::kGameConsole);
+		if (bridge.armed())
+			CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
 	}
 	void Clear(VGUI2Extension_CallbackContext* CallbackContext) override {
 		// T15: the engine's `clear` command wipes the notify context and then
@@ -712,6 +753,19 @@ void init() {
 	}
 	// T15: the submission/enumeration seams of the console backend.
 	wireConsoleBackend();
+
+	// T16 startup console entry (-console / -toconsole): the engine's own
+	// startup call (native CBaseUI::Initialize body: CheckParm("-console")
+	// || CheckParm("-toconsole") -> GameConsole::Activate and the
+	// DAT_0204d7ec flag) runs BEFORE the extension installs the IGameConsole
+	// proxies, so that call can never reach the callbacks - live-verified
+	// (requested=0 after a -console cold start). The same engine-truthful
+	// check latches the intent here (LoadClient, before the arm); the bridge
+	// delivers it exactly once at arm() and the replacement console
+	// presents on the first context instead of the legacy dialog.
+	if (gEngfuncs.CheckParm
+		&& (gEngfuncs.CheckParm("-console", nullptr) || gEngfuncs.CheckParm("-toconsole", nullptr)))
+		services::nativeUiBridge().requestConsoleOpen(services::NativeUiOrigin::kGameConsole);
 }
 
 void shutdown() {

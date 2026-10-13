@@ -110,6 +110,7 @@ add_library(AbcUi MODULE
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
     src/panels/loading/LoadingWindows.cpp
+    src/panels/console/ConsolePage.cpp
     src/panels/settings/SettingsPage.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp

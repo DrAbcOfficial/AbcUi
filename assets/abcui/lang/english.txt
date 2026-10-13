@@ -339,3 +339,11 @@ Loading_DirectConnectTitle = Direct connect
 Loading_DirectConnectLead = Enter an address (host or host:port).
 Loading_AddressField = Server address
 Loading_AddressInvalid = Enter a valid address, e.g. 127.0.0.1:27015
+
+# Replacement console (T16)
+Console_Title = Console
+Console_Close = Close
+Console_Count = Lines
+Console_ConfirmLead = This paste contains multiple commands. Execute
+Console_ConfirmYes = Execute
+Console_ConfirmNo = Cancel

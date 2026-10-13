@@ -59,6 +59,14 @@ bool textComposing();
 // editor directly (maxlength respected by the pin).
 void feedTextInput(const char* utf8);
 
+// T16 console-toggle seam: the backquote key both toggles the console and
+// delivers an SDL text event ("`" / "~" depending on shift). The character
+// belongs to the toggle, never to a focused editor (vanilla parity: the
+// toggle key does not type). The console handler arms this at the toggle
+// edge; the NEXT commit of "`"/"~" is dropped, and any other commit disarms
+// the flag (so a later deliberate paste is unaffected).
+void swallowToggleKeyText();
+
 // Composition update (SDL_EVENT_TEXT_EDITING payload). `startBytes` is the
 // byte offset of the cursor inside the composition string.
 void feedTextEditing(const char* utf8, int startBytes);

@@ -141,6 +141,14 @@ public:
 	// Menu lowered through any path (ESC route, engine hide, focus loss):
 	// take the page down.
 	virtual void onNativeMenuHide() = 0;
+	// T16 replacement-console entries: an engine source asked for the console
+	// (GameConsole Activate from -console/-toconsole or direct callers, BaseUI
+	// ShowConsole from the toggle console binding) or for its close
+	// (GameConsole Hide, BaseUI HideConsole, the hideconsole command).
+	// requestConsoleOpen has already raised the menu when needed; both
+	// intents are idempotent here. Default no-ops keep pure sinks compiling.
+	virtual void onNativeConsoleOpen() {}
+	virtual void onNativeConsoleClose() {}
 };
 
 struct NativeUiCounters {
@@ -196,6 +204,12 @@ public:
 	// only ever disarmed during controlled teardown after the native UI can
 	// no longer paint (strict mode never falls back to the original UI -
 	// T08 step 7 / 03 doc fault section).
+	// T16: a console entry that arrives BEFORE the arm (the -console /
+	// -toconsole startup path runs in the native BaseUI::Initialize body,
+	// which precedes the proxy's Initialize dispatch where the gate arms)
+	// is latched as a pending intent and delivered exactly once at arm()
+	// time - the startup console presents after takeover, never the legacy
+	// one.
 	void arm();
 	void disarm();
 	bool armed() const { return Armed; }
@@ -217,6 +231,31 @@ public:
 	bool requestMenuUp(NativeUiOrigin origin);
 	bool requestMenuDown(NativeUiOrigin origin);
 	bool menuUp() const { return MenuUp; }
+
+	// T16 console presentation (the single truth behind IGameConsole::
+	// IsConsoleVisible and the sink's console overlay). Engine console
+	// entries converge here: the GameConsole Activate/Hide callbacks
+	// (-console, -toconsole, direct callers) and the BaseUI ShowConsole/
+	// HideConsole callbacks (the `toggleconsole`/`hideconsole` command
+	// path). requestConsoleOpen raises the menu first when it is down
+	// (vanilla: opening the console activates GameUI), then notifies the
+	// sink; requestConsoleClose lowers only the console - the menu beneath
+	// stays (ESC parity: one layer per event). Both are idempotent and
+	// report a state transition. The UI-side dismissal (routed ESC, the
+	// close button) goes through noteConsoleDismissed - the module IS the
+	// sink, no callback echo.
+	bool requestConsoleOpen(NativeUiOrigin origin);
+	bool requestConsoleClose(NativeUiOrigin origin);
+	void noteConsoleDismissed();
+	bool consoleRequested() const { return ConsoleRequested; }
+	// T16 no-map close route: with no level loaded the engine's window
+	// handler turns ESC into ActivateGameUI (a no-op once the menu is up),
+	// so the close never arrives through engineHide. The surface ESC-down
+	// observation consumes this gate instead - one route per physical press,
+	// shared with engineHide's latch (the mark clears on the physical key-up
+	// and at every menu raise). Returns false when this press was already
+	// routed (hold repeats).
+	bool consumeEscRoute();
 
 	// The inner (IGameUI) decision points, driven from the entry-layer
 	// adapter. engineHide coalesces the wrapper's duplicate dispatch
@@ -257,11 +296,12 @@ public:
 	// IsGameUIActive bool - hook-contract T2).
 	bool isGameUIActive() const { return MenuUp; }
 	bool hasExclusiveInput() const { return MenuUp; }
-	// The legacy GameConsole is never presented in M1 (T08 step 5: the new
-	// minimal page stands in for every not-yet-completed surface; the new
-	// console is T16 and answers through its own state). No value is ever
-	// true here, so every IsConsoleVisible query reads "closed".
-	bool consoleVisible() const { return false; }
+	// T16: the engine-facing IGameConsole answer now mirrors the replacement
+	// console's presentation (false when it is not up). One truth: the flag
+	// the entry callbacks drive; the native console can never be visible
+	// (its Activate is consumed and its paint is gated), so this can only
+	// report OUR console.
+	bool consoleVisible() const { return ConsoleRequested; }
 
 	// Page mirror, driven by the sink implementation (the bridge cannot know
 	// Rml readiness). The acceptance compares it with the menu state so a
@@ -290,6 +330,11 @@ private:
 	bool MenuUp = false;
 	bool PageShown = false;
 	bool HasLevel = false;
+	// T16 console presentation truth (see requestConsoleOpen). The pending
+	// latches hold pre-arm entries (see the arm() note).
+	bool ConsoleRequested = false;
+	bool PendingConsoleOpen = false;
+	bool PendingConsoleClose = false;
 	// One close route per physical ESC press (see engineHide).
 	bool EscPressRouted = false;
 };

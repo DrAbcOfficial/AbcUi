@@ -217,6 +217,9 @@ struct EventCounters {
 };
 EventCounters Counters;
 
+// T16 console toggle-key swallow latch (see swallowToggleKeyText).
+bool SwallowToggleText = false;
+
 HWND gameWindow() {
 	if (GameWindowHandle && IsWindow(GameWindowHandle))
 		return GameWindowHandle;
@@ -312,10 +315,21 @@ void feedTextInput(const char* utf8) {
 	const std::string_view sanitized = framework::text::sanitizeUtf8(utf8);
 	if (sanitized.empty())
 		return;
+	// T16: the console toggle key's own commit is dropped (see the header
+	// note); any other commit clears a stale arm.
+	if (SwallowToggleText) {
+		SwallowToggleText = false;
+		if (sanitized == "`" || sanitized == "~")
+			return;
+	}
 	if (adapter().composing())
 		adapter().confirmComposition(sanitized);
 	else
 		submitToFocusedEditor(sanitized);
+}
+
+void swallowToggleKeyText() {
+	SwallowToggleText = true;
 }
 
 void feedTextEditing(const char* utf8, int startBytes) {

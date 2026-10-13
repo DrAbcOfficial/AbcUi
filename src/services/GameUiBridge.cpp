@@ -41,10 +41,22 @@ bool NativeUiBridge::nativeUiModule(const char* module) {
 
 void NativeUiBridge::arm() {
 	Armed = true;
+	// Deliver a pre-arm console entry exactly once (the startup -console /
+	// -toconsole path, see the header note). Close wins when both latched.
+	if (PendingConsoleOpen || PendingConsoleClose) {
+		const bool open = PendingConsoleOpen && !PendingConsoleClose;
+		PendingConsoleOpen = false;
+		PendingConsoleClose = false;
+		if (open)
+			requestConsoleOpen(NativeUiOrigin::kGameConsole);
+	}
 }
 
 void NativeUiBridge::disarm() {
 	Armed = false;
+	// Teardown: no pending intent may survive into a later arm.
+	PendingConsoleOpen = false;
+	PendingConsoleClose = false;
 }
 
 bool NativeUiBridge::gatePaintAttempt(const char* module) {
@@ -84,12 +96,67 @@ bool NativeUiBridge::requestMenuUp(NativeUiOrigin origin) {
 
 bool NativeUiBridge::requestMenuDown(NativeUiOrigin origin) {
 	++Counters.HideRequests[(int)origin];
+	// T16: everything the menu carried goes with it - the console
+	// presentation truth cannot survive its host (a later IsConsoleVisible
+	// must not report a console whose overlay is gone).
+	ConsoleRequested = false;
 	if (!MenuUp)
 		return false;
 	MenuUp = false;
 	++Counters.MenuDownTransitions;
 	if (MenuSink)
 		MenuSink->onNativeMenuHide();
+	return true;
+}
+
+bool NativeUiBridge::requestConsoleOpen(NativeUiOrigin origin) {
+	// Pre-arm entries are latched, never presented: the takeover has not
+	// installed its gate yet, so the vanilla path stays authoritative until
+	// arm() delivers the intent (T08 atomic-install rule).
+	if (!Armed) {
+		PendingConsoleOpen = true;
+		return false;
+	}
+	// Vanilla shape: the console lives inside GameUI, so opening it raises
+	// the host first (the engine's own toggle path calls ActivateGameUI and
+	// then ShowConsole). Idempotent: a second open intent (the pre+post
+	// dispatch pair included) changes nothing and never re-notifies the
+	// sink (the module would otherwise toggle the overlay twice).
+	if (!MenuUp)
+		requestMenuUp(origin);
+	const bool transition = !ConsoleRequested;
+	ConsoleRequested = true;
+	if (transition && MenuSink)
+		MenuSink->onNativeConsoleOpen();
+	return transition;
+}
+
+bool NativeUiBridge::requestConsoleClose(NativeUiOrigin origin) {
+	if (!Armed) {
+		PendingConsoleClose = true;
+		return false;
+	}
+	if (!ConsoleRequested)
+		return false;
+	ConsoleRequested = false;
+	if (MenuSink)
+		MenuSink->onNativeConsoleClose();
+	return true;
+}
+
+void NativeUiBridge::noteConsoleDismissed() {
+	// UI-side dismissal (routed ESC through the module's owner, the close
+	// button): the module already took the overlay down; this only keeps the
+	// engine-facing truth in step. Idempotent.
+	ConsoleRequested = false;
+}
+
+bool NativeUiBridge::consumeEscRoute() {
+	if (EscPressRouted) {
+		++Counters.EscRepeatsSuppressed;
+		return false;
+	}
+	EscPressRouted = true;
 	return true;
 }
 

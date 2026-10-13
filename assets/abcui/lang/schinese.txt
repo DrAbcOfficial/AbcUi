@@ -341,3 +341,11 @@ Loading_DirectConnectTitle = 直接连接
 Loading_DirectConnectLead = 输入地址（主机 或 主机:端口）。
 Loading_AddressField = 服务器地址
 Loading_AddressInvalid = 请输入有效地址，例如 127.0.0.1:27015
+
+# Replacement console (T16)
+Console_Title = 控制台
+Console_Close = 关闭
+Console_Count = 行数
+Console_ConfirmLead = 粘贴内容包含多条命令，将执行命令数：
+Console_ConfirmYes = 执行
+Console_ConfirmNo = 取消

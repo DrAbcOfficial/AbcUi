@@ -18,6 +18,7 @@
 #include "../Module.h"
 
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Debugger.h>
 
 #include <abc/Console.h>
@@ -32,6 +33,7 @@
 #include <string>
 
 #include "../../framework/Localization.h"
+#include "../../panels/console/ConsolePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
@@ -42,6 +44,8 @@
 #include "../../rmlui/VGUI2ExtensionImport.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
+#include "../../services/console/ConsoleBackend.h"
+#include "../../services/console/ConsoleBuffer.h"
 #include "../../services/loading/LoadingModel.h"
 #include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
@@ -419,6 +423,8 @@ public:
 		abc::ADD_COMMAND("abc_ui_loading_cancel", loadingCancelCommand);
 		abc::ADD_COMMAND("abc_ui_loading_password", loadingPasswordCommand);
 		abc::ADD_COMMAND("abc_ui_loading_status", loadingStatusCommand);
+		abc::ADD_COMMAND("abc_ui_console_ui_status", consoleUiStatusCommand);
+		abc::ADD_COMMAND("abc_ui_console_ui_toggle", consoleUiToggleCommand);
 #endif
 	}
 
@@ -475,6 +481,11 @@ public:
 			else if (VideoConfirm)
 				VideoConfirm->render();
 		}
+		// T16 console stream: while the overlay is presented, the page
+		// appends the buffer's new lines once per frame (bounded incremental
+		// projection; no-op when nothing new arrived).
+		if (ConsolePresented && Console)
+			Console->render();
 		// Per-frame focus guard (T09 step 5): while the menu is presented,
 		// the context focus must stay inside one of the menu documents.
 		// Foreign holders exist (the Rml debug hook document grabs the focus
@@ -492,7 +503,7 @@ public:
 			// this guard exists to repair.
 			if (owner && owner->IsVisible()
 				&& (owner == Shell->document() || owner == (SubStub ? SubStub->document() : nullptr)
-					|| owner == (ConsoleStub ? ConsoleStub->document() : nullptr)
+					|| owner == (Console ? Console->document() : nullptr)
 					|| owner == (Settings ? Settings->document() : nullptr)
 					|| owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)
 					|| owner == (VideoConfirm ? VideoConfirm->document() : nullptr)
@@ -518,8 +529,8 @@ public:
 			Password->refocusDefault();
 		else if (state.overlays.contains(MenuOverlay::kConnectionError) && ConnError)
 			ConnError->refocusDefault();
-		else if (state.overlays.contains(MenuOverlay::kConsole) && ConsoleStub)
-			ConsoleStub->refocusDefault();
+		else if (state.overlays.contains(MenuOverlay::kConsole) && Console)
+			Console->refocusDefault();
 		else if (!state.pages.empty() && Shell) {
 			if (state.pages.top() == MenuPage::kMain || state.pages.top() == MenuPage::kPause) {
 				Shell->showSection(state.pages.top() == MenuPage::kMain
@@ -545,7 +556,15 @@ public:
 		};
 		Shell = std::make_unique<panels::mainmenu::MainMenuPage>();
 		SubStub = std::make_unique<panels::menushared::MenuStubPage>("menusub", "abcui/rml/menustub.rml");
-		ConsoleStub = std::make_unique<panels::menushared::MenuStubPage>("menuconsole", "abcui/rml/consolestub.rml");
+		// T16: the replacement console (was the menuconsole stub).
+		Console = std::make_unique<panels::console::ConsolePage>();
+		Console->setBuffer(&services::console::consoleBuffer());
+		Console->setBackend(&services::console::consoleBackend());
+		Console->setSubmitSink([](const std::string& command) {
+			// The T15 submission path: one validated engine command per call
+			// (pfnClientCmd inside the backend; the engine's own chain runs).
+			services::console::consoleBackend().submit(command.c_str());
+		});
 		Settings = std::make_unique<panels::settings::SettingsPage>();
 		Settings->setModel(&SettingsModel);
 		Settings->setBindModel(&BindModel);
@@ -562,7 +581,7 @@ public:
 		DirectConnect = std::make_unique<panels::loading::DirectConnectOverlay>();
 		wire(Shell);
 		wire(SubStub);
-		wire(ConsoleStub);
+		wire(Console);
 		wire(Settings);
 		wire(VideoConfirm);
 		wire(ConfirmQuit);
@@ -577,9 +596,20 @@ public:
 		resolveVideoRecovery();
 		// The takeover may have raised the menu before the context existed
 		// (cold-start activation runs ~1.5s ahead of Rml assembly): the
-		// pending show lands now, on the first context.
+		// pending show lands now, on the first context. A startup console
+		// request (the -console/-toconsole latch) rides the same path: its
+		// flag is sampled BEFORE the first presentation, because the phase
+		// reconciliation inside presentMenu clears the overlay stack by
+		// design (Booting -> Disconnected) and the sync's single-truth tail
+		// then lowers the engine-facing answer. Re-requesting through the
+		// bridge afterwards restores both truths and presents the overlay
+		// (the sink pushes it once); the page's fresh-open projection
+		// replays the output cache tail.
+		const bool consolePending = services::nativeUiBridge().consoleRequested();
 		if (services::nativeUiBridge().menuUp())
 			presentMenu();
+		if (consolePending)
+			services::nativeUiBridge().requestConsoleOpen(services::NativeUiOrigin::kOwnUi);
 	}
 
 	void onShutdown() override {
@@ -593,7 +623,7 @@ public:
 		PageToken.release();
 		Shell.reset();
 		SubStub.reset();
-		ConsoleStub.reset();
+		Console.reset();
 		Settings.reset();
 		VideoConfirm.reset();
 		ConfirmQuit.reset();
@@ -604,6 +634,7 @@ public:
 		Context = nullptr;
 		MenuPresented = false;
 		SettingsPresented = false;
+		ConsolePresented = false;
 		VideoConfirmPresented = false;
 		LoadingVisible = false;
 		ErrorPresented = false;
@@ -703,6 +734,22 @@ private:
 	}
 	void onNativeMenuHide() override {
 		dismissMenu();
+	}
+	// T16 console entries (the bridge already raised the menu when needed):
+	// present/retire the console overlay exactly once per state transition
+	// (the pre+post engine dispatch pairs collapse inside the bridge, so
+	// these fire once per real change - never a double toggle).
+	void onNativeConsoleOpen() override {
+		if (!Controller.state().overlays.contains(MenuOverlay::kConsole))
+			Controller.dispatch(MenuEvent{EventKind::kConsoleToggle});
+		if (MenuPresented)
+			syncMenuPresentation();
+	}
+	void onNativeConsoleClose() override {
+		if (Controller.state().overlays.contains(MenuOverlay::kConsole))
+			Controller.dispatch(MenuEvent{EventKind::kConsoleToggle});
+		if (MenuPresented)
+			syncMenuPresentation();
 	}
 
 	void presentMenu() {
@@ -851,12 +898,21 @@ private:
 			VoiceModel.stopTest();
 		}
 
-	// Overlay layer, top-most last (each show pulls to the context
+		// Overlay layer, top-most last (each show pulls to the context
 		// front); idempotent shows neither re-focus nor re-order.
-		if (state.overlays.contains(MenuOverlay::kConsole))
-			showStubPage(ConsoleStub.get(), MenuPage::kMain, true);
-		else
-			ConsoleStub->hide();
+		// T16 replacement console: fresh projection on every sync (the
+		// page appends only new lines; showLinesForTest analog = render).
+		if (state.overlays.contains(MenuOverlay::kConsole) && Console) {
+			if (!ConsolePresented) {
+				Console->prepare();  // fresh open: clear editor, reseed view
+				ConsolePresented = true;
+			}
+			Console->render();
+			Console->show();
+		} else if (Console) {
+			Console->hide();
+			ConsolePresented = false;
+		}
 		// T14 overlays. Each "presented" latch means "projected at least
 		// once for this opening" - the prepare() clears the fields exactly
 		// once per open, repeated syncs are idempotent shows.
@@ -900,6 +956,13 @@ private:
 		// sync while it is up must not raise another document over it.
 		if (VideoConfirmPresented && VideoConfirm)
 			VideoConfirm->show();
+		// T16 single truth: whenever the projection no longer holds the
+		// console (routed ESC popped it, a force-dismiss cleared it), the
+		// engine-facing answer must follow. noteConsoleDismissed never
+		// notifies the sink, so this cannot re-enter the sync.
+		if (!state.overlays.contains(MenuOverlay::kConsole)
+			&& services::nativeUiBridge().consoleRequested())
+			services::nativeUiBridge().noteConsoleDismissed();
 	}
 
 	// The settings page (T10/T11): fresh engine truth on every open (untouched
@@ -985,8 +1048,8 @@ private:
 			Shell->hide();
 		if (SubStub)
 			SubStub->hide();
-		if (ConsoleStub)
-			ConsoleStub->hide();
+		if (Console)
+			Console->hide();
 		if (Settings)
 			Settings->hide();
 		VideoConfirmPresented = true;
@@ -1090,8 +1153,19 @@ private:
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kCreateGame));
 		else if (intent == "playerlist")
 			Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
-		else if (intent == "console")
-			Controller.dispatch(MenuEvent{EventKind::kConsoleToggle});
+		else if (intent == "console") {
+			// T16: the main-menu console entry toggles the replacement
+			// console through the bridge (the same funnel as the engine
+			// entries), so the engine-facing IsConsoleVisible answer and the
+			// overlay stack never disagree.
+			auto& bridge = services::nativeUiBridge();
+			if (bridge.consoleRequested())
+				bridge.requestConsoleClose(services::NativeUiOrigin::kOwnUi);
+			else
+				bridge.requestConsoleOpen(services::NativeUiOrigin::kOwnUi);
+			finishDispatch();
+			return;
+		}
 		else if (intent == "directconnect")
 			Controller.dispatch(MenuEvent{EventKind::kDirectConnectToggle});
 		else if (intent == "loading-cancel") {
@@ -1327,8 +1401,10 @@ private:
 			Shell->hide();
 		if (SubStub)
 			SubStub->hide();
-		if (ConsoleStub)
-			ConsoleStub->hide();
+		if (Console) {
+			Console->hide();
+			ConsolePresented = false;
+		}
 		if (Settings)
 			Settings->hide();
 		if (ConfirmQuit)
@@ -1378,7 +1454,24 @@ private:
 	void onClaimedKeyDown(int keynum) override {
 		// Exactly once per physical press (the router suppresses auto-repeat
 		// here); the release pairs the just-fed ESC down inside the router.
+		if (keynum == '`' || keynum == '~') {
+			// T16 console hotkey (the ` / toggleconsole key): while the menu
+			// owns the keyboard the engine never sees this edge, so the
+			// overlay toggle lives here. The key's own committed character
+			// ("`"/"~" through the T07 text pipeline) is swallowed - the
+			// toggle key never types (vanilla parity).
+			if (!MenuPresented)
+				return;
+			rmlui::swallowToggleKeyText();
+			onMenuAction("console");
+			return;
+		}
 		if (keynum != K_ESCAPE || !MenuPresented)
+			return;
+		// T16: an ESC press the console page's own paste-confirm pane
+		// consumed (the Rml feed runs before this action) closes only that
+		// layer - "同一事件不关闭两层".
+		if (Console && Console->consumeEscapeClaim())
 			return;
 		// T07.b ESC priority: the first press cancels a running composition
 		// instead of navigating; the next press toggles. The IME normally
@@ -1813,8 +1906,45 @@ private:
 		abc::ConsolePrint("[AbcUi] loading: hookSlot22=%d\n", vgui2ext::gameUiLoadingHookInstalled() ? 1 : 0);
 	}
 
-	static void menuPageCommand() {
-		if (!Instance || !Instance->Shell || !Instance->Context) {
+	// T16 diagnostics: the console entry state (engine-facing answer, the
+	// module's presented latch, the DOM row count) - the visible half of the
+	// console backend counters (T15's abc_ui_console_status covers the cache).
+	static void consoleUiStatusCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		auto& bridge = services::nativeUiBridge();
+		int rows = -1;
+		int scrollTop = -1;
+		int scrollHeight = -1;
+		if (self.Console && self.Console->document()) {
+			if (Rml::Element* history = self.Console->document()->GetElementById("console-history")) {
+				rows = history->GetNumChildren();
+				scrollTop = static_cast<int>(history->GetScrollTop());
+				scrollHeight = static_cast<int>(history->GetScrollHeight());
+			}
+		}
+		abc::ConsolePrint(
+			"[AbcUi] console-ui: requested=%d visible=%d page=%d menu=%d rows=%d scrollTop=%d scrollHeight=%d\n",
+			bridge.consoleRequested() ? 1 : 0, bridge.consoleVisible() ? 1 : 0,
+			self.ConsolePresented ? 1 : 0, self.MenuPresented ? 1 : 0, rows, scrollTop, scrollHeight);
+	}
+
+	// T16 diagnostics: present the console through the SAME module path the
+	// engine entries drive (the bridge funnel) - the scripted-click stand-in
+	// for the page interactions.
+	static void consoleUiToggleCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		Instance->onMenuAction("console");
+		consoleUiStatusCommand();
+	}
+
+	static void menuPageCommand() {		if (!Instance || !Instance->Shell || !Instance->Context) {
 			abc::ConsoleWarn("[AbcUi] menu not available\n");
 			return;
 		}
@@ -1858,7 +1988,7 @@ private:
 	services::loading::LoadingModel LoadingModelState;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
-	std::unique_ptr<panels::menushared::MenuStubPage> ConsoleStub;
+	std::unique_ptr<panels::console::ConsolePage> Console;
 	std::unique_ptr<panels::settings::SettingsPage> Settings;
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
@@ -1879,6 +2009,9 @@ private:
 	// Whether the settings page is the presented surface (snapshot-on-open
 	// runs once per open, not on every sync).
 	bool SettingsPresented = false;
+	// T16: whether the console page is the presented surface (fresh-open
+	// projection runs once per open; repeated syncs only append).
+	bool ConsolePresented = false;
 	// T12: whether the confirmation page is up (module-owned truth; the DOM
 	// visibility follows it).
 	bool VideoConfirmPresented = false;
