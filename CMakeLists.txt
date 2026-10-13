@@ -51,6 +51,7 @@ add_library(AbcUi MODULE
     src/rmlui/AbcSystemInterface.cpp
     src/rmlui/InputBridge.cpp
     src/rmlui/KeyMap.cpp
+    src/rmlui/NativeEntryCallbacks.cpp
     src/rmlui/PaintGate.cpp
     src/rmlui/RmlUiModule.cpp
     src/rmlui/ProbeCommand.cpp
@@ -62,6 +63,7 @@ add_library(AbcUi MODULE
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
     src/framework/Commands.cpp
+    src/framework/FatalExit.cpp
     src/framework/TextEncoding.cpp
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp

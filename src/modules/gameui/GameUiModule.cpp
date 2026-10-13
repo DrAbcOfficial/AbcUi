@@ -35,6 +35,7 @@
 #include <cstring>
 #include <string>
 
+#include "../../framework/FatalExit.h"
 #include "../../framework/Localization.h"
 #include "../../panels/console/ConsolePage.h"
 #include "../../panels/creategame/CreateGamePage.h"
@@ -552,6 +553,9 @@ public:
 
 	void onFrame(double frameTime) override {
 		(void)frameTime;
+		// T21: degraded-page retry requests first (a click marks, this beat
+		// acts); cheap when nothing is degraded.
+		serviceEmergencyPages();
 		// T14: the engine's loading stream is drained first and independently
 		// of menu presentation - the controller transitions (attempt start,
 		// loading, success/failure/password) must not wait for Rml readiness,
@@ -701,9 +705,16 @@ public:
 	void onContextReady(Rml::Context* context) override {
 		Context = context;
 		// One action seam for every window: fixed action names in, controller
-		// intents out (never an original-UI command).
+		// intents out (never an original-UI command). T21: the emergency sink
+		// joins it on the same seam - a degraded document's Quit button runs
+		// the confirmed quit backend (a fault-time exit must not depend on
+		// the quit-confirm overlay, which may be exactly what failed).
 		const auto wire = [this, context](auto& page) {
 			page->setActionSink([this](const char* action) { onMenuAction(action); });
+			page->setEmergencySink([](const char* intent) {
+				if (intent && std::strcmp(intent, framework::InteractiveDocument::kEmergencyQuitIntent) == 0)
+					menuBackend().quitGame();
+			});
 			logLoadOutcome(page->load(context));
 		};
 		Shell = std::make_unique<panels::mainmenu::MainMenuPage>();
@@ -830,7 +841,10 @@ private:
 			abc::ConsoleWarn("[AbcUi] menu document degraded to the emergency page\n");
 			break;
 		case LoadOutcome::kFailed:
-			abc::ConsoleWarn("[AbcUi] menu document failed to load entirely (T21 strict path)\n");
+			// The inline memory document failed too: Rml cannot present
+			// anything at all (fatal class), so the strict policy stops the
+			// process with the external diagnosis instead of running blind.
+			framework::fatalExit("menu documents and the built-in emergency page both failed to load");
 			break;
 		}
 	}
@@ -899,6 +913,56 @@ private:
 	void onKeyCaptureForceLost() {
 		BindModel.cancelCapture();
 		rmlui::setKeyCaptureClamp(false);
+	}
+
+	// T21: the degraded-page recovery beat. A page whose Retry button was
+	// clicked (the document only marks the request - never closes itself
+	// inside its own event dispatch) re-attempts its main document here, on
+	// the module's frame. A successful recovery clears the fresh-open
+	// latches so the next sync rebuilds each visible surface from its model
+	// (the recovered document is freshly loaded). A failed retry keeps the
+	// emergency page up with its buttons intact.
+	void serviceEmergencyPages() {
+		if (!Context)
+			return;
+		framework::InteractiveDocument* pages[] = {
+			Shell.get(), SubStub.get(), Console.get(), Settings.get(), Browser.get(),
+			CreateGamePage_.get(), PlayerListPage_.get(), VideoConfirm.get(),
+			ConfirmQuit.get(), Loading.get(), ConnError.get(), Password.get(),
+			DirectConnect.get(),
+		};
+		bool recovered = false;
+		for (framework::InteractiveDocument* page : pages) {
+			if (!page || !page->retryRequested())
+				continue;
+			using LoadOutcome = framework::InteractiveDocument::LoadOutcome;
+			const LoadOutcome outcome = page->retry(Context);
+			if (outcome == LoadOutcome::kFailed) {
+				// The main document failed AND the inline emergency document
+				// failed: nothing this page can present - fatal class.
+				framework::fatalExit("emergency retry: both the main document and the emergency page failed");
+				return;
+			}
+			abc::ConsolePrint("[AbcUi] emergency retry \"%s\": %s\n", page->getName().c_str(),
+				outcome == LoadOutcome::kLoaded ? "recovered" : "still degraded");
+			if (outcome == LoadOutcome::kLoaded)
+				recovered = true;
+		}
+		if (!recovered)
+			return;
+		// The recovered documents have empty caches by construction: clear
+		// every "projected for this opening" latch and let the sync re-run
+		// the fresh-open projections from the models.
+		SettingsPresented = false;
+		ConsolePresented = false;
+		ErrorPresented = false;
+		PasswordPresented = false;
+		DirectConnectPresented = false;
+		LoadingVisible = false;
+		BrowserPresented = false;
+		CreateGamePresented = false;
+		PlayerListPresented = false;
+		syncMenuPresentation();
 	}
 
 	// services::INativeMenuSink: the bridge decided the menu state; run the

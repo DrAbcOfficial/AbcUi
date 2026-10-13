@@ -31,6 +31,8 @@
 #include "../services/GameUiBridge.h"
 #include "../services/console/ConsoleBackend.h"
 #include "../services/console/ConsoleBuffer.h"
+
+#include <vector>
 namespace panels::scoreboard { extern panels::ScoreboardPanel* PanelInstance; }
 
 namespace hooks { int debugKeyEvent(int down, int keynum); }
@@ -619,7 +621,48 @@ void probeCommand() {
 				id, value.size(), value.c_str(), rmlui::textComposing() ? 1 : 0);
 		}
 
-		void inputRegressionCommand() {
+		// T21 fault-matrix instrument: list every VISIBLE element whose absolute
+	// box covers a screen point (x=arg1, y=arg2), across all context
+	// documents. Used to attribute an unexplained painted square to its
+	// owning document/element during the strict-takeover evidence runs.
+	void domAtCommand() {
+		Rml::Context* ctx = rmlui::context();
+		if (!ctx)
+			return;
+		const int px = gEngfuncs.Cmd_Argc() > 1 ? atoi(gEngfuncs.Cmd_Argv(1)) : -1;
+		const int py = gEngfuncs.Cmd_Argc() > 2 ? atoi(gEngfuncs.Cmd_Argv(2)) : -1;
+		abc::ConsolePrint("[AbcUi] dom-at point=(%d,%d) documents=%d\n", px, py, ctx->GetNumDocuments());
+		for (int i = 0; i < ctx->GetNumDocuments(); ++i) {
+			Rml::ElementDocument* doc = ctx->GetDocument(i);
+			if (!doc)
+				continue;
+			// Depth-first walk; every visible element whose border box
+			// contains the point (or, with no point given, every element in
+			// the top-right 200x200 corner) is printed with its geometry.
+			std::vector<Rml::Element*> stack;
+			stack.push_back(doc);
+			while (!stack.empty()) {
+				Rml::Element* el = stack.back();
+				stack.pop_back();
+				if (el->IsVisible()) {
+					const Rml::Vector2f offset = el->GetAbsoluteOffset(Rml::BoxArea::Border);
+					const Rml::Vector2f size = el->GetBox().GetSize(Rml::BoxArea::Border);
+					const bool contains = px >= 0 && py >= 0
+						? (offset.x <= px && px < offset.x + size.x && offset.y <= py && py < offset.y + size.y)
+						: (offset.x + size.x > 800 && offset.y < 200);
+					if (contains) {
+						abc::ConsolePrint("[AbcUi] dom-at doc='%s' tag='%s' id='%s' abs=(%.1f,%.1f) size=%.1fx%.1f visible=1\n",
+							doc->GetId().c_str(), el->GetTagName().c_str(), el->GetId().c_str(),
+							offset.x, offset.y, size.x, size.y);
+					}
+				}
+				for (int c = 0; c < el->GetNumChildren(); ++c)
+					stack.push_back(el->GetChild(c));
+			}
+		}
+	}
+
+	void inputRegressionCommand() {
 			auto* ctx = rmlui::context();
 			auto* panel = panels::scoreboard::PanelInstance;
 			if (!ctx || !panel) return;
@@ -667,6 +710,7 @@ void registerProbeCommand() {
 	abc::ADD_COMMAND("abc_ui_input_events", inputEventsCommand);
 	abc::ADD_COMMAND("abc_ui_value", valueCommand);
 	abc::ADD_COMMAND("abc_ui_native", nativeCommand);
+	abc::ADD_COMMAND("abc_ui_dom_at", domAtCommand);
 	abc::ADD_COMMAND("abc_ui_probe", probeCommand);
 	abc::ADD_COMMAND("abc_ui_menu", menuCommand);
 	abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);

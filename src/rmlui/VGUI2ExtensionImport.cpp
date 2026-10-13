@@ -8,6 +8,7 @@
 // (tier0/dbg.h), which would break RmlUi's own Debug.h macros if it were
 // parsed afterwards. vgui2 extension code that needs both keeps this order.
 #include "InputBridge.h"
+#include "NativeEntryCallbacks.h"
 #include "RmlUiModule.h"
 #include "TextInput.h"
 
@@ -50,19 +51,6 @@ bool warnUnavailableOnce() {
 		WarnedUnavailable = true;
 	}
 	return false;
-}
-
-// The hook-contract T2 rule: write return values through the proxy-owned
-// storage with the REAL type of the wrapped method (int slots via int*,
-// bool slots via bool*). A wrong cast silently corrupts the return.
-void writePluginInt(VGUI2Extension_CallbackContext* ctx, int value) {
-	if (ctx && ctx->pPluginReturnValue)
-		*static_cast<int*>(ctx->pPluginReturnValue) = value;
-}
-
-void writePluginBool(VGUI2Extension_CallbackContext* ctx, bool value) {
-	if (ctx && ctx->pPluginReturnValue)
-		*static_cast<bool*>(ctx->pPluginReturnValue) = value;
 }
 
 // SDL key-event view for the physical ESC release AND the T16 no-map
@@ -217,360 +205,9 @@ UICallbacks UICallbacksInstance;
 
 // T14 (defined below with its install/uninstall seams): the GameUI::Start
 // notification installs the Sven password-prompt slot hook; the ClientVGUI
-// Shutdown seam removes it.
+// Shutdown seam removes it. The three entry-layer callback classes moved to
+// NativeEntryCallbacks.cpp (T21a) and reach this TU through NativeEntrySeams.
 void installPasswordPromptHook();
-
-// T08 entry layer: the inner IGameUI funnel. Everything that opens or closes
-// the native menu converges here (the engine's ESC/key handlers and
-// ServerBrowser.dll all route through ActivateGameUI/HideGameUI, directly or
-// via the IBaseUI methods the extension proxies). While the bridge is armed
-// these handlers answer the two queries from the replacement state and
-// consume the two actions, so the vanilla CGameUI internals (panel flips,
-// setpause/unpause/hideconsole) never run. The outer CBaseUI layer keeps the
-// engine-root side effects of the toggle.
-//
-// Result discipline (hook-contract §3/T1): pre and post are separate
-// dispatches with Result reset between them. Every armed callback sets its
-// Result in BOTH phases (a pre SUPERCEDE that is not re-asserted in post
-// falls back to the original's return value). Observed-only callbacks leave
-// Result UNSET.
-class NativeGameUICallbacks final : public IVGUI2Extension_GameUICallbacks {
-public:
-	int GetAltitude() const override { return 0; }
-
-	void Initialize(CreateInterfaceFn* factories, int count) override {
-		(void)factories;
-		(void)count;
-	}
-	void PreStart(struct cl_enginefuncs_s* engineFuncs, int interfaceVersion, void* system) override {
-		(void)engineFuncs;
-		(void)interfaceVersion;
-		(void)system;
-	}
-	void Start(struct cl_enginefuncs_s* engineFuncs, int interfaceVersion, void* system) override {
-		(void)engineFuncs;
-		(void)interfaceVersion;
-		(void)system;
-		// T14: with GameUI.dll mapped and started, the Sven password-prompt
-		// slot gets its observation hook (see the install note above).
-		installPasswordPromptHook();
-	}
-	void Shutdown() override {
-		// Fallback only: on this extension pin the notification does NOT
-		// fire at engine exit (the proxy unhooks its IGameUI slots before
-		// the original Shutdown would dispatch it - see the uninstall-seam
-		// note at NativeClientVGUICallbacks below). Harmless when it does
-		// fire: uninstallPaintGate is idempotent.
-		rmlui::uninstallPaintGate();
-	}
-	void PostShutdown() override {}
-
-	void ActivateGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {
-		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return; // before the gate exists the vanilla path stays
-		// Pre decides once; post re-asserts the same answer (the proxy
-		// resets Result between the phases).
-		if (!CallbackContext->IsPost)
-			bridge.engineActivate();
-		writePluginInt(CallbackContext, 1); // vanilla ActivateGameUI returns 1
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-	}
-
-	void ActivateDemoUI(VGUI2Extension_CallbackContext* CallbackContext) override {
-		// Not in scope (no demo UI); vanilla behaviour. Note: this wrapper
-		// dispatches post unconditionally (hook-contract T4) - never rely on
-		// it for one-shot work.
-		(void)CallbackContext;
-	}
-
-	void HasExclusiveInput(VGUI2Extension_CallbackContext* CallbackContext) override {
-		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return;
-		if (!CallbackContext->IsPost)
-			bridge.noteExclusiveQuery();
-		writePluginInt(CallbackContext, bridge.hasExclusiveInput() ? 1 : 0);
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-	}
-
-	void RunFrame(VGUI2Extension_CallbackContext* CallbackContext) override {
-		// Never suppressed (T08 step 3: the original keeps its necessary
-		// background frame work; the paint gate, not this callback, is what
-		// keeps its output invisible).
-		(void)CallbackContext;
-		services::nativeUiBridge().noteRunFrame();
-	}
-
-	void ConnectToServer(const char*& game, int& IP, int& port, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// Connect is T14/T17 territory; the vanilla window never opens
-		// because the menu answers stay ours and the paint gate is armed,
-		// but the engine-side connect chain keeps working.
-		(void)game;
-		(void)IP;
-		(void)port;
-		(void)CallbackContext;
-	}
-	void DisconnectFromServer(VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)CallbackContext;
-		services::nativeUiBridge().noteDisconnected();
-	}
-	void HideGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {
-		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return;
-		// NOTE: no IsPost branch - at this pin CGameUIProxy::HideGameUI
-		// dispatches pre AND post with IsPost=false in both phases
-		// (upstream GameUI.cpp:1669; hook-contract T5). The bridge coalesces
-		// the duplicate dispatch AND the held-ESC repeats into one route.
-		const auto action = bridge.engineHide();
-		if (action == services::ToggleAction::kRouteClose) {
-			// One synthetic ESC press through the input router: the page
-			// owner keeps its once-per-press semantics (T07: a running
-			// composition is cancelled first, the next press closes the
-			// page and releases ownership).
-			bridge.noteEscRouted();
-			rmlui::routeKey(1, K_ESCAPE, false);
-			rmlui::routeKey(0, K_ESCAPE, false);
-			// The page was shown but no owner could act (torn-down router):
-			// lower the state directly instead of leaving a phantom menu.
-			if (bridge.menuUp() && !rmlui::uiRouter().exclusive())
-				bridge.requestMenuDown(services::NativeUiOrigin::kBaseUi);
-		} else if (action == services::ToggleAction::kStateClose) {
-			// Menu up without a page (Rml not ready): state-only close.
-			bridge.requestMenuDown(services::NativeUiOrigin::kBaseUi);
-		}
-		// The vanilla CGameUI::HideGameUI never runs while armed: its
-		// unpause/hideconsole (T09 decides their replacement) and its panel
-		// flips are original-UI behaviour. The outer CBaseUI::HideGameUI
-		// still performs the engine-root side effects.
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-	}
-	void IsGameUIActive(VGUI2Extension_CallbackContext* CallbackContext) override {
-		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return;
-		if (!CallbackContext->IsPost)
-			bridge.noteActiveQuery();
-		writePluginBool(CallbackContext, bridge.isGameUIActive());
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-	}
-
-	void LoadingStarted(const char*& resourceType, const char*& resourceName, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// T14: the engine stream enters the loading feed here - the borrowed
-		// pointers are copied before the callback returns (hook-contract T7);
-		// the vanilla handler still runs (observed, never superceded): its
-		// non-visual bookkeeping stays intact and its dialog stays paint-gated.
-		if (CallbackContext->IsPost)
-			return;
-		services::nativeUiBridge().noteLoadingStart();
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kLoadingStarted;
-		event.text = resourceType ? resourceType : "";
-		event.text2 = resourceName ? resourceName : "";
-		services::loadingFeed().push(event);
-	}
-	void LoadingFinished(const char*& resourceType, const char*& resourceName, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		auto& bridge = services::nativeUiBridge();
-		bridge.noteLoadingFinish();
-		// A finished level load is the engine-confirmed "in game" fact the
-		// vanilla connected-only hide gate reads.
-		if (resourceType && !_stricmp(resourceType, "level"))
-			bridge.noteLevelLoaded();
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kLoadingFinished;
-		event.text = resourceType ? resourceType : "";
-		event.text2 = resourceName ? resourceName : "";
-		services::loadingFeed().push(event);
-	}
-	void StartProgressBar(const char*& progressType, int& progressSteps, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kStartProgress;
-		event.text = progressType ? progressType : "";
-		event.steps = progressSteps;
-		services::loadingFeed().push(event);
-	}
-	void ContinueProgressBar(int& progressPoint, float& progressFraction, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kContinueProgress;
-		event.point = progressPoint;
-		event.fraction = progressFraction;
-		services::loadingFeed().push(event);
-	}
-	void StopProgressBar(bool& bError, const char*& failureReason, const char*& extendedReason, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kStopProgress;
-		event.error = bError;
-		event.text = failureReason ? failureReason : "";
-		event.text2 = extendedReason ? extendedReason : "";
-		services::loadingFeed().push(event);
-	}
-	void SetProgressBarStatusText(const char*& statusText, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kStatusText;
-		event.text = statusText ? statusText : "";
-		services::loadingFeed().push(event);
-	}
-	void SetSecondaryProgressBar(float& progress, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kSecondaryProgress;
-		event.fraction = progress;
-		services::loadingFeed().push(event);
-	}
-	void SetSecondaryProgressBarText(const char*& statusText, VGUI2Extension_CallbackContext* CallbackContext) override {
-		if (CallbackContext->IsPost)
-			return;
-		services::LoadingFeedEvent event;
-		event.kind = services::LoadingFeedKind::kSecondaryText;
-		event.text = statusText ? statusText : "";
-		services::loadingFeed().push(event);
-	}
-	const char* GetControlModuleName() const override { return "AbcUi"; }
-};
-
-NativeGameUICallbacks GameUICallbacksInstance;
-
-// T08 step 5: the legacy GameConsole never presents. Activation is consumed
-// (the minimal notice page stands in for every not-yet-completed surface;
-// the startup -console path is T16), visibility answers false, and its paint
-// is blocked by the traversal gate already.
-class NativeGameConsoleCallbacks final : public IVGUI2Extension_GameConsoleCallbacks {
-public:
-	int GetAltitude() const override { return 0; }
-
-	void Activate(VGUI2Extension_CallbackContext* CallbackContext) override {
-		// T16: the entry funnel of the replacement console. The startup
-		// -console/-toconsole path calls this directly (hw.dll native
-		// BaseUI::Initialize -> GameConsole::Activate); before the arm the
-		// bridge latches the intent and vanilla proceeds (pre-arm window),
-		// after the arm the call is consumed. The ` command path (the engine
-		// `toggleconsole`/`-condebug` chain -> IBaseUI::ShowConsole -> the
-		// real CBaseUI -> this proxied IGameConsole instance) lands here as
-		// well, so one funnel owns every engine-side open.
-		auto& bridge = services::nativeUiBridge();
-		if (!CallbackContext->IsPost)
-			bridge.noteConsoleActivate();
-		bridge.requestConsoleOpen(services::NativeUiOrigin::kGameConsole);
-		if (bridge.armed()) {
-			// The toggle key's own committed character ("`"/"~" from SDL
-			// text input) belongs to the toggle, never to a focused editor
-			// (vanilla parity: the key does not type). Arm the swallow here
-			// so the engine-driven open cannot leak the character into the
-			// freshly focused editor either.
-			rmlui::swallowToggleKeyText();
-			CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-		}
-	}
-	void Initialize(VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)CallbackContext;
-	}
-	void Hide(VGUI2Extension_CallbackContext* CallbackContext) override {
-		auto& bridge = services::nativeUiBridge();
-		if (!CallbackContext->IsPost)
-			bridge.noteConsoleHide();
-		bridge.requestConsoleClose(services::NativeUiOrigin::kGameConsole);
-		if (bridge.armed())
-			CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-	}
-	void Clear(VGUI2Extension_CallbackContext* CallbackContext) override {
-		// T15: the engine's `clear` command wipes the notify context and then
-		// calls this (hw.dll 0x01d40b70 -> Clear helper -> vtable slot 4). The
-		// mirror must follow: clear() drops the cached lines AND the pending
-		// fragment, bumps the generation. The pre+post double dispatch
-		// collapses to one clear (ConsoleCapture).
-		services::console::consoleCapture().onClear(CallbackContext->IsPost);
-	}
-	void IsConsoleVisible(VGUI2Extension_CallbackContext* CallbackContext) override {
-		auto& bridge = services::nativeUiBridge();
-		if (!bridge.armed())
-			return;
-		if (!CallbackContext->IsPost)
-			bridge.noteConsoleVisibleQuery();
-		writePluginBool(CallbackContext, bridge.consoleVisible());
-		CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-	}
-	void Printf(IVGUI2Extension_String* str, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// T15: consume the formatted text into the bounded cache - a byte
-		// copy taken inside the synchronous callback (borrowed string), one
-		// cached line per engine message (the capture dedups the proxy's
-		// pre+post echo on the wrapper string identity). Result stays UNSET:
-		// the real print path runs untouched (the engine console buffer, the
-		// -condebug file log and the notify area are the engine's own).
-		// Never print from inside this callback: it would re-enter here and
-		// double-write the file log (hook-contract T8).
-		services::console::consoleCapture().onPrintf(str, str ? str->data() : nullptr,
-			str ? str->length() : 0, CallbackContext->IsPost);
-	}
-	void DPrintf(IVGUI2Extension_String* str, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// T15: same seam. DPrintf only reaches this callback when the engine's
-		// developer gate above the vtable call already passed (hw.dll
-		// FUN_01d03b90 tests the developer cvar before the slot+0x1c call),
-		// so the cache contains exactly the console's developer-mode lines;
-		// the per-line Developer flag keeps that distinction for the UI.
-		services::console::consoleCapture().onDPrintf(str, str ? str->data() : nullptr,
-			str ? str->length() : 0, CallbackContext->IsPost);
-	}
-	void SetParent(vgui::VPANEL parent, VGUI2Extension_CallbackContext* CallbackContext) override {
-		// Parent wiring is engine plumbing; the original keeps it.
-		(void)parent;
-		(void)CallbackContext;
-	}
-};
-
-NativeGameConsoleCallbacks GameConsoleCallbacksInstance;
-
-// T08 uninstall seam. hook-contract §9 prescribed the GameUI::Shutdown
-// notification, but on this extension pin that notification never fires at
-// engine exit: CBaseUIProxy::Shutdown calls GameUI_UninstallHooks() BEFORE
-// the original CBaseUI::Shutdown that would dispatch it (T02 probe logs
-// confirm no GameUI::Shutdown line in either run). The notification that
-// does fire while vgui2.dll is still fully alive is a ClientVGUI Shutdown -
-// it is the proxy's very first step (upstream BaseUI.cpp:158-176), before
-// the IGameUI proxies come down and before the original Shutdown unloads
-// GameUI.dll/vgui2.dll. The IPanel hooks must be removed here: leaving them
-// installed past the vgui2 unload turns the engine's own teardown into a
-// call through an unmapped vtable (observed as an 0xC0000005 exit).
-class NativeClientVGUICallbacks final : public IVGUI2Extension_ClientVGUICallbacks {
-public:
-	int GetAltitude() const override { return 0; }
-	void Initialize(CreateInterfaceFn* factories, int count) override {
-		(void)factories;
-		(void)count;
-	}
-	void Shutdown() override {
-		// vgui2 alive; unhook the IPanel gate and disarm. The strict
-		// takeover rule holds: this runs only on the engine teardown path
-		// (ClientVGUI is created at BaseUI::Start and destroyed here), not
-		// on map changes, so suppression never has a gap while the original
-		// UI could still paint.
-		rmlui::uninstallPaintGate();
-		// T14: the GameUI instance is still mapped here (GameUI.dll unloads
-		// in the original CBaseUI::Shutdown, after this notification) - the
-		// password-prompt slot hook comes down with the gate.
-		uninstallGameUiLoadingHook();
-	}
-	void Start() override {}
-	void SetParent(vgui::VPANEL parent) override { (void)parent; }
-	void UseVGUI1(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
-	void HideScoreBoard(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
-	void HideAllVGUIMenu(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
-	void ActivateClientUI(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
-	void HideClientUI(VGUI2Extension_CallbackContext* CallbackContext) override { (void)CallbackContext; }
-};
-
-NativeClientVGUICallbacks ClientVGUICallbacksInstance;
 
 // T14: the server-password prompt rides IGameUI slot +0x58 (byte offset from
 // the vtable start; CGameUI vtable 0x10080530 + 0x58 -> 0x10006c60,
@@ -707,6 +344,25 @@ void wireConsoleBackend() {
 
 } // namespace
 
+// T21a: wire the entry-layer seams before any callback can fire. The callback
+// classes live in NativeEntryCallbacks.cpp; these are their only handles on
+// this TU's engine-coupled surfaces (routing, hook teardown).
+void wireNativeEntrySeams() {
+	NativeEntrySeams seams;
+	seams.routeEscPress = []() {
+		// One synthetic ESC press through the input router (T07 semantics:
+		// composition cancel first, close otherwise).
+		rmlui::routeKey(1, K_ESCAPE, false);
+		rmlui::routeKey(0, K_ESCAPE, false);
+	};
+	seams.menuOwned = []() { return rmlui::uiRouter().exclusive(); };
+	seams.swallowToggleKeyText = []() { rmlui::swallowToggleKeyText(); };
+	seams.installPasswordPromptHook = []() { installPasswordPromptHook(); };
+	seams.detachPaintGate = []() { rmlui::uninstallPaintGate(); };
+	seams.detachPasswordPromptHook = []() { uninstallGameUiLoadingHook(); };
+	setNativeEntrySeams(seams);
+}
+
 void init() {
 	const auto module = GetModuleHandleA("VGUI2Extension.dll");
 	if (!module)
@@ -743,11 +399,12 @@ void init() {
 	// earliest point this plugin can receive engine output (the cache is
 	// usable before any Rml context exists).
 	if (!NativeCallbacksRegistered) {
-		Extension->RegisterGameUICallbacks(&GameUICallbacksInstance);
-		Extension->RegisterGameConsoleCallbacks(&GameConsoleCallbacksInstance);
+		wireNativeEntrySeams();
+		Extension->RegisterGameUICallbacks(&gameUICallbacks());
+		Extension->RegisterGameConsoleCallbacks(&gameConsoleCallbacks());
 		// The teardown seam: ClientVGUI Shutdown fires first inside the
 		// IBaseUI::Shutdown proxy, while vgui2 is still mapped.
-		Extension->RegisterClientVGUICallbacks(&ClientVGUICallbacksInstance);
+		Extension->RegisterClientVGUICallbacks(&clientVGUICallbacks());
 		NativeExtension = Extension;
 		NativeCallbacksRegistered = true;
 	}
@@ -790,9 +447,9 @@ void shutdownNative() {
 	services::console::consoleCapture().detach();
 	rmlui::uninstallPaintGate();
 	if (NativeExtension && NativeCallbacksRegistered) {
-		NativeExtension->UnregisterGameUICallbacks(&GameUICallbacksInstance);
-		NativeExtension->UnregisterGameConsoleCallbacks(&GameConsoleCallbacksInstance);
-		NativeExtension->UnregisterClientVGUICallbacks(&ClientVGUICallbacksInstance);
+		NativeExtension->UnregisterGameUICallbacks(&gameUICallbacks());
+		NativeExtension->UnregisterGameConsoleCallbacks(&gameConsoleCallbacks());
+		NativeExtension->UnregisterClientVGUICallbacks(&clientVGUICallbacks());
 		NativeCallbacksRegistered = false;
 	}
 	NativeExtension = nullptr;

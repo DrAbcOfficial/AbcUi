@@ -8,6 +8,7 @@
 #include <abc/Paths.h>
 
 #include "TextInput.h"
+#include "framework/DocumentLoadGuard.h"
 #include "framework/Localization.h"
 
 #include <cstdio>
@@ -42,6 +43,8 @@ int AbcSystemInterface::TranslateString(Rml::String& translated, const Rml::Stri
 }
 
 bool AbcSystemInterface::LogMessage(Rml::Log::Type type, const Rml::String& message) {
+	// T21: feed the document-load failure detector (see DocumentLoadGuard.h).
+	framework::documentload::noteRmlLog(static_cast<int>(type), message.c_str());
 	switch (type) {
 	case Rml::Log::LT_ERROR:
 	case Rml::Log::LT_ASSERT:

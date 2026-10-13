@@ -42,6 +42,11 @@ Rml::Context* context();
 // panel registers its FBO as an external masked texture through it (batch D).
 AbcRenderInterface* renderInterface();
 
+// T21: how many font faces the last init() loaded (0 means text cannot render
+// anywhere). Surfaced for the fault diagnostics; the 0 case is a fatal exit
+// inside init() itself (strict takeover - see RmlUiModule.cpp).
+int loadedFontCount();
+
 #ifndef NDEBUG
 // Debug per-frame phase timer (abc_ui_perf, Phase 8 benchmark instrument):
 // QueryPerformanceCounter brackets around the two Context passes - Update()

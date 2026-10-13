@@ -15,6 +15,7 @@
 #include <keydefs.h>
 
 #include "../framework/Assets.h"
+#include "../framework/FatalExit.h"
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
@@ -36,18 +37,20 @@ namespace {
 
 // System fonts, loaded straight from the Windows font dir (plan 05 §3.4 -
 // no redistribution). TTC multi-face support is a Phase 3 verification item
-// (R-10): failures warn per-face; if nothing loads, text stays invisible but
-// the plugin keeps running. Verdana/Tahoma cover the old scheme's latin
-// faces; YaHei is the CJK fallback (per-glyph fallback through the RCSS
-// font-family list).
-constexpr const char* kFontPaths[] = {
-	"C:\\Windows\\Fonts\\verdana.ttf",  // old scheme body/number face
-	"C:\\Windows\\Fonts\\verdanab.ttf", // Verdana bold (hud numbers)
-	"C:\\Windows\\Fonts\\tahoma.ttf",   // old "UiBold" face
-	"C:\\Windows\\Fonts\\msyh.ttc",     // Microsoft YaHei regular (fallback face)
-	"C:\\Windows\\Fonts\\msyhbd.ttc",   // Microsoft YaHei bold
-	"C:\\Windows\\Fonts\\consola.ttf",  // Consolas (fallback face)
+// (R-10): failures warn per-face. T21 strict policy: if NO face loads, text
+// cannot render anywhere (menu AND emergency page are unreadable - the black
+// locked screen the fault policy forbids), so init() stops the process
+// through framework::fatalExit. The Debug-only "-abcui_fonts <dir>" override
+// exists so the fault matrix can exercise that path against an empty dir.
+constexpr const char* kFontFiles[] = {
+	"verdana.ttf",  // old scheme body/number face
+	"verdanab.ttf", // Verdana bold (hud numbers)
+	"tahoma.ttf",   // old "UiBold" face
+	"msyh.ttc",     // Microsoft YaHei regular (fallback face)
+	"msyhbd.ttc",   // Microsoft YaHei bold
+	"consola.ttf",  // Consolas (fallback face)
 };
+constexpr const char* kFontDirectory = "C:\\Windows\\Fonts\\";
 
 // Context/renderer singletons (declared before RendererCallbacks: its
 // renderFrame reads them).
@@ -136,10 +139,14 @@ RendererCallbacks Callbacks;
 std::unique_ptr<AbcSystemInterface> SystemInterface;
 std::unique_ptr<AbcFileInterface> FileInterface;
 bool Initialised = false;
+// T21 diagnostics: faces loaded by the last loadFonts() pass (0 = fatal).
+int LoadedFonts = 0;
 
-void loadFonts() {
-	int loaded = 0;
-	for (const char* path : kFontPaths) {
+void loadFonts(const char* directory, int& loaded) {
+	loaded = 0;
+	for (const char* file : kFontFiles) {
+		char path[MAX_PATH];
+		_snprintf_s(path, sizeof(path), _TRUNCATE, "%s%s", directory, file);
 		if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES)
 			continue;
 		if (Rml::LoadFontFace(path, true))
@@ -147,14 +154,40 @@ void loadFonts() {
 		else
 			abc::ConsoleWarn("[AbcUi] font load failed: %s\n", path);
 	}
-	if (loaded == 0)
-		abc::ConsoleWarn("[AbcUi] no system font loaded - text will not render\n");
+}
+
+// T21 Debug-only fault seam: "-abcui_fonts <dir>" swaps the font root so the
+// fault matrix can start against an empty/unreadable directory and observe
+// the core-unavailable exit. Release builds always use the system root.
+const char* fontDirectoryOverride() {
+#ifndef NDEBUG
+	const char* next = nullptr;
+	if (gEngfuncs.CheckParm && gEngfuncs.CheckParm("-abcui_fonts", &next) && next && *next)
+		return next;
+#endif
+	return kFontDirectory;
 }
 
 void debuggerCommand() {
 	const bool visible = Rml::Debugger::IsVisible();
 	Rml::Debugger::SetVisible(!visible);
 	abc::ConsolePrint("[AbcUi] debugger %s\n", !visible ? "enabled" : "disabled");
+}
+
+// T21 fault-matrix finding: the Rml debugger's log beacon (the small "!"
+// alert, document "rmlui-debug-log-beacon") turns visible on ANY warning/
+// error-level Rml log message while the debugger is closed - so exactly the
+// fault paths this task certifies (missing/broken resources -> Rml load
+// errors) painted developer chrome over the strict UI. The beacon is not
+// takeover UI; keep it hidden while the debugger is closed (opening the
+// debugger shows the log list itself and hides the beacon on its own).
+void suppressDebugBeacon() {
+	if (!Context || Rml::Debugger::IsVisible())
+		return;
+	if (Rml::ElementDocument* beacon = Context->GetDocument("rmlui-debug-log-beacon")) {
+		if (beacon->IsVisible())
+			beacon->Hide();
+	}
 }
 
 } // namespace
@@ -182,6 +215,10 @@ AbcRenderInterface* renderInterface() {
 	return Callbacks.RenderInterface.get();
 }
 
+int loadedFontCount() {
+	return LoadedFonts;
+}
+
 void init() {
 	if (Initialised)
 		return;
@@ -194,16 +231,23 @@ void init() {
 
 	vgui2ext::init();
 
+	// T21 strict takeover gate: the entry seam (VGUI2Extension) must be
+	// present, or the original GameUI can never be suppressed and the
+	// replacement has no business presenting anything - stop with the
+	// external diagnosis instead of drawing on an unsuppressed frame.
+	if (!vgui2ext::nativeCallbacksRegistered())
+		framework::fatalExit("VGUI2Extension entry seam unavailable; the original GameUI cannot be suppressed (strict takeover)");
+	if (!abc::MetaRenderer())
+		framework::fatalExit("Renderer interface unavailable; nothing can be drawn");
+
 	SystemInterface = std::make_unique<AbcSystemInterface>();
 	FileInterface = std::make_unique<AbcFileInterface>();
 	Callbacks.RenderInterface = std::make_unique<AbcRenderInterface>();
 	Rml::SetSystemInterface(SystemInterface.get());
 	Rml::SetFileInterface(FileInterface.get());
 	Rml::SetRenderInterface(Callbacks.RenderInterface.get());
-	if (!Rml::Initialise()) {
-		abc::SysError("[AbcUi] Rml::Initialise failed");
-		return;
-	}
+	if (!Rml::Initialise())
+		framework::fatalExit("Rml::Initialise failed (Rml core unavailable)");
 
 	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
 	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
@@ -211,12 +255,15 @@ void init() {
 	// OnActivate/OnDeactivate/OnDestroy as our editors gain/lose/lose focus.
 	Context = Rml::CreateContext("abcui", Rml::Vector2i(width, height), Callbacks.RenderInterface.get(),
 		&rmlui::textInput());
-	if (!Context) {
-		abc::SysError("[AbcUi] Rml::CreateContext failed");
-		return;
-	}
+	if (!Context)
+		framework::fatalExit("Rml::CreateContext failed (Rml context unavailable)");
 
-	loadFonts();
+	// T21: a face-less context can only produce an unreadable (effectively
+	// black) UI - menu and emergency page alike - so zero loaded faces is
+	// the core-unavailable case, not a degraded-but-usable one.
+	loadFonts(fontDirectoryOverride(), LoadedFonts);
+	if (LoadedFonts == 0)
+		framework::fatalExit("no font face could be loaded; text cannot render");
 	framework::Localization::load();
 	framework::Theme::applyScale(Context);
 	sprites::vidInit();
@@ -294,6 +341,8 @@ void onFrame(double frameTime) {
 	InputBridge::update(Context);
 	avatars::onFrame();
 	framework::PanelManager::onFrame(frameTime);
+	// T21: keep the debugger's log beacon off the strict UI (see the helper).
+	suppressDebugBeacon();
 	// Module frames precede the update pass so their DOM edits land in the
 	// same Context::Update (order contract, modules/Module.h).
 	modules::registry().frameAll(frameTime);
