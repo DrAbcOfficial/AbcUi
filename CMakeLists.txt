@@ -84,6 +84,8 @@ add_library(AbcUi MODULE
     src/services/EngineUiBackend.cpp
     src/services/console/ConsoleBuffer.cpp
     src/services/console/ConsoleBackend.cpp
+    src/services/serverbrowser/ServerQuery.cpp
+    src/services/serverbrowser/ServerQuerySteam.cpp
     src/services/loading/LoadingModel.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp

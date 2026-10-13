@@ -47,6 +47,7 @@
 #include "../../services/console/ConsoleBackend.h"
 #include "../../services/console/ConsoleBuffer.h"
 #include "../../services/loading/LoadingModel.h"
+#include "../../services/serverbrowser/ServerQuery.h"
 #include "../../services/settings/KeyBindModel.h"
 #include "../../services/settings/SettingsModel.h"
 #include "../../services/settings/VideoModeModel.h"
@@ -376,6 +377,10 @@ public:
 	const char* name() const override { return "gameui"; }
 
 	void onInit() override {
+		// T17: the server data provider. The Steam adapter resolves its
+		// interface lazily (Steam may not be up yet at HUD_Init) and is a
+		// process-lifetime singleton; the model owns the async lifecycle.
+		ServerQueryState.setProvider(services::serverbrowser::steamQueryProvider());
 		// T13 description table: the first batch + the advanced rows from the
 		// live (localized) user.scr - the shipped script is the same source
 		// the original advanced dialog parses. A failed parse keeps the
@@ -425,6 +430,14 @@ public:
 		abc::ADD_COMMAND("abc_ui_loading_status", loadingStatusCommand);
 		abc::ADD_COMMAND("abc_ui_console_ui_status", consoleUiStatusCommand);
 		abc::ADD_COMMAND("abc_ui_console_ui_toggle", consoleUiToggleCommand);
+		abc::ADD_COMMAND("abc_ui_server_query", serverQueryCommand);
+		abc::ADD_COMMAND("abc_ui_server_status", serverStatusCommand);
+		abc::ADD_COMMAND("abc_ui_server_cancel", serverCancelCommand);
+		abc::ADD_COMMAND("abc_ui_server_release", serverReleaseCommand);
+		abc::ADD_COMMAND("abc_ui_server_detail", serverDetailCommand);
+		abc::ADD_COMMAND("abc_ui_server_detail_cancel", serverDetailCancelCommand);
+		abc::ADD_COMMAND("abc_ui_server_refresh", serverRefreshCommand);
+		abc::ADD_COMMAND("abc_ui_server_timeout", serverTimeoutCommand);
 #endif
 	}
 
@@ -435,6 +448,14 @@ public:
 		// loading, success/failure/password) must not wait for Rml readiness,
 		// and the drain is the ONLY consumer of the copied feed.
 		drainLoadingFeed();
+		// T17: the server-query drain runs every frame on this (main) thread
+		// and independently of menu presentation. Provider callbacks arrive
+		// from the engine's SteamAPI_RunCallbacks pump and land in the
+		// provider's bounded queue; this is the only consumer, and the
+		// query deadline is enforced here (bounded per-frame work). The
+		// status-edge log rides the same beat.
+		ServerQueryState.pump();
+		logServerQueryChange();
 		// T12: drain the deferred video restart FIRST and independently of
 		// menu presentation - the transaction owns it, not the page (see the
 		// DeferredVideoRestart note above).
@@ -631,6 +652,10 @@ public:
 		ConnError.reset();
 		Password.reset();
 		DirectConnect.reset();
+		// T17: every server query handle is released and the model latches
+		// closed (late provider events drain-and-discard) - the module-side
+		// half of the "released only after backend silence" rule.
+		ServerQueryState.shutdown();
 		Context = nullptr;
 		MenuPresented = false;
 		SettingsPresented = false;
@@ -827,6 +852,8 @@ private:
 		const auto& state = Controller.state();
 		if (!Controller.isMenuActive()) {
 			hideAllMenuDocuments();
+			if (ServerPageOpen || ServerQueryState.listRequest() != 0)
+				releaseServerPageQueries();
 			return;
 		}
 		// GameMenu.res conditions, verified against the shipped GameUI
@@ -880,6 +907,27 @@ private:
 				break;
 			}
 		}
+		// T17: the server page's query ownership. The T18 browser will live
+		// at kServers; until it lands the stub stands in, but the production
+		// lifecycle is already in effect: opening the page is the user's
+		// trigger and starts the Internet list query (the default browser
+		// tab), leaving the page releases every handle (release implies
+		// cancel for a still-live query). Exiting the game releases through
+		// onShutdown's model shutdown.
+		const bool serverPageOpen = !state.pages.empty()
+			&& state.pages.top() == MenuPage::kServers;
+		if (serverPageOpen && !ServerPageOpen) {
+			// Fresh opening: start the user-triggered query. A live request
+			// is left alone (re-entering the same open is not a re-trigger).
+			if (ServerQueryState.listRequest() == 0 && !ServerQueryState.closed()) {
+				ServerQueryState.begin(services::serverbrowser::QueryKind::Internet);
+				logServerQueryChange();
+			}
+		} else if (ServerPageOpen && !serverPageOpen) {
+			releaseServerPageQueries();
+			logServerQueryChange();
+		}
+		ServerPageOpen = serverPageOpen;
 		if (shellVisible)
 			SubStub->hide();
 		else
@@ -1090,6 +1138,49 @@ private:
 			return;
 		VideoCountdownShown = seconds;
 		VideoConfirm->render();
+	}
+
+	// T17: page-leave release for the server data provider. Every handle the
+	// page owns is handed back (release: cancel first when still live for the
+	// list; the detail slot cancels its own query); the model's own latch
+	// discipline keeps late provider events out of any projection.
+	void releaseServerPageQueries() {
+		ServerQueryState.cancelDetail();
+		ServerQueryState.release();
+		ServerPageOpen = false;
+	}
+
+	// T17: status-edge log for the live-acceptance evidence (Release runs
+	// have no Debug command surface - the production console line is the
+	// observable). One line per status transition, plus the count at
+	// completion. Never called from anywhere but the main thread beat.
+	void logServerQueryChange() {
+		using services::serverbrowser::QueryStatus;
+		const QueryStatus status = ServerQueryState.status();
+		if (status == LastServerStatus)
+			return;
+		LastServerStatus = status;
+		switch (status) {
+		case QueryStatus::Querying:
+			abc::ConsolePrint("[AbcUi] server query started: kind=%d gen=%u\n",
+				static_cast<int>(ServerQueryState.kind()), ServerQueryState.generation());
+			break;
+		case QueryStatus::Completed:
+			abc::ConsolePrint("[AbcUi] server query completed: gen=%u count=%d noServers=%d\n",
+				ServerQueryState.generation(), ServerQueryState.count(),
+				ServerQueryState.noServersListed() ? 1 : 0);
+			break;
+		case QueryStatus::Cancelled:
+			abc::ConsolePrint("[AbcUi] server query cancelled: gen=%u partial=%d\n",
+				ServerQueryState.generation(), ServerQueryState.count());
+			break;
+		case QueryStatus::Failed:
+			abc::ConsolePrint("[AbcUi] server query failed: gen=%u failure=%d\n",
+				ServerQueryState.generation(), static_cast<int>(ServerQueryState.failure()));
+			break;
+		default:
+			break;
+		}
 	}
 
 	// Points a stub window at one unfinished surface; kMain is the console
@@ -1959,6 +2050,188 @@ private:
 		bridge.requestMenuUp(services::NativeUiOrigin::kOwnUi);
 		abc::ConsolePrint("[AbcUi] menu shown (bridge menuUp=%d)\n", bridge.menuUp() ? 1 : 0);
 	}
+
+	// T17 diagnostics: start a list query through the REAL production model
+	// and provider (the accepted live evidence path). Usage:
+	//   abc_ui_server_query <internet|lan|favorites|history|spectate|friends> [filterKey filterValue ...]
+	static void serverQueryCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_query <internet|lan|favorites|history|spectate|friends> [key value ...]\n");
+			return;
+		}
+		const std::string kindName = gEngfuncs.Cmd_Argv(1);
+		services::serverbrowser::QueryKind kind;
+		if (kindName == "internet")
+			kind = services::serverbrowser::QueryKind::Internet;
+		else if (kindName == "lan")
+			kind = services::serverbrowser::QueryKind::Lan;
+		else if (kindName == "favorites")
+			kind = services::serverbrowser::QueryKind::Favorites;
+		else if (kindName == "history")
+			kind = services::serverbrowser::QueryKind::History;
+		else if (kindName == "spectate")
+			kind = services::serverbrowser::QueryKind::Spectate;
+		else if (kindName == "friends")
+			kind = services::serverbrowser::QueryKind::Friends;
+		else {
+			abc::ConsoleWarn("[AbcUi] unknown query kind \"%s\"\n", kindName.c_str());
+			return;
+		}
+		std::vector<services::serverbrowser::FilterPair> filters;
+		for (int i = 2; i + 1 < gEngfuncs.Cmd_Argc(); i += 2)
+			filters.push_back({gEngfuncs.Cmd_Argv(i), gEngfuncs.Cmd_Argv(i + 1)});
+		self.ServerPageOpen = true;  // diagnostic opens the query context explicitly
+		const bool started = self.ServerQueryState.begin(kind,
+			filters.empty() ? nullptr : filters.data(), static_cast<int>(filters.size()));
+		abc::ConsolePrint("[AbcUi] server query %s: kind=%s gen=%u request=%llu\n",
+			started ? "STARTED" : "FAILED", kindName.c_str(), self.ServerQueryState.generation(),
+			static_cast<unsigned long long>(self.ServerQueryState.listRequest()));
+		serverStatusCommand();
+	}
+
+	// T17 diagnostics: one-line state projection of the model + provider.
+	static void serverStatusCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		auto& query = self.ServerQueryState;
+		abc::ConsolePrint(
+			"[AbcUi] server: status=%d failure=%d gen=%u count=%d listing=%llu noServers=%d stale=%llu dropped=%d failedPings=%d closed=%d pageOpen=%d\n",
+			static_cast<int>(query.status()), static_cast<int>(query.failure()),
+			query.generation(), query.count(),
+			static_cast<unsigned long long>(query.listRequest()),
+			query.noServersListed() ? 1 : 0,
+			static_cast<unsigned long long>(query.staleEvents()),
+			query.droppedServers(), query.failedPings(), query.closed() ? 1 : 0,
+			self.ServerPageOpen ? 1 : 0);
+		abc::ConsolePrint(
+			"[AbcUi] server: detail=%d detailStatus=%d detailFailed=%d players=%d handle=%llu outstanding=%d\n",
+			static_cast<int>(query.detailKind()), static_cast<int>(query.detailStatus()),
+			query.detailFailed() ? 1 : 0, query.playerCount(),
+			static_cast<unsigned long long>(query.detailRequest()),
+			query.providerOutstanding());
+		const int shown = query.count() < 10 ? query.count() : 10;
+		for (int i = 0; i < shown; ++i) {
+			const auto* entry = query.entry(i);
+			if (!entry)
+				continue;
+			abc::ConsolePrint(
+				"[AbcUi] server[%d]: name=\"%s\" map=\"%s\" players=%d/%d bots=%d ping=%d password=%d secure=%d\n",
+				i, entry->name.c_str(), entry->map.c_str(), entry->players,
+				entry->maxPlayers, entry->botPlayers, entry->pingMs,
+				entry->password ? 1 : 0, entry->secure ? 1 : 0);
+		}
+	}
+
+	// T17 diagnostics: the explicit cancel path (stops work, keeps the handle).
+	static void serverCancelCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		Instance->ServerQueryState.cancel();
+		abc::ConsolePrint("[AbcUi] server cancel issued\n");
+		serverStatusCommand();
+	}
+
+	// T17 diagnostics: the page-leave release path (hand every handle back).
+	static void serverReleaseCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		Instance->releaseServerPageQueries();
+		abc::ConsolePrint("[AbcUi] server release issued\n");
+		serverStatusCommand();
+	}
+
+	// T17 diagnostics: single-server queries through the real model. Usage:
+	//   abc_ui_server_detail <ping|players> <index>   (index into the live list)
+	static void serverDetailCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (gEngfuncs.Cmd_Argc() < 3) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_detail <ping|players> <index>\n");
+			return;
+		}
+		const std::string kind = gEngfuncs.Cmd_Argv(1);
+		const int index = atoi(gEngfuncs.Cmd_Argv(2));
+		const auto* server = self.ServerQueryState.entry(index);
+		if (!server) {
+			abc::ConsoleWarn("[AbcUi] no server at index %d\n", index);
+			return;
+		}
+		uint64_t handle = 0;
+		if (kind == "ping")
+			handle = self.ServerQueryState.requestPing(*server);
+		else if (kind == "players")
+			handle = self.ServerQueryState.requestPlayers(*server);
+		else {
+			abc::ConsoleWarn("[AbcUi] unknown detail kind \"%s\"\n", kind.c_str());
+			return;
+		}
+		abc::ConsolePrint("[AbcUi] server detail %s %s: handle=%llu\n",
+			kind.c_str(), handle ? "STARTED" : "FAILED",
+			static_cast<unsigned long long>(handle));
+		serverStatusCommand();
+	}
+
+	// T17 diagnostics: cancel the live single-server query.
+	static void serverDetailCancelCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		Instance->ServerQueryState.cancelDetail();
+		abc::ConsolePrint("[AbcUi] server detail cancel issued\n");
+		serverStatusCommand();
+	}
+
+	// T17 diagnostics: RefreshQuery through the REAL provider (the live
+	// cancellation evidence rides this: refresh, then cancel mid-refresh).
+	static void serverRefreshCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (self.ServerQueryState.listRequest() == 0) {
+			abc::ConsoleWarn("[AbcUi] no live request to refresh\n");
+			return;
+		}
+		self.ServerQueryState.refreshAll();
+		abc::ConsolePrint("[AbcUi] server refresh issued\n");
+		serverStatusCommand();
+	}
+
+	// T17 diagnostics: temporarily shorten the deadline (ms; 0 restores the
+	// 30s default) - the live timeout-path probe (a healthy Internet query
+	// never hits the deadline on its own).
+	static void serverTimeoutCommand() {
+		if (!Instance) {
+			abc::ConsoleWarn("[AbcUi] no module instance\n");
+			return;
+		}
+		GameUiModule& self = *Instance;
+		if (gEngfuncs.Cmd_Argc() < 2) {
+			abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_timeout <ms|0>\n");
+			return;
+		}
+		const int ms = atoi(gEngfuncs.Cmd_Argv(1));
+		self.ServerQueryState.setTimeoutMs(
+			ms > 0 ? static_cast<uint32_t>(ms) : services::serverbrowser::kDefaultTimeoutMs);
+		abc::ConsolePrint("[AbcUi] server timeout set to %d ms\n", ms > 0 ? ms : 30000);
+	}
 #endif
 
 	static GameUiModule* Instance;
@@ -1986,6 +2259,16 @@ private:
 	// (engine-stream copies) and the four surfaces. The model outlives the
 	// documents like the other models.
 	services::loading::LoadingModel LoadingModelState;
+	// T17 server data provider: the async list/ping/players lifecycle (the
+	// Steam adapter is injected in onInit; the model owns generations,
+	// cancellation/release and the deadline). The T18 browser consumes it.
+	services::serverbrowser::ServerQuery ServerQueryState;
+	// Whether the kServers page is the top menu page (fresh-open projection
+	// latch by analogy with the settings page; drives page-leave release).
+	bool ServerPageOpen = false;
+	// Last logged query status (edge detection for the production log line).
+	services::serverbrowser::QueryStatus LastServerStatus =
+		services::serverbrowser::QueryStatus::Idle;
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::console::ConsolePage> Console;

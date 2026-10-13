@@ -1,0 +1,528 @@
+// services::serverbrowser - Steam adapter (T17c). Binds the interfaces the
+// shipped browser itself uses, through the same modern entry path AbcUi
+// already relies on for identity/avatars and the installed binaries prove:
+//
+//   - steam_api.dll is already loaded and owned by the engine (hw.dll imports
+//     it statically, calls SteamAPI_Init at 0x01db3910 and pumps
+//     SteamAPI_RunCallbacks inside the frame loop 0x01d67950). This adapter
+//     never calls Init/Shutdown/RunCallbacks - it only reads.
+//   - platform/servers/serverbrowser.dll resolves
+//     "SteamMatchMakingServers002" via SteamInternal_FindOrCreateUserInterface
+//     (0x10003053 and five siblings) and drives the whole browser through it:
+//     request kinds at 0x10007940 (slots 0x00-0x14), ReleaseRequest 0x18,
+//     GetServerDetails 0x1c, CancelQuery 0x20 (0x10007ad0), RefreshQuery 0x24
+//     (0x10005230), GetServerCount 0x2c, RefreshServer 0x30 (0x100057c0),
+//     PingServer 0x34 + CancelServerQuery 0x40 (0x1000ad70/0x1000a2b0).
+//     The SDK header order matches every one of those call sites.
+//   - gameserveritem_t field offsets were cross-read at 0x10002ff0
+//     (map@0x2e gamedir@0x0e tags@0xec desc@0x4e players/max/bots@0x94..@0x9c
+//     secure@0xa1 appid@0x90) - the SDK header is the authoritative layout.
+//   - AppID: ISteamUtils::GetAppID() (runtime provides SteamUtils009 per
+//     hw.dll 0x01e61f24 / serverbrowser 0x100843f0; the header alias is
+//     tried second), with the engine-written steam_appid.txt as the offline
+//     fallback. The engine itself writes that file before SteamAPI_Init
+//     (hw.dll 0x01db3910) - 225840 on the test install.
+//
+// Threading: all provider API below runs on the owner (main) thread. Steam
+// list callbacks arrive from SteamAPI_RunCallbacks, which the engine calls on
+// its own thread; the response objects therefore only ever push owned copies
+// into the mutex-guarded event queue. The response object for a request lives
+// until ReleaseRequest/CancelServerQuery returns (Steam's documented
+// "no callback after release" contract), which is exactly the T17 "destroy
+// only after the backend confirms silence" rule.
+
+#include "ServerQuery.h"
+
+#include <Windows.h>
+
+#include <steam/isteammatchmaking.h>
+#include <steam/isteamutils.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <deque>
+#include <memory>
+#include <mutex>
+#include <unordered_map>
+
+namespace services::serverbrowser {
+
+namespace {
+
+constexpr int kMaxQueuedEvents = 4096;
+
+using FnGetHSteamUser = int (*)();
+using FnFindOrCreateUserInterface = void* (*)(int hSteamUser, const char* version);
+
+struct Bindings {
+	FnGetHSteamUser getHSteamUser = nullptr;
+	FnFindOrCreateUserInterface findOrCreateUserInterface = nullptr;
+	ISteamMatchmakingServers* servers = nullptr;
+	ISteamUtils* utils = nullptr;
+	uint32_t appId = 0;
+	bool moduleProbed = false;
+};
+
+Bindings& bindings() {
+	static Bindings instance;
+	return instance;
+}
+
+// Engine-guaranteed fallback: the host writes the running AppID here before
+// SteamAPI_Init (hw.dll 0x01db3910). Read-only; anything unparsable = 0.
+uint32_t readSteamAppIdFile() {
+	std::FILE* file = std::fopen("steam_appid.txt", "rb");
+	if (!file)
+		return 0;
+	char buffer[32] = {};
+	const size_t read = std::fread(buffer, 1, sizeof(buffer) - 1, file);
+	std::fclose(file);
+	if (read == 0)
+		return 0;
+	const long value = std::strtol(buffer, nullptr, 10);
+	if (value <= 0 || value > 0xffffff)
+		return 0;
+	return static_cast<uint32_t>(value);
+}
+
+// The shared provider -> model queue. Bounded; overflow drops the newest
+// delivery and counts it (list completeness matters more than recency, so a
+// full queue is an anomaly the diagnostics surface, never a silent reorder).
+struct EventQueue {
+	std::mutex mutex;
+	std::deque<QueryEvent> events;
+	uint64_t dropped = 0;
+
+	void push(QueryEvent&& event) {
+		std::lock_guard<std::mutex> lock(mutex);
+		if (static_cast<int>(events.size()) >= kMaxQueuedEvents) {
+			++dropped;
+			return;
+		}
+		events.push_back(std::move(event));
+	}
+};
+
+EventQueue& queue() {
+	static EventQueue instance;
+	return instance;
+}
+
+// One list request's response sink. Steam guarantees no callback after
+// ReleaseRequest, so the object is destroyed together with the mapping entry
+// that owns it.
+class ListResponse final : public ISteamMatchmakingServerListResponse {
+public:
+	explicit ListResponse(uint64_t tag) : Tag(tag) {}
+
+	void ServerResponded(HServerListRequest, int iServer) override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::ServerResponded;
+		event.request = Tag;
+		event.index = iServer;
+		queue().push(std::move(event));
+	}
+
+	void ServerFailedToRespond(HServerListRequest, int iServer) override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::ServerFailedToRespond;
+		event.request = Tag;
+		event.index = iServer;
+		queue().push(std::move(event));
+	}
+
+	void RefreshComplete(HServerListRequest, EMatchMakingServerResponse response) override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::RefreshComplete;
+		event.request = Tag;
+		event.response = static_cast<int>(response);
+		queue().push(std::move(event));
+	}
+
+private:
+	uint64_t Tag;
+};
+
+// Single-server ping sink (ISteamMatchmakingPingResponse). CancelServerQuery
+// guarantees silence afterwards, so the object dies with its mapping entry.
+class PingResponse final : public ISteamMatchmakingPingResponse {
+public:
+	explicit PingResponse(uint64_t tag) : Tag(tag) {}
+
+	void ServerResponded(gameserveritem_t& server) override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::PingResponded;
+		event.request = Tag;
+		event.server.name = server.GetName();
+		event.server.map = server.m_szMap;
+		event.server.gameDir = server.m_szGameDir;
+		event.server.gameDescription = server.m_szGameDescription;
+		event.server.gameTags = server.m_szGameTags;
+		event.server.ip = server.m_NetAdr.GetIP();
+		event.server.queryPort = server.m_NetAdr.GetQueryPort();
+		event.server.connectionPort = server.m_NetAdr.GetConnectionPort();
+		event.server.pingMs = server.m_nPing;
+		event.server.players = server.m_nPlayers;
+		event.server.maxPlayers = server.m_nMaxPlayers;
+		event.server.botPlayers = server.m_nBotPlayers;
+		event.server.password = server.m_bPassword;
+		event.server.secure = server.m_bSecure;
+		event.server.steamId = server.m_steamID.ConvertToUint64();
+		event.server.responded = true;
+		queue().push(std::move(event));
+	}
+
+	void ServerFailedToRespond() override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::PingFailedToRespond;
+		event.request = Tag;
+		event.failed = true;
+		queue().push(std::move(event));
+	}
+
+private:
+	uint64_t Tag;
+};
+
+class PlayersResponse final : public ISteamMatchmakingPlayersResponse {
+public:
+	explicit PlayersResponse(uint64_t tag) : Tag(tag) {}
+
+	void AddPlayerToList(const char* name, int score, float timePlayed) override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::Players;
+		event.request = Tag;
+		event.players.push_back(PlayerLine{name ? name : "", score, timePlayed});
+		queue().push(std::move(event));
+	}
+
+	void PlayersFailedToRespond() override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::PlayersComplete;
+		event.request = Tag;
+		event.failed = true;
+		queue().push(std::move(event));
+	}
+
+	void PlayersRefreshComplete() override {
+		QueryEvent event;
+		event.type = QueryEvent::Type::PlayersComplete;
+		event.request = Tag;
+		queue().push(std::move(event));
+	}
+
+private:
+	uint64_t Tag;
+};
+
+struct ActiveList {
+	HServerListRequest handle = nullptr;
+	std::unique_ptr<ListResponse> response;
+};
+
+struct ActivePing {
+	HServerQuery handle = HSERVERQUERY_INVALID;
+	std::unique_ptr<PingResponse> response;
+};
+
+struct ActivePlayers {
+	HServerQuery handle = HSERVERQUERY_INVALID;
+	std::unique_ptr<PlayersResponse> response;
+};
+
+class SteamQueryProvider final : public IServerQueryProvider {
+public:
+	// --- interface binding --------------------------------------------------
+
+	bool ensureBound() {
+		Bindings& b = bindings();
+		if (!b.moduleProbed) {
+			b.moduleProbed = true;
+			const HMODULE module = GetModuleHandleA("steam_api.dll");
+			if (module) {
+				b.getHSteamUser = reinterpret_cast<FnGetHSteamUser>(
+					GetProcAddress(module, "SteamAPI_GetHSteamUser"));
+				b.findOrCreateUserInterface = reinterpret_cast<FnFindOrCreateUserInterface>(
+					GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
+			}
+		}
+		if (!b.getHSteamUser || !b.findOrCreateUserInterface)
+			return false;
+		const int user = b.getHSteamUser();
+		if (!user) {
+			// SteamAPI_Init has not run yet: report unavailable and re-probe
+			// on the next call (the engine's lazy path, same as avatars).
+			b.servers = nullptr;
+			b.utils = nullptr;
+			return false;
+		}
+		if (!b.servers)
+			b.servers = static_cast<ISteamMatchmakingServers*>(b.findOrCreateUserInterface(
+				user, STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION));
+		if (!b.servers)
+			return false;
+		if (!b.utils) {
+			// hw.dll/serverbrowser.dll bind "SteamUtils009" (present in the
+			// installed runtime); the header alias is the second attempt.
+			b.utils = static_cast<ISteamUtils*>(
+				b.findOrCreateUserInterface(user, "SteamUtils009"));
+			if (!b.utils)
+				b.utils = static_cast<ISteamUtils*>(
+					b.findOrCreateUserInterface(user, STEAMUTILS_INTERFACE_VERSION));
+		}
+		if (!b.appId && b.utils)
+			b.appId = b.utils->GetAppID();
+		if (!b.appId)
+			b.appId = readSteamAppIdFile();
+		return b.appId != 0;
+	}
+
+	bool available() override { return ensureBound(); }
+
+	uint32_t appId() const { return bindings().appId; }
+
+	// --- list lifecycle -----------------------------------------------------
+
+	uint64_t requestList(QueryKind kind, const FilterPair* filters, int filterCount) override {
+		if (!ensureBound())
+			return 0;
+		Bindings& b = bindings();
+		// Replace semantics: the model sends cancel+release for a live
+		// request, but a stray second request must still not orphan a handle.
+		if (!Lists.empty()) {
+			for (auto& pair : Lists) {
+				if (pair.second.handle)
+					b.servers->ReleaseRequest(pair.second.handle);
+			}
+			Lists.clear();
+		}
+
+		// Filter array (Steam reads it synchronously inside the request call).
+		// The interface signature takes a non-const MatchMakingKeyValuePair_t**
+		// (SDK 1.51 header shape) - the pairs stay local and fully owned here.
+		MatchMakingKeyValuePair_t stackPairs[32];
+		MatchMakingKeyValuePair_t* pairPointers[32];
+		int count = filterCount;
+		if (count < 0)
+			count = 0;
+		if (count > 32)
+			count = 32;
+		for (int i = 0; i < count; ++i) {
+			stackPairs[i] = MatchMakingKeyValuePair_t(
+				filters[i].key.c_str(), filters[i].value.c_str());
+			pairPointers[i] = &stackPairs[i];
+		}
+
+		const uint64_t tag = NextTag++;
+		auto response = std::make_unique<ListResponse>(tag);
+		HServerListRequest handle = nullptr;
+		switch (kind) {
+		case QueryKind::Internet:
+			handle = b.servers->RequestInternetServerList(
+				b.appId, count ? pairPointers : nullptr, static_cast<uint32>(count), response.get());
+			break;
+		case QueryKind::Lan:
+			handle = b.servers->RequestLANServerList(b.appId, response.get());
+			break;
+		case QueryKind::Favorites:
+			handle = b.servers->RequestFavoritesServerList(
+				b.appId, count ? pairPointers : nullptr, static_cast<uint32>(count), response.get());
+			break;
+		case QueryKind::History:
+			handle = b.servers->RequestHistoryServerList(
+				b.appId, count ? pairPointers : nullptr, static_cast<uint32>(count), response.get());
+			break;
+		case QueryKind::Spectate:
+			handle = b.servers->RequestSpectatorServerList(
+				b.appId, count ? pairPointers : nullptr, static_cast<uint32>(count), response.get());
+			break;
+		case QueryKind::Friends:
+			handle = b.servers->RequestFriendsServerList(
+				b.appId, count ? pairPointers : nullptr, static_cast<uint32>(count), response.get());
+			break;
+		}
+		if (!handle)
+			return 0;  // response dies here: nothing ever dispatches to it
+		ActiveList active;
+		active.handle = handle;
+		active.response = std::move(response);
+		Lists.emplace(tag, std::move(active));
+		return tag;
+	}
+
+	void cancelQuery(uint64_t request) override {
+		Bindings& b = bindings();
+		const auto it = Lists.find(request);
+		if (it == Lists.end() || !b.servers)
+			return;
+		if (it->second.handle)
+			b.servers->CancelQuery(it->second.handle);
+	}
+
+	void releaseRequest(uint64_t request) override {
+		Bindings& b = bindings();
+		const auto it = Lists.find(request);
+		if (it == Lists.end())
+			return;
+		if (b.servers && it->second.handle)
+			b.servers->ReleaseRequest(it->second.handle);
+		// Steam: "RefreshComplete callback is not posted when request is
+		// released" - the response object is provably quiet, destroy now.
+		Lists.erase(it);
+	}
+
+	void refreshQueryAll(uint64_t request) override {
+		Bindings& b = bindings();
+		const auto it = Lists.find(request);
+		if (it != Lists.end() && b.servers && it->second.handle)
+			b.servers->RefreshQuery(it->second.handle);
+	}
+
+	void refreshServer(uint64_t request, int index) override {
+		Bindings& b = bindings();
+		const auto it = Lists.find(request);
+		if (it != Lists.end() && b.servers && it->second.handle)
+			b.servers->RefreshServer(it->second.handle, index);
+	}
+
+	int serverCount(uint64_t request) override {
+		Bindings& b = bindings();
+		const auto it = Lists.find(request);
+		if (it == Lists.end() || !b.servers || !it->second.handle)
+			return 0;
+		return b.servers->GetServerCount(it->second.handle);
+	}
+
+	bool serverDetails(uint64_t request, int index, ServerEntry& out) override {
+		Bindings& b = bindings();
+		const auto it = Lists.find(request);
+		if (it == Lists.end() || !b.servers || !it->second.handle)
+			return false;
+		const gameserveritem_t* item = b.servers->GetServerDetails(it->second.handle, index);
+		if (!item)
+			return false;
+		out = ServerEntry{};
+		// GetName() falls back to the connection address when the server
+		// reported no name (SDK semantics); the raw m_szServerName field is
+		// private in the header and must not be reached around it.
+		out.name = item->GetName();
+		out.map = item->m_szMap;
+		out.gameDir = item->m_szGameDir;
+		out.gameDescription = item->m_szGameDescription;
+		out.gameTags = item->m_szGameTags;
+		out.ip = item->m_NetAdr.GetIP();
+		out.queryPort = item->m_NetAdr.GetQueryPort();
+		out.connectionPort = item->m_NetAdr.GetConnectionPort();
+		out.pingMs = item->m_nPing;
+		out.players = item->m_nPlayers;
+		out.maxPlayers = item->m_nMaxPlayers;
+		out.botPlayers = item->m_nBotPlayers;
+		out.password = item->m_bPassword;
+		out.secure = item->m_bSecure;
+		out.steamId = item->m_steamID.ConvertToUint64();
+		return true;
+	}
+
+	// --- single-server queries ----------------------------------------------
+
+	uint64_t pingServer(uint32_t ip, uint16_t port) override {
+		if (!ensureBound() || ip == 0)
+			return 0;
+		Bindings& b = bindings();
+		cancelServerQuery(PingTag);
+		const uint64_t tag = NextTag++;
+		auto response = std::make_unique<PingResponse>(tag);
+		const uint16_t queryPort = port ? port : 27015;
+		const HServerQuery handle = b.servers->PingServer(ip, queryPort, response.get());
+		if (handle == HSERVERQUERY_INVALID)
+			return 0;
+		ActivePing active;
+		active.handle = handle;
+		active.response = std::move(response);
+		PingTag = tag;
+		Pings.emplace(tag, std::move(active));
+		return tag;
+	}
+
+	uint64_t requestPlayers(uint32_t ip, uint16_t port) override {
+		if (!ensureBound() || ip == 0)
+			return 0;
+		Bindings& b = bindings();
+		cancelServerQuery(PlayersTag);
+		const uint64_t tag = NextTag++;
+		auto response = std::make_unique<PlayersResponse>(tag);
+		const uint16_t queryPort = port ? port : 27015;
+		const HServerQuery handle =
+			b.servers->PlayerDetails(ip, queryPort, response.get());
+		if (handle == HSERVERQUERY_INVALID)
+			return 0;
+		ActivePlayers active;
+		active.handle = handle;
+		active.response = std::move(response);
+		PlayersTag = tag;
+		Players.emplace(tag, std::move(active));
+		return tag;
+	}
+
+	void cancelServerQuery(uint64_t query) override {
+		if (query == 0)
+			return;
+		Bindings& b = bindings();
+		const auto ping = Pings.find(query);
+		if (ping != Pings.end()) {
+			if (b.servers && ping->second.handle != HSERVERQUERY_INVALID)
+				b.servers->CancelServerQuery(ping->second.handle);
+			// CancelServerQuery exists precisely so the response object may
+			// die right after - the "confirmed silence" for single-server
+			// queries.
+			Pings.erase(ping);
+			if (PingTag == query)
+				PingTag = 0;
+			return;
+		}
+		const auto it = Players.find(query);
+		if (it == Players.end())
+			return;
+		if (b.servers && it->second.handle != HSERVERQUERY_INVALID)
+			b.servers->CancelServerQuery(it->second.handle);
+		Players.erase(it);
+		if (PlayersTag == query)
+			PlayersTag = 0;
+	}
+
+	// --- owner-thread drain -------------------------------------------------
+
+	int pollEvents(QueryEvent* out, int max) override {
+		if (!out || max <= 0)
+			return 0;
+		EventQueue& q = queue();
+		std::lock_guard<std::mutex> lock(q.mutex);
+		int count = 0;
+		while (count < max && !q.events.empty()) {
+			out[count++] = std::move(q.events.front());
+			q.events.pop_front();
+		}
+		return count;
+	}
+
+	int outstandingRequests() override {
+		return static_cast<int>(Lists.size() + Pings.size() + Players.size());
+	}
+
+private:
+	std::unordered_map<uint64_t, ActiveList> Lists;
+	std::unordered_map<uint64_t, ActivePing> Pings;
+	std::unordered_map<uint64_t, ActivePlayers> Players;
+	uint64_t PingTag = 0;
+	uint64_t PlayersTag = 0;
+	uint64_t NextTag = 1;
+};
+
+}
+
+IServerQueryProvider* steamQueryProvider() {
+	static SteamQueryProvider instance;
+	return &instance;
+}
+
+}
