@@ -43,6 +43,7 @@
 //     kMaxEventsPerPump per frame, provider-side queue cap, deadline timeout.
 
 #include <cstdint>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -196,6 +197,7 @@ public:
 	QueryFailure failure() const { return Failure; }
 	QueryKind kind() const { return Kind; }
 	uint32_t generation() const { return Generation; }
+	uint64_t revision() const { return Revision; }
 	int count() const { return static_cast<int>(Entries.size()); }
 	bool noServersListed() const { return NoServersListed; }
 	const ServerEntry* entry(int index) const {
@@ -247,6 +249,10 @@ private:
 	QueryStatus Status = QueryStatus::Idle;
 	QueryFailure Failure = QueryFailure::None;
 	uint32_t Generation = 0;
+	uint64_t Revision = 0;
+	std::vector<FilterPair> Filters;
+	// Completed-list refreshes authorize only the explicitly requested rows.
+	std::map<int, uint64_t> RowRefreshDeadlines;
 	uint64_t Request = 0;
 	uint64_t Deadline = 0;
 	bool NoServersListed = false;

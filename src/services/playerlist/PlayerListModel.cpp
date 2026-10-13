@@ -139,10 +139,13 @@ const RosterEntry* PlayerListModel::selectedEntry() const {
 
 ToggleError PlayerListModel::toggleMuted(bool& mutedAfter) {
 	mutedAfter = false;
+	const bool HadSelection = Selection.valid();
+	// A rendered snapshot is not authorization for a later slot operation.
+	refresh();
 	if (!MuteAvailable)
 		return ToggleError::kUnavailable;
 	if (!Selection.valid())
-		return ToggleError::kNoSelection;
+		return HadSelection ? ToggleError::kIdentityChanged : ToggleError::kNoSelection;
 	// Revalidate against the LIVE snapshot at action time: the page may have
 	// rendered an older generation (disconnect/reconnect/map change between
 	// render and click must never retarget the action).

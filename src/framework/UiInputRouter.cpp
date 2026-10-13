@@ -146,6 +146,8 @@ Route Router::onKey(int down, int keynum, bool isWheel) {
 		const bool preheld = range && !wheel && PreHeld[keynum];
 		if (preheld) {
 			EngineDown[keynum] = down != 0;
+			if (!down)
+				PreHeld[keynum] = false;
 			return route;
 		}
 		if (!wheel && top.owner && top.owner->claimsKey(down, keynum)) {
@@ -213,8 +215,6 @@ bool Router::exclusive() const {
 }
 
 void Router::onFocusLost() {
-	if (Count == 0)
-		return;
 	// Pop before notifying: an owner that re-enters release() from its
 	// mirrored-state cleanup must find its token already stale.
 	while (Count != 0) {
@@ -224,8 +224,11 @@ void Router::onFocusLost() {
 	}
 	// Engine down-state is stale after focus loss (releases may never have
 	// been observed); the next acquire re-baselines from the live stream.
-	for (int k = 0; k <= kMaxKeynum; k++)
+	releaseUiHeldKeys();
+	for (int k = 0; k <= kMaxKeynum; k++) {
 		EngineDown[k] = false;
+		PreHeld[k] = false;
+	}
 }
 
 void Router::reset() {

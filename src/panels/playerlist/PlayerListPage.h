@@ -50,6 +50,8 @@ public:
 	~PlayerListPage() override;
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
+	using SelectionSink = std::function<void(const services::playerlist::SelectionKey&)>;
+	void setSelectionSink(SelectionSink Handler) { SelectionHandler = std::move(Handler); }
 	void setModel(services::playerlist::PlayerListModel* model) { Model = model; }
 
 	// Re-projects the model snapshot into the DOM (rows, selection highlight,
@@ -78,6 +80,7 @@ private:
 	Rml::Element* node(const char* id) const;
 
 	ActionSink Sink;
+	SelectionSink SelectionHandler;
 	PlayerListPage* Self = nullptr;
 	services::playerlist::PlayerListModel* Model = nullptr;
 	PageListener Listener;

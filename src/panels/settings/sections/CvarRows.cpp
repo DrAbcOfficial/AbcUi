@@ -1,0 +1,259 @@
+// Extracted from SettingsPage.cpp (UTF-8). Responsibility: sections/CvarRows.
+#include "panels/settings/SettingsUi.h"
+#include "panels/settings/SettingsPage.h"
+#include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
+#include <RmlUi/Core/Elements/ElementFormControl.h>
+#include "services/settings/SettingsModel.h"
+#include "framework/TextUtil.h"
+#include <abc/Format.h>
+#include <string>
+#include <vector>
+#include <utility>
+#include <algorithm>
+namespace panels::settings {
+using namespace detail;
+void SettingsPage::buildRows() {
+	if (!Model || !document())
+		return;
+	Rml::Element* rows = document()->GetElementById("rows");
+	if (!rows)
+		return;
+	// One skeleton block per description-table row; row DOM ids derive from
+	// the cvar names ([a-z_], safe as ids). Delegated listeners need no
+	// per-element bindings here. Section headers emit whenever the row's
+	// Section token changes (the table is grouped by the original pages).
+	std::string rml;
+	LastSectionBuilt.clear();
+	for (const auto& view : Model->rows()) {
+		if (view.row->Section && view.row->Section != LastSectionBuilt) {
+			LastSectionBuilt = view.row->Section;
+			rml += "<div class=\"section-header\">";
+			rml += framework::TextUtil::escapeRml(translated(view.row->Section));
+			rml += "</div>";
+		}
+		rml += "<div class=\"row\" id=\"row-";
+		rml += view.row->Cvar;
+		rml += "\"><div class=\"row-label\"></div>";
+		if (isToggleKind(view.row->Kind)) {
+			rml += "<button class=\"row-toggle\" data-action=\"toggle\" data-row=\"";
+		} else if (isSelectKind(view.row->Kind)) {
+			// Options transfer through the widget Add() at render time (the
+			// inline-option transfer is a next-Update delay - T12 pin); the
+			// skeleton only carries the empty select.
+			rml += "<select class=\"row-select\" data-row=\"";
+		} else {
+			rml += "<input class=\"row-input\" type=\"text\" data-row=\"";
+		}
+		rml += view.row->Cvar;
+		rml += "\"/>";
+		rml += "<div class=\"row-status\"></div></div>";
+	}
+	rows->SetInnerRML(rml);
+}
+
+void SettingsPage::renderRow(const services::settings::RowView& view, bool skipInput) {
+	Rml::ElementDocument* doc = document();
+	if (!doc)
+		return;
+	Rml::Element* rowNode = doc->GetElementById((std::string("row-") + view.row->Cvar).c_str());
+	if (!rowNode)
+		return;
+	if (Rml::Element* label = rowNode->QuerySelector(".row-label"))
+		label->SetInnerRML(framework::TextUtil::escapeRml(translated(view.row->LabelToken)));
+
+	const bool toggle = isToggleKind(view.row->Kind);
+	const bool select = isSelectKind(view.row->Kind);
+	Rml::Element* control = rowNode->QuerySelector(toggle ? ".row-toggle" : (select ? ".row-select" : ".row-input"));
+	if (!control)
+		return;
+	control->SetClass("row-missing", view.missing);
+
+	if (view.missing) {
+		// Unavailable: fail-closed presentation, no editable control path.
+		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(control))
+			form->SetDisabled(true);
+		return;
+	}
+	if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(control))
+		form->SetDisabled(false);
+
+	if (toggle) {
+		const bool on = view.state == services::settings::RowState::kInvalid
+			? (view.row->Kind == services::settings::SettingKind::kNegate
+				? view.engineValue < 0.0f
+				: isOn(view.engineValue))
+			: toggleDraftOn(view);
+		control->SetInnerRML(framework::TextUtil::escapeRml(
+			translated(on ? "#Settings_On" : "#Settings_Off")));
+	} else if (select) {
+		// Options transfer through the widget's Add() (inline RML children
+		// only become matchable on the next Update - the T12 pin). The set
+		// is rebuilt only when it changed, and the live engine value is
+		// always offerable (a downloaded model must stay selectable even if
+		// the scan missed it).
+		auto* selectControl = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(control);
+		std::vector<std::string> values;
+		std::vector<std::string> labels;
+		// Invalid enum text cannot be shown by a select; fall back to the
+		// engine value so the widget keeps an honest selection.
+		const std::string shownText = view.state == services::settings::RowState::kInvalid
+			? (view.row->Kind == services::settings::SettingKind::kEnum
+					? numberText(view.engineValue)
+					: view.engineText)
+			: view.draftText;
+		// Empty values are legal options (the "unset" placeholder): the
+		// widget auto-selects the first option when nothing matches, and a
+		// skipped placeholder would make it commit a real option instead.
+		const auto addOption = [&values, &labels](const std::string& value, const std::string& label) {
+			if (std::find(values.begin(), values.end(), value) != values.end())
+				return;
+			values.push_back(value);
+			labels.push_back(label);
+		};
+		if (view.row->Kind == services::settings::SettingKind::kEnum) {
+			// The current/staged value is always offerable FIRST: the
+			// localized scripts ship option sets that can omit the user's
+			// live value (live-caught: hpk_maxsize engine 4 vs the schinese
+			// options 0/2/16 - without the live entry the widget auto-picks
+			// the first listed option and commits it as a draft). The
+			// shipped options follow in table order.
+			addOption(shownText, shownText);
+			for (int i = 0; i < view.row->OptionCount; ++i)
+				addOption(numberText(view.row->Options[i].Value), translated(view.row->Options[i].Label));
+		} else {
+			// The live value rides FIRST (the widget auto-picks the first
+			// option when it is added, and the deferred change it fires
+			// then carries the live value = clean; the T12 resolution
+			// select relies on the same ordering). An empty live value
+			// gets an "unset" placeholder option so the widget still shows
+			// something honest. The fixed token table (cl_logocolor) and
+			// the scanned set (model / cl_logofile) follow.
+			if (shownText.empty())
+				addOption("", translated("#Settings_Unset"));
+			else
+				addOption(shownText, shownText);
+			for (int i = 0; i < view.row->OptionCount; ++i)
+				addOption(view.row->Options[i].Label, view.row->Options[i].Label);
+			if (view.options) {
+				for (const auto& option : *view.options)
+					addOption(option, option);
+			}
+		}
+		if (selectControl) {
+			const std::vector<std::string>* shown = shownSelectValues(view.row->Cvar);
+			if (!shown || *shown != values) {
+				selectControl->RemoveAll();
+				for (size_t i = 0; i < values.size(); ++i)
+					selectControl->Add(framework::TextUtil::escapeRml(labels[i]), values[i]);
+				setShownSelectValues(view.row->Cvar, values);
+			}
+			// Selection through SetSelection (a programmatic value attribute
+			// WOULD dispatch change - the T12 stack-overflow trap).
+			int index = -1;
+			for (size_t i = 0; i < values.size(); ++i) {
+				if (values[i] == shownText) {
+					index = static_cast<int>(i);
+					break;
+				}
+			}
+			if (index >= 0 && selectControl->GetSelection() != index)
+				selectControl->SetSelection(index);
+		}
+	} else if (!skipInput) {
+		// The committed text is the projection; a programmatic SetValue does
+		// not dispatch change (no feedback loop through the model). The origin
+		// field of a change commit is skipped entirely so its caret
+		// and IME state survive the status refresh.
+		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(control))
+			form->SetValue(view.draftText.c_str());
+	}
+
+	// Row status: domain facts plus the pending-state suffix.
+	std::string status;
+	switch (view.row->Kind) {
+	case services::settings::SettingKind::kFloat:
+		status = abc::Format("{0}-{1} {2} {3}", numberText(view.row->Min), numberText(view.row->Max),
+			translated("#Settings_Default"), numberText(view.row->DefaultValue));
+		break;
+	case services::settings::SettingKind::kEnum:
+		status = abc::Format("{0} {1} | {2} {3}", std::to_string(view.row->OptionCount),
+			translated("#Settings_Choices"), translated("#Settings_Default"),
+			numberText(view.row->DefaultValue));
+		break;
+	case services::settings::SettingKind::kText:
+		status = abc::Format("{0} {1}", std::to_string(static_cast<int>(services::settings::kNameMaxBytes)),
+			translated("#Settings_TextMax"));
+		break;
+	case services::settings::SettingKind::kNegate:
+		status = translated("#Settings_NegateDomain");
+		break;
+	case services::settings::SettingKind::kStringEnum:
+		status = translated("#Settings_EnumDomain");
+		break;
+	case services::settings::SettingKind::kCommandToggle:
+		status = translated("#Settings_CommandDomain");
+		break;
+	case services::settings::SettingKind::kBool:
+		status = translated("#Settings_BoolDomain");
+		break;
+	}
+	switch (view.state) {
+	case services::settings::RowState::kDirty:
+		status += " | " + translated("#Settings_Dirty");
+		break;
+	case services::settings::RowState::kInvalid:
+		// The typed text is user input: it rides the status string and the
+		// single escapeRml below makes it inert (no inner escaping here -
+		// that would double-encode).
+		status += " | " + translated("#Settings_Invalid") + " (" + view.draftText + ")";
+		break;
+	case services::settings::RowState::kConflict:
+		status += " | " + abc::Format("{0} {1}", translated("#Settings_Conflict"),
+			view.row->Kind == services::settings::SettingKind::kText
+				|| view.row->Kind == services::settings::SettingKind::kStringEnum
+			? view.engineText
+			: numberText(view.engineValue));
+		break;
+	case services::settings::RowState::kQueued:
+		status += " | " + translated("#Settings_Queued");
+		break;
+	case services::settings::RowState::kApplyFailed:
+		status += " | " + translated("#Settings_ApplyFailed");
+		break;
+	case services::settings::RowState::kClean:
+	case services::settings::RowState::kMissing:
+		break;
+	}
+	if (Rml::Element* statusNode = rowNode->QuerySelector(".row-status"))
+		statusNode->SetInnerRML(framework::TextUtil::escapeRml(status));
+}
+
+const std::vector<std::string>* SettingsPage::shownSelectValues(const std::string& cvar) const {
+	const auto itor = SelectValuesShown.find(cvar);
+	return itor == SelectValuesShown.end() ? nullptr : &itor->second;
+}
+
+void SettingsPage::setShownSelectValues(const std::string& cvar, std::vector<std::string> values) {
+	SelectValuesShown[cvar] = std::move(values);
+}
+
+void SettingsPage::setStatusSummary() {
+	Rml::ElementDocument* doc = document();
+	if (!doc || !Model)
+		return;
+	Rml::Element* status = doc->GetElementById("settings-status");
+	if (!status)
+		return;
+	std::string text;
+	if (!Model->isDirty()) {
+		text = translated("#Settings_StatusClean");
+	} else {
+		text = translated("#Settings_StatusDirty");
+		if (Model->hasConflicts())
+			text += " | " + translated("#Settings_StatusConflict");
+	}
+	status->SetInnerRML(framework::TextUtil::escapeRml(text));
+}
+}

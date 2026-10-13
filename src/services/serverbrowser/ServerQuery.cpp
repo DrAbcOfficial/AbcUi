@@ -24,6 +24,8 @@ uint64_t steadyNowMs() {
 
 void ServerQuery::resetListState() {
 	Entries.clear();
+	RowRefreshDeadlines.clear();
+	++Revision;
 	NoServersListed = false;
 	Deadline = 0;
 }
@@ -31,6 +33,10 @@ void ServerQuery::resetListState() {
 bool ServerQuery::begin(QueryKind kind, const FilterPair* filters, int filterCount) {
 	if (Closed)
 		return false;
+	std::vector<FilterPair> NextFilters;
+	if (filters && filterCount > 0)
+		NextFilters.assign(filters, filters + filterCount);
+	Filters = std::move(NextFilters);
 	// Replace any live request: cancel the work, then hand the handle back
 	// (Steam wants CancelQuery before ReleaseRequest for in-flight queries;
 	// the shipped browser uses the same order at 0x10007940/0x10007ad0).
@@ -52,7 +58,8 @@ bool ServerQuery::begin(QueryKind kind, const FilterPair* filters, int filterCou
 		Failure = QueryFailure::Unavailable;
 		return false;
 	}
-	const uint64_t handle = Provider->requestList(kind, filters, filterCount);
+	const uint64_t handle = Provider->requestList(kind, Filters.empty() ? nullptr : Filters.data(),
+		static_cast<int>(Filters.size()));
 	if (handle == 0) {
 		Status = QueryStatus::Failed;
 		Failure = QueryFailure::Rejected;
@@ -67,6 +74,13 @@ bool ServerQuery::begin(QueryKind kind, const FilterPair* filters, int filterCou
 void ServerQuery::pump() {
 	if (!Provider)
 		return;
+	const uint64_t Now = nowMs();
+	for (auto It = RowRefreshDeadlines.begin(); It != RowRefreshDeadlines.end();) {
+		if (Now >= It->second)
+			It = RowRefreshDeadlines.erase(It);
+		else
+			++It;
+	}
 	QueryEvent events[kMaxEventsPerPump];
 	const int count = Provider->pollEvents(events, kMaxEventsPerPump);
 	for (int i = 0; i < count; ++i) {
@@ -85,12 +99,13 @@ void ServerQuery::pump() {
 }
 
 void ServerQuery::cancel() {
-	if (Status != QueryStatus::Querying)
+	if (Status != QueryStatus::Querying && RowRefreshDeadlines.empty())
 		return;
 	if (Provider && Request != 0)
 		Provider->cancelQuery(Request);
 	Status = QueryStatus::Cancelled;  // partial snapshot stays readable
 	Deadline = 0;
+	RowRefreshDeadlines.clear();
 }
 
 void ServerQuery::release() {
@@ -98,7 +113,7 @@ void ServerQuery::release() {
 		return;
 	// Release implies cancel for a still-live query, but stays a separate
 	// step in the model (cancel keeps the handle; release hands it back).
-	if (Status == QueryStatus::Querying)
+	if (Status == QueryStatus::Querying || !RowRefreshDeadlines.empty())
 		cancel();
 	if (Provider)
 		Provider->releaseRequest(Request);
@@ -119,6 +134,12 @@ void ServerQuery::shutdown() {
 void ServerQuery::refreshAll() {
 	if (Closed || Request == 0 || !Provider)
 		return;
+	if (Status == QueryStatus::Cancelled || Status == QueryStatus::Failed) {
+		// Restart cancelled/failed work with a new provider tag. Reusing the
+		// old handle would also authorize its already queued late responses.
+		begin(Kind, Filters.empty() ? nullptr : Filters.data(), static_cast<int>(Filters.size()));
+		return;
+	}
 	// RefreshQuery is valid while the request handle is alive - the shipped
 	// Refresh button (serverbrowser.dll 0x10005230 -> slot 0x24) re-pings the
 	// whole list even after a completed refresh, and Steam posts another
@@ -129,6 +150,7 @@ void ServerQuery::refreshAll() {
 	if (Status != QueryStatus::Querying && Status != QueryStatus::Completed)
 		return;
 	++Generation;
+	RowRefreshDeadlines.clear();
 	Failure = QueryFailure::None;
 	Deadline = nowMs() + TimeoutMs;
 	Status = QueryStatus::Querying;
@@ -144,6 +166,7 @@ bool ServerQuery::refreshServer(int index) {
 		return false;
 	if (index < 0 || index >= static_cast<int>(Entries.size()))
 		return false;
+	RowRefreshDeadlines[index] = nowMs() + TimeoutMs;
 	Provider->refreshServer(Request, index);
 	return true;
 }
@@ -214,10 +237,17 @@ void ServerQuery::apply(const QueryEvent& event) {
 void ServerQuery::applyList(const QueryEvent& event) {
 	// Stale = another request's handle (an old generation that must never
 	// overwrite the live one) or a state that moved past querying.
-	if (event.request != Request || Request == 0 || Status != QueryStatus::Querying) {
+	const bool RowResponse = event.type == QueryEvent::Type::ServerResponded
+		|| event.type == QueryEvent::Type::ServerFailedToRespond;
+	const bool AuthorizedRow = Status == QueryStatus::Completed && RowResponse
+		&& RowRefreshDeadlines.count(event.index) != 0;
+	if (event.request != Request || Request == 0
+		|| (Status != QueryStatus::Querying && !AuthorizedRow)) {
 		++StaleEvents;
 		return;
 	}
+	if (RowResponse)
+		RowRefreshDeadlines.erase(event.index);
 	switch (event.type) {
 	case QueryEvent::Type::ServerResponded: {
 		if (event.index < 0 || event.index >= kMaxServers) {
@@ -229,6 +259,7 @@ void ServerQuery::applyList(const QueryEvent& event) {
 		if (Provider->serverDetails(Request, event.index, details)) {
 			details.responded = true;
 			Entries[event.index] = std::move(details);
+			++Revision;
 		}
 		// Details unavailable: the slot stays a placeholder; a later
 		// duplicate response (or the final fill) can still complete it.
@@ -286,11 +317,14 @@ void ServerQuery::fillMissingDetails() {
 		if (Provider->serverDetails(Request, i, details))
 			Entries[i] = std::move(details);
 	}
+	++Revision;
 }
 
 void ServerQuery::ensureSlot(int index) {
-	if (index >= static_cast<int>(Entries.size()))
+	if (index >= static_cast<int>(Entries.size())) {
 		Entries.resize(index + 1);
+		++Revision;
+	}
 }
 
 void ServerQuery::fail(QueryFailure failure) {

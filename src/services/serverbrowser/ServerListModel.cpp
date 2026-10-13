@@ -93,10 +93,12 @@ bool ServerListModel::sync(const ServerQuery& query) {
 	const int count = query.count();
 	const bool filterMoved = !(Filter == LastFilter);
 	const bool sortMoved = SortColumn != LastSortColumn || SortAscending != LastSortAscending;
-	if (HasSnapshot && generation == LastGeneration && count == LastCount && !filterMoved
+	if (HasSnapshot && generation == LastGeneration && query.revision() == LastRevision
+		&& count == LastCount && !filterMoved
 		&& !sortMoved)
 		return false;  // same snapshot, same view: nothing to do
 	LastGeneration = generation;
+	LastRevision = query.revision();
 	LastCount = count;
 	LastFilter = Filter;
 	LastSortColumn = SortColumn;

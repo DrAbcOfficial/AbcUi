@@ -1,4 +1,5 @@
 #pragma once
+// Navigation value types, colocated with the controller and typed action adapter.
 
 // gameui::menu value types (T04) - the state the future menu renderer reads
 // and the value-type events MenuController consumes. Deliberately free of

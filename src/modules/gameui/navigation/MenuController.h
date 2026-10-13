@@ -113,7 +113,7 @@
 
 #include "MenuState.h"
 
-#include "../../services/GameUiBridge.h"
+#include "services/GameUiBridge.h"
 
 namespace gameui {
 namespace menu {

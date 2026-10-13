@@ -77,7 +77,8 @@ public:
 	bool sortAscending() const { return SortAscending; }
 
 	// Rebuilds the view from the query's CURRENT snapshot. Cheap no-op while
-	// neither snapshot identity (generation/count) nor filter/sort moved.
+	// neither snapshot identity/content (generation/revision/count) nor
+	// filter/sort moved.
 	// Returns true when the view contents changed. Selection follows its key:
 	// still present -> same server selected; gone -> cleared.
 	bool sync(const ServerQuery& query);
@@ -125,6 +126,7 @@ private:
 
 	// Sync gates (cheap "nothing moved" exit).
 	uint32_t LastGeneration = 0;
+	uint64_t LastRevision = 0;
 	int LastCount = -1;
 	ServerFilter LastFilter;
 	ServerSort LastSortColumn = ServerSort::Name;

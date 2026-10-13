@@ -1,7 +1,7 @@
 // gameui::menu::MenuController implementation - see MenuController.h for the
 // frozen transition table this file realizes. No engine/VGUI/Rml dependency:
 // the whole translation unit links into offline tests unchanged.
-#include "MenuController.h"
+#include "MenuController.h" // navigation domain; no platform/UI dependency
 
 namespace gameui {
 namespace menu {

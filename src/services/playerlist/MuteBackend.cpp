@@ -15,6 +15,7 @@
 // a bool-ish value (the shipped dialog tests the read's low byte; the two
 // toggles are called for effect). The proxy below matches that shape.
 #include "MuteBackend.h"
+#include "ClientMuteApi.h"
 
 #include <abc/Console.h>
 #include <metahook.h>
@@ -32,36 +33,15 @@ namespace {
 constexpr const char* kClientExportsInterface = "GameClientExports001";
 
 using CreateInterfaceFn = void* (*)(const char* name, int* returnCode);
-using MuteQueryFn = bool (*)(void* self, int index);
-using MuteSetFn = void (*)(void* self, int index);
-
 // One resolved probe. `object` null = unavailable.
 struct Probe {
 	bool Done = false;
-	void* Object = nullptr;
-	MuteQueryFn Query = nullptr;
-	MuteSetFn SetMuted = nullptr;
-	MuteSetFn SetUnmuted = nullptr;
+	ClientMuteApi Api;
 };
 
 Probe& probe() {
 	static Probe state;
 	return state;
-}
-
-// Reads one function pointer out of the object's vtable. The shipped code
-// dereferences the vtable through the object's head; the same here. Returns
-// null for an out-of-range or unmapped slot, which keeps every call below
-// fail-closed.
-template <typename Fn>
-Fn slot(void* object, std::size_t index) {
-	if (!object)
-		return nullptr;
-	void** vtable = *reinterpret_cast<void***>(object);
-	if (!vtable)
-		return nullptr;
-	void* entry = vtable[index];
-	return reinterpret_cast<Fn>(entry);
 }
 
 void resolve() {
@@ -109,17 +89,10 @@ void resolve() {
 	// shipped +4 call returns the game-name string), and the mute methods sit
 	// at slots 2/3/4 = +8/+0xc/+0x10 - exactly the call sites in
 	// CPlayerListDialog (FUN_10015d70). Indices are the shipped +N/4 values.
-	MuteQueryFn query = slot<MuteQueryFn>(object, 2);
-	MuteSetFn setMuted = slot<MuteSetFn>(object, 3);
-	MuteSetFn setUnmuted = slot<MuteSetFn>(object, 4);
-	if (!query || !setMuted || !setUnmuted) {
+	if (!state.Api.attach(object)) {
 		abc::ConsoleWarn("[AbcUi] player mute backend unavailable (incomplete vtable)\n");
 		return;
 	}
-	state.Object = object;
-	state.Query = query;
-	state.SetMuted = setMuted;
-	state.SetUnmuted = setUnmuted;
 	abc::ConsolePrint("[AbcUi] player mute backend resolved (%s)\n", kClientExportsInterface);
 }
 
@@ -127,28 +100,22 @@ class Backend final : public IMuteBackend {
 public:
 	bool available() const override {
 		const_cast<Backend*>(this)->ensure();
-		return probe().Object != nullptr;
+		return probe().Api.available();
 	}
 	bool isMuted(int index) const override {
 		const_cast<Backend*>(this)->ensure();
 		const Probe& state = probe();
-		return state.Query && state.Object && state.Query(state.Object, index);
+		return state.Api.isMuted(index);
 	}
 	bool mute(int index) override {
 		ensure();
 		const Probe& state = probe();
-		if (!state.SetMuted || !state.Object)
-			return false;
-		state.SetMuted(state.Object, index);
-		return true;
+		return state.Api.mute(index);
 	}
 	bool unmute(int index) override {
 		ensure();
 		const Probe& state = probe();
-		if (!state.SetUnmuted || !state.Object)
-			return false;
-		state.SetUnmuted(state.Object, index);
-		return true;
+		return state.Api.unmute(index);
 	}
 
 private:

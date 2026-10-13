@@ -164,8 +164,8 @@ void installPaintGate() {
 
 void uninstallPaintGate() {
 	// The bridge disarms only here: the strict takeover keeps suppressing
-	// until the original UI can no longer paint (GameUI::Shutdown
-	// notification, vgui2 still alive - hook-contract §9). Everything below
+	// until the original UI can no longer paint (ClientVGUI::Shutdown is
+	// the primary seam; GameUI::Shutdown/teardown are fallbacks, §9). Everything below
 	// runs on the main thread inside that callback.
 	services::nativeUiBridge().disarm();
 	if (!Installed)

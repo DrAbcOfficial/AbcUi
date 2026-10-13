@@ -174,9 +174,14 @@ bool VideoModeModel::apply() {
 	if (!ok) {
 		// Roll back the staged cvar writes so the next launch cannot apply
 		// half a switch; the record only clears once that write-back landed.
+		Generation = record.Generation;
+		beginAwaiting(record);
+		Staged = StagedMode{};
 		if (writeOldValues(record, changedResolution, changedWindowed)) {
+			RevertCommandsIssued = true;
 			record.Pending = 0;
-			persist(record);
+			if (persist(record))
+				State_ = State::kIdle;
 		}
 		return false;
 	}
@@ -192,6 +197,8 @@ void VideoModeModel::beginAwaiting(const VideoPendingRecord& record) {
 	State_ = State::kAwaitingConfirm;
 	DeadlineArmed = false;
 	DeadlineSeconds = 0.0;
+	NextRevertAttemptSeconds = 0.0;
+	RevertCommandsIssued = false;
 }
 
 bool VideoModeModel::persist(const VideoPendingRecord& record) {
@@ -228,14 +235,7 @@ VideoModeModel::RecoveryResult VideoModeModel::resolveRecovery() {
 	const bool isNew = Actual == recordNew(record);
 	const bool isOld = Actual == recordOld(record);
 
-	if (isNew) {
-		if (age > kStaleRecordMs) {
-			// Lived with the new mode past the cap: treat as confirmed.
-			record.Pending = 0;
-			Generation = record.Generation;
-			persist(record);
-			return RecoveryResult::kAccepted;
-		}
+	if (isNew && age <= kStaleRecordMs) {
 		Generation = record.Generation;
 		beginAwaiting(record);
 		return RecoveryResult::kPending;
@@ -252,9 +252,16 @@ VideoModeModel::RecoveryResult VideoModeModel::resolveRecovery() {
 		if (!Seams_.clientCmd(kRestartCommand))
 			return RecoveryResult::kDeferred;
 	}
-	record.Pending = 0;
 	Generation = record.Generation;
-	persist(record);
+	const VideoPendingRecord Pending = record;
+	record.Pending = 0;
+	if (!persist(record)) {
+		beginAwaiting(Pending);
+		RevertCommandsIssued = true;
+		return RecoveryResult::kDeferred;
+	}
+	State_ = State::kIdle;
+	DeadlineArmed = false;
 	return RecoveryResult::kAutoReverted;
 }
 
@@ -292,8 +299,10 @@ int VideoModeModel::remainingSeconds() const {
 }
 
 bool VideoModeModel::confirm() {
-	if (State_ != State::kAwaitingConfirm || confirmKind() != ConfirmKind::kApplied)
+	if (State_ != State::kAwaitingConfirm || RevertCommandsIssued || confirmKind() != ConfirmKind::kApplied)
 		return false; // keep is only valid on the applied-new branch
+	if (DeadlineArmed && Seams_.monotonicSeconds() >= DeadlineSeconds)
+		return false; // a click before the next tick cannot confirm an expired mode
 	VideoPendingRecord record = Record;
 	record.Pending = 0;
 	if (!persist(record))
@@ -336,19 +345,18 @@ bool VideoModeModel::revert() {
 		return false; // duplicate / late revert is inert
 	// Clear-before-restart would lose the record if the restart failed; the
 	// crash-convergent order is writes first, record clear only on success.
-	const std::vector<std::string> commands = pendingRevertCommands();
-	bool ok = true;
-	for (const auto& command : commands) {
-		if (!Seams_.clientCmd(command.c_str())) {
-			ok = false;
-			break;
+	if (!RevertCommandsIssued) {
+		const std::vector<std::string> commands = pendingRevertCommands();
+		for (const auto& command : commands) {
+			if (!Seams_.clientCmd(command.c_str()))
+				return false; // pending on disk; retry or next-launch recovery
 		}
+		RevertCommandsIssued = true;
 	}
-	if (!ok)
-		return false; // record stays pending: retry or next-launch recovery
 	VideoPendingRecord record = Record;
 	record.Pending = 0;
-	persist(record);
+	if (!persist(record))
+		return false; // retry persistence, not the already queued restart
 	State_ = State::kIdle;
 	DeadlineArmed = false;
 	return true;

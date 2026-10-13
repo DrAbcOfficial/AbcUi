@@ -2,7 +2,7 @@
 
 // services::console::ConsoleBackend - the user submission channel of the new
 // console (T15). Strictly separated from the output direction: this object
-// executes ONE engine command per submit and keeps the bounded, redacted
+// submits ONE engine command line per call and keeps the bounded, redacted
 // input history; it never touches the output cache (ConsoleBuffer).
 //
 // Command semantics (evidence):
@@ -18,12 +18,11 @@
 //     stream like any other command.
 //   - Validation is fail-closed: empty (after trimming) is refused, embedded
 //     CR/LF is refused (a submission is exactly one command line - the
-//     separators must never let user text inject a second command), and the
-//     byte length is bounded. The value travels as ONE command payload.
-//   - History is bounded and classified: a command whose first token is a
-//     password-shaped name (contains "password", case-insensitive - covers
-//     password/sv_password/rcon_password/...) executes but is NEVER stored,
-//     mirroring the sh_pw discipline of "user text never lands in logs".
+//     multiline paste requires page confirmation), and byte length is bounded.
+//     User-authored semicolon command chains remain supported.
+//   - History conservatively omits any line containing "password" (case
+//     insensitive), including later commands and quoted alias bodies. These
+//     lines still execute; this policy makes no claim to redact engine output.
 //   - Completion enumerates the REAL runtime catalogs read-only through the
 //     injected seams (cvars via GetFirstCvarPtr chain, commands via the
 //     GetFirstCmdFunctionHandle cursor). Names are copied immediately - no

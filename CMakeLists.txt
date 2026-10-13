@@ -81,18 +81,50 @@ add_library(AbcUi MODULE
     src/data/WeaponResource.cpp
     src/modules/UiModuleRegistry.cpp
     src/modules/gameui/GameUiModule.cpp
-    src/modules/gameui/MenuController.cpp
+    src/modules/gameui/lifecycle/Frame.cpp
+    src/modules/gameui/lifecycle/BackgroundWork.cpp
+    src/modules/gameui/lifecycle/PresentationFrame.cpp
+    src/modules/gameui/lifecycle/Documents.cpp
+    src/modules/gameui/navigation/MenuPresentation.cpp
+    src/modules/gameui/navigation/PageProjection.cpp
+    src/modules/gameui/navigation/Actions.cpp
+    src/modules/gameui/navigation/MenuAction.cpp
+    src/modules/gameui/input/MenuInput.cpp
+    src/modules/gameui/settings/SettingsFlow.cpp
+    src/modules/gameui/settings/VideoFlow.cpp
+    src/modules/gameui/serverbrowser/ServerBrowserFlow.cpp
+    src/modules/gameui/creategame/CreateGameFlow.cpp
+    src/modules/gameui/playerlist/PlayerListFlow.cpp
+    src/modules/gameui/connection/LoadingFlow.cpp
+    src/modules/gameui/connection/ConnectionActions.cpp
+    src/modules/gameui/debug/DebugCommands.cpp
+    src/modules/gameui/debug/SettingsCommands.cpp
+    src/modules/gameui/debug/VideoCommands.cpp
+    src/modules/gameui/debug/LoadingCommands.cpp
+    src/modules/gameui/debug/ConsoleCommands.cpp
+    src/modules/gameui/debug/NavigationCommands.cpp
+    src/modules/gameui/debug/ServerCommands.cpp
+    src/modules/gameui/debug/CreategameCommands.cpp
+    src/modules/gameui/debug/PlayerlistCommands.cpp
+    src/modules/gameui/engine/MenuBindings.cpp
+    src/modules/gameui/engine/SettingsBindings.cpp
+    src/modules/gameui/engine/VideoBindings.cpp
+    src/modules/gameui/settings/SettingsResources.cpp
+    src/modules/gameui/navigation/MenuController.cpp
     src/services/GameUiBridge.cpp
+    src/services/steam/RuntimeAccess.cpp
     src/services/EngineUiBackend.cpp
     src/services/console/ConsoleBuffer.cpp
     src/services/console/ConsoleBackend.cpp
     src/services/serverbrowser/ServerQuery.cpp
+    src/services/serverbrowser/ServerBrowserSession.cpp
     src/services/serverbrowser/ServerQuerySteam.cpp
     src/services/serverbrowser/ServerListModel.cpp
     src/services/serverbrowser/ServerFavorites.cpp
     src/services/creategame/CreateGameModel.cpp
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
+    src/services/playerlist/ClientMuteApi.cpp
     src/services/loading/LoadingModel.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp
@@ -123,7 +155,13 @@ add_library(AbcUi MODULE
     src/panels/serverbrowser/ServerBrowserPage.cpp
     src/panels/creategame/CreateGamePage.cpp
     src/panels/playerlist/PlayerListPage.cpp
+    src/panels/settings/SettingsUi.cpp
+    src/panels/settings/sections/VideoSection.cpp
+    src/panels/settings/sections/VoiceSection.cpp
     src/panels/settings/SettingsPage.cpp
+    src/panels/settings/SettingsEvents.cpp
+    src/panels/settings/sections/CvarRows.cpp
+    src/panels/settings/sections/BindingRows.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/weaponchoose/WeaponChoosePanel.cpp

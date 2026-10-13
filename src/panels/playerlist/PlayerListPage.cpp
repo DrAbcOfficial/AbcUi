@@ -67,7 +67,7 @@ void PlayerListPage::render() {
 	Rml::Element* list = doc->GetElementById("pl-list");
 	if (!list)
 		return;
-	list->SetInnerRML("");
+	std::string RowsRml;
 
 	const auto& roster = Model->roster();
 	const auto& selection = Model->selection();
@@ -114,13 +114,14 @@ void PlayerListPage::render() {
 			rml += "</span>";
 		}
 		rml += "</div>";
-		list->SetInnerRML(list->GetInnerRML() + rml);
+		RowsRml += rml;
 		++rows;
 	}
 
 	if (rows == 0)
-		list->SetInnerRML("<p id=\"pl-empty\">" + framework::TextUtil::escapeRml(
-			resolve("#PL_Empty")) + "</p>");
+		RowsRml = "<p id=\"pl-empty\">" + framework::TextUtil::escapeRml(
+			resolve("#PL_Empty")) + "</p>";
+	list->SetInnerRML(RowsRml);
 
 	// Mute control: label follows the selected player's ACTUAL backend state
 	// (a read-through, never an optimistic flip); enabled only when the model
@@ -172,21 +173,22 @@ void PlayerListPage::handleClick(Rml::Event& event) {
 	const Rml::String action = entry->GetAttribute<Rml::String>("data-action", "");
 	if (action.empty())
 		return;
-	// Fixed intents only; the row payload travels in the page's own data
-	// attributes (index + steamid + name), never as free text in the action.
-	std::string intent = action.c_str();
+	// DOM attributes are decoded once here. Identity crosses the module
+	// boundary as a value, not a colon-delimited/truncated command string.
 	if (action == kActionSelect) {
-		const int index = entry->GetAttribute<int>("data-index", 0);
-		const unsigned long long steamId =
+		services::playerlist::RosterEntry Row;
+		Row.index = entry->GetAttribute<int>("data-index", 0);
+		Row.steamId64 =
 			entry->GetAttribute<unsigned long long>("data-steamid", 0);
-		char payload[320];
-		_snprintf_s(payload, sizeof(payload), _TRUNCATE, "pl-row:%d:%llu:%s", index, steamId,
-			entry->GetAttribute<Rml::String>("data-name", "").c_str());
-		intent = payload;
+		Row.name = entry->GetAttribute<Rml::String>("data-name", "");
+		const SelectionSink Handler = SelectionHandler;
+		if (Handler)
+			Handler(services::playerlist::SelectionKey::forEntry(Row));
+		return;
 	}
 	const ActionSink Action = Sink;
 	if (Action)
-		Action(intent.c_str());
+		Action(action.c_str());
 }
 
 void PlayerListPage::PageListener::ProcessEvent(Rml::Event& event) {

@@ -39,15 +39,13 @@ bool prefixMatches(const std::string& prefix, const std::string& name) {
 }
 
 bool ConsoleBackend::sensitiveCommand(const std::string& command) {
-	// First token only: the command name. Any token containing "password"
-	// (password, sv_password, rcon_password, PASSWORD, ...) marks the line
-	// secret-bearing; its arguments are assumed to be the secret.
-	std::size_t end = 0;
-	while (end < command.size() && !isSpace(command[end]))
-		++end;
-	std::string token = command.substr(0, end);
-	std::transform(token.begin(), token.end(), token.begin(), lowerAscii);
-	return token.find("password") != std::string::npos;
+	// Conservatively omit sensitive identifiers anywhere in chained commands,
+	// quoted alias bodies or arguments. This is a history policy, not a
+	// restriction on execution; no partial command parser can leak a later
+	// password command by inspecting only the first verb.
+	std::string Folded = command;
+	std::transform(Folded.begin(), Folded.end(), Folded.begin(), lowerAscii);
+	return Folded.find("password") != std::string::npos;
 }
 
 ConsoleBackend::SubmitResult ConsoleBackend::submit(const char* text) {

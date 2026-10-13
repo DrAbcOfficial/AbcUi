@@ -28,6 +28,7 @@
 // display property lands at the next layout frame - T09 focus-guard fact).
 
 #include "../../framework/InteractiveDocument.h"
+#include "sections/VideoSection.h"
 
 #include <RmlUi/Core/EventListener.h>
 
@@ -144,7 +145,7 @@ private:
 	// The resolution options last projected into the <select> ("1920x1080"
 	// value strings). The mode list is engine-stable per session; the select
 	// is rebuilt only when the set actually changed (no per-render churn).
-	std::vector<std::pair<int, int>> VideoOptionsShown;
+	sections::VideoSection VideoView;
 	std::map<std::string, std::vector<std::string>> SelectValuesShown;
 	// The mic-volume field of the change commit currently in flight (its
 	// caret/IME state must survive the status refresh, like the row inputs).

@@ -162,8 +162,8 @@ public:
 	//   kAutoReverted - the record was unresolved (not applied, unknown or
 	//                   too stale) and the old values were written back,
 	//                   restarting only when the actual mode required it;
-	//   kAccepted     - the recorded new mode IS the actual mode and the
-	//                   record outlived the cap: treated as confirmed;
+	//   kAccepted     - reserved legacy enum value, no longer emitted:
+	//                   elapsed wall time never implies user confirmation;
 	//   kNoRecord     - nothing pending;
 	//   kDeferred     - the actual mode cannot be queried right now
 	//                   (missing extension): the record is KEPT for a later
@@ -240,6 +240,7 @@ private:
 	VideoPendingRecord Record;
 	int ConfirmWindowMs = 0; // 0 = kConfirmWindowMs (production)
 	bool DeadlineArmed = false;
+	bool RevertCommandsIssued = false;
 	double DeadlineSeconds = 0.0;
 	// Expired-window revert retry throttle (a refused write is retried once
 	// per second, never once per frame).

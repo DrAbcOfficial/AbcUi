@@ -16,7 +16,7 @@
 
 #include "SteamApiBackend.h"
 
-#include <Windows.h>
+#include "../services/steam/RuntimeAccess.h"
 
 #include <steam/isteamuser.h>
 #include <steam/isteamfriends.h>
@@ -31,15 +31,6 @@ namespace steamapi {
 
 namespace {
 
-using FnGetHSteamUser = int (*)();
-using FnFindOrCreateUserInterface = void* (*)(int hSteamUser, const char* version);
-
-struct BoundExports {
-	FnGetHSteamUser getHSteamUser = nullptr;
-	FnFindOrCreateUserInterface findOrCreateUserInterface = nullptr;
-};
-
-BoundExports Exports;
 ISteamUser* User = nullptr;
 ISteamFriends* Friends = nullptr;
 ISteamUtils* Utils = nullptr;
@@ -54,20 +45,9 @@ struct AvatarCacheEntry {
 std::unordered_map<SteamId64, AvatarCacheEntry> AvatarCache;
 
 bool connectInterfaces() {
-	if (!Exports.getHSteamUser || !Exports.findOrCreateUserInterface)
-		return false;
-	// SteamAPI_Init has not run yet when the user handle is 0; treat as
-	// unavailable instead of crashing on the first vtable call. The facade's
-	// lazy re-probe retries once the game has initialized Steam.
-	const int hSteamUser = Exports.getHSteamUser();
-	if (!hSteamUser)
-		return false;
-	User = static_cast<ISteamUser*>(
-		Exports.findOrCreateUserInterface(hSteamUser, STEAMUSER_INTERFACE_VERSION));
-	Friends = static_cast<ISteamFriends*>(
-		Exports.findOrCreateUserInterface(hSteamUser, STEAMFRIENDS_INTERFACE_VERSION));
-	Utils = static_cast<ISteamUtils*>(
-		Exports.findOrCreateUserInterface(hSteamUser, STEAMUTILS_INTERFACE_VERSION));
+	User = static_cast<ISteamUser*>(services::steam::findUserInterface(STEAMUSER_INTERFACE_VERSION));
+	Friends = static_cast<ISteamFriends*>(services::steam::findUserInterface(STEAMFRIENDS_INTERFACE_VERSION));
+	Utils = static_cast<ISteamUtils*>(services::steam::findUserInterface(STEAMUTILS_INTERFACE_VERSION));
 	return User && Friends && Utils;
 }
 
@@ -76,17 +56,11 @@ bool connectInterfaces() {
 SteamApiBackend* nativeBackend() {
 	static struct Backend final : SteamApiBackend {
 		bool connect() override {
-			const HMODULE module = GetModuleHandleA("steam_api.dll");
-			if (!module)
-				return false;
-			Exports.getHSteamUser = reinterpret_cast<FnGetHSteamUser>(
-				GetProcAddress(module, "SteamAPI_GetHSteamUser"));
-			Exports.findOrCreateUserInterface = reinterpret_cast<FnFindOrCreateUserInterface>(
-				GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
+
 			return connectInterfaces();
 		}
 
-		void disconnect() override { AvatarCache.clear(); Exports = {}; User=nullptr; Friends=nullptr; Utils=nullptr; }
+		void disconnect() override { AvatarCache.clear(); User=nullptr; Friends=nullptr; Utils=nullptr; }
 
 		steamapi::Backend kind() override { return steamapi::Backend::NativeApi; }
 

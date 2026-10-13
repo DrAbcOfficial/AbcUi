@@ -34,7 +34,7 @@
 #include "ServerQuery.h"
 #include "ServerFavorites.h"
 
-#include <Windows.h>
+#include "../steam/RuntimeAccess.h"
 
 #include <steam/isteammatchmaking.h>
 #include <steam/isteamutils.h>
@@ -53,17 +53,11 @@ namespace {
 
 constexpr int kMaxQueuedEvents = 4096;
 
-using FnGetHSteamUser = int (*)();
-using FnFindOrCreateUserInterface = void* (*)(int hSteamUser, const char* version);
-
 struct Bindings {
-	FnGetHSteamUser getHSteamUser = nullptr;
-	FnFindOrCreateUserInterface findOrCreateUserInterface = nullptr;
 	ISteamMatchmakingServers* servers = nullptr;
 	ISteamMatchmaking* matchmaking = nullptr;  // "SteamMatchMaking009" (favorites)
 	ISteamUtils* utils = nullptr;
 	uint32_t appId = 0;
-	bool moduleProbed = false;
 };
 
 Bindings& bindings() {
@@ -117,44 +111,13 @@ EventQueue& queue() {
 // Init/Shutdown/RunCallbacks - the engine owns those (T17a evidence).
 bool ensureBindings(bool requireServers) {
 	Bindings& b = bindings();
-	if (!b.moduleProbed) {
-		b.moduleProbed = true;
-		const HMODULE module = GetModuleHandleA("steam_api.dll");
-		if (module) {
-			b.getHSteamUser = reinterpret_cast<FnGetHSteamUser>(
-				GetProcAddress(module, "SteamAPI_GetHSteamUser"));
-			b.findOrCreateUserInterface = reinterpret_cast<FnFindOrCreateUserInterface>(
-				GetProcAddress(module, "SteamInternal_FindOrCreateUserInterface"));
-		}
-	}
-	if (!b.getHSteamUser || !b.findOrCreateUserInterface)
-		return false;
-	const int user = b.getHSteamUser();
-	if (!user) {
-		// SteamAPI_Init has not run yet: report unavailable and re-probe on
-		// the next call (the engine's lazy path, same as avatars).
-		b.servers = nullptr;
-		b.utils = nullptr;
-		b.matchmaking = nullptr;
-		return false;
-	}
-	if (!b.servers)
-		b.servers = static_cast<ISteamMatchmakingServers*>(b.findOrCreateUserInterface(
-			user, STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION));
-	if (!b.matchmaking) {
-		// The shipped browser's favorites backend (0x1000c090 stub binds
-		// exactly this version string).
-		b.matchmaking = static_cast<ISteamMatchmaking*>(
-			b.findOrCreateUserInterface(user, STEAMMATCHMAKING_INTERFACE_VERSION));
-	}
-	if (!b.utils) {
-		// hw.dll/serverbrowser.dll bind "SteamUtils009" (present in the
-		// installed runtime); the header alias is the second attempt.
-		b.utils = static_cast<ISteamUtils*>(b.findOrCreateUserInterface(user, "SteamUtils009"));
-		if (!b.utils)
-			b.utils = static_cast<ISteamUtils*>(
-				b.findOrCreateUserInterface(user, STEAMUTILS_INTERFACE_VERSION));
-	}
+	b.servers = static_cast<ISteamMatchmakingServers*>(services::steam::findUserInterface(
+		STEAMMATCHMAKINGSERVERS_INTERFACE_VERSION));
+	b.matchmaking = static_cast<ISteamMatchmaking*>(services::steam::findUserInterface(
+		STEAMMATCHMAKING_INTERFACE_VERSION));
+	b.utils = static_cast<ISteamUtils*>(services::steam::findUserInterface("SteamUtils009"));
+	if (!b.utils)
+		b.utils = static_cast<ISteamUtils*>(services::steam::findUserInterface(STEAMUTILS_INTERFACE_VERSION));
 	if (!b.appId && b.utils)
 		b.appId = b.utils->GetAppID();
 	if (!b.appId)
