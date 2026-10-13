@@ -293,6 +293,23 @@ void InputBridge::update(Rml::Context* context) {
 	AltWasDown = altDown;
 }
 
+bool InputBridge::pointerPosition(int& x, int& y) {
+	if (!GateWasOpen || LastMouseX < 0 || LastMouseY < 0)
+		return false;
+	x = LastMouseX;
+	y = LastMouseY;
+	return true;
+}
+
+void InputBridge::resetPointerState() {
+	LastMouseX = LastMouseY = -1;
+	GateWasOpen = false;
+	for (int i = 0; i < 3; ++i) {
+		DeliveredDown[i] = false;
+		AsyncWasDown[i] = false;
+	}
+}
+
 void InputBridge::updateMouse(Rml::Context* context) {
 	// The VGUI cursor visibility doubles as the "GameUI owns the mouse" gate;
 	// UI ownership (router exclusivity) opens it regardless - the scoreboard

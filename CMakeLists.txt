@@ -49,6 +49,7 @@ add_library(AbcUi MODULE
     src/hooks.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/AbcSystemInterface.cpp
+    src/rmlui/cursor/CursorOverlay.cpp
     src/rmlui/InputBridge.cpp
     src/rmlui/KeyMap.cpp
     src/rmlui/NativeEntryCallbacks.cpp
