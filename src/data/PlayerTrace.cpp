@@ -21,10 +21,15 @@ pmtrace_t FootTrace = {};
 
 } // namespace
 
-void update() {
+void update(bool levelActive) {
 	// Old CPlayerTrace::Update gate: only while the HUD is up (the old
 	// Viewport-visible check; here the equivalent hide-all token).
 	if (hudstate::isHudHidden(hudstate::kHideAll))
+		return;
+	// No live level, no world to trace into (see the header contract): a
+	// load in progress has a replaced world, whose clipnode/plane data the
+	// engine's trace would walk as freed memory.
+	if (!levelActive)
 		return;
 	const cl_entity_t* local = gEngfuncs.GetLocalPlayer();
 	if (!local)

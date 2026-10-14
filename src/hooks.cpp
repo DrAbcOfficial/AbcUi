@@ -27,6 +27,7 @@
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 #include "rmlui/SteamAPI.h"
+#include "services/GameUiBridge.h"
 
 namespace hooks {
 
@@ -114,8 +115,10 @@ static void H_HUD_Frame(double frametime) {
 	gExportfuncs.HUD_Frame(frametime);
 	// Old exportfuncs HUD_Frame tail: the player traces refresh once per
 	// frame; render-phase consumers (crosshair third-person centre) read the
-	// cache later in the frame.
-	playertrace::update();
+	// cache later in the frame. The level gate is the trace's world
+	// precondition (see PlayerTrace.h): tracing while a map change replaces
+	// the world faults inside the engine's own trace.
+	playertrace::update(services::nativeUiBridge().hasLevel());
 	rmlui::onFrame(frametime);
 }
 

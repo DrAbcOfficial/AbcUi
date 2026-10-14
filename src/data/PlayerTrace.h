@@ -26,8 +26,13 @@ enum class TraceType {
 };
 
 // HUD_Frame pump (old GetPlayerTrace()->Update()): no-op without a local
-// player or while the hide-all token is up.
-void update();
+// player, while the hide-all token is up, or while the engine has no live
+// level. `levelActive` is the engine-confirmed level fact the GameUI
+// lifecycle feeds (the spine passes nativeUiBridge().hasLevel()): every
+// trace below walks the world's BSP, and while a map change replaces that
+// world the engine's own trace walks freed clipnode/plane data - measured
+// as an access violation inside EV_PlayerTrace during a map change.
+void update(bool levelActive);
 
 // Cached trace; never null (an update that has not run yet yields the
 // zero-initialised trace, exactly like the old module before its first
