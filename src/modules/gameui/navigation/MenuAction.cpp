@@ -18,6 +18,7 @@ constexpr Entry kActions[] = {
 	{"pl-mute", {ActionKind::kPlMute, ActionDomain::kPlayerList}},
 	{"pl-close", {ActionKind::kPlClose, ActionDomain::kPlayerList}},
 	{"console", {ActionKind::kConsole, ActionDomain::kNavigation}},
+	{"console-close", {ActionKind::kConsoleClose, ActionDomain::kNavigation}},
 	{"directconnect", {ActionKind::kDirectConnect, ActionDomain::kConnection}},
 	{"loading-cancel", {ActionKind::kLoadingCancel, ActionDomain::kConnection}},
 	{"error-retry", {ActionKind::kErrorRetry, ActionDomain::kConnection}},

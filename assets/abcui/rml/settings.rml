@@ -58,9 +58,9 @@
 	</div>
 	<div id="settings-actions">
 		<button id="settings-apply" data-action="apply" data-label="#Settings_Apply" autofocus="autofocus">#Settings_Apply</button>
+		<button id="settings-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
 		<button id="settings-reset" data-action="reset-defaults" data-label="#Settings_ResetDefaults">#Settings_ResetDefaults</button>
 		<button id="bind-reset" data-action="bind-reset-defaults" data-label="#Settings_BindResetDefaults">#Settings_BindResetDefaults</button>
-		<button id="settings-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
 	</div>
 	<!-- Page-internal layers live OUTSIDE the scrollable panel: they
 	     anchor to the document and stay viewport-covering no matter how

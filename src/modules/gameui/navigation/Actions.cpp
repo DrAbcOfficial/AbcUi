@@ -33,13 +33,15 @@ void GameUiModule::onMenuAction(const char* action) {
 		handlePlayerListAction(Kind);
 		return;
 	}
-	else if (Kind == ActionKind::kConsole) {
+	else if (Kind == ActionKind::kConsole || Kind == ActionKind::kConsoleClose) {
 		// T16: the main-menu console entry toggles the replacement
 		// console through the bridge (the same funnel as the engine
 		// entries), so the engine-facing IsConsoleVisible answer and the
 		// overlay stack never disagree.
 		auto& bridge = services::nativeUiBridge();
-		if (bridge.consoleRequested())
+		// Close is an idempotent intent, not a toggle: a repeated click or
+		// delayed close after an engine Hide must never reopen the console.
+		if (Kind == ActionKind::kConsoleClose || bridge.consoleRequested())
 			bridge.requestConsoleClose(services::NativeUiOrigin::kOwnUi);
 		else
 			bridge.requestConsoleOpen(services::NativeUiOrigin::kOwnUi);

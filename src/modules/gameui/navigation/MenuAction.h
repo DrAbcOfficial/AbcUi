@@ -26,6 +26,7 @@ enum class ActionKind {
 	kPlMute,
 	kPlClose,
 	kConsole,
+	kConsoleClose,
 	kDirectConnect,
 	kLoadingCancel,
 	kErrorRetry,

@@ -3,14 +3,13 @@
    because RmlUi ships no user-agent stylesheet. Shared panel/button styling
    comes from mainmenu.rcss (same #panel frame and button rules). */
 
-/* The bind section pushes the panel past the viewport height: give it an
-   explicit dp height (the screen is exactly 480dp tall at the context's
-   density ratio - top 40 + height 400 + bottom 40) and scroll its content.
-   Both axes (RmlUi has no visible+scrollable mix: a single-axis value
-   collapses percentage widths). The action bar scrolls along - the visual
-   layout batch (T12/T13) splits header/body/footer properly. */
+/* The viewport is 480dp tall at the production density. Reserve room for
+   a separate two-row footer. Border-box includes the inherited padding and
+   border; the old content-box height extended underneath the action bar. */
 body#menusettings #panel {
-	height: 400dp;
+	box-sizing: border-box;
+	width: 374dp;
+	height: 356dp;
 	overflow: auto;
 }
 
@@ -309,22 +308,33 @@ body#menusettings #panel scrollbarvertical sliderbar:active {
 	color: #d8b45a;
 }
 
-/* The action bar is document-level and top-anchored below the panel's fixed
-   extent (panel top 40dp + height 400dp + 8dp gap): a bar inside the
-   scroller could scroll out of view, and document-bottom anchoring resolves
-   against a document-height box that differs from the viewport. */
+/* Explicit columns prevent auto-sized inline buttons from overflowing or
+   wrapping Return below the viewport. Apply/Return are always on the first
+   row, destructive default-reset entries on the second. Bottom = 468dp. */
 #settings-actions {
 	display: block;
 	position: absolute;
-	left: 64dp;
-	top: 448dp;
+	left: 48dp;
+	top: 404dp;
+	width: 374dp;
+	height: 64dp;
+	z-index: 1;
 }
 
 #settings-actions button {
-	display: inline-block;
-	margin-right: 8dp;
-	margin-bottom: 0dp;
+	display: block;
+	position: absolute;
+	box-sizing: border-box;
+	width: 179dp;
+	height: 28dp;
+	margin: 0dp;
+	white-space: nowrap;
+	overflow: hidden;
 }
+#settings-apply { left: 0dp; top: 0dp; }
+#settings-return { right: 0dp; top: 0dp; }
+#settings-reset { left: 0dp; top: 36dp; }
+#bind-reset { right: 0dp; top: 36dp; }
 
 /* Page-internal confirm layers are document-level overlays (direct children
    of the body, NOT of the scrollable panel - absolute layers inside the
@@ -334,6 +344,7 @@ body#menusettings #panel scrollbarvertical sliderbar:active {
 .settings-layer {
 	display: none;
 	position: absolute;
+	z-index: 2;
 	left: 48dp;
 	top: 40dp;
 	width: 372dp;
