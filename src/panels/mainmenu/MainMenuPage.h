@@ -55,6 +55,13 @@ public:
 	void setDefinition(const services::uiconfig::MenuDefinition& Value) { Definition = Value; }
 	void setMultiplayer(bool Value);
 
+	// Character card facts (WS4): the player name line and the Studio model the
+	// live <model> element renders. Both come from the module (engine facts),
+	// never from the DOM; an empty model path hides the preview box.
+	void setPlayerCard(const char* playerName, const char* modelPath, const char* modelLabel);
+	// Footer right-hand note (engine build). Empty clears it.
+	void setFooterNote(const char* text);
+
 	// Makes one section the visible one and, when requested, lands keyboard
 	// focus on the section's first visible entry. Safe while hidden: the
 	// focus lands after the next show.

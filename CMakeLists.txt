@@ -67,6 +67,7 @@ add_library(AbcUi MODULE
     src/rmlui/backdrop/ElementBackdrop.cpp
     src/rmlui/video/ElementVideo.cpp
     src/services/menubackdrop/Backdrop.cpp
+    src/services/menumusic/MenuMusic.cpp
     src/services/modelpreview/Options.cpp
     src/services/modelpreview/Target.cpp
     src/services/video/Decoder.cpp
@@ -260,6 +261,13 @@ if(ABC_GAME_DIR)
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abcui")
         install(DIRECTORY assets/abcui DESTINATION "${ABC_GAME_DIR}/svencoop"
             PATTERN ".gitkeep" EXCLUDE)
+    endif()
+    # Menu score: the engine resolves play-by-name under <search path>/sound/,
+    # so the shipped track lands in the mod's sound tree (its own directory:
+    # nothing else in the plugin writes there).
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/music/opfor.wav")
+        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/assets/music/opfor.wav"
+            DESTINATION "${ABC_GAME_DIR}/svencoop/sound/abcui/menu")
     endif()
     add_custom_target(deploy
         DEPENDS AbcUi FreeImage

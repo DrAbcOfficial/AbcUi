@@ -5,8 +5,33 @@
 #include "data/PlayerResource.h"
 #include "services/playerlist/MuteBackend.h"
 #include <cstring>
+#include <string>
 #include "modules/gameui/engine/MenuBindings.h"
 namespace gameui::engine {
+namespace {
+std::string readCvarString(const char* Name) {
+	cvar_t* Cvar = abc::CVAR_GET_POINTER(Name);
+	return Cvar && Cvar->string ? std::string(Cvar->string) : std::string();
+}
+}
+
+PlayerCardFacts playerCardFacts() {
+	PlayerCardFacts Facts;
+	Facts.PlayerName = readCvarString("name");
+	Facts.ModelName = readCvarString("model");
+	// The cvar holds the model DIRECTORY under models/player/ (Sven Co-op
+	// enumerates those folders for its own player-model list); a value that
+	// already names a .mdl is used verbatim, and an empty value falls back to
+	// the generic player model so the card is never empty.
+	if (Facts.ModelName.empty())
+		Facts.ModelPath = "models/player.mdl";
+	else if (Facts.ModelName.ends_with(".mdl"))
+		Facts.ModelPath = Facts.ModelName;
+	else
+		Facts.ModelPath = "models/player/" + Facts.ModelName + "/" + Facts.ModelName + ".mdl";
+	return Facts;
+}
+
 services::EngineUiBackend& menuBackend() {
 	static services::EngineUiBackend backend = [] {
 		services::EngineUiBackend created;

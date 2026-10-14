@@ -105,6 +105,32 @@ void MainMenuPage::setMultiplayer(bool Value) {
 	}
 }
 
+void MainMenuPage::setPlayerCard(const char* playerName, const char* modelPath, const char* modelLabel) {
+	if (!document())
+		return;
+	using framework::TextUtil::escapeRml;
+	if (auto* name = document()->GetElementById("player-name"))
+		name->SetInnerRML(escapeRml(playerName ? playerName : ""));
+	if (auto* label = document()->GetElementById("player-model-name"))
+		label->SetInnerRML(escapeRml(modelLabel ? modelLabel : ""));
+	if (auto* preview = document()->GetElementById("player-model")) {
+		const Rml::String value = modelPath ? modelPath : "";
+		if (preview->GetAttribute<Rml::String>("src", "") != value)
+			preview->SetAttribute("src", value);
+		preview->SetProperty("display", value.empty() ? "none" : "block");
+	}
+}
+
+void MainMenuPage::setFooterNote(const char* text) {
+	if (!document())
+		return;
+	if (auto* note = document()->GetElementById("menu-version")) {
+		const Rml::String value = text ? text : "";
+		if (note->GetInnerRML() != value)
+			note->SetInnerRML(framework::TextUtil::escapeRml(value));
+	}
+}
+
 void MainMenuPage::showSection(Section section, bool focusDefault) {
 	VisibleSection = section;
 	if (Rml::Element* main = document() ? document()->GetElementById("page-main") : nullptr)

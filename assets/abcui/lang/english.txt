@@ -153,6 +153,17 @@ MainMenu_QuitConfirmBody = Really quit Sven Co-op?
 MainMenu_QuitYes = Quit
 MainMenu_QuitNo = Cancel
 
+# Main menu badges (WS4): the character card and the friends column.
+MainMenu_PlayerModel = Model
+MainMenu_Friends = Friends
+MainMenu_FriendsEmpty = No friends in a game
+MainMenu_FriendsLoading = Loading Steam friends...
+MainMenu_FriendsUnavailable = Steam friends unavailable
+MainMenu_FriendJoin = Join server
+MainMenu_FriendInGame = In game
+MainMenu_Hint = Arrows navigate - Enter selects - Esc returns
+MainMenu_You = You
+
 # Not-yet-implemented stub (T09 step 2: visible parity TODOs)
 MainMenu_StubTitle = Not yet implemented
 MainMenu_StubSettings = The settings menus arrive with the settings milestone (T10-T13). Nothing was changed.

@@ -30,6 +30,7 @@
 #include "VGUI2ExtensionImport.h"
 #include "backdrop/ElementBackdrop.h"
 #include "../services/menubackdrop/Backdrop.h"
+#include "../services/menumusic/MenuMusic.h"
 #include "../services/GameUiBridge.h"
 #include "../services/console/ConsoleBackend.h"
 #include "../services/console/ConsoleBuffer.h"
@@ -363,6 +364,13 @@ void probeCommand() {
 		abc::ConsolePrint("[AbcUi] probe: backdrop mode=%d/%d rounds=%d target=%dx%d video=%d/%.2f\n",
 			service.Requested, service.Effective, service.Rounds, service.Width, service.Height,
 			service.VideoOpen ? 1 : 0, service.VideoSeconds);
+	}
+	// Menu score (UI overhaul WS4): the track the module keeps playing.
+	{
+		const auto& music = menumusic::menuMusic();
+		abc::ConsolePrint("[AbcUi] probe: music src='%s' on=%d playing=%d pos=%.1f/%.1f vol=%.2f\n",
+			music.source().c_str(), music.enabled() ? 1 : 0, music.playing() ? 1 : 0,
+			music.position(), music.duration(), music.volume());
 	}
 	// callback registration and the scoreboard pointer mode (wantsWheel =
 	// visible && pointer-mode).

@@ -99,6 +99,12 @@ bool Options::set(std::string_view Name, std::string_view Value) {
 		if (Name == "animate") Animate = Enabled;
 		else View.Lighting = Enabled;
 	}
+	if (Name == "auto-frame") {
+		if (Value != "true" && Value != "false" && Value != "1" && Value != "0") return false;
+		AutoFrame = Value == "true" || Value == "1";
+		return true;
+	}
+	if (Name == "frame-margin") return number(Value, FrameMargin, 0.5f, 4.0f);
 	return true;
 }
 }

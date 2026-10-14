@@ -1,5 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: navigation/PageProjection.
 #include "modules/gameui/GameUiModule.h"
+#include <abc/Plugin.h>
 #include "modules/gameui/engine/MenuBindings.h"
 namespace gameui {
 using namespace engine;
@@ -21,6 +22,15 @@ void GameUiModule::syncMenuPresentation() {
 	// maxplayers fact alone on the pause page.
 	const bool multiplayer = menuBackend().maxClientsFact() > 1;
 	Shell->setMultiplayer(multiplayer);
+	// Character card + footer facts: engine cvar values the player edits in
+	// Settings > Multiplayer; the page only projects them.
+	{
+		const auto Facts = engine::playerCardFacts();
+		Shell->setPlayerCard(Facts.PlayerName.c_str(), Facts.ModelPath.c_str(), Facts.ModelName.c_str());
+		char build[64];
+		_snprintf_s(build, sizeof(build), _TRUNCATE, "Sven Co-op build %u", abc::g_dwEngineBuildnum);
+		Shell->setFooterNote(build);
+	}
 
 	// Project each implemented page from navigation state. The stub is only
 	// the defensive default for a page without a registered projection;

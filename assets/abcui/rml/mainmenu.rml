@@ -1,18 +1,59 @@
 <rml>
 <head>
 	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/theme.rcss"/>
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 </head>
+<!-- The menu home (UI overhaul WS4). The blurred backdrop is inserted by
+     framework::menubackdrop before this document's onDocumentReady runs, so
+     it always paints behind every node below.
+
+     Geometry is absolute dp on the 640x480 logical screen (Theme::applyScale
+     maps dp to screen height/480). Layout intent, left to right: identity and
+     the entry column, then the side column with the friends board above the
+     character card - the CS:GO/Alien Swarm reference composition, rebuilt in
+     GoldSrc clothing. -->
 <body id="mainmenu">
-	<div id="panel">
-		<h1 id="title">#MainMenu_Title</h1>
-		<div id="focus-status">#MainMenu_FocusNone</div>
+	<div id="menu-header">
+		<div id="menu-brand">Sven Co-op</div>
+		<div id="title">#MainMenu_Title</div>
+	</div>
+
+	<div id="menu-nav">
 		<!-- The two home sections of the state machine (gameui::menu): kMain
 		     is the no-map home, kPause the in-game one. Visibility between
 		     them is the module's sync decision, never DOM-inferred state;
 		     the browser/create/list row follows the maxplayers fact. -->
 		<div id="page-main"></div>
 		<div id="page-pause"></div>
+		<div id="focus-status">#MainMenu_FocusNone</div>
+	</div>
+
+	<div id="friends-panel" class="abc-panel">
+		<div id="friends-title" class="abc-sectitle">#MainMenu_Friends</div>
+		<div id="friends-list"></div>
+	</div>
+
+	<div id="player-card">
+		<!-- sequence 2 is the player model's own deep_idle (verified against
+		     the shipped models: [2] 'deep_idle', 31 frames @12fps), and the
+		     camera is the Renderer preview's verified default view. -->
+		<model id="player-model" src="models/player.mdl" sequence="2" animate="true"
+			auto-frame="true" frame-margin="1.2"
+			camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
+			ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
+		<div id="player-strip">
+			<div id="player-name"></div>
+			<div id="player-model-row">
+				<span id="player-model-label">#MainMenu_PlayerModel</span>
+				<span id="player-model-name"></span>
+			</div>
+		</div>
+	</div>
+
+	<div id="menu-footer">
+		<div id="menu-hint" class="abc-muted">#MainMenu_Hint</div>
+		<div id="menu-version" class="abc-muted"></div>
 	</div>
 </body>
 </rml>

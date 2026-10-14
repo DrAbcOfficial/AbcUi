@@ -57,6 +57,10 @@ void GameUiModule::onInit() {
 	// A live user.scr overrides the JSON fallback on its declared page.
 	// Parsing/loading finishes before any document or transaction observes it.
 	abc::CREATE_CVAR("abc_ui_browser_hide_unresponsive", "1", abc::FCVAR_VALUE, nullptr);
+	// Menu score (WS4): the shipped track plus its level; the music service
+	// reads the source once per presentation change and the volume live.
+	abc::CREATE_CVAR("abc_ui_menu_music", "abcui/menu/opfor.wav", abc::FCVAR_VALUE, nullptr);
+	abc::CREATE_CVAR("abc_ui_menu_music_volume", "0.45", abc::FCVAR_VALUE, nullptr);
 	std::string ServerScript = readModFile("settings.scr");
 	if (ServerScript.empty()) ServerScript = readModFile("abcui/config/server_options.scr");
 	CreateGame.setOptions(services::creategame::parseServerOptions(ServerScript));

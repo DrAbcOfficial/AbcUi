@@ -29,6 +29,13 @@ struct Options {
 	float FrameRate = 1;
 	float Scale = 1;
 	bool Animate = true;
+	// Auto framing: derive the camera distance from the model's own bounding
+	// box so any player model (a 72-unit human, a 35-unit creature, a large
+	// monster) fills the same box. The camera-origin/fov attributes are then
+	// ignored for the placement; FrameMargin scales the fitted extent
+	// (1.0 = the box is exactly filled, 1.15 leaves a margin).
+	bool AutoFrame = false;
+	float FrameMargin = 1.15f;
 
 	// Unknown DOM attributes (id/class/style) are not errors. Invalid known
 	// attributes leave the previous value unchanged and return false.

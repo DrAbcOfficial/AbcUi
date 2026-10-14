@@ -155,6 +155,17 @@ MainMenu_QuitConfirmBody = 确定要退出 Sven Co-op 吗？
 MainMenu_QuitYes = 退出
 MainMenu_QuitNo = 取消
 
+# 主菜单面板（WS4）：角色卡片与好友列表
+MainMenu_PlayerModel = 模型
+MainMenu_Friends = 好友
+MainMenu_FriendsEmpty = 没有好友在游戏中
+MainMenu_FriendsLoading = 正在读取 Steam 好友……
+MainMenu_FriendsUnavailable = Steam 好友不可用
+MainMenu_FriendJoin = 加入服务器
+MainMenu_FriendInGame = 游戏中
+MainMenu_Hint = 方向键选择 - 回车确认 - ESC 返回
+MainMenu_You = 你
+
 # 尚未实现占位页（T09 步骤 2：可见的 parity TODO）
 MainMenu_StubTitle = 尚未实现
 MainMenu_StubSettings = 设置功能将在设置里程碑（T10-T13）提供。未更改任何内容。

@@ -169,7 +169,32 @@ bool Target::render(const Options& Config, int Width, int Height) {
 	Entity.latched.prevanimtime = State.animtime;
 	Entity.latched.prevframe = State.frame;
 	Entity.latched.prevsequence = State.sequence;
-	if (!Preview->render(&Entity, &Data->Fbo, Config.View))
+	// Auto framing: place the camera so the CURRENT sequence's bounding box
+	// fills the target box (times the margin). Player models differ wildly in
+	// size (a humanoid is ~72 units, a creature may be half that, a monster
+	// three times), so a fixed camera cannot frame them all.
+	ModelPreviewView View = Config.View;
+	if (Config.AutoFrame) {
+		float top = Sequence->bbmax[2];
+		float bottom = Sequence->bbmin[2];
+		if (!(top > bottom)) {
+			top = Header->bbmax[2];
+			bottom = Header->bbmin[2];
+		}
+		if (top > bottom) {
+			const float Height = (top - bottom) * Config.FrameMargin;
+			const float Center = (top + bottom) * 0.5f;
+			const float HalfFov = Config.View.VerticalFov * 0.5f * 3.14159265358979f / 180.0f;
+			const float Distance = std::max(Height * 0.5f / std::tan(HalfFov), 8.0f);
+			View.Origin[0] = Distance;
+			View.Origin[1] = 0.0f;
+			View.Origin[2] = Center;
+			View.Angles[0] = 0.0f;
+			View.Angles[1] = 180.0f;
+			View.Angles[2] = 0.0f;
+		}
+	}
+	if (!Preview->render(&Entity, &Data->Fbo, View))
 		return false;
 	++Data->Frames;
 	if (auto* Interface = rmlui::renderInterface())

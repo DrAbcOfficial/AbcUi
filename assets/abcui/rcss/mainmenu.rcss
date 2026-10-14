@@ -3,77 +3,245 @@
    no pixel assumptions live here. RmlUi ships no user-agent stylesheet -
    every element gets its full display/tab/caret styling explicitly. */
 
-#panel {
+/* ---- identity block ---------------------------------------------------- */
+
+#menu-header {
 	position: absolute;
-	left: 48dp;
-	top: 40dp;
-	width: 340dp;
-	background-color: #101418ee;
-	border: 1dp #3a4148;
-	padding: 16dp;
+	left: 26dp;
+	top: 20dp;
+	width: 300dp;
 }
 
-/* JSON can add more entries than fit in the original six-button shell. */
-body#mainmenu #panel {
-	max-height: 392dp;
-	overflow: auto;
-}
-body#mainmenu #panel scrollbarvertical {
-	z-index: 100;
-	width: 0dp;
-}
-body#mainmenu #panel scrollbarvertical sliderbar {
-	margin-left: -10dp;
-	width: 10dp;
-	min-height: 24dp;
-	background-color: #3a4148;
-}
-body#mainmenu #panel scrollbarvertical sliderbar:hover,
-body#mainmenu #panel scrollbarvertical sliderbar:active {
-	background-color: #55606c;
+#menu-brand {
+	display: block;
+	font-size: 8dp;
+	font-weight: bold;
+	letter-spacing: 3dp;
+	text-transform: uppercase;
+	color: var(--abc-accent);
+	margin-bottom: 2dp;
 }
 
 #title {
 	display: block;
-	font-size: 16dp;
+	font-size: 18dp;
 	font-weight: bold;
-	color: #00ff00;
-	margin-bottom: 12dp;
+	letter-spacing: 0.5dp;
+	color: var(--abc-text-strong);
+}
+
+/* ---- entry column ------------------------------------------------------ */
+
+#menu-nav {
+	position: absolute;
+	left: 26dp;
+	top: 92dp;
+	width: 236dp;
+}
+
+/* One entry row: a flat, left-aligned bar with an amber spine when focused -
+   the GoldSrc list look, flattened for the modern shell. */
+#page-main button, #page-pause button {
+	display: block;
+	width: 236dp;
+	height: 26dp;
+	line-height: 26dp;
+	text-align: left;
+	padding-left: 12dp;
+	background-color: #111920cc;
+	border-left: 2dp #2d3840;
+	border-top: 1dp #1e262c;
+	color: var(--abc-text);
+	font-size: 10dp;
+	letter-spacing: 0.4dp;
+	tab-index: auto;
+	margin-bottom: 4dp;
+}
+
+#page-main button:hover, #page-pause button:hover {
+	background-color: #1b252bf2;
+	color: var(--abc-text-strong);
+}
+
+#page-main button:focus, #page-pause button:focus {
+	background-color: var(--abc-accent);
+	border-left: 2dp var(--abc-accent);
+	color: var(--abc-accent-ink);
+	font-weight: bold;
 }
 
 #focus-status {
 	display: block;
-	font-size: 9dp;
-	color: #8a9199;
+	font-size: 8dp;
+	color: var(--abc-text-dim);
+	height: 12dp;
+	line-height: 12dp;
+	margin-top: 6dp;
+	padding-left: 2dp;
+}
+
+/* ---- side column: friends above the character -------------------------- */
+/* Anchored to the RIGHT edge: the Rml logical screen is
+   screenWidth / (screenHeight / 480) dp wide (768dp at 16:10, 853dp at 16:9),
+   so a left coordinate would drift with the aspect ratio. */
+
+#friends-panel {
+	position: absolute;
+	right: 26dp;
+	top: 92dp;
+	width: 258dp;
+	height: 132dp;
+	overflow: hidden;
+}
+
+#friends-list {
+	display: block;
+	height: 96dp;
+	overflow-y: auto;
+}
+
+/* Friend rows: avatar, persona, state; right-click opens the join menu. */
+.friend-row {
+	display: block;
+	height: 24dp;
+	line-height: 24dp;
+	background-color: transparent;
+	color: var(--abc-text);
+	font-size: 8dp;
+	padding-left: 4dp;
+	padding-right: 6dp;
+}
+
+.friend-row:hover {
+	background-color: var(--abc-surface-3);
+}
+
+.friend-row.friend-self {
+	color: var(--abc-accent);
+}
+
+.friend-row.friend-playing {
+	color: var(--abc-ok);
+}
+
+.friend-avatar {
+	display: inline-block;
+	width: 18dp;
+	height: 18dp;
+	margin-right: 6dp;
+	margin-top: 3dp;
+	vertical-align: top;
+}
+
+.friend-name {
+	display: inline-block;
+	height: 24dp;
+	line-height: 24dp;
+	font-size: 8dp;
+}
+
+.friend-state {
+	display: inline-block;
+	height: 24dp;
+	line-height: 24dp;
+	font-size: 7dp;
+	float: right;
+	color: var(--abc-text-dim);
+}
+
+#friends-empty {
+	display: block;
+	height: 96dp;
+	line-height: 96dp;
+	text-align: center;
+	font-size: 8dp;
+	color: var(--abc-text-dim);
+}
+
+/* ---- character card ---------------------------------------------------- */
+
+#player-card {
+	position: absolute;
+	right: 26dp;
+	top: 232dp;
+	width: 258dp;
+	height: 216dp;
+}
+
+/* The live Studio preview; the Renderer draws it into its own FBO and the
+   element presents it, so the box here is exactly what the camera frames. */
+#player-model {
+	display: block;
+	width: 132dp;
+	height: 176dp;
+	margin-left: 63dp;
+}
+
+#player-strip {
+	display: block;
+	width: 258dp;
+	height: 40dp;
+	background-color: var(--abc-surface);
+	border-top: 1dp var(--abc-line);
+	border-left: 2dp var(--abc-accent);
+	padding-left: 8dp;
+	padding-top: 3dp;
+}
+
+#player-name {
+	display: block;
+	height: 16dp;
+	line-height: 16dp;
+	font-size: 10dp;
+	font-weight: bold;
+	color: var(--abc-text-strong);
+	white-space: nowrap;
+}
+
+#player-model-row {
+	display: block;
 	height: 14dp;
 	line-height: 14dp;
-	margin-bottom: 12dp;
+	font-size: 8dp;
 }
 
-/* tab-index: auto puts the button in the tab chain (RmlUi defaults every
-   element to tab-index none); :focus is the keyboard focus visual state. */
-button {
-	display: block;
+#player-model-label {
+	display: inline-block;
+	letter-spacing: 1dp;
+	text-transform: uppercase;
+	color: var(--abc-text-dim);
+	margin-right: 6dp;
+}
+
+#player-model-name {
+	display: inline-block;
+	color: var(--abc-accent);
+}
+
+/* ---- footer ------------------------------------------------------------ */
+
+#menu-footer {
+	position: absolute;
+	left: 26dp;
+	right: 26dp;
+	top: 452dp;
 	width: auto;
-	height: 26dp;
-	line-height: 26dp;
-	text-align: center;
-	background-color: #1c2329;
-	color: #e8e8e8;
-	font-size: 10dp;
-	border: 1dp #3a4148;
-	tab-index: auto;
-	margin-bottom: 8dp;
+	height: 14dp;
 }
 
-button:hover {
-	background-color: #232b32;
+#menu-hint {
+	display: inline-block;
+	font-size: 8dp;
+	height: 14dp;
+	line-height: 14dp;
 }
 
-button:focus {
-	background-color: #144d14;
-	border: 1dp #00ff00;
-	color: #ffffff;
+#menu-version {
+	display: inline-block;
+	float: right;
+	font-size: 8dp;
+	height: 14dp;
+	line-height: 14dp;
 }
 
 /* Inputs share one rule; the multiline box adds rows and line breaks. */

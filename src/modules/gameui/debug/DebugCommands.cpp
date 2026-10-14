@@ -8,6 +8,7 @@ void DebugCommands::registerCommands() {
 
 		// HUD_Init guarded block only (plan 08 §4.9 red line).
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
+		abc::ADD_COMMAND("abc_ui_menu_model", menuModelCommand);
 		abc::ADD_COMMAND("abc_ui_bind_status", bindStatusCommand);
 		abc::ADD_COMMAND("abc_ui_settings_status", settingsStatusCommand);
 		abc::ADD_COMMAND("abc_ui_settings_apply", settingsApplyCommand);
