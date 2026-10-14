@@ -3,9 +3,15 @@ cmake_minimum_required(VERSION 4.2)
 project(AbcUi LANGUAGES CXX)
 
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/AbcCommon.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/MileFFmpeg.cmake")
 
 set(ABC_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/AbcCore")
 add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
+
+# Mile.FFmpeg binary SDK (video decode). Headers only in the build: the
+# distance to Mile.FFmpeg.dll is GetProcAddress, exactly like Renderer's
+# startup video; the DLL is deployed beside the one Renderer ships.
+abcui_prepare_mile_ffmpeg(ABCUI_MILE_FFMPEG_SDK)
 
 set(METAHOOK_INCLUDE_DIR "${ABC_CORE_DIR}/thirdparty/MetaHook/include")
 set(VGUI2EXTENSION_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/VGUI2Extension/include")
@@ -60,6 +66,7 @@ add_library(AbcUi MODULE
     src/rmlui/model/ElementModel.cpp
     src/services/modelpreview/Options.cpp
     src/services/modelpreview/Target.cpp
+    src/services/video/Decoder.cpp
     src/modules/modeltest/ModelTest.cpp
     src/rmlui/AbcSystemInterface.cpp
     src/rmlui/InputBridge.cpp
@@ -220,6 +227,7 @@ install(DIRECTORY assets/gamedata/abcui-layout/ DESTINATION "${ABC_UI_LAYOUT_DES
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).
 target_include_directories(AbcUi PRIVATE
+    "${ABCUI_MILE_FFMPEG_SDK}/Include"
     "${STEAMSDK_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface"
@@ -238,6 +246,10 @@ if(ABC_GAME_DIR)
     # launcher puts that directory on PATH for import resolution.
     install(FILES "$<TARGET_FILE:FreeImage>"
         DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/dlls/FreeImage")
+    # Video decode runtime: same drop point convention as Renderer's copy so
+    # the launcher's PATH addition resolves it for both plugins.
+    install(FILES "${ABCUI_MILE_FFMPEG_SDK}/Redist/x86/Mile.FFmpeg.dll"
+        DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/dlls/Mile.FFmpeg")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abcui")
         install(DIRECTORY assets/abcui DESTINATION "${ABC_GAME_DIR}/svencoop"
             PATTERN ".gitkeep" EXCLUDE)
