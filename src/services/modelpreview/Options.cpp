@@ -2,6 +2,7 @@
 // trailing junk or unsafe entity modes to the native Studio renderer.
 #include "Options.h"
 
+#include <algorithm>
 #include <charconv>
 #include <cmath>
 #include <sstream>
