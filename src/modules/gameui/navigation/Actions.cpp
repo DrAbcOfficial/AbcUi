@@ -92,4 +92,22 @@ void GameUiModule::finishDispatch() {
 		services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
 }
 
+// WS4: a friend row's "Join server". The address comes from Steam presence,
+// so it is validated with the same grammar the direct-connect overlay uses
+// before it can become a connection attempt; a refused address is logged and
+// changes nothing (fail closed, never a half command).
+void GameUiModule::onFriendJoin(uint64_t steamId, const char* address) {
+	std::string host;
+	int port = 0;
+	if (!address || !*address
+		|| !services::loading::LoadingModel::parseAddress(address, host, port)) {
+		abc::ConsoleWarn("[AbcUi] friend join refused: address '%s' is not connectable\n",
+			address ? address : "");
+		return;
+	}
+	abc::ConsolePrint("[AbcUi] joining friend %llu at %s\n", static_cast<unsigned long long>(steamId), address);
+	Controller.dispatch(gameui::menu::makeConnectRequest(address));
+	finishDispatch();
+}
+
 }

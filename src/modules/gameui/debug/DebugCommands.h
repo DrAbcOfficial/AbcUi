@@ -28,6 +28,7 @@ private:
 	static void consoleUiToggleCommand();
 	static void menuPageCommand();
 	static void menuModelCommand();
+	static void friendsTestCommand();
 	static void serverQueryCommand();
 	static void serverStatusCommand();
 	static void serverCancelCommand();

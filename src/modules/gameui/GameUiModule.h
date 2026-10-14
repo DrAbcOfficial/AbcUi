@@ -21,6 +21,7 @@
 #include "../../services/creategame/CreateGameModel.h"
 #include "../../services/loading/LoadingModel.h"
 #include "../../services/playerlist/PlayerListModel.h"
+#include "../../services/friends/FriendsModel.h"
 #include "../../services/serverbrowser/ServerFavorites.h"
 #include "../../services/serverbrowser/ServerListModel.h"
 #include "../../services/serverbrowser/ServerQuery.h"
@@ -92,6 +93,7 @@ private:
 	void handleConnectionAction(navigation::ActionKind Kind);
 	void handleVideoAction(navigation::ActionKind Kind);
 	void handleServerAction(navigation::ActionKind Kind);
+	void onFriendJoin(uint64_t steamId, const char* address);
 
 	void finishDispatch();
 	bool consumeLaunchFailure();
@@ -146,6 +148,10 @@ private:
 	const char* PendingLaunchFailure = nullptr;
 	bool CreateGamePresented = false;
 	services::playerlist::PlayerListModel PlayerList;
+	uint32_t FriendsProjected = 0;
+	// Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
+	// stalled pump is distinguishable from a stalled refresh.
+	double LastFrameTime = 0.0;
 	bool PlayerListPresented = false;
 	services::serverbrowser::FavoriteKey PendingHistory;
 	bool PendingHistoryValid = false;

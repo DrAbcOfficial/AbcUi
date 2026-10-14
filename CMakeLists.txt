@@ -68,6 +68,8 @@ add_library(AbcUi MODULE
     src/rmlui/video/ElementVideo.cpp
     src/services/menubackdrop/Backdrop.cpp
     src/services/menumusic/MenuMusic.cpp
+    src/services/friends/FriendsModel.cpp
+    src/services/friends/FriendsSteam.cpp
     src/services/modelpreview/Options.cpp
     src/services/modelpreview/Target.cpp
     src/services/video/Decoder.cpp

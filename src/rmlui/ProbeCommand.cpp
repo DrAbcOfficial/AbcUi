@@ -31,6 +31,7 @@
 #include "backdrop/ElementBackdrop.h"
 #include "../services/menubackdrop/Backdrop.h"
 #include "../services/menumusic/MenuMusic.h"
+#include "../services/friends/FriendsModel.h"
 #include "../services/GameUiBridge.h"
 #include "../services/console/ConsoleBackend.h"
 #include "../services/console/ConsoleBuffer.h"
@@ -371,6 +372,19 @@ void probeCommand() {
 		abc::ConsolePrint("[AbcUi] probe: music src='%s' on=%d playing=%d pos=%.1f/%.1f vol=%.2f\n",
 			music.source().c_str(), music.enabled() ? 1 : 0, music.playing() ? 1 : 0,
 			music.position(), music.duration(), music.volume());
+	}
+	// Friends board (UI overhaul WS4): provider reach, the row set and each
+	// row's joinability.
+	{
+		const auto& friends = services::friends::friendsModel();
+		abc::ConsolePrint("[AbcUi] probe: friends available=%d scanned=%d rows=%u gen=%u\n",
+			friends.available() ? 1 : 0, friends.lastFriendCount(),
+			static_cast<unsigned>(friends.rows().size()), friends.generation());
+		for (std::size_t i = 0; i < friends.rows().size() && i < 6; ++i) {
+			const auto& row = friends.rows()[i];
+			abc::ConsolePrint("[AbcUi] probe: friend[%u] '%s' inGame=%d connect='%s'\n",
+				static_cast<unsigned>(i), row.Name.c_str(), row.InGame ? 1 : 0, row.Connect.c_str());
+		}
 	}
 	// callback registration and the scoreboard pointer mode (wantsWheel =
 	// visible && pointer-mode).

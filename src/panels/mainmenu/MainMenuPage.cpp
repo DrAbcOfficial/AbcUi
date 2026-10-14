@@ -3,9 +3,12 @@
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/ElementDocument.h>
 
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
+
+#include <cstdlib>
 
 namespace panels::mainmenu {
 
@@ -33,6 +36,18 @@ Rml::Element* actionNode(Rml::Element* node) {
 	return nullptr;
 }
 
+// "#token" through the language table; an unknown token stays verbatim.
+std::string localized(const char* value) {
+	if (!value)
+		return {};
+	if (value[0] != '#')
+		return value;
+	std::string out;
+	if (framework::Localization::translate(out, value + 1))
+		return out;
+	return value;
+}
+
 } // namespace
 
 MainMenuPage::MainMenuPage(const char* documentPath)
@@ -50,6 +65,8 @@ void MainMenuPage::onDocumentReady() {
 	// pair and the status line follows whichever control holds focus.
 	if (Rml::ElementDocument* doc = document())
 		addListener(doc, "click", &Listener);
+	if (Rml::ElementDocument* doc = document())
+		addListener(doc, "mousedown", &Listener);  // right-click = button 1
 	if (Rml::Element* root = document())
 		attachFocusBindings(root);
 	// The shipped shell starts on the no-map section; a section switch
@@ -131,6 +148,58 @@ void MainMenuPage::setFooterNote(const char* text) {
 	}
 }
 
+void MainMenuPage::setFriends(const std::vector<services::friends::FriendEntry>& rows, bool steamAvailable) {
+	if (!document())
+		return;
+	using framework::TextUtil::escapeRml;
+	using framework::TextUtil::escapeRmlAttribute;
+	Rml::Element* list = document()->GetElementById("friends-list");
+	if (!list)
+		return;
+	if (rows.empty()) {
+		list->SetInnerRML("");
+		Rml::Element* empty = document()->GetElementById("friends-list-empty");
+		if (!empty) {
+			Rml::ElementPtr node = document()->CreateElement("div");
+			if (!node)
+				return;
+			empty = node.get();
+			empty->SetId("friends-list-empty");
+			empty->SetClass("abc-muted", true);
+			empty->SetProperty("display", "block");
+			empty->SetProperty("height", "96dp");
+			empty->SetProperty("line-height", "96dp");
+			empty->SetProperty("text-align", "center");
+			list->AppendChild(std::move(node));
+		}
+		empty->SetInnerRML(escapeRml(localized(
+			steamAvailable ? "#MainMenu_FriendsEmpty" : "#MainMenu_FriendsUnavailable")));
+		return;
+	}
+	std::string markup;
+	for (std::size_t index = 0; index < rows.size(); index++) {
+		const auto& row = rows[index];
+		// Row 0 is the local player by the model's contract.
+		const bool self = index == 0;
+		markup += "<div class=\"friend-row";
+		if (self)
+			markup += " friend-self";
+		else if (!row.Connect.empty())
+			markup += " friend-playing";
+		markup += "\" data-steamid=\"" + std::to_string(row.SteamId) + "\" data-connect=\""
+			+ escapeRmlAttribute(row.Connect) + "\">";
+		if (row.SteamId != 0)
+			markup += "<img class=\"friend-avatar\" src=\"avatar://" + std::to_string(row.SteamId) + "\"/>";
+		markup += "<span class=\"friend-name\">" + escapeRml(row.Name) + "</span>";
+		const char* state = self ? "#MainMenu_You"
+			: (row.Connect.empty() ? (row.InGame ? "#MainMenu_FriendInGame" : "") : row.Game.c_str());
+		if (state && *state)
+			markup += "<span class=\"friend-state\">" + escapeRml(localized(state)) + "</span>";
+		markup += "</div>";
+	}
+	list->SetInnerRML(markup);
+}
+
 void MainMenuPage::showSection(Section section, bool focusDefault) {
 	VisibleSection = section;
 	if (Rml::Element* main = document() ? document()->GetElementById("page-main") : nullptr)
@@ -177,6 +246,13 @@ void MainMenuPage::setEntryVisible(const char* action, bool visible) {
 
 void MainMenuPage::handle(Rml::Event& event) {
 	const Rml::EventId id = event.GetId();
+	if (id == Rml::EventId::Mousedown) {
+		// Right button (RmlUi index 1) over a friend row opens the join menu;
+		// every other button keeps its normal Rml handling.
+		if (event.GetParameter<int>("button", 0) == 1)
+			handleContextMenu(event);
+		return;
+	}
 	if (id == Rml::EventId::Focus) {
 		updateFocusStatus(event.GetCurrentElement());
 		return;
@@ -185,6 +261,22 @@ void MainMenuPage::handle(Rml::Event& event) {
 		updateFocusStatus(nullptr);
 		return;
 	}
+	// Any left click closes an open friend menu first: the menu itself is the
+	// only click target that keeps it alive.
+	Rml::Element* target = event.GetTargetElement();
+	Rml::Element* menu = document() ? document()->GetElementById("friend-menu") : nullptr;
+	bool insideMenu = false;
+	for (Rml::Element* it = target; it && !insideMenu; it = it->GetParentNode())
+		insideMenu = it == menu;
+	if (!insideMenu)
+		closeFriendMenu();
+	else if (target && target->GetId() == "friend-menu-join") {
+		if (JoinSink && !MenuFriendId.empty())
+			JoinSink(strtoull(MenuFriendId.c_str(), nullptr, 10), MenuFriendAddress.c_str());
+		closeFriendMenu();
+		return;
+	}
+
 	// Click (delegated on the document): resolve the action entry, then hand
 	// the fixed action name to the sink. A sink can replace itself or destroy
 	// this page, so the callable is snapshotted and nothing is touched on the
@@ -201,6 +293,70 @@ void MainMenuPage::handle(Rml::Event& event) {
 	if (Action)
 		Action(action.c_str());
 }
+
+// Right-click on a friend row opens the join menu at the pointer.
+bool MainMenuPage::handleContextMenu(Rml::Event& event) {
+	Rml::Element* row = event.GetTargetElement();
+	Rml::Element* friendRow = nullptr;
+	for (Rml::Element* it = row; it; it = it->GetParentNode()) {
+		if (it->HasAttribute("data-steamid")) {
+			friendRow = it;
+			break;
+		}
+	}
+	if (!friendRow)
+		return false;
+	const std::string connect = friendRow->GetAttribute<Rml::String>("data-connect", "").c_str();
+	// A friend who is not in a joinable game has nothing to open a menu for;
+	// the row still answers the click so the menu never lingers.
+	closeFriendMenu();
+	if (connect.empty())
+		return false;
+	openFriendMenu(friendRow->GetAttribute<Rml::String>("data-steamid", "").c_str(), connect.c_str(),
+		event.GetParameter<int>("mouse_x", 0), event.GetParameter<int>("mouse_y", 0));
+	if (document())
+		if (Rml::Element* entry = document()->GetElementById("friend-menu-join"))
+			entry->Focus();
+	return true;
+}
+
+void MainMenuPage::openFriendMenu(const char* steamId, const char* address, int x, int y) {
+	Rml::Element* menu = document() ? document()->GetElementById("friend-menu") : nullptr;
+	if (!menu)
+		return;
+	MenuFriendId = steamId ? steamId : "";
+	MenuFriendAddress = address ? address : "";
+	char left[32];
+	char top[32];
+	// Keep the menu inside the window: it is 116dp wide and 24dp tall.
+	const int clampedX = x > 640 ? x - 116 : x;
+	_snprintf_s(left, sizeof(left), _TRUNCATE, "%dpx", clampedX);
+	_snprintf_s(top, sizeof(top), _TRUNCATE, "%dpx", y);
+	menu->SetProperty("left", left);
+	menu->SetProperty("top", top);
+	menu->SetProperty("display", "block");
+}
+
+void MainMenuPage::closeFriendMenu() {
+	MenuFriendId.clear();
+	MenuFriendAddress.clear();
+	if (Rml::Element* menu = document() ? document()->GetElementById("friend-menu") : nullptr)
+		menu->SetProperty("display", "none");
+}
+
+#ifndef NDEBUG
+void MainMenuPage::debugOpenFriendMenu(Rml::Element* row, int x, int y) {
+	if (!row)
+		return;
+	const std::string connect = row->GetAttribute<Rml::String>("data-connect", "").c_str();
+	openFriendMenu(row->GetAttribute<Rml::String>("data-steamid", "").c_str(), connect.c_str(), x, y);
+}
+
+void MainMenuPage::debugJoinFriend(const char* steamId) {
+	if (JoinSink)
+		JoinSink(strtoull(steamId ? steamId : "0", nullptr, 10), MenuFriendAddress.c_str());
+}
+#endif
 
 void MainMenuPage::updateFocusStatus(Rml::Element* focused) {
 	Rml::Element* status = document() ? document()->GetElementById("focus-status") : nullptr;

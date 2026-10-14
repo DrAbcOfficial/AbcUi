@@ -158,6 +158,30 @@
 	color: var(--abc-text-dim);
 }
 
+/* Right-click menu for a friend row. */
+#friend-menu {
+	display: none;
+	position: absolute;
+	width: 116dp;
+	background-color: #10161af8;
+	border: 1dp var(--abc-line);
+	padding: 2dp;
+}
+
+.friend-menu-entry {
+	display: block;
+	height: 20dp;
+	line-height: 20dp;
+	font-size: 8dp;
+	padding-left: 6dp;
+	color: var(--abc-text);
+}
+
+.friend-menu-entry:hover {
+	background-color: var(--abc-accent);
+	color: var(--abc-accent-ink);
+}
+
 /* ---- character card ---------------------------------------------------- */
 
 #player-card {

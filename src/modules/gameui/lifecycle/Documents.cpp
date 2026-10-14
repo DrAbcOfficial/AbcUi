@@ -29,6 +29,11 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	};
 	Shell = std::make_unique<panels::mainmenu::MainMenuPage>();
 	Shell->setDefinition(UiConfig.menu());
+	// Friends board join: the page reports the chosen row, the module owns the
+	// validation and the typed connect intent (same path the browser uses).
+	Shell->setFriendJoinSink([this](uint64_t steamId, const char* address) {
+		onFriendJoin(steamId, address);
+	});
 	SubStub = std::make_unique<panels::menushared::MenuStubPage>("menusub", "abcui/rml/menustub.rml");
 	// T16: the replacement console (was the menuconsole stub).
 	Console = std::make_unique<panels::console::ConsolePage>();

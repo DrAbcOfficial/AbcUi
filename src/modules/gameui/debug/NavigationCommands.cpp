@@ -33,6 +33,8 @@ void DebugCommands::menuModelCommand() {
 	}
 	Rml::ElementDocument* document = module->Shell->document();
 	Rml::Element* model = document ? document->GetElementById("player-model") : nullptr;
+	abc::ConsolePrint("[AbcUi] menu facts: presented=%d shellVisible=%d context=%d frameTime=%.4f\n",
+		module->MenuPresented ? 1 : 0, module->Shell->isVisible() ? 1 : 0, module->Context ? 1 : 0, module->LastFrameTime);
 	if (!model) {
 		abc::ConsoleWarn("[AbcUi] player card model element not found\n");
 		return;
@@ -53,6 +55,82 @@ void DebugCommands::menuModelCommand() {
 	}
 	abc::ConsolePrint("[AbcUi] menu model box=%.1fx%.1f abs=(%.1f,%.1f)\n", model->GetOffsetWidth(),
 		model->GetOffsetHeight(), model->GetAbsoluteLeft(), model->GetAbsoluteTop());
+}
+
+// abc_ui_friends_test [clear | add <name> <address> | open <index>] -
+// Debug-only seam for the friends board: it swaps the Steam provider for a
+// scripted one (the same tactic the server-query tests use), opens a row's
+// context menu, or clears the injection.
+void DebugCommands::friendsTestCommand() {
+	namespace friends = services::friends;
+	// One scripted provider for the whole session; the entries are the ones
+	// the command injected.
+	static struct Scripted final : friends::IFriendsProvider {
+		std::vector<friends::FriendEntry> Rows;
+		bool available() override { return true; }
+		int count() override { return static_cast<int>(Rows.size()); }
+		bool entry(int index, friends::FriendEntry& out) override {
+			if (index < 0 || index >= static_cast<int>(Rows.size()))
+				return false;
+			out = Rows[index];
+			return true;
+		}
+	} Scripted;
+	static bool Injected = false;
+
+	const std::string action = gEngfuncs.Cmd_Argc() > 1 ? gEngfuncs.Cmd_Argv(1) : "clear";
+	if (action == "clear") {
+		Scripted.Rows.clear();
+		friends::friendsModel().setProvider(friends::steamFriendsProvider());
+		Injected = false;
+		abc::ConsolePrint("[AbcUi] friends test: steam provider restored\n");
+		return;
+	}
+	if (action == "add" && gEngfuncs.Cmd_Argc() >= 4) {
+		if (!Injected) {
+			friends::friendsModel().setProvider(&Scripted);
+			Injected = true;
+		}
+		friends::FriendEntry entry;
+		entry.SteamId = 76561190000000000ull + Scripted.Rows.size();
+		entry.Name = gEngfuncs.Cmd_Argv(2);
+		entry.Game = "Sven Co-op";
+		entry.Connect = gEngfuncs.Cmd_Argv(3);
+		entry.InGame = true;
+		Scripted.Rows.push_back(entry);
+		friends::friendsModel().invalidate();
+		abc::ConsolePrint("[AbcUi] friends test: injected '%s' at %s\n",
+			entry.Name.c_str(), entry.Connect.c_str());
+		return;
+	}
+	if (action == "open" && gEngfuncs.Cmd_Argc() >= 3) {
+		GameUiModule* module = GameUiModule::Instance;
+		Rml::ElementDocument* document = module && module->Shell ? module->Shell->document() : nullptr;
+		const int index = atoi(gEngfuncs.Cmd_Argv(2));
+		if (!document) {
+			abc::ConsoleWarn("[AbcUi] friends test: no menu document\n");
+			return;
+		}
+		Rml::Element* list = document->GetElementById("friends-list");
+		Rml::Element* row = list && index >= 0 && index < list->GetNumChildren() ? list->GetChild(index) : nullptr;
+		if (!row) {
+			abc::ConsoleWarn("[AbcUi] friends test: no row %d\n", index);
+			return;
+		}
+		module->Shell->debugOpenFriendMenu(row, 300, 200);
+		abc::ConsolePrint("[AbcUi] friends test: menu opened for row %d\n", index);
+		return;
+	}
+	if (action == "join" && gEngfuncs.Cmd_Argc() >= 3) {
+		GameUiModule* module = GameUiModule::Instance;
+		if (!module || !module->Shell) {
+			abc::ConsoleWarn("[AbcUi] friends test: no menu\n");
+			return;
+		}
+		module->Shell->debugJoinFriend(gEngfuncs.Cmd_Argv(2));
+		return;
+	}
+	abc::ConsolePrint("[AbcUi] friends test: clear | add <name> <address> | open <index> | join <steamid>\n");
 }
 
 }

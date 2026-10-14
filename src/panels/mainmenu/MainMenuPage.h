@@ -24,9 +24,11 @@
 
 #include "../../framework/InteractiveDocument.h"
 #include "services/uiconfig/UiDefinitions.h"
+#include "services/friends/FriendsModel.h"
 
 #include <RmlUi/Core/EventListener.h>
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <string>
@@ -40,6 +42,9 @@ namespace panels::mainmenu {
 // Injected business-action seam; invoked on the main thread from click
 // handlers. Empty sink = actions are dropped (the page stays functional).
 using ActionSink = std::function<void(const char* action)>;
+// Join intent: one friend row's address was chosen for a connection. The page
+// never validates or issues commands; the module owns the engine edge.
+using FriendJoinSink = std::function<void(uint64_t steamId, const char* address)>;
 
 class MainMenuPage final : public framework::InteractiveDocument {
 public:
@@ -52,6 +57,7 @@ public:
 	~MainMenuPage() override;
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
+	void setFriendJoinSink(FriendJoinSink sink) { JoinSink = std::move(sink); }
 	void setDefinition(const services::uiconfig::MenuDefinition& Value) { Definition = Value; }
 	void setMultiplayer(bool Value);
 
@@ -61,6 +67,19 @@ public:
 	void setPlayerCard(const char* playerName, const char* modelPath, const char* modelLabel);
 	// Footer right-hand note (engine build). Empty clears it.
 	void setFooterNote(const char* text);
+
+	// Friends board projection (WS4): one row per entry, the local player
+	// first; the row's avatar resolves through avatar://<steamid> and the
+	// state line shows the game. Re-projection is the caller's decision (the
+	// model's generation), so a steady list writes no DOM.
+	void setFriends(const std::vector<services::friends::FriendEntry>& rows, bool steamAvailable);
+
+#ifndef NDEBUG
+	// Debug seams (abc_ui_friends_test): exercise the row index and the join
+	// intent without an injectable mouse.
+	void debugOpenFriendMenu(Rml::Element* row, int x, int y);
+	void debugJoinFriend(const char* steamId);
+#endif
 
 	// Makes one section the visible one and, when requested, lands keyboard
 	// focus on the section's first visible entry. Safe while hidden: the
@@ -91,6 +110,9 @@ private:
 	};
 
 	void handle(Rml::Event& event);
+	bool handleContextMenu(Rml::Event& event);
+	void openFriendMenu(const char* steamId, const char* address, int x, int y);
+	void closeFriendMenu();
 	void buildEntries();
 	void updateFocusStatus(Rml::Element* focused);
 	void attachFocusBindings(Rml::Element* node);
@@ -99,6 +121,11 @@ private:
 
 	PageListener Listener;
 	ActionSink Sink;
+	FriendJoinSink JoinSink;
+	// The friend the open context menu belongs to (empty = closed).
+	std::string MenuFriendId;
+	std::string MenuFriendAddress;
+	uint32_t FriendsGeneration = 0;
 	services::uiconfig::MenuDefinition Definition = services::uiconfig::DefinitionParser::fallbackMenu();
 	bool Multiplayer = false;
 	Section VisibleSection = Section::kMain;

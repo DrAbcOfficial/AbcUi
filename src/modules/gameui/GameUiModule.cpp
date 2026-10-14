@@ -27,6 +27,9 @@ GameUiModule::GameUiModule()
 	// T20: the player-list model's roster/mute seams (playerres + the
 	// shipped GameClientExports001 probe).
 	PlayerList.setSeams(playerListSeams());
+	// WS4: the friends board's Steam provider (bound lazily; without Steam the
+	// board degrades to the local row plus an availability note).
+	services::friends::friendsModel().setProvider(services::friends::steamFriendsProvider());
 	modules::registry().add(this);
 	services::nativeUiBridge().setMenuSink(this);
 	Instance = this;

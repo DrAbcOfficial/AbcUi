@@ -34,6 +34,13 @@
 		<div id="friends-list"></div>
 	</div>
 
+	<!-- Right-click menu for a friend row: a single "Join server" entry. The
+	     page positions it at the click point and hides it again on any click
+	     that does not land on it. -->
+	<div id="friend-menu">
+		<div id="friend-menu-join" class="friend-menu-entry" data-action="friend-join">#MainMenu_FriendJoin</div>
+	</div>
+
 	<div id="player-card">
 		<!-- sequence 2 is the player model's own deep_idle (verified against
 		     the shipped models: [2] 'deep_idle', 31 frames @12fps), and the
