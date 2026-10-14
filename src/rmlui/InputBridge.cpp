@@ -91,6 +91,8 @@ public:
 	void onExclusiveChange(bool exclusive) override {
 		if (exclusive) {
 			SuppressOpeningRight = true;
+			gExportfuncs.IN_ClearStates(); // client only clears while active
+			vgui2ext::discardRelativeMouseMotion();
 			gExportfuncs.IN_DeactivateMouse();
 			vgui2ext::showCursor();
 		} else {
@@ -102,7 +104,7 @@ public:
 			}
 			for (int i = 0; i < 3; ++i) DeliveredDown[i] = false;
 			vgui2ext::lockCursor();
-			gExportfuncs.IN_ActivateMouse();
+			activateGameMouse();
 		}
 	}
 };
@@ -118,6 +120,31 @@ framework::uiinput::Router& uiRouter() {
 
 bool uiMouseOwner() {
 	return uiRouter().exclusive();
+}
+
+void maintainUiMouse() {
+	if (!uiMouseOwner())
+		return;
+	// The menu acquires inside IGameUI::ActivateGameUI, BEFORE the outer
+	// CBaseUI hides ClientVGUI and changes mouse state. Scoreboard has no
+	// such outer call. Reassert only after that native work has finished.
+	gExportfuncs.IN_DeactivateMouse();
+	vgui2ext::showCursor();
+}
+
+void activateGameMouse() {
+	if (uiMouseOwner()) {
+		gExportfuncs.IN_DeactivateMouse();
+		return;
+	}
+	gExportfuncs.IN_ActivateMouse();
+	// IN_ActivateMouse does not clear Sven's accumulated x/y. Sample once
+	// (also recentres the legacy non-raw mouse path), then clear while the
+	// client is active. SDL motion needs a separate drain if client gates
+	// made IN_Accumulate a no-op while the outer menu was still closing.
+	gExportfuncs.IN_Accumulate();
+	gExportfuncs.IN_ClearStates();
+	vgui2ext::discardRelativeMouseMotion();
 }
 
 bool routeKey(int down, int keynum, bool staticWheelClaim) {

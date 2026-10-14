@@ -41,13 +41,25 @@ void HudPanel::show() {
 	// visible document would silently steal the context focus (key input of
 	// whatever document the user is interacting with, e.g. an open TextMenu).
 	if (hudstate::isHudHidden(hudstate::kHideAll) && Name != "scoreboard" && Name != "motd" && Name != "textmenu" && Name != "vote") return;
-	if (Document && !Document->IsVisible())
+	WantsVisible = true;
+	if (SessionActive && Document && !Document->IsVisible())
 		Document->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
 }
 
 void HudPanel::hide() {
+	WantsVisible = false;
 	if (Document)
 		Document->Hide();
+}
+
+void HudPanel::setSessionActive(bool active) {
+	SessionActive = active;
+	if (!Document)
+		return;
+	if (!active)
+		Document->Hide();
+	else if (WantsVisible)
+		show();
 }
 
 bool HudPanel::isVisible() const {

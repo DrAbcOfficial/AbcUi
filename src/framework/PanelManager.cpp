@@ -105,8 +105,10 @@ void PanelManager::initAll(Rml::Context* context) {
 	if (!context)
 		return;
 	if (Panels().empty()) Panels() = createPanels();
-	for (auto& panel : Panels())
+	for (auto& panel : Panels()) {
 		panel->loadDocument(context);
+		panel->setSessionActive(SessionActive);
+	}
 	abc::ConsolePrint("[AbcUi] %d panel(s) loaded\n", static_cast<int>(Panels().size()));
 }
 
@@ -117,18 +119,9 @@ void PanelManager::vidInitAll() {
 		panel->reset();
 }
 
-void PanelManager::onFrame(double frameTime) {
-	for (auto& panel : Panels())
-		panel->onData(frameTime);
-}
-
-void PanelManager::onRedraw(double frameTime) {
-	for (auto& panel : Panels())
-		panel->onRedraw(frameTime);
-}
-
 void PanelManager::shutdown() {
 	Panels().clear();
+	SessionActive = false;
 }
 
 }

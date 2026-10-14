@@ -175,18 +175,21 @@ public:
 		(void)y;
 		(void)right;
 		(void)bottom;
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			rmlui::maintainUiMouse();
 	}
 	void HideGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {
 		// The outer (engine CBaseUI) layer stays native: its engine-root
 		// flips are the necessary side effects the takeover preserves. The
 		// inner IGameUI layer is where the suppression happens; this callback
 		// is observation only.
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			rmlui::maintainUiMouse();
 		services::nativeUiBridge().noteBaseUiToggle();
 	}
 	void ActivateGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			rmlui::maintainUiMouse();
 		services::nativeUiBridge().noteBaseUiToggle();
 	}
 	void HideConsole(VGUI2Extension_CallbackContext* CallbackContext) override {
@@ -194,10 +197,12 @@ public:
 		// console-toggle flag and forward to IGameConsole, so the native side
 		// stays (engine flag parity) and the inner GameConsole callbacks own
 		// the takeover. Observation only here.
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			rmlui::maintainUiMouse();
 	}
 	void ShowConsole(VGUI2Extension_CallbackContext* CallbackContext) override {
-		(void)CallbackContext;
+		if (CallbackContext->IsPost)
+			rmlui::maintainUiMouse();
 	}
 };
 
@@ -360,6 +365,7 @@ void wireNativeEntrySeams() {
 	seams.installPasswordPromptHook = []() { installPasswordPromptHook(); };
 	seams.detachPaintGate = []() { rmlui::uninstallPaintGate(); };
 	seams.detachPasswordPromptHook = []() { uninstallGameUiLoadingHook(); };
+	seams.onDisconnected = []() { rmlui::onDisconnected(); };
 	setNativeEntrySeams(seams);
 }
 
@@ -670,6 +676,20 @@ bool showCursor() {
 	Surface2->SetCursor(vgui::dc_arrow);
 	Surface2->LockCursor();
 	return true;
+}
+
+void discardRelativeMouseMotion() {
+	// Match client.dll's SDL2 import, NOT SDL3's float-output ABI. Resolve
+	// each time: no cached function address may survive a module unload.
+	using GetRelativeMouseState = unsigned int(__cdecl*)(int*, int*);
+	if (const HMODULE sdl = GetModuleHandleA("SDL2.dll")) {
+		const auto getRelative = reinterpret_cast<GetRelativeMouseState>(
+			GetProcAddress(sdl, "SDL_GetRelativeMouseState"));
+		if (getRelative) {
+			int x = 0, y = 0;
+			getRelative(&x, &y);
+		}
+	}
 }
 
 bool centerAndUnlockCursor() {

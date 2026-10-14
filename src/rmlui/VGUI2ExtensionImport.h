@@ -108,6 +108,8 @@ bool showCursor();
 bool centerAndUnlockCursor();
 // Releases the shape lock and restores VGUI visibility on the last owner exit.
 void lockCursor();
+// Drain SDL2's relative delta without changing the cursor or feeding gameplay.
+void discardRelativeMouseMotion();
 
 // R-4 batch C: true once the BaseUI callbacks (engine surface WndProc) are
 // registered - InputBridge then drives the Rml mouse from window messages

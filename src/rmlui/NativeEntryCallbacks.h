@@ -45,6 +45,8 @@ struct NativeEntrySeams {
 	// the password-prompt hook (ClientVGUI Shutdown, GameUI still mapped).
 	void (*detachPaintGate)(void) = nullptr;
 	void (*detachPasswordPromptHook)(void) = nullptr;
+	// Disconnect is a session end, not an engine/plugin shutdown.
+	void (*onDisconnected)(void) = nullptr;
 };
 
 void setNativeEntrySeams(const NativeEntrySeams& seams);

@@ -42,6 +42,9 @@ public:
 	void show();
 	void hide();
 	bool isVisible() const;
+	// Session visibility is independent of a panel's data-driven request.
+	// Menu documents do not inherit HudPanel and are unaffected.
+	void setSessionActive(bool active);
 
 	const std::string& getName() const { return Name; }
 	Rml::ElementDocument* getDocument() const { return Document; }
@@ -81,6 +84,8 @@ protected:
 	Rml::ElementDocument* Document = nullptr;
 
 private:
+	bool SessionActive = false;
+	bool WantsVisible = false;
 	std::vector<std::function<void()>> Cleanups;
 };
 

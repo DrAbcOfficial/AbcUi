@@ -132,6 +132,7 @@ add_library(AbcUi MODULE
     src/services/settings/VideoPendingStore.cpp
     src/services/settings/VoiceModel.cpp
     src/framework/PanelManager.cpp
+    src/framework/PanelManagerLifecycle.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
     src/framework/Projection.cpp

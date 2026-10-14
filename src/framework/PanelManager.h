@@ -25,6 +25,9 @@ public:
 	static void initAll(Rml::Context* context);
 	// HUD_VidInit: resolution changes + per-panel map reset.
 	static void vidInitAll();
+	// Level lifecycle gate. On disconnect reset/hide every HUD document,
+	// releasing HUD-only owners without dismissing the independent menu.
+	static void setSessionActive(bool active);
 	// HUD_Frame: per-panel data refresh.
 	static void onFrame(double frameTime);
 	// HUD_Redraw: render-phase pump for projection consumers; runs a second
@@ -35,6 +38,7 @@ public:
 	static const std::vector<std::unique_ptr<HudPanel>>& panels() { return Panels(); }
 
 private:
+	static bool SessionActive;
 	static std::vector<std::unique_ptr<HudPanel>>& Panels();
 };
 

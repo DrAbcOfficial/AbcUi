@@ -62,6 +62,7 @@ PerfSnapshot perfSnapshot();
 
 // Spine entries (hooks.cpp).
 void onFrame(double frameTime);
+void onDisconnected();
 // HUD_Redraw chain: projection consumers reposition + second Update.
 void onRedraw(double frameTime);
 void onVidInit();

@@ -266,6 +266,7 @@ static void H_CL_CreateMove(float time, usercmd_s* cmd, int active) {
 }
 
 void attachExports(cl_exportfuncs_t* pExportFuncs) {
+	pExportFuncs->IN_ActivateMouse = rmlui::activateGameMouse;
 	pExportFuncs->IN_Accumulate = H_IN_Accumulate;
 	pExportFuncs->IN_MouseEvent = H_IN_MouseEvent;
 	pExportFuncs->CL_CreateMove = H_CL_CreateMove;

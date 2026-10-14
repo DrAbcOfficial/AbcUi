@@ -46,6 +46,11 @@ framework::uiinput::Router& uiRouter();
 // Kept for the engine-side gates and diagnostics: true while any owner
 // holds UI input (scoreboard pointer mode, menu page, ...).
 bool uiMouseOwner();
+// Re-apply ownership AFTER native BaseUI operations (including its frame pump).
+void maintainUiMouse();
+// Client export gate: native UI must not reactivate gameplay mouse while owned.
+// On handoff, discard UI motion before the next gameplay CreateMove.
+void activateGameMouse();
 
 // The single physical-event injection point (hooks.cpp H_HUD_Key_Event).
 // Routes the edge through the ownership router (which feeds the UI what it

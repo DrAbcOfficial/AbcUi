@@ -137,8 +137,11 @@ public:
 		// Pre-only: the level fact is a state mutation (and the counter a
 		// logical-event count) - the proxy's post dispatch must not run it
 		// twice.
-		if (!CallbackContext->IsPost)
+		if (!CallbackContext->IsPost) {
 			services::nativeUiBridge().noteDisconnected();
+			if (Seams.onDisconnected)
+				Seams.onDisconnected();
+		}
 	}
 	void HideGameUI(VGUI2Extension_CallbackContext* CallbackContext) override {
 		auto& bridge = services::nativeUiBridge();

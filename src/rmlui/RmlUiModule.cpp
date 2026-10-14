@@ -22,6 +22,8 @@
 #include "../modules/Module.h"
 #include "../data/Avatars.h"
 #include "../data/HudState.h"
+#include "../data/WeaponResource.h"
+#include "../data/PlayerResource.h"
 #include "../data/SpriteResource.h"
 
 #include "AbcRenderInterface.h"
@@ -131,6 +133,9 @@ public:
 #ifndef NDEBUG
 		const PerfTimer renderTimer;
 #endif
+		// Also gate here: a disconnect may arrive after HUD_Frame, and there
+		// need not be another HUD_Redraw before the main menu is rendered.
+		framework::PanelManager::setSessionActive(services::nativeUiBridge().hasLevel());
 		Context->Render();
 #ifndef NDEBUG
 		PerfAccumulateRender(renderTimer.milliseconds());
@@ -402,6 +407,7 @@ void onFrame(double frameTime) {
 		Context->SetDimensions(Rml::Vector2i(static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
 			static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
 	}
+	framework::PanelManager::setSessionActive(services::nativeUiBridge().hasLevel());
 	InputBridge::update(Context);
 	avatars::onFrame();
 	framework::PanelManager::onFrame(frameTime);
@@ -418,6 +424,15 @@ void onFrame(double frameTime) {
 	PerfAccumulateUpdate(updateTimer.milliseconds());
 	captureFirstFrameEvidence();
 #endif
+}
+
+void onDisconnected() {
+	framework::PanelManager::setSessionActive(false);
+	// Match the map-init data reset without destroying the menu context or
+	// resetting the entire input router (the menu may already own it).
+	hudstate::reset();
+	weaponres::reset();
+	playerres::resetAll();
 }
 
 void onRedraw(double frameTime) {
