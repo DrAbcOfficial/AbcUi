@@ -92,6 +92,7 @@ public:
 		if (exclusive) {
 			SuppressOpeningRight = true;
 			gExportfuncs.IN_DeactivateMouse();
+			vgui2ext::showCursor();
 		} else {
 			SuppressOpeningRight = false;
 			if (auto* context = rmlui::context()) {
@@ -100,6 +101,7 @@ public:
 				context->ProcessMouseLeave();
 			}
 			for (int i = 0; i < 3; ++i) DeliveredDown[i] = false;
+			vgui2ext::lockCursor();
 			gExportfuncs.IN_ActivateMouse();
 		}
 	}
@@ -291,14 +293,6 @@ void InputBridge::update(Rml::Context* context) {
 	ShiftWasDown = shiftDown;
 	CtrlWasDown = ctrlDown;
 	AltWasDown = altDown;
-}
-
-bool InputBridge::pointerPosition(int& x, int& y) {
-	if (!GateWasOpen || LastMouseX < 0 || LastMouseY < 0)
-		return false;
-	x = LastMouseX;
-	y = LastMouseY;
-	return true;
 }
 
 void InputBridge::resetPointerState() {

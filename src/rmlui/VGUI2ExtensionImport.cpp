@@ -661,15 +661,21 @@ int videoModeList(video::Mode* out, int max) {
 	return count;
 }
 
-bool centerAndUnlockCursor() {
+bool showCursor() {
 	if (!Surface2)
 		return false;
-	const int x = gEngfuncs.GetWindowCenterX();
-	const int y = gEngfuncs.GetWindowCenterY();
+	// Lock the selected native shape, not the pointer position: suppressed
+	// GameUI hit testing must not replace it with dc_none on the next frame.
 	Surface2->UnlockCursor();
 	Surface2->SetCursor(vgui::dc_arrow);
-	Surface2->SurfaceSetCursorPos(x, y);
 	Surface2->LockCursor();
+	return true;
+}
+
+bool centerAndUnlockCursor() {
+	if (!showCursor())
+		return false;
+	Surface2->SurfaceSetCursorPos(gEngfuncs.GetWindowCenterX(), gEngfuncs.GetWindowCenterY());
 	return true;
 }
 

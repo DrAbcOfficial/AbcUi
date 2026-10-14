@@ -8,7 +8,6 @@
 #include <abc/Paths.h>
 
 #include "TextInput.h"
-#include "cursor/CursorOverlay.h"
 #include "framework/DocumentLoadGuard.h"
 #include "framework/Localization.h"
 
@@ -59,12 +58,6 @@ bool AbcSystemInterface::LogMessage(Rml::Log::Type type, const Rml::String& mess
 		break;
 	}
 	return true;
-}
-
-void AbcSystemInterface::SetMouseCursor(const Rml::String& cursorName) {
-	// Rml's default is a no-op. Store the requested glyph; the renderer's
-	// final overlay owns drawing, independently of native GameUI visibility.
-	cursorOverlay().setShape(cursorName);
 }
 
 void AbcSystemInterface::SetClipboardText(const Rml::String& text) {

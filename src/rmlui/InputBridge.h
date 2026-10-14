@@ -86,9 +86,6 @@ class InputBridge {
 public:
 	// HUD_Frame time, before Context::Update.
 	static void update(Rml::Context* context);
-	// The exact pixel position last fed to Rml; cursor rendering must not
-	// poll a second coordinate source or apply the dp ratio a second time.
-	static bool pointerPosition(int& x, int& y);
 	// Called once for a fresh context; seed its hover state on the next poll.
 	static void resetPointerState();
 

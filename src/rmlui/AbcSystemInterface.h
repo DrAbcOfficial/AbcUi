@@ -22,7 +22,6 @@ public:
 	double GetElapsedTime() override;
 	int TranslateString(Rml::String& translated, const Rml::String& input) override;
 	bool LogMessage(Rml::Log::Type type, const Rml::String& message) override;
-	void SetMouseCursor(const Rml::String& cursorName) override;
 	void SetClipboardText(const Rml::String& text) override;
 	void GetClipboardText(Rml::String& text) override;
 	// IME placement (T07 step 3). No-ops without a resolvable game window

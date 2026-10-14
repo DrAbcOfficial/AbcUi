@@ -100,11 +100,13 @@ bool currentVideoMode(int& width, int& height, int& bpp, bool& windowed);
 // unavailable). The caller owns the buffer.
 int videoModeList(video::Mode* out, int max);
 
-// Centers the OS cursor on the game window and unlocks it (scoreboard
-// pointer mode; old EnableMousePointer + vgui UnlockCursor). Returns false
-// when the surface interface is missing.
+// Selects and locks the native arrow without moving it. Owned by the
+// router's exclusive edge, shared by menus and interactive HUD owners.
+// Returns false when the surface interface is missing.
+bool showCursor();
+// Scoreboard's explicit pointer-mode entry additionally centers the cursor.
 bool centerAndUnlockCursor();
-// Re-locks the cursor (scoreboard close).
+// Releases the shape lock and restores VGUI visibility on the last owner exit.
 void lockCursor();
 
 // R-4 batch C: true once the BaseUI callbacks (engine surface WndProc) are

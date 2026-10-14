@@ -31,7 +31,6 @@
 #include "ProbeCommand.h"
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
-#include "cursor/CursorOverlay.h"
 #include "../services/GameUiBridge.h"
 
 namespace rmlui {
@@ -133,15 +132,6 @@ public:
 		const PerfTimer renderTimer;
 #endif
 		Context->Render();
-		// Native GameUI paint is suppressed and can never supply our menu
-		// pointer. Draw it last, above every document, without a hit-testable
-		// DOM node and using the exact position consumed by InputBridge.
-		int MouseX = 0, MouseY = 0;
-		const auto& Native = services::nativeUiBridge();
-		const bool MenuPointer = Native.menuUp() && Native.pageShown() && uiMouseOwner()
-			&& InputBridge::pointerPosition(MouseX, MouseY);
-		cursorOverlay().render(*RenderInterface, {MouseX, MouseY}, Context->GetDimensions(),
-			Context->GetDensityIndependentPixelRatio(), MenuPointer);
 #ifndef NDEBUG
 		PerfAccumulateRender(renderTimer.milliseconds());
 		// T21: the first frame whose buffer actually contains the menu is the
@@ -378,7 +368,6 @@ void shutdown() {
 	modules::registry().shutdownAll();
 	closeProbeDocument();
 	framework::PanelManager::shutdown();
-	cursorOverlay().reset(); // borrowed geometry dies before its render interface
 
 	// Rml::Shutdown first releases per-load borrowed/owned records; cache IDs
 	// are deleted only afterwards, including never-delivered avatar uploads.

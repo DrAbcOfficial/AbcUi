@@ -304,7 +304,7 @@ void ScoreboardPanel::setMouseMode(bool enabled) {
 		return;
 	MouseMode = enabled;
 	// Ownership gates both Rml input and the client mouse/view hooks; the
-	// cursor handoff rides the same edge (old EnableMousePointer).
+	// native cursor lifetime follows the router's first/last owner edge.
 	if (enabled)
 		PointerToken = rmlui::uiRouter().acquire(this, framework::uiinput::OwnerTier::kInteractiveHud);
 	else
@@ -312,7 +312,6 @@ void ScoreboardPanel::setMouseMode(bool enabled) {
 	if (enabled) {
 		vgui2ext::centerAndUnlockCursor();
 	} else {
-		vgui2ext::lockCursor();
 		closeContextMenu();
 	}
 }
