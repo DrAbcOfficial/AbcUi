@@ -64,7 +64,9 @@ add_library(AbcUi MODULE
     src/hooks.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp
+    src/rmlui/backdrop/ElementBackdrop.cpp
     src/rmlui/video/ElementVideo.cpp
+    src/services/menubackdrop/Backdrop.cpp
     src/services/modelpreview/Options.cpp
     src/services/modelpreview/Target.cpp
     src/services/video/Decoder.cpp
@@ -91,6 +93,7 @@ add_library(AbcUi MODULE
     src/framework/TextEncoding.cpp
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp
+    src/framework/MenuBackdrop.cpp
     src/framework/PreviewImage.cpp
     src/framework/InteractiveDocument.cpp
     src/framework/UiInputRouter.cpp

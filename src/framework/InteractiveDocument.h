@@ -50,7 +50,12 @@ public:
 							// caller escalates, nothing is loaded
 	};
 
-	InteractiveDocument(const char* name, const char* documentPath);
+	// `withBackdrop`: the page is a full-window menu surface and wants the
+	// shared blurred backdrop inserted behind its own content (see
+	// framework/MenuBackdrop.h; a no-op until the rmlui layer installs the
+	// implementation). Overlays that must keep the world visible (the console)
+	// leave it false.
+	InteractiveDocument(const char* name, const char* documentPath, bool withBackdrop = false);
 	// Subclasses with member listeners MUST call close() in their destructor
 	// body, before those members die. The base destructor is only a fallback.
 	virtual ~InteractiveDocument();
@@ -150,6 +155,7 @@ private:
 
 	const std::string Name;
 	const std::string DocumentPath;
+	const bool WithBackdrop;
 	Rml::ElementDocument* Document = nullptr;
 	bool Degraded = false;
 	bool RetryRequested = false;

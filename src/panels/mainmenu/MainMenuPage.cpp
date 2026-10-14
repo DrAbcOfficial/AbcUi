@@ -36,7 +36,7 @@ Rml::Element* actionNode(Rml::Element* node) {
 } // namespace
 
 MainMenuPage::MainMenuPage(const char* documentPath)
-	: InteractiveDocument("mainmenu", documentPath), Listener(this) {}
+	: InteractiveDocument("mainmenu", documentPath, true), Listener(this) {}
 
 MainMenuPage::~MainMenuPage() {
 	// Rml calls OnDetach: the member listener must still be alive here.

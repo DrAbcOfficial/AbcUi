@@ -155,7 +155,7 @@ const char* tabActionOf(QueryKind kind) {
 }
 
 ServerBrowserPage::ServerBrowserPage()
-	: InteractiveDocument("menuserverbrowser", "abcui/rml/serverbrowser.rml"), Listener(this) {}
+	: InteractiveDocument("menuserverbrowser", "abcui/rml/serverbrowser.rml", true), Listener(this) {}
 
 ServerBrowserPage::~ServerBrowserPage() {
 	close();

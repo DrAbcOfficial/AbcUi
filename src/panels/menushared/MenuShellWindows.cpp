@@ -64,7 +64,7 @@ void ConfirmQuitOverlay::refocusDefault() {
 }
 
 MenuStubPage::MenuStubPage(const char* name, const char* documentPath)
-	: InteractiveDocument(name, documentPath), Listener(this) {}
+	: InteractiveDocument(name, documentPath, true), Listener(this) {}
 
 MenuStubPage::~MenuStubPage() {
 	close();

@@ -27,6 +27,8 @@
 #include "../data/SpriteResource.h"
 
 #include "AbcRenderInterface.h"
+#include "backdrop/ElementBackdrop.h"
+#include "../services/menubackdrop/Backdrop.h"
 #include "model/ElementModel.h"
 #include "video/ElementVideo.h"
 #include "AbcSystemInterface.h"
@@ -129,6 +131,16 @@ public:
 		auto* renderer = abc::MetaRenderer();
 		if (!renderer || !RenderInterface || !Context)
 			return;
+		// Menu backdrop first: it captures the frame that was just presented
+		// and blurs it, so the Rml pass below draws over the finished blur.
+		if (backdrop::anyVisible()) {
+			// Both steps always run: render() reports only texture changes while
+			// the element sync carries layout and the image source.
+			const bool refreshed = menubackdrop::menuBackdrop().render();
+			const bool mirrored = backdrop::syncAll();
+			if (refreshed || mirrored)
+				Context->Update();
+		}
 		model::renderPreviews();
 		renderer->PushFrameBuffer();
 		renderer->BindFrameBuffer(renderer->GetFinalBufferFBO());
@@ -322,6 +334,7 @@ void init() {
 		framework::fatalExit("Rml::Initialise failed (Rml core unavailable)");
 	model::registerElement();
 	video::registerElement();
+	backdrop::registerElement();
 
 	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
 	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
@@ -400,6 +413,10 @@ void shutdown() {
 
 void registerCommands() {
 	abc::ADD_COMMAND("abc_ui_debugger", debuggerCommand);
+	// Menu backdrop knobs (the element reads them every sync; an explicit
+	// attribute on the <backdrop> node still wins).
+	abc::CREATE_CVAR("abc_ui_menu_video", menubackdrop::kDefaultVideoSource, abc::FCVAR_VALUE, nullptr);
+	abc::CREATE_CVAR("abc_ui_menu_backdrop_blur", "2", abc::FCVAR_VALUE, nullptr);
 	registerProbeCommand();
 }
 
@@ -418,6 +435,10 @@ void onFrame(double frameTime) {
 	framework::PanelManager::setSessionActive(services::nativeUiBridge().hasLevel());
 	InputBridge::update(Context);
 	avatars::onFrame();
+	// Background movie for the menu backdrop: the same HUD beat as the live
+	// <video> elements, only while a backdrop is on screen.
+	if (backdrop::anyVisible())
+		menubackdrop::menuBackdrop().pumpVideo(frameTime);
 	// Live <video> frames decode/upload on the HUD beat, before the Update
 	// pass, so a fresh frame and a fresh document state land in one update.
 	if (video::pumpFrames(frameTime))
@@ -466,6 +487,7 @@ void onRedraw(double frameTime) {
 void onVidInit() {
 	modelpreview::invalidateAll();
 	video::invalidateAll();
+	backdrop::invalidateTargets();
 	sprites::vidInit();
 	if (Initialised) for (const auto& source : Rml::GetTextureSourceList())
 		if (source.rfind("spr://",0)==0) Rml::ReleaseTexture(source);

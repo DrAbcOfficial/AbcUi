@@ -28,6 +28,8 @@
 #include "PaintGate.h"
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
+#include "backdrop/ElementBackdrop.h"
+#include "../services/menubackdrop/Backdrop.h"
 #include "../services/GameUiBridge.h"
 #include "../services/console/ConsoleBackend.h"
 #include "../services/console/ConsoleBuffer.h"
@@ -348,6 +350,20 @@ void probeCommand() {
 		}
 	}
 	// Mouse-chain diagnostics (P6 audit round): cursor state, the R-4 WndProc
+	// Menu backdrop (UI overhaul WS3): element presence, the shared service's
+	// published image and its blur/decoder state.
+	{
+		const auto element = backdrop::probeInfo();
+		const auto service = menubackdrop::menuBackdrop().diagnostics();
+		abc::ConsolePrint("[AbcUi] probe: backdrop elements=%d visible=%d published=%d uri='%s'\n",
+			element.Elements, element.Visible, element.Published ? 1 : 0, element.Uri.c_str());
+		abc::ConsolePrint("[AbcUi] probe: backdrop doc='%s' box=%.1fx%.1f image=%.1fx%.1f src='%s' visibility='%s'\n",
+			element.Document.c_str(), element.Width, element.Height, element.ImageWidth, element.ImageHeight,
+			element.ImageSrc.c_str(), element.ImageVisibility.c_str());
+		abc::ConsolePrint("[AbcUi] probe: backdrop mode=%d/%d rounds=%d target=%dx%d video=%d/%.2f\n",
+			service.Requested, service.Effective, service.Rounds, service.Width, service.Height,
+			service.VideoOpen ? 1 : 0, service.VideoSeconds);
+	}
 	// callback registration and the scoreboard pointer mode (wantsWheel =
 	// visible && pointer-mode).
 	{

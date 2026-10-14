@@ -26,6 +26,9 @@ public:
 	// Rml image source for the current texture; empty before the first upload.
 	const std::string& uri() const { return Uri; }
 	bool valid() const { return TextureId != 0; }
+	// Raw texture id for consumers that draw the frame themselves (the menu
+	// backdrop blurs it instead of showing it directly).
+	int textureId() const { return TextureId; }
 
 	void release();
 

@@ -1,5 +1,6 @@
 // framework::InteractiveDocument implementation - see InteractiveDocument.h.
 #include "InteractiveDocument.h"
+#include "MenuBackdrop.h"
 
 #include "DocumentLoadGuard.h"
 
@@ -66,8 +67,8 @@ constexpr char kEmergencyRml[] =
 
 } // namespace
 
-InteractiveDocument::InteractiveDocument(const char* name, const char* documentPath)
-	: Name(name), DocumentPath(documentPath) {}
+InteractiveDocument::InteractiveDocument(const char* name, const char* documentPath, bool withBackdrop)
+	: Name(name), DocumentPath(documentPath), WithBackdrop(withBackdrop) {}
 
 InteractiveDocument::~InteractiveDocument() {
 	close();
@@ -108,6 +109,11 @@ InteractiveDocument::LoadOutcome InteractiveDocument::load(Rml::Context* context
 	}
 	if (Document) {
 		Degraded = false;
+		// Backdrop before the page's own setup: the page's onDocumentReady may
+		// resolve or reorder nodes, and the backdrop must already sit behind
+		// them (paint order is DOM order).
+		if (WithBackdrop)
+			menubackdrop::attach(Document);
 		onDocumentReady();
 		return LoadOutcome::kLoaded;
 	}

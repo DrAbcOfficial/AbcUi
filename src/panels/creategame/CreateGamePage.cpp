@@ -45,7 +45,7 @@ std::string resolve(const std::string& text) {
 } // namespace
 
 CreateGamePage::CreateGamePage()
-	: InteractiveDocument("menucreategame", "abcui/rml/creategame.rml"), Listener(this) {}
+	: InteractiveDocument("menucreategame", "abcui/rml/creategame.rml", true), Listener(this) {}
 
 CreateGamePage::~CreateGamePage() {
 	close();

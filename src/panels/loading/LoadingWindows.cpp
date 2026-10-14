@@ -80,7 +80,7 @@ std::string percentText(float fraction) {
 } // namespace
 
 LoadingPage::LoadingPage()
-	: InteractiveDocument("menuloading", "abcui/rml/loading.rml"), Listener(this) {}
+	: InteractiveDocument("menuloading", "abcui/rml/loading.rml", true), Listener(this) {}
 
 LoadingPage::~LoadingPage() {
 	close();
