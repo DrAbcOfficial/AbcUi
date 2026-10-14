@@ -1,8 +1,8 @@
 {
   "version": 1,
   "id": "advanced",
-  "label": "#Settings_SecAdvanced",
-  "order": 70,
+  "label": "#Settings_PageAdvanced",
+  "order": 11,
   "components": [
     "user-script"
   ],
@@ -308,6 +308,12 @@
           "label": "#Settings_DeveloperExtreme"
         }
       ]
+    },
+    {
+      "cvar": "abc_ui_browser_hide_unresponsive",
+      "label": "#Settings_HideUnresponsive",
+      "kind": "bool",
+      "default": 1
     }
   ]
 }

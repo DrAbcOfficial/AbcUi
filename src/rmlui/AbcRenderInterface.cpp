@@ -3,6 +3,8 @@
 #include <metahook.h>
 
 #include "AbcRenderInterface.h"
+#include "framework/PreviewImage.h"
+#include <abc/Plugin.h>
 #include "../framework/ResourceLimits.h"
 
 #include <cstddef>
@@ -329,6 +331,27 @@ void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 }
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, const Rml::String& source) {
+	if (source.rfind("preview://", 0) == 0) {
+		framework::PreviewRequest Request;
+		if (!framework::parsePreviewUri(source, Request) || !abc::g_pFileSystem)
+			return 0;
+		const auto File = abc::g_pFileSystem->Open(Request.Path.c_str(), "rb");
+		if (!File) return 0;
+		const auto Size = abc::g_pFileSystem->Size(File);
+		std::vector<unsigned char> Bytes;
+		if (Size > 0 && Size <= framework::ResourceLimits::MaxFileBytes) {
+			Bytes.resize(Size);
+			if (abc::g_pFileSystem->Read(Bytes.data(), Size, File) != static_cast<int>(Size))
+				Bytes.clear();
+		}
+		abc::g_pFileSystem->Close(File);
+		framework::ImageLoader::DecodedImage Image;
+		if (!framework::decodePreview(Request, Bytes, Image)) return 0;
+		const int Texture = UploadNewTexture(Image.Pixels.data(), Image.Width, Image.Height);
+		if (!Texture) return 0;
+		dimensions = {Image.Width, Image.Height};
+		return retainTexture(Texture, true);
+	}
 	// Externally-owned live textures first (radar FBO): the owner registered
 	// the URI prefix; the query suffix is a cache-bust, the current handle
 	// lives in the registry.

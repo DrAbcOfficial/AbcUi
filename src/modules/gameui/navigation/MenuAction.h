@@ -42,6 +42,8 @@ enum class ActionKind {
 	kSbTabLan,
 	kSbTabFavorites,
 	kSbTabHistory,
+	kSbTabFriends,
+	kSbFiltersApply,
 	kSbRefresh,
 	kSbStop,
 	kSbFilterEmpty,

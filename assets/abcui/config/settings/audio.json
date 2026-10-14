@@ -2,7 +2,7 @@
   "version": 1,
   "id": "audio",
   "label": "#Settings_SecAudio",
-  "order": 40,
+  "order": 30,
   "components": [],
   "items": [
     {

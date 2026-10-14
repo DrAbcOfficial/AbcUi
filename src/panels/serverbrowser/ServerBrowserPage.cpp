@@ -145,6 +145,8 @@ const char* tabActionOf(QueryKind kind) {
 		return kActionTabFavorites;
 	case QueryKind::History:
 		return kActionTabHistory;
+	case QueryKind::Friends:
+		return "sb-tab-friends";
 	default:
 		return kActionTabInternet;
 	}
@@ -160,8 +162,10 @@ ServerBrowserPage::~ServerBrowserPage() {
 }
 
 void ServerBrowserPage::onDocumentReady() {
-	if (Rml::ElementDocument* doc = document())
+	if (Rml::ElementDocument* doc = document()) {
 		addListener(doc, "click", &Listener);
+		addListener(doc, "change", &Listener);
+	}
 	Projected = false;
 	HaveSignature = false;
 }
@@ -200,11 +204,20 @@ std::size_t ServerBrowserPage::projectionSignature() const {
 	mixValue(hash, static_cast<int>(list.sortColumn()));
 	mixValue(hash, list.sortAscending());
 	mixValue(hash, list.selectedKey());
+	mixValue(hash, list.blockedOnly());
+	mixValue(hash, FilterOpen);
+	if (Blacklist) mixValue(hash, Blacklist->revision());
 	const auto& filter = list.filter();
 	mixValue(hash, filter.hideEmpty);
 	mixValue(hash, filter.hideFull);
 	mixValue(hash, filter.secureOnly);
 	mixText(hash, filter.gameDir);
+	mixText(hash, filter.Name);
+	mixText(hash, filter.Map);
+	mixValue(hash, filter.MaxPing);
+	mixValue(hash, filter.NoPassword);
+	mixValue(hash, filter.InsecureOnly);
+	mixValue(hash, filter.HideUnresponsive);
 	const int rows = services::serverbrowser::ServerListModel::kPageSize;
 	for (int row = 0; row < rows; ++row) {
 		const int index = list.entryIndexAt(row);
@@ -222,6 +235,7 @@ std::size_t ServerBrowserPage::projectionSignature() const {
 		mixValue(hash, entry->responded);
 		mixValue(hash, entry->secure);
 		mixValue(hash, entry->password);
+		mixValue(hash, entry->botPlayers);
 	}
 	for (int i = 0; i < query.playerCount(); ++i) {
 		const auto* player = query.player(i);
@@ -290,9 +304,9 @@ void ServerBrowserPage::render() {
 	setHtml(doc, "sb-status", framework::TextUtil::escapeRml(status));
 
 	// --- tabs / buttons / filters --------------------------------------------
-	for (int kind = 0; kind <= static_cast<int>(QueryKind::History); ++kind) {
-		if (Rml::Element* tab = doc->GetElementById(tabActionOf(static_cast<QueryKind>(kind))))
-			tab->SetClass("sb-active", static_cast<QueryKind>(kind) == query.kind());
+	for (auto Kind : {QueryKind::Internet, QueryKind::Lan, QueryKind::Favorites, QueryKind::History, QueryKind::Friends}) {
+		if (Rml::Element* tab = doc->GetElementById(tabActionOf(Kind)))
+			tab->SetClass("sb-active", Kind == query.kind() && !list.blockedOnly());
 	}
 	setPressed(doc, "sb-filter-empty", list.filter().hideEmpty);
 	setPressed(doc, "sb-filter-full", list.filter().hideFull);
@@ -331,10 +345,16 @@ void ServerBrowserPage::render() {
 		rows += kActionRow;
 		rows += "\" data-row=\"";
 		rows += std::to_string(row);
-		rows += "\"><span class=\"c-name\">";
+		rows += "\"><span class=\"c-flags\">";
+		if (entry->responded && entry->password)
+			rows += "<img class=\"server-icon\" src=\"../img/server-lock.png\" title=\""
+				+ framework::TextUtil::escapeRmlAttribute(token("SB_PasswordYes")) + "\"/>";
+		if (entry->responded && entry->secure)
+			rows += "<img class=\"server-icon\" src=\"../img/server-vac.png\" title=\""
+				+ framework::TextUtil::escapeRmlAttribute(token("SB_SecureYes")) + "\"/>";
+		rows += "</span><span class=\"c-bots\">" + (entry->responded ? std::to_string(entry->botPlayers) : "?")
+			+ "</span><span class=\"c-name\">";
 		rows += framework::TextUtil::escapeRml(entry->name);
-		if (entry->password)
-			rows += " <span class=\"m-flag\">*</span>";
 		rows += "</span><span class=\"c-map\">";
 		rows += framework::TextUtil::escapeRml(entry->map);
 		rows += "</span><span class=\"c-players\">";
@@ -384,7 +404,7 @@ void ServerBrowserPage::render() {
 		}
 		info += "</p>";
 		setHtml(doc, "sb-detail-info", info);
-		setDisabled(doc, "sb-connect", false);
+		setDisabled(doc, "sb-connect", list.blockedOnly() || !selected->responded);
 
 		// The favorite state is READ from the authoritative store each
 		// projection (never cached: Steam is the one truth; the toggle lands
@@ -426,9 +446,12 @@ void ServerBrowserPage::render() {
 		}
 		setHtml(doc, "sb-detail-players", players);
 	}
+	renderControls();
 }
 
 void ServerBrowserPage::handleClick(Rml::Event& event) {
+	if (handleControls(event))
+		return;
 	Rml::Element* entry = actionNode(event.GetTargetElement());
 	if (!entry)
 		return;
@@ -444,6 +467,7 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 		const ServerEntry* selected = List->selectedEntry(*Query);
 		if (selected)
 			Query->requestPlayers(*selected);  // single-slot replace (T17 model)
+		List->sync(*Query);
 		render();
 		return;
 	}
@@ -481,7 +505,7 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 	// Module intents (fixed names; the module owns the query lifecycle, the
 	// filter truth and every engine/Steam mutation, the tick re-projects).
 	if (action == kActionTabInternet || action == kActionTabLan || action == kActionTabFavorites
-		|| action == kActionTabHistory || action == kActionRefresh || action == kActionStop
+		|| action == kActionTabHistory || action == "sb-tab-friends" || action == kActionRefresh || action == kActionStop
 		|| action == kActionFilterEmpty || action == kActionFilterFull
 		|| action == kActionFilterSecure || action == kActionConnect
 		|| action == kActionFavoriteToggle || action == kActionReturn) {
@@ -492,7 +516,10 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 }
 
 void ServerBrowserPage::PageListener::ProcessEvent(Rml::Event& event) {
-	Owner->handleClick(event);
+	if (event.GetType() == "change")
+		Owner->handleChange(event);
+	else
+		Owner->handleClick(event);
 }
 
 void ServerBrowserPage::refocusDefault() {

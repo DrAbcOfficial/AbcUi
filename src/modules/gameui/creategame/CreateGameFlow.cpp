@@ -66,6 +66,12 @@ void GameUiModule::applyCreateGame() {
 		return;  // nothing reaches the controller or the engine
 	}
 	request.MaxPlayers = players;
+	request.Lan = CreateGamePage_->lan();
+	request.Options = CreateGamePage_->optionValues();
+	if (!CreateGame.validOptions(request)) {
+		CreateGamePage_->showHint("#CG_ErrorOptions");
+		return;
+	}
 	const auto validation =
 		services::creategame::CreateGameModel::validate(CreateGame.catalog(), request);
 	if (!validation.ok()) {

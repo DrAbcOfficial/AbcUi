@@ -12,6 +12,7 @@
 #include "../../framework/TextUtil.h"
 
 #include <cstdio>
+#include <cstdlib>
 
 namespace panels::creategame {
 
@@ -51,8 +52,10 @@ CreateGamePage::~CreateGamePage() {
 }
 
 void CreateGamePage::onDocumentReady() {
-	if (Rml::ElementDocument* doc = document())
+	if (Rml::ElementDocument* doc = document()) {
 		addListener(doc, "click", &Listener);
+		addListener(doc, "change", &Listener);
+	}
 }
 
 Rml::Element* CreateGamePage::node(const char* id) const {
@@ -63,6 +66,8 @@ Rml::Element* CreateGamePage::node(const char* id) const {
 void CreateGamePage::prepare(const services::creategame::MapCatalog& catalog,
 	const char* defaultName) {
 	Applied = false;
+	Lan = false;
+	buildOptions();
 	Maps.clear();
 	for (std::size_t i = 0; i < catalog.size(); ++i)
 		Maps.push_back(catalog.nameAt(i));
@@ -95,9 +100,13 @@ void CreateGamePage::prepare(const services::creategame::MapCatalog& catalog,
 		control->SetValue("");
 
 	showHint(nullptr);
+	if (auto* Control = node("cg-players-value"))
+		Control->SetInnerRML("8");
 }
 
 void CreateGamePage::showHint(const char* text) {
+	if (text && *text)
+		Applied = false; // rejected form can be corrected, successful launches stay latched
 	Rml::Element* hint = node("cg-hint");
 	if (!hint)
 		return;
@@ -116,7 +125,7 @@ std::string CreateGamePage::selectedMap() const {
 std::string CreateGamePage::playersText() const {
 	if (Rml::ElementFormControlInput* input = rmlui_dynamic_cast<Rml::ElementFormControlInput*>(
 			const_cast<Rml::Element*>(node("cg-players"))))
-		return input->GetValue();
+		return std::to_string(static_cast<int>(std::strtof(input->GetValue().c_str(), nullptr)));
 	return {};
 }
 
@@ -146,6 +155,11 @@ void CreateGamePage::handleClick(Rml::Event& event) {
 	const Rml::String action = entry->GetAttribute<Rml::String>("data-action", "");
 	if (action.empty())
 		return;
+	if (action == "cg-lan") {
+		Lan = !Lan;
+		entry->SetInnerRML(resolve(Lan ? "#Settings_On" : "#Settings_Off"));
+		return;
+	}
 	if (action == kActionApply) {
 		if (Applied)
 			return;  // one report per opening (the backend latch is behind it)
@@ -159,7 +173,10 @@ void CreateGamePage::handleClick(Rml::Event& event) {
 }
 
 void CreateGamePage::PageListener::ProcessEvent(Rml::Event& event) {
-	Owner->handleClick(event);
+	if (event.GetType() == "change")
+		Owner->handleChange(event);
+	else
+		Owner->handleClick(event);
 }
 
 }

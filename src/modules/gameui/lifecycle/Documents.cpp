@@ -51,9 +51,11 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	Browser = std::make_unique<panels::serverbrowser::ServerBrowserPage>();
 	Browser->setQuery(&ServerBrowser.Query);
 	Browser->setListModel(&ServerBrowser.List);
+	Browser->setBlacklist(&Blacklist);
 	Browser->setFavorites(services::serverbrowser::steamFavorites());
 	// T19: the create-local-game page (was the kCreateGame stub).
 	CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
+	CreateGamePage_->setModel(&CreateGame);
 	// T20: the player-list page (was the kPlayerList stub).
 	PlayerListPage_ = std::make_unique<panels::playerlist::PlayerListPage>();
 	PlayerListPage_->setModel(&PlayerList);

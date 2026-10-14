@@ -1,6 +1,7 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: serverbrowser/ServerBrowserFlow.
 #include "modules/gameui/GameUiModule.h"
 #include <abc/Console.h>
+#include <abc/CvarCmd.h>
 #include <string>
 #include "modules/gameui/navigation/MenuAction.h"
 namespace gameui {
@@ -8,6 +9,9 @@ using namespace navigation;
 void GameUiModule::presentServerBrowserPage() {
 	if (!Browser)
 		return;
+	auto Filter = ServerBrowser.List.filter();
+	Filter.HideUnresponsive = abc::CVAR_GET_FLOAT("abc_ui_browser_hide_unresponsive") != 0;
+	ServerBrowser.List.setFilter(Filter);
 	Browser->show();
 	ServerBrowser.Presented = true;
 }
@@ -27,6 +31,10 @@ void GameUiModule::connectSelectedServer() {
 	const auto* selected = ServerBrowser.List.selectedEntry(ServerBrowser.Query);
 	if (!selected || !selected->responded) {
 		abc::ConsoleWarn("[AbcUi] server connect refused (no responded selection)\n");
+		return;
+	}
+	if (Blacklist.contains(selected->ip, selected->connectionPort ? selected->connectionPort : selected->queryPort)) {
+		abc::ConsoleWarn("[AbcUi] blocked server must be removed from the blacklist before connecting\n");
 		return;
 	}
 	const std::string address = services::serverbrowser::buildConnectAddress(*selected);
@@ -133,6 +141,10 @@ void GameUiModule::handleServerAction(ActionKind Kind) {
 		beginServerQuery(QueryKind::Favorites);
 	else if (Kind == ActionKind::kSbTabHistory)
 		beginServerQuery(QueryKind::History);
+	else if (Kind == ActionKind::kSbTabFriends)
+		beginServerQuery(QueryKind::Friends);
+	else if (Kind == ActionKind::kSbFiltersApply)
+		beginServerQuery(ServerBrowser.Query.kind());
 	else if (Kind == ActionKind::kSbRefresh) {
 		// The shipped Refresh button semantics (T17 pin): RefreshQuery
 		// on a live handle; a fresh request when nothing is live.

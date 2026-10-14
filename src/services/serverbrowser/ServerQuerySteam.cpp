@@ -175,6 +175,7 @@ public:
 		event.server.name = server.GetName();
 		event.server.map = server.m_szMap;
 		event.server.gameDir = server.m_szGameDir;
+		event.server.AppId = server.m_nAppID;
 		event.server.gameDescription = server.m_szGameDescription;
 		event.server.gameTags = server.m_szGameTags;
 		event.server.ip = server.m_NetAdr.GetIP();
@@ -257,7 +258,9 @@ public:
 
 	bool available() override { return ensureBound(); }
 
-	uint32_t appId() const { return bindings().appId; }
+	uint32_t appId() const override {
+		return bindings().utils ? bindings().utils->GetAppID() : 0;
+	}
 
 	// --- list lifecycle -----------------------------------------------------
 
@@ -386,6 +389,7 @@ public:
 		out.name = item->GetName();
 		out.map = item->m_szMap;
 		out.gameDir = item->m_szGameDir;
+		out.AppId = item->m_nAppID;
 		out.gameDescription = item->m_szGameDescription;
 		out.gameTags = item->m_szGameTags;
 		out.ip = item->m_NetAdr.GetIP();

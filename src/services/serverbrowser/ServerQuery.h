@@ -97,6 +97,7 @@ struct ServerEntry {
 	bool secure = false;
 	uint64_t steamId = 0;
 	bool responded = false;  // a ServerResponded was seen for this index
+	uint32_t AppId = 0;
 };
 
 struct PlayerLine {
@@ -136,6 +137,7 @@ public:
 	virtual ~IServerQueryProvider() = default;
 
 	virtual bool available() = 0;  // steam up + interface bound (may re-probe)
+	virtual uint32_t appId() const { return 0; }
 
 	virtual uint64_t requestList(QueryKind kind, const FilterPair* filters, int filterCount) = 0;
 	virtual void cancelQuery(uint64_t request) = 0;     // CancelQuery: stop work, keep handle
@@ -196,6 +198,7 @@ public:
 	QueryStatus status() const { return Status; }
 	QueryFailure failure() const { return Failure; }
 	QueryKind kind() const { return Kind; }
+	uint32_t appId() const { return AppId; }
 	uint32_t generation() const { return Generation; }
 	uint64_t revision() const { return Revision; }
 	int count() const { return static_cast<int>(Entries.size()); }
@@ -246,6 +249,7 @@ private:
 	uint32_t TimeoutMs = kDefaultTimeoutMs;
 
 	QueryKind Kind = QueryKind::Internet;
+	uint32_t AppId = 0;
 	QueryStatus Status = QueryStatus::Idle;
 	QueryFailure Failure = QueryFailure::None;
 	uint32_t Generation = 0;

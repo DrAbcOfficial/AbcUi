@@ -18,16 +18,17 @@
 			<button id="sb-tab-lan" data-action="sb-tab-lan">#SB_TabLan</button>
 			<button id="sb-tab-favorites" data-action="sb-tab-favorites">#SB_TabFavorites</button>
 			<button id="sb-tab-history" data-action="sb-tab-history">#SB_TabHistory</button>
+			<button id="sb-tab-friends" data-action="sb-tab-friends">#SB_TabFriends</button>
+			<button id="sb-tab-blacklist" data-action="sb-tab-blacklist">#SB_TabBlacklist</button>
 		</div>
 		<div id="sb-toolbar">
 			<button id="sb-refresh" data-action="sb-refresh">#SB_Refresh</button>
 			<button id="sb-stop" data-action="sb-stop">#SB_Stop</button>
 			<span id="sb-spacer"></span>
-			<button id="sb-filter-empty" data-action="sb-filter-empty">#SB_FilterNotEmpty</button>
-			<button id="sb-filter-full" data-action="sb-filter-full">#SB_FilterNotFull</button>
-			<button id="sb-filter-secure" data-action="sb-filter-secure">#SB_FilterSecure</button>
+			<button id="sb-filters" data-action="sb-filters">#SB_Filters</button>
 		</div>
 		<div id="sb-header">
+			<span class="c-flags">#SB_Flags</span><span class="c-bots">#SB_Bots</span>
 			<button id="sb-col-name" class="sb-col c-name" data-action="sb-sort" data-column="name">#SB_ColumnName</button>
 			<button id="sb-col-map" class="sb-col c-map" data-action="sb-sort" data-column="map">#SB_ColumnMap</button>
 			<button id="sb-col-players" class="sb-col c-players" data-action="sb-sort" data-column="players">#SB_ColumnPlayers</button>
@@ -44,11 +45,32 @@
 			<div id="sb-detail-players"></div>
 		</div>
 		<p id="sb-status"></p>
+		<div id="sb-blacklist-panel">
+			<p>#SB_BlacklistAddress</p>
+			<input id="sb-blacklist-address" type="text" maxlength="21"/>
+			<button id="sb-rule-add" data-action="sb-rule-add">#SB_BlacklistAdd</button>
+			<div id="sb-blacklist-rules"></div>
+			<p id="sb-blacklist-status"></p>
+		</div>
 	</div>
 	<div id="sb-actions">
 		<button id="sb-connect" data-action="sb-connect" data-label="#SB_Connect" autofocus="autofocus">#SB_Connect</button>
 		<button id="sb-favorite-toggle" data-action="sb-favorite-toggle" data-label="#SB_FavoriteAdd">#SB_FavoriteAdd</button>
+		<button id="sb-block" data-action="sb-block">#SB_Block</button>
+		<button id="sb-block-ip" data-action="sb-block-ip">#SB_BlockIp</button>
 		<button id="sb-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
 	</div>
+<div id="sb-filter-panel"><div id="sb-filter-content">
+	<h1>#SB_Filters</h1><p>#SB_GameFixed</p>
+	<p>#SB_FilterName</p><input id="sb-filter-name" type="text" maxlength="256"/>
+	<p>#SB_FilterMap</p><input id="sb-filter-map" type="text" maxlength="256"/>
+	<p>#SB_FilterPing</p><select id="sb-filter-ping"></select>
+			<button id="sb-filter-empty" data-action="sb-filter-empty">#SB_FilterNotEmpty</button>
+			<button id="sb-filter-full" data-action="sb-filter-full">#SB_FilterNotFull</button>
+			<button id="sb-filter-secure" data-action="sb-filter-secure">#SB_FilterSecure</button>
+	<button id="sb-filter-password" data-action="sb-filter-password">#SB_FilterNoPassword</button>
+	<div><button id="sb-filters-apply" data-action="sb-filters-apply">#Settings_Apply</button>
+	<button id="sb-filters-cancel" data-action="sb-filters-cancel">#Settings_Cancel</button></div>
+</div></div>
 </body>
 </rml>

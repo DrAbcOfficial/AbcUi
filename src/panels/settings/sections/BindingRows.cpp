@@ -22,7 +22,10 @@ void SettingsPage::buildBindRows() {
 	std::string rml;
 	for (const auto& view : BindModel->rows()) {
 		if (view.header) {
-			rml += "<div class=\"bind-header\"></div>";
+			rml += "<div class=\"bind-header\"><span>"
+				+ framework::TextUtil::escapeRml(bindActionLabel(view))
+				+ "</span><span class=\"bind-header-columns\">"
+				+ framework::TextUtil::escapeRml(translated("#Settings_BindColumns")) + "</span></div>";
 			continue;
 		}
 		rml += "<div class=\"bind-row\" id=\"bindrow-";

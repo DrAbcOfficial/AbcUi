@@ -95,6 +95,11 @@ struct SettingRow {
 	                                     // (null: format DefaultValue)
 	const char* OnCommand = nullptr;  // kCommandToggle: checked-side command
 	const char* OffCommand = nullptr; // kCommandToggle: unchecked-side command
+	bool Bounded = true;
+	bool ReadOnly = false;
+	const char* RequireCvar = nullptr;
+	bool RequireEnabled = false;
+	bool HasDefault = true;
 };
 
 // Per-row lifecycle. kClean -> (edit) -> kDirty -> (apply) -> kClean, with
@@ -227,6 +232,7 @@ public:
 	// True while a kCommandToggle write is still settling (the module's
 	// per-frame beat re-snapshots until it resolves).
 	bool hasQueued() const;
+	bool editable(const char* Cvar) const;
 
 	// user.scr parser (the original CInfoDescription grammar): fills the
 	// owning table with one row per DESCRIPTION entry (BOOL / NUMBER min max

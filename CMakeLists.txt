@@ -46,7 +46,9 @@ add_subdirectory(thirdparty/FreeImage EXCLUDE_FROM_ALL)
 
 add_library(abc_ui_config STATIC
     src/services/uiconfig/UiDefinitions.cpp
-    src/services/uiconfig/ConfigRepository.cpp)
+    src/services/uiconfig/ConfigRepository.cpp
+    src/services/serverbrowser/ServerBlacklist.cpp
+    src/services/serverbrowser/BlacklistFileStore.cpp)
 target_include_directories(abc_ui_config PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
     PRIVATE "${ABC_CORE_DIR}/thirdparty/MetaHook/thirdparty/rapidjson/include")
 target_compile_features(abc_ui_config PUBLIC cxx_std_20)
@@ -74,6 +76,7 @@ add_library(AbcUi MODULE
     src/framework/TextEncoding.cpp
     src/framework/HudPanel.cpp
     src/framework/ImageLoader.cpp
+    src/framework/PreviewImage.cpp
     src/framework/InteractiveDocument.cpp
     src/framework/UiInputRouter.cpp
     src/framework/Localization.cpp
@@ -129,6 +132,7 @@ add_library(AbcUi MODULE
     src/services/serverbrowser/ServerListModel.cpp
     src/services/serverbrowser/ServerFavorites.cpp
     src/services/creategame/CreateGameModel.cpp
+    src/services/creategame/ServerOptions.cpp
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
     src/services/playerlist/ClientMuteApi.cpp
@@ -161,11 +165,14 @@ add_library(AbcUi MODULE
     src/panels/loading/LoadingWindows.cpp
     src/panels/console/ConsolePage.cpp
     src/panels/serverbrowser/ServerBrowserPage.cpp
+    src/panels/serverbrowser/ServerBrowserControls.cpp
     src/panels/creategame/CreateGamePage.cpp
+    src/panels/creategame/CreateGameOptions.cpp
     src/panels/playerlist/PlayerListPage.cpp
     src/panels/settings/SettingsUi.cpp
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp
+    src/panels/settings/sections/PreviewSection.cpp
     src/panels/settings/SettingsPage.cpp
     src/panels/settings/SettingsNavigation.cpp
     src/panels/settings/SettingsEvents.cpp

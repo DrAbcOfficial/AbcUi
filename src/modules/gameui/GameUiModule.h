@@ -136,6 +136,7 @@ private:
 	services::settings::VoiceModel VoiceModel;
 	services::settings::VideoModeModel VideoModel;
 	services::loading::LoadingModel LoadingModelState;
+	services::serverbrowser::ServerBlacklist Blacklist;
 	services::serverbrowser::ServerBrowserSession ServerBrowser;
 	services::creategame::CreateGameModel CreateGame;
 	services::creategame::Request PendingCreateGame;

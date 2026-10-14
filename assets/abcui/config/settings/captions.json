@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "id": "captions",
+  "label": "#Settings_PageCaptions",
+  "order": 31,
+  "components": [],
+  "items": [
+    {
+      "cvar": "cap_subtitle_prefix",
+      "label": "#Settings_cap_subtitle_prefix",
+      "kind": "bool",
+      "default": 0.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_waitplay",
+      "label": "#Settings_cap_subtitle_waitplay",
+      "kind": "bool",
+      "default": 0.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_antispam",
+      "label": "#Settings_cap_subtitle_antispam",
+      "kind": "bool",
+      "default": 1.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_fadein",
+      "label": "#Settings_cap_subtitle_fadein",
+      "kind": "float",
+      "default": 0.3,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_fadeout",
+      "label": "#Settings_cap_subtitle_fadeout",
+      "kind": "float",
+      "default": 0.3,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_holdtime",
+      "label": "#Settings_cap_subtitle_holdtime",
+      "kind": "float",
+      "default": 10.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_htimescale",
+      "label": "#Settings_cap_subtitle_htimescale",
+      "kind": "float",
+      "default": 1.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_stimescale",
+      "label": "#Settings_cap_subtitle_stimescale",
+      "kind": "float",
+      "default": 1.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    },
+    {
+      "cvar": "cap_subtitle_extraholdtime",
+      "label": "#Settings_cap_subtitle_extraholdtime",
+      "kind": "float",
+      "default": 0.0,
+      "requires": "cap_enabled",
+      "requiresEnabled": true
+    }
+  ],
+  "description": "#Settings_CaptionsHint"
+}

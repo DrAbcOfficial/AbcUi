@@ -1,0 +1,39 @@
+/* Native RmlUi range controls: pointer drag and keyboard arrows share the
+   same bounded value. Do not style them as text-entry boxes. */
+input.row-slider, input.cg-slider {
+	display: inline-block;
+	width: 280dp;
+	height: 24dp;
+	padding: 0dp;
+	border-width: 0dp;
+	background-color: transparent;
+	tab-index: auto;
+}
+input.row-slider slidertrack, input.cg-slider slidertrack {
+	height: 4dp;
+	margin-top: 10dp;
+	background-color: #596776;
+}
+input.row-slider sliderbar, input.cg-slider sliderbar {
+	width: 10dp;
+	height: 20dp;
+	margin-top: 2dp;
+	background-color: #bbc8d4;
+	border: 1dp #73879b;
+}
+input.row-slider sliderbar:hover, input.cg-slider sliderbar:hover,
+input.row-slider:focus sliderbar, input.cg-slider:focus sliderbar {
+	background-color: #76c676;
+}
+input.row-slider sliderarrowdec, input.row-slider sliderarrowinc,
+input.cg-slider sliderarrowdec, input.cg-slider sliderarrowinc {
+	display: none;
+}
+.row-value {
+	display: inline-block;
+	width: 50dp;
+	font-size: 10dp;
+	color: #e8e8e8;
+	text-align: right;
+}
+.row-readonly, input:disabled { opacity: 0.55; }

@@ -388,3 +388,12 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	display: inline-block;
 	margin-right: 8dp;
 }
+
+.bind-header { background-color: #303d49; padding: 5dp; margin: 10dp 0dp; color: #bce0f4; }
+.bind-header-columns { display: block; font-size: 8dp; color: #a7b8c9; }
+#multiplayer-previews { display: block; }
+.preview-box { display: inline-block; width: 160dp; vertical-align: top; }
+.preview-box img { display: block; width: 150dp; height: 170dp; background-color: #090d12; }
+#spray-preview { height: 150dp; }
+#voice-meter { display: block; width: 280dp; height: 14dp; background-color: #171c24; border: 1dp #536071; margin: 8dp 0dp; }
+#voice-meter-fill { display: block; width: 0%; height: 14dp; background-color: #68bd66; }

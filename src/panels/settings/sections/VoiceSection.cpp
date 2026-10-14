@@ -8,6 +8,7 @@
 #include "framework/TextUtil.h"
 #include <abc/Format.h>
 #include <cstdio>
+#include <algorithm>
 #include <string>
 namespace panels::settings::sections {
 using namespace detail;
@@ -17,6 +18,11 @@ void renderVoice(Rml::ElementDocument* doc, services::settings::VoiceModel* Mode
 	Rml::Element* section = doc->GetElementById("voice-section");
 	if (!section)
 		return;
+	if (auto* Fill = doc->GetElementById("voice-meter-fill")) {
+		const float Level = Model && Model->available() ? Model->speakingLevel() : 0;
+		Fill->SetProperty("width", std::to_string(std::clamp(Level, 0.0f, 1.0f) * 100) + "%");
+		Fill->SetProperty("background-color", Level > 0.85f ? "#dd634f" : Level > 0.6f ? "#d4bd4c" : "#68bd66");
+	}
 	section->SetClass("video-unavailable", !Model || !Model->available());
 
 	Rml::Element* volumeInput = doc->GetElementById("voice-mic-volume");
@@ -48,6 +54,8 @@ void renderVoice(Rml::ElementDocument* doc, services::settings::VoiceModel* Mode
 		std::snprintf(buffer, sizeof(buffer), "%d", static_cast<int>(shown * 100.0f + 0.5f));
 		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(volumeInput))
 			form->SetValue(buffer);
+		if (auto* Value = doc->GetElementById("voice-mic-value"))
+			Value->SetInnerRML(std::string(buffer) + "%");
 	}
 	if (boostToggle) {
 		const bool on = Model->micBoostDirty() ? Model->micBoostDraft() : Model->micBoost();

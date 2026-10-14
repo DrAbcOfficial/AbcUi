@@ -4,6 +4,8 @@
 #include "modules/gameui/debug/DebugCommands.h"
 #include <abc/Console.h>
 #include <abc/Paths.h>
+#include <abc/CvarCmd.h>
+#include "services/serverbrowser/BlacklistFileStore.h"
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
@@ -39,9 +41,29 @@ void GameUiModule::onInit() {
 	// interface lazily (Steam may not be up yet at HUD_Init) and is a
 	// process-lifetime singleton; the model owns the async lifecycle.
 	ServerBrowser.setProvider(services::serverbrowser::steamQueryProvider());
+	const auto BlacklistPath = abc::ModPath("abcui/server_blacklist.json");
+	std::string BlacklistError;
+	const bool BlacklistLoaded = services::serverbrowser::BlacklistFileStore::load(BlacklistPath, Blacklist, BlacklistError);
+	if (!BlacklistLoaded) abc::ConsoleWarn("[AbcUi] %s: %s\n", BlacklistPath.c_str(), BlacklistError.c_str());
+	Blacklist.setSaveSink([BlacklistPath, BlacklistLoaded](const auto& Rules) {
+		if (!BlacklistLoaded) return false; // Never overwrite a damaged user's file.
+		std::string Error;
+		const bool Saved = services::serverbrowser::BlacklistFileStore::save(BlacklistPath, Rules, Error);
+		if (!Saved) abc::ConsoleWarn("[AbcUi] blacklist save: %s\n", Error.c_str());
+		return Saved;
+	});
+	ServerBrowser.setBlacklist(&Blacklist);
 	// Startup catalog owns the strings backing the model's row views.
 	// A live user.scr overrides the JSON fallback on its declared page.
 	// Parsing/loading finishes before any document or transaction observes it.
+	abc::CREATE_CVAR("abc_ui_browser_hide_unresponsive", "1", abc::FCVAR_VALUE, nullptr);
+	std::string ServerScript = readModFile("settings.scr");
+	if (ServerScript.empty()) ServerScript = readModFile("abcui/config/server_options.scr");
+	CreateGame.setOptions(services::creategame::parseServerOptions(ServerScript));
+	if (CreateGame.options().empty()) {
+		abc::ConsoleWarn("[AbcUi] settings.scr unavailable or malformed; using shipped server option definitions\n");
+		CreateGame.setOptions(services::creategame::parseServerOptions(readModFile("abcui/config/server_options.scr")));
+	}
 	const auto Advanced = loadAdvancedScript();
 	UiConfig.load(abc::ModPath("abcui/config"), Advanced.Rows);
 	for (const auto& Error : UiConfig.errors())

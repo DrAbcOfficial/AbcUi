@@ -1,6 +1,7 @@
 // framework::ImageLoader implementation - see ImageLoader.h.
 #include "ImageLoader.h"
 #include "ResourceLimits.h"
+#include <algorithm>
 #include <memory>
 #include <filesystem>
 
@@ -14,6 +15,19 @@ namespace framework {
 namespace ImageLoader {
 
 namespace {
+
+using BitmapHandle = std::unique_ptr<FIBITMAP, decltype(&FreeImage_Unload)>;
+
+bool validDimensions(FIBITMAP* Bitmap) {
+	if (!Bitmap)
+		return false;
+	const unsigned Width = FreeImage_GetWidth(Bitmap);
+	const unsigned Height = FreeImage_GetHeight(Bitmap);
+	if (Width > ResourceLimits::MaxDimension || Height > ResourceLimits::MaxDimension)
+		return false;
+	std::size_t Bytes;
+	return ResourceLimits::imageBytes(static_cast<int>(Width), static_cast<int>(Height), Bytes);
+}
 
 // FreeImage reads through a FreeImageIO callback table; these adapters run
 // that interface over a plain memory span so buffers decode like files.
@@ -57,13 +71,27 @@ long DLL_CALLCONV streamTell(fi_handle handle) {
 
 // Decodes one loaded bitmap into out (32bpp, top-down, RGBA byte order) and
 // releases it. Takes ownership: the input is unloaded on every path.
-bool decodeToRgba(FIBITMAP* bitmap, DecodedImage& out) {
-	if (!bitmap)
+bool decodeToRgba(FIBITMAP* bitmap, DecodedImage& out, const PaletteTransform& Transform = {}) {
+	BitmapHandle Input(bitmap, FreeImage_Unload);
+	if (!validDimensions(bitmap))
 		return false;
+	const unsigned BitsPerPixel = FreeImage_GetBPP(bitmap);
+	if (Transform && FreeImage_GetImageType(bitmap) == FIT_BITMAP && BitsPerPixel > 0 && BitsPerPixel <= 8) {
+		if (RGBQUAD* Palette = FreeImage_GetPalette(bitmap)) {
+			const unsigned Count = (std::min)(FreeImage_GetColorsUsed(bitmap), 256u);
+			for (unsigned I = 0; I < Count; ++I) {
+				PaletteColor Color{Palette[I].rgbRed, Palette[I].rgbGreen, Palette[I].rgbBlue};
+				Transform(I, Color);
+				Palette[I].rgbRed = Color.Red;
+				Palette[I].rgbGreen = Color.Green;
+				Palette[I].rgbBlue = Color.Blue;
+			}
+		}
+	}
 	// ConvertTo32Bits always returns a fresh bitmap (it clones 32bpp input),
 	// so the loaded original is released before the result takes over.
 	FIBITMAP* rgba = FreeImage_ConvertTo32Bits(bitmap);
-	FreeImage_Unload(bitmap);
+	Input.reset();
 	if (!rgba)
 		return false;
 
@@ -95,14 +123,20 @@ bool decodeToRgba(FIBITMAP* bitmap, DecodedImage& out) {
 	return true;
 }
 
-bool loadStream(FreeImageIO& io, fi_handle handle, DecodedImage& out) {
+bool loadStream(FreeImageIO& io, fi_handle handle, DecodedImage& out, const PaletteTransform& Transform) {
 	const FREE_IMAGE_FORMAT format = FreeImage_GetFileTypeFromHandle(&io, handle, 0);
 	if (format == FIF_UNKNOWN || !FreeImage_FIFSupportsReading(format))
 		return false;
 	// The format sniff left the cursor mid-stream; plugin loaders read from
 	// the start.
+	if (FreeImage_FIFSupportsNoPixels(format)) {
+		streamSeek(handle, 0, SEEK_SET);
+		BitmapHandle Header(FreeImage_LoadFromHandle(format, &io, handle, FIF_LOAD_NOPIXELS), FreeImage_Unload);
+		if (!validDimensions(Header.get()))
+			return false;
+	}
 	streamSeek(handle, 0, SEEK_SET);
-	return decodeToRgba(FreeImage_LoadFromHandle(format, &io, handle, 0), out);
+	return decodeToRgba(FreeImage_LoadFromHandle(format, &io, handle, 0), out, Transform);
 }
 
 } // namespace
@@ -121,21 +155,27 @@ bool loadFromFile(const char* path, DecodedImage& out) {
 		format = FreeImage_GetFIFFromFilename(path);
 	if (format == FIF_UNKNOWN || !FreeImage_FIFSupportsReading(format))
 		return false;
+	if (FreeImage_FIFSupportsNoPixels(format)) {
+		BitmapHandle Header(FreeImage_Load(format, path, FIF_LOAD_NOPIXELS), FreeImage_Unload);
+		if (!validDimensions(Header.get()))
+			return false;
+	}
 	return decodeToRgba(FreeImage_Load(format, path, 0), out);
 }
 
-bool loadFromMemory(const unsigned char* data, std::size_t size, DecodedImage& out) {
-	out = DecodedImage();
-	if (!data || size == 0 || size > ResourceLimits::MaxFileBytes)
+bool loadFromMemory(const unsigned char* Data, std::size_t Size, DecodedImage& Output,
+	const PaletteTransform& Transform) {
+	Output = DecodedImage();
+	if (!Data || Size == 0 || Size > ResourceLimits::MaxFileBytes)
 		return false;
 	FreeImageIO io = {};
 	io.read_proc = streamRead;
 	io.seek_proc = streamSeek;
 	io.tell_proc = streamTell;
 	MemoryStream stream;
-	stream.Data = data;
-	stream.Size = size;
-	return loadStream(io, &stream, out);
+	stream.Data = Data;
+	stream.Size = Size;
+	return loadStream(io, &stream, Output, Transform);
 }
 
 }

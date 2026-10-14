@@ -2,8 +2,10 @@
   "version": 1,
   "id": "multiplayer",
   "label": "#Settings_SecMultiplayer",
-  "order": 60,
-  "components": [],
+  "order": 10,
+  "components": [
+    "previews"
+  ],
   "items": [
     {
       "cvar": "name",

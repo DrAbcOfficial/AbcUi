@@ -33,6 +33,7 @@
 #include "../../framework/InteractiveDocument.h"
 #include "../../services/serverbrowser/ServerFavorites.h"
 #include "../../services/serverbrowser/ServerQuery.h"
+#include "../../services/serverbrowser/ServerListModel.h"
 
 #include <RmlUi/Core/EventListener.h>
 
@@ -67,6 +68,8 @@ public:
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 	void setQuery(services::serverbrowser::ServerQuery* query) { Query = query; }
 	void setListModel(services::serverbrowser::ServerListModel* model) { List = model; }
+	void setBlacklist(services::serverbrowser::ServerBlacklist* Value) { Blacklist = Value; }
+	bool closeSubpage();
 	// T18b: the authoritative favorites store (Steam) for the selected-row
 	// state projection; never written from here - the module owns mutations
 	// (the page only reports the toggle intent).
@@ -98,6 +101,9 @@ private:
 	};
 
 	void handleClick(Rml::Event& event);
+	bool handleControls(Rml::Event& Event);
+	void handleChange(Rml::Event& Event);
+	void renderControls();
 	void render();
 	std::size_t projectionSignature() const;
 
@@ -105,6 +111,11 @@ private:
 	services::serverbrowser::ServerQuery* Query = nullptr;
 	services::serverbrowser::ServerListModel* List = nullptr;
 	services::serverbrowser::IServerFavorites* Favorites = nullptr;
+	services::serverbrowser::ServerBlacklist* Blacklist = nullptr;
+	services::serverbrowser::ServerFilter DraftFilter;
+	bool FilterOpen = false;
+	bool InControls = false;
+	std::string RuleStatus;
 	PageListener Listener;
 	// Whether the projection DOM matches the state (tick clears/re-sets it).
 	bool Projected = false;

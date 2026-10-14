@@ -2,7 +2,7 @@
   "version": 1,
   "id": "video",
   "label": "#Settings_SecVideo",
-  "order": 30,
+  "order": 40,
   "components": [
     "video"
   ],
@@ -33,13 +33,6 @@
       "min": 1.8,
       "max": 3.0,
       "step": 0.05
-    },
-    {
-      "cvar": "r_detailtextures",
-      "label": "#Settings_DetailTextures",
-      "section": "#Settings_SecVideo",
-      "kind": "bool",
-      "default": 0.0
     }
   ]
 }

@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <cmath>
 
 namespace services {
 namespace creategame {
@@ -275,7 +276,7 @@ CreateGameModel::Launch CreateGameModel::launch(const Request& request) {
 		return Launch::kUnwired;
 	// Everything validated BEFORE any engine call (T19 step 3: 全部校验完成
 	// 再写). A refused request produces zero seam invocations.
-	if (!validate(Catalog, request).ok())
+	if (!validate(Catalog, request).ok() || !validOptions(request))
 		return Launch::kInvalid;
 
 	// Snapshot the recoverable cvars BEFORE anything is written. A cvar that
@@ -293,7 +294,7 @@ CreateGameModel::Launch CreateGameModel::launch(const Request& request) {
 	Seams_.clientCmd("disconnect\n");
 
 	// 2. sv_lan 1 (recoverable).
-	if (!writeAndVerify(0, "1"))
+	if (!writeAndVerify(0, request.Lan ? "1" : "0"))
 		return restoreAndFail(0);
 
 	// 3. setmaster enable (shipped constant).
@@ -327,8 +328,35 @@ CreateGameModel::Launch CreateGameModel::launch(const Request& request) {
 
 	// 9. the shipped trailer (a separate issue right after the template).
 	Seams_.clientCmd("wait\nwait\n");
+	// Server-DLL cvars may not exist before the first map. Apply numeric
+	// settings after that DLL/map configuration has loaded. Both the names
+	// and values passed the script allowlist and complete finite-number gate.
+	for (const auto& Option : request.Options) {
+		char Value[48];
+		std::snprintf(Value, sizeof(Value), "%.9g", static_cast<double>(std::strtof(Option.Value.c_str(), nullptr)));
+		const std::string Command = Option.Name + " " + Value + "\n";
+		Seams_.clientCmd(Command.c_str());
+	}
 	return Launch::kLaunched;
 }
 
+std::vector<std::string> CreateGameModel::settleOptions(const Request& Value) {
+	std::vector<std::string> Failed;
+	if (!wired() || !validOptions(Value)) return {"invalid request"};
+	for (const auto& Option : Value.Options) {
+		const float Wanted = std::strtof(Option.Value.c_str(), nullptr);
+		auto Matches = [&]() {
+			const auto* Live = Seams_.readCvar(Option.Name.c_str());
+			if (!Live) return false;
+			char* End = nullptr;
+			const float Number = std::strtof(Live, &End);
+			return End != Live && *End == '\0' && std::isfinite(Number) && std::abs(Number - Wanted) < 1e-5f;
+		};
+		if (Matches()) continue;
+		if (!Seams_.writeCvarString(Option.Name.c_str(), Option.Value.c_str()) || !Matches())
+			Failed.push_back(Option.Name);
+	}
+	return Failed;
+}
 }
 }

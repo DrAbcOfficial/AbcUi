@@ -47,6 +47,9 @@ public:
 	~CreateGamePage() override;
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
+	void setModel(const services::creategame::CreateGameModel* Value) { Model = Value; }
+	bool lan() const { return Lan; }
+	std::vector<services::creategame::ServerOptionValue> optionValues() const;
 
 	// Fresh projection for a new opening: rebuilds the map options from the
 	// catalog, resets players/name/password to the given defaults, clears the
@@ -82,9 +85,13 @@ private:
 	};
 
 	void handleClick(Rml::Event& event);
+	void buildOptions();
+	void handleChange(Rml::Event& Event);
 	Rml::Element* node(const char* id) const;
 
 	ActionSink Sink;
+	const services::creategame::CreateGameModel* Model = nullptr;
+	bool Lan = false;
 	PageListener Listener;
 	std::vector<std::string> Maps;
 	// Once an Apply intent was reported, further Apply clicks are dropped

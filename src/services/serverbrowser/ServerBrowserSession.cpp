@@ -11,6 +11,7 @@ void ServerBrowserSession::startContext() {
 	Query = ServerQuery{};
 	Query.setProvider(Backend);
 	List = ServerListModel{};
+	List.setBlacklist(Blacklist);
 	List.setFilter(Filter);
 	List.setSort(Sort, Ascending);
 }

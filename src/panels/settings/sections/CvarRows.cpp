@@ -50,11 +50,21 @@ void SettingsPage::buildRows() {
 				// skeleton only carries the empty select.
 				Markup += "<select class=\"row-select\" data-row=\"";
 			} else {
-				Markup += "<input class=\"row-input\" type=\"text\" data-row=\"";
+				const bool Slider = View.row->Kind == services::settings::SettingKind::kFloat
+					&& View.row->Bounded && View.row->Min < View.row->Max;
+				Markup += "<input class=\"row-input";
+				if (Slider)
+					Markup += " row-slider\" type=\"range\" min=\"" + numberText(View.row->Min)
+						+ "\" max=\"" + numberText(View.row->Max) + "\" step=\""
+						+ numberText(View.row->Step > 0 ? View.row->Step : (View.row->Max - View.row->Min) / 1000)
+						+ "\" value=\"" + numberText(View.draftValue);
+				else
+					Markup += "\" type=\"text";
+				Markup += "\" data-row=\"";
 			}
 			Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
 			Markup += "\"/>";
-			Markup += "<div class=\"row-status\"></div></div>";
+			Markup += "<span class=\"row-value\"></span><div class=\"row-status\"></div></div>";
 		}
 		if (Page)
 			Markup += "</div>";
@@ -84,15 +94,28 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 	if (!control)
 		return;
 	control->SetClass("row-missing", view.missing);
+	control->SetClass("row-readonly", view.row->ReadOnly);
+	const bool Editable = Model && Model->editable(view.row->Cvar);
+	if (!Editable)
+		control->SetAttribute("disabled", "disabled");
+	else
+		control->RemoveAttribute("disabled");
 
 	if (view.missing) {
 		// Unavailable: fail-closed presentation, no editable control path.
 		if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(control))
 			form->SetDisabled(true);
+		if (auto* Status = rowNode->QuerySelector(".row-status"))
+			Status->SetInnerRML(framework::TextUtil::escapeRml(view.row->RequireCvar
+				? translated("#Settings_DependencyUnavailable") + " " + view.row->RequireCvar
+				: translated("#Settings_Unavailable")));
 		return;
 	}
 	if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(control))
-		form->SetDisabled(false);
+		form->SetDisabled(!Editable);
+	if (auto* Value = rowNode->QuerySelector(".row-value"))
+		Value->SetInnerRML(view.row->Kind == services::settings::SettingKind::kFloat && view.row->Bounded
+			? framework::TextUtil::escapeRml(view.draftText) : "");
 
 	if (toggle) {
 		const bool on = view.state == services::settings::RowState::kInvalid
@@ -134,7 +157,11 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 			// options 0/2/16 - without the live entry the widget auto-picks
 			// the first listed option and commits it as a draft). The
 			// shipped options follow in table order.
-			addOption(shownText, shownText);
+			std::string ShownLabel = shownText;
+			for (int I = 0; I < view.row->OptionCount; ++I)
+				if (numberText(view.row->Options[I].Value) == shownText)
+					ShownLabel = translated(view.row->Options[I].Label);
+			addOption(shownText, ShownLabel);
 			for (int i = 0; i < view.row->OptionCount; ++i)
 				addOption(numberText(view.row->Options[i].Value), translated(view.row->Options[i].Label));
 		} else {
@@ -145,12 +172,16 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 			// gets an "unset" placeholder option so the widget still shows
 			// something honest. The fixed token table (cl_logocolor) and
 			// the scanned set (model / cl_logofile) follow.
+			const auto StringLabel = [&](const std::string& Value) {
+				return view.row->StateName && std::string(view.row->StateName) == "logocolor"
+					? translated(("#Valve_" + Value).c_str()) : Value;
+			};
 			if (shownText.empty())
 				addOption("", translated("#Settings_Unset"));
 			else
-				addOption(shownText, shownText);
+				addOption(shownText, StringLabel(shownText));
 			for (int i = 0; i < view.row->OptionCount; ++i)
-				addOption(view.row->Options[i].Label, view.row->Options[i].Label);
+				addOption(view.row->Options[i].Label, StringLabel(view.row->Options[i].Label));
 			if (view.options) {
 				for (const auto& option : *view.options)
 					addOption(option, option);
@@ -189,8 +220,9 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 	std::string status;
 	switch (view.row->Kind) {
 	case services::settings::SettingKind::kFloat:
-		status = abc::Format("{0}-{1} {2} {3}", numberText(view.row->Min), numberText(view.row->Max),
-			translated("#Settings_Default"), numberText(view.row->DefaultValue));
+		status = view.row->Bounded ? abc::Format("{0}-{1} {2} {3}", numberText(view.row->Min), numberText(view.row->Max),
+			translated("#Settings_Default"), numberText(view.row->DefaultValue))
+			: translated("#Settings_Default") + " " + numberText(view.row->DefaultValue);
 		break;
 	case services::settings::SettingKind::kEnum:
 		status = abc::Format("{0} {1} | {2} {3}", std::to_string(view.row->OptionCount),
@@ -214,6 +246,8 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 		status = translated("#Settings_BoolDomain");
 		break;
 	}
+	if (!view.row->HasDefault)
+		status = translated("#Settings_NoDefault");
 	switch (view.state) {
 	case services::settings::RowState::kDirty:
 		status += " | " + translated("#Settings_Dirty");
@@ -241,6 +275,8 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 	case services::settings::RowState::kMissing:
 		break;
 	}
+	if (view.row->ReadOnly)
+		status = translated("#Settings_ReadOnly");
 	if (Rml::Element* statusNode = rowNode->QuerySelector(".row-status"))
 		statusNode->SetInnerRML(framework::TextUtil::escapeRml(status));
 }

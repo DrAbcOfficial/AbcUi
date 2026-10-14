@@ -3,6 +3,7 @@
 	<link type="text/rcss" href="../rcss/base.rcss"/>
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/settings.rcss"/>
+	<link type="text/rcss" href="../rcss/range.rcss"/>
 </head>
 <!-- Configuration owns page identities, labels, rows and component placement.
      This document carries only navigation/content hosts, reusable special
@@ -12,7 +13,12 @@
 	<div id="panel">
 		<h1 id="title">#Settings_Title</h1>
 		<div id="settings-status"></div>
+		<p id="settings-description"></p>
 		<div id="rows"></div>
+		<div id="multiplayer-previews">
+			<div class="preview-box"><p>#Settings_PlayerModel</p><img id="model-preview"/></div>
+			<div class="preview-box"><p>#Settings_Spraypaint</p><img id="spray-preview"/></div>
+		</div>
 		<h2 id="bind-title">#Settings_KeysTitle</h2>
 		<div id="bind-status"></div>
 		<div id="bindrows"></div>
@@ -40,7 +46,8 @@
 		<div id="voice-section">
 			<div class="row" id="voice-row-volume">
 				<div class="row-label">#Settings_MicVolume</div>
-				<input class="row-input" type="text" id="voice-mic-volume"/>
+				<input class="row-input row-slider" type="range" min="0" max="100" step="1" id="voice-mic-volume"/>
+				<span id="voice-mic-value" class="row-value"></span>
 			</div>
 			<div class="row" id="voice-row-boost">
 				<div class="row-label">#Settings_MicBoost</div>
@@ -51,6 +58,7 @@
 				<button class="row-toggle" id="voice-mic-test" data-action="voice-test"></button>
 			</div>
 			<div id="voice-status"></div>
+			<div id="voice-meter" aria-label="#Settings_MicLevel"><div id="voice-meter-fill"></div></div>
 		</div>
 	</div>
 	<div id="settings-actions">

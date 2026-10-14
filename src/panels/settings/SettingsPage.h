@@ -88,6 +88,7 @@ public:
 	// Cheap voice-only re-projection for the mic-test meter beat (the full
 	// render() rewrites every row - too heavy per frame).
 	void renderVoiceSection();
+	void renderPreviews();
 
 	// True while Apply would still change (or has failed to change)
 	// something: the module's ESC/return guard asks before discarding.
@@ -123,6 +124,7 @@ private:
 	void buildNavigation();
 	void projectPage();
 	void resetCurrentPage();
+	void releasePreviews();
 	bool hasComponent(const char* Name) const;
 	const services::uiconfig::SettingsPageDefinition* currentPage() const;
 	void buildBindRows();

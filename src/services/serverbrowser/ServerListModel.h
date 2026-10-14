@@ -24,13 +24,15 @@
 //   - Stable identity is (ip, queryPort) - keyOf(). Rows are updated in
 //     place across generations; a selection made by key never jumps to a
 //     different server after a sync (T18a step 2).
-//   - Unknown facts stay unknown in the view model: an entry without a
-//     response sorts last for ping regardless of direction and is accepted
-//     by every filter (nothing is known about it yet).
+//   - Unresponsive entries are hidden by default. When explicitly enabled,
+//     they retain unknown values and sort last for ping in either direction.
+//   - Known foreign AppIDs are always rejected; blacklist rules are checked
+//     against connection ports before applying the ordinary view filters.
 //   - The rendered window is bounded: kPageSize rows per page, paging is
 //     part of the model (page()/pageCount()/setPage()).
 
 #include "ServerQuery.h"
+#include "ServerBlacklist.h"
 
 #include <cstdint>
 #include <string>
@@ -44,15 +46,24 @@ struct ServerFilter {
 	bool hideFull = false;
 	bool secureOnly = false;
 	std::string gameDir;  // "svencoop"; empty sends no gamedir pair
+	bool HideUnresponsive = true;
+	bool NoPassword = false;
+	bool InsecureOnly = false;
+	int MaxPing = 0;
+	std::string Name;
+	std::string Map;
 
 	// Up to 4 pairs; returns the written count.
 	int buildPairs(FilterPair* out, int max) const;
 	// The client-side twin of the master rules (case-insensitive gamedir).
-	// Entries without a response pass every rule - nothing is known yet.
+	// Unknown entries pass value filters only when HideUnresponsive is false.
 	bool accepts(const ServerEntry& entry) const;
 	bool operator==(const ServerFilter& other) const {
 		return hideEmpty == other.hideEmpty && hideFull == other.hideFull
-			&& secureOnly == other.secureOnly && gameDir == other.gameDir;
+			&& secureOnly == other.secureOnly && gameDir == other.gameDir
+			&& HideUnresponsive == other.HideUnresponsive && NoPassword == other.NoPassword
+			&& InsecureOnly == other.InsecureOnly && MaxPing == other.MaxPing
+			&& Name == other.Name && Map == other.Map;
 	}
 	bool operator!=(const ServerFilter& other) const { return !(*this == other); }
 };
@@ -71,6 +82,9 @@ public:
 
 	void setFilter(const ServerFilter& filter);
 	const ServerFilter& filter() const { return Filter; }
+	void setBlacklist(ServerBlacklist* Value) { Blacklist = Value; HasSnapshot = false; }
+	void setBlockedOnly(bool Value) { BlockedOnly = Value; HasSnapshot = false; }
+	bool blockedOnly() const { return BlockedOnly; }
 
 	void setSort(ServerSort column, bool ascending);
 	ServerSort sortColumn() const { return SortColumn; }
@@ -117,6 +131,9 @@ private:
 	void clampPage();
 
 	ServerFilter Filter;
+	ServerBlacklist* Blacklist = nullptr;
+	bool BlockedOnly = false;
+	uint64_t LastBlacklistRevision = 0;
 	ServerSort SortColumn = ServerSort::Name;
 	bool SortAscending = true;
 

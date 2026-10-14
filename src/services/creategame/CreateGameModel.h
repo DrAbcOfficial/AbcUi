@@ -75,6 +75,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "ServerOptions.h"
 
 namespace services {
 namespace creategame {
@@ -114,6 +115,8 @@ struct Request {
 	int MaxPlayers = 0;
 	std::string ServerName;
 	std::string Password;
+	bool Lan = true;
+	std::vector<ServerOptionValue> Options;
 };
 
 enum class Field {
@@ -164,6 +167,9 @@ public:
 
 	void setCatalog(MapCatalog catalog) { Catalog = std::move(catalog); }
 	const MapCatalog& catalog() const { return Catalog; }
+	void setOptions(std::vector<ServerOption> Value) { Options = std::move(Value); }
+	const std::vector<ServerOption>& options() const { return Options; }
+	bool validOptions(const Request& Value) const { return validateServerOptions(Options, Value.Options); }
 
 	static Validation validate(const MapCatalog& catalog, const Request& request);
 
@@ -194,6 +200,9 @@ public:
 	// Executes the shipped order (format string 0x1007f7a0), split into the
 	// recoverable-write and irreversible stages above.
 	Launch launch(const Request& request);
+	// After the local join, server-DLL cvars exist. Verify the queued options
+	// and repair values overwritten by map config through typed writes.
+	std::vector<std::string> settleOptions(const Request& Value);
 
 	// The three recoverable cvars in write order (sv_lan, sv_password,
 	// hostname) and the evidence of the last launch: the failing cvar index
@@ -217,6 +226,7 @@ private:
 	Launch restoreAndFail(int failIndex);
 
 	MapCatalog Catalog;
+	std::vector<ServerOption> Options;
 	Seams Seams_;
 	Snapshot Snapshots[kRecoverableCount];
 	bool Wrote[kRecoverableCount] = {};

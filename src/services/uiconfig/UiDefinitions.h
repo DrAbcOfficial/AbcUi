@@ -39,6 +39,11 @@ struct SettingDefinition {
 	std::string Section;
 	std::string DefaultString;
 	std::string Source;
+	std::string RequireCvar;
+	bool RequireEnabled = false;
+	bool ReadOnly = false;
+	bool Bounded = true;
+	bool HasDefault = true;
 	settings::SettingKind Kind = settings::SettingKind::kBool;
 	float Min = 0;
 	float Max = 1;
@@ -51,6 +56,7 @@ struct SettingDefinition {
 struct SettingsPageDefinition {
 	std::string Id;
 	std::string Label;
+	std::string Description;
 	int Order = 0;
 	std::vector<std::string> Components;
 	std::vector<SettingDefinition> Items;

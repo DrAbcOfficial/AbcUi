@@ -106,10 +106,21 @@ std::vector<MenuEntry> menuEntries(const Value& V, const std::string& Path, std:
 }
 
 SettingDefinition setting(const Value& Item, const std::string& P) {
-	fields(Item, {"cvar", "label", "section", "kind", "min", "max", "step", "default", "options", "source"}, P);
+	fields(Item, {"cvar", "label", "section", "kind", "min", "max", "step", "default", "options", "source",
+		"requires", "requiresEnabled", "readOnly"}, P);
 	SettingDefinition Row;
 	Row.Cvar = text(Item, "cvar", P);
 	require(identifier(Row.Cvar), P + ".cvar", "invalid cvar identifier");
+	if (Item.HasMember("requires")) {
+		Row.RequireCvar = text(Item, "requires", P);
+		require(identifier(Row.RequireCvar), P + ".requires", "invalid cvar identifier");
+	}
+	for (const auto* Key : {"readOnly", "requiresEnabled"})
+		if (Item.HasMember(Key))
+			require(Item[Key].IsBool(), P + "." + Key, "expected boolean");
+	Row.ReadOnly = Item.HasMember("readOnly") && Item["readOnly"].GetBool();
+	Row.RequireEnabled = Item.HasMember("requiresEnabled") && Item["requiresEnabled"].GetBool();
+	require(!Row.RequireEnabled || !Row.RequireCvar.empty(), P + ".requiresEnabled", "requires a dependency");
 	Row.Label = text(Item, "label", P);
 	Row.Section = Item.HasMember("section") ? text(Item, "section", P) : "";
 	const auto Kind = text(Item, "kind", P);
@@ -123,27 +134,32 @@ SettingDefinition setting(const Value& Item, const std::string& P) {
 	else if (Kind == "command-toggle") Row.Kind = K::kCommandToggle;
 	else require(false, P + ".kind", "unknown setting kind");
 	const bool String = Row.Kind == K::kText || Row.Kind == K::kStringEnum;
+	Row.HasDefault = Item.HasMember("default");
 	if (String || Row.Kind == K::kBool || Row.Kind == K::kCommandToggle)
 		require(!Item.HasMember("min") && !Item.HasMember("max") && !Item.HasMember("step"),
 			P, "min/max/step are only valid for float, enum and negate");
 	if (String) {
-		Row.DefaultString = text(Item, "default", P, true);
+		Row.DefaultString = Row.HasDefault ? text(Item, "default", P, true) : "";
 		require(std::all_of(Row.DefaultString.begin(), Row.DefaultString.end(), [](unsigned char C) {
 			return C >= 0x20 && C != 0x7f && C != '"' && C != '\\' && C != '`' && C != ';';
 		}), P + ".default", "unsafe string default");
-		if (Row.Kind == K::kText)
+		if (Row.Kind == K::kText && Row.HasDefault)
 			require(!Row.DefaultString.empty() && Row.DefaultString.size() <= settings::kNameMaxBytes,
 				P + ".default", "text default must be 1..63 bytes");
 		Row.Min = Row.Max = Row.Step = 0;
 	} else {
-		Row.DefaultValue = number(Item, "default", P);
-		if (Row.Kind != K::kBool && Row.Kind != K::kCommandToggle) {
+		Row.DefaultValue = Row.HasDefault ? number(Item, "default", P) : 0;
+		Row.Bounded = Row.Kind != K::kFloat || Item.HasMember("min") || Item.HasMember("max");
+		if (!Row.Bounded) {
+			Row.Min = Row.Max = Row.Step = 0;
+		} else if (Row.Kind != K::kBool && Row.Kind != K::kCommandToggle) {
 			Row.Min = number(Item, "min", P);
 			Row.Max = number(Item, "max", P);
 			Row.Step = Item.HasMember("step") ? number(Item, "step", P) : 0;
 		}
 		require(Row.Min <= Row.Max && Row.Step >= 0, P, "invalid numeric domain");
-		require(Row.DefaultValue >= Row.Min && Row.DefaultValue <= Row.Max, P + ".default", "default outside domain");
+		if (!Row.HasDefault) Row.DefaultValue = Row.Min;
+		require(!Row.Bounded || (Row.DefaultValue >= Row.Min && Row.DefaultValue <= Row.Max), P + ".default", "default outside domain");
 		if (Row.Kind == K::kBool || Row.Kind == K::kCommandToggle)
 			require(Row.DefaultValue == 0 || Row.DefaultValue == 1, P + ".default", "expected 0 or 1");
 	}
@@ -166,7 +182,7 @@ SettingDefinition setting(const Value& Item, const std::string& P) {
 			require(V >= Row.Min && V <= Row.Max && Values.insert(V).second, OP + ".value", "duplicate or out-of-domain option");
 			Row.Options.push_back({V, text(Options[I], "label", OP)});
 		}
-		require(Values.count(Row.DefaultValue) != 0, P + ".default", "default is not an option");
+		require(!Row.HasDefault || Values.count(Row.DefaultValue) != 0, P + ".default", "default is not an option");
 	}
 	require(Row.Kind != K::kEnum || !Row.Options.empty(), P + ".options", "enum requires options");
 	require(Row.Kind != K::kStringEnum || !Row.Source.empty(), P + ".source", "string-enum requires option provider");
@@ -207,21 +223,23 @@ bool DefinitionParser::parseMenu(const std::string& Text, MenuDefinition& Output
 bool DefinitionParser::parsePage(const std::string& Text, SettingsPageDefinition& Output, ConfigError& Error) {
 	try {
 		auto Doc = document(Text);
-		fields(Doc, {"version", "id", "label", "order", "components", "items"}, "$");
+		fields(Doc, {"version", "id", "label", "description", "order", "components", "items"}, "$");
 		SettingsPageDefinition Result;
 		Result.Id = text(Doc, "id", "$");
 		require(identifier(Result.Id), "$.id", "invalid page identifier");
 		Result.Label = text(Doc, "label", "$");
+		if (Doc.HasMember("description"))
+			Result.Description = text(Doc, "description", "$");
 		const auto& Order = member(Doc, "order", "$");
 		require(Order.IsInt(), "$.order", "expected integer");
 		Result.Order = Order.GetInt();
 		if (Doc.HasMember("components")) {
 			const auto& Components = Doc["components"];
-			array(Components, "$.components", 4);
+			array(Components, "$.components", 5);
 			for (const auto& C : Components.GetArray()) {
 				require(C.IsString(), "$.components", "expected component name");
 				std::string Name(C.GetString(), C.GetStringLength());
-				require(Name == "bindings" || Name == "video" || Name == "voice" || Name == "user-script",
+				require(Name == "bindings" || Name == "video" || Name == "voice" || Name == "user-script" || Name == "previews",
 					"$.components", "unknown component");
 				require(!Result.hasComponent(Name.c_str()), "$.components", "duplicate component");
 				Result.Components.push_back(std::move(Name));

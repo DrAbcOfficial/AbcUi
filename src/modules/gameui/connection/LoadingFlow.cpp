@@ -1,6 +1,7 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: connection/LoadingFlow.
 #include "modules/gameui/GameUiModule.h"
 #include <string>
+#include <abc/Console.h>
 namespace gameui {
 void GameUiModule::syncAttemptState() {
 	const auto& state = Controller.state();
@@ -100,6 +101,10 @@ void GameUiModule::drainLoadingFeed() {
 				// (the shipped ConnectedToGame wrote flags=2 into Steam's
 				// store exactly here).
 				recordPendingHistory();
+				if (CurrentAttemptIsLocal && PendingCreateGameValid) {
+					for (const auto& Name : CreateGame.settleOptions(PendingCreateGame))
+						abc::ConsoleWarn("[AbcUi] local server option did not apply: %s\n", Name.c_str());
+				}
 				// T19: a confirmed local join consumes the kept request -
 				// nothing left to retry once the server is up.
 				PendingCreateGameValid = false;

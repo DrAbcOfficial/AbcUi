@@ -60,6 +60,7 @@ bool ServerQuery::begin(QueryKind kind, const FilterPair* filters, int filterCou
 	}
 	const uint64_t handle = Provider->requestList(kind, Filters.empty() ? nullptr : Filters.data(),
 		static_cast<int>(Filters.size()));
+	AppId = Provider->appId();
 	if (handle == 0) {
 		Status = QueryStatus::Failed;
 		Failure = QueryFailure::Rejected;
@@ -268,7 +269,15 @@ void ServerQuery::applyList(const QueryEvent& event) {
 	case QueryEvent::Type::ServerFailedToRespond: {
 		++FailedPings;
 		if (event.index >= 0 && event.index < kMaxServers)
+		{
 			ensureSlot(event.index);
+			ServerEntry Details;
+			if (Provider->serverDetails(Request, event.index, Details)) {
+				Details.responded = false;
+				Entries[event.index] = std::move(Details);
+				++Revision;
+			}
+		}
 		return;
 	}
 	case QueryEvent::Type::RefreshComplete:

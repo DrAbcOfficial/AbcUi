@@ -84,10 +84,15 @@ void SettingsPage::projectPage() {
 		Show(Id, hasComponent("video"));
 	for (const char* Id : {"voice-title", "voice-section"})
 		Show(Id, hasComponent("voice"));
+	Show("multiplayer-previews", hasComponent("previews"));
 	if (auto* Title = document()->GetElementById("title")) {
 		const auto* Page = currentPage();
 		Title->SetInnerRML(framework::TextUtil::escapeRml(
 			detail::translated(Page ? Page->Label.c_str() : "#Settings_Title")));
+	}
+	if (auto* Description = document()->GetElementById("settings-description")) {
+		const auto* Page = currentPage();
+		Description->SetInnerRML(Page ? framework::TextUtil::escapeRml(detail::translated(Page->Description.c_str())) : "");
 	}
 	Show("settings-reset", currentPage() && !currentPage()->Cvars.empty());
 }

@@ -34,6 +34,8 @@ constexpr Entry kActions[] = {
 	{"sb-tab-lan", {ActionKind::kSbTabLan, ActionDomain::kServers}},
 	{"sb-tab-favorites", {ActionKind::kSbTabFavorites, ActionDomain::kServers}},
 	{"sb-tab-history", {ActionKind::kSbTabHistory, ActionDomain::kServers}},
+	{"sb-tab-friends", {ActionKind::kSbTabFriends, ActionDomain::kServers}},
+	{"sb-filters-apply", {ActionKind::kSbFiltersApply, ActionDomain::kServers}},
 	{"sb-refresh", {ActionKind::kSbRefresh, ActionDomain::kServers}},
 	{"sb-stop", {ActionKind::kSbStop, ActionDomain::kServers}},
 	{"sb-filter-empty", {ActionKind::kSbFilterEmpty, ActionDomain::kServers}},

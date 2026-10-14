@@ -18,6 +18,7 @@ SettingsPage::SettingsPage()
 	: InteractiveDocument("menusettings", "abcui/rml/settings.rml"), Listener(this) {}
 
 SettingsPage::~SettingsPage() {
+	releasePreviews();
 	close();
 }
 
@@ -55,6 +56,7 @@ void SettingsPage::render(const char* skipInputRow) {
 	// renders its fail-closed state instead of staying silently empty.
 	renderVideoSection();
 	renderVoiceSection();
+	renderPreviews();
 	setStatusSummary();
 	setBindStatusSummary();
 	InRender_ = false;

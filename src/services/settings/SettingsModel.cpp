@@ -171,7 +171,7 @@ bool SettingsModel::parseValue(const char* text, float& out) {
 	if (!std::isfinite(parsed))
 		return false;
 	out = static_cast<float>(parsed);
-	return true;
+	return std::isfinite(out);
 }
 
 void SettingsModel::adoptEngineLocked(RowRuntime& target, float value) {
@@ -210,6 +210,12 @@ void SettingsModel::snapshot() {
 		entry.missing = entry.row->Kind == SettingKind::kCommandToggle
 			? (!Seams_.isKeyDown || !entry.row->StateName || !Seams_.clientCmd)
 			: (!Seams_.exists || !Seams_.exists(entry.row->Cvar));
+		if (entry.row->RequireCvar) {
+			entry.missing = entry.missing || !Seams_.exists || !Seams_.exists(entry.row->RequireCvar)
+				|| (entry.row->RequireEnabled && (!Seams_.readFloat || Seams_.readFloat(entry.row->RequireCvar) <= 0));
+		}
+		if (!entry.missing && entry.state == RowState::kMissing)
+			entry.state = RowState::kClean;
 		if (entry.missing) {
 			entry.state = RowState::kMissing;
 			continue;
@@ -287,10 +293,10 @@ void SettingsModel::snapshot() {
 
 bool SettingsModel::setDraftText(const char* cvar, const char* text) {
 	RowRuntime* entry = runtime(cvar);
-	if (!entry || entry->missing || rowUsesString(entry->row))
+	if (!entry || !editable(cvar) || rowUsesString(entry->row))
 		return false;
 	float parsed = 0.0f;
-	if (!parseValue(text, parsed) || parsed < entry->row->Min || parsed > entry->row->Max) {
+	if (!parseValue(text, parsed) || (entry->row->Bounded && (parsed < entry->row->Min || parsed > entry->row->Max))) {
 		entry->draftText = text ? text : "";
 		entry->state = RowState::kInvalid;
 		return false;
@@ -307,7 +313,7 @@ bool SettingsModel::setDraftText(const char* cvar, const char* text) {
 
 bool SettingsModel::setDraftBool(const char* cvar, bool value) {
 	RowRuntime* entry = runtime(cvar);
-	if (!entry || entry->missing)
+	if (!entry || !editable(cvar))
 		return false;
 	const float next = value ? 1.0f : 0.0f;
 	if (entry->row->Kind == SettingKind::kBool) {
@@ -338,7 +344,7 @@ bool SettingsModel::setDraftBool(const char* cvar, bool value) {
 
 bool SettingsModel::setDraftEnum(const char* cvar, float value) {
 	RowRuntime* entry = runtime(cvar);
-	if (!entry || entry->missing || entry->row->Kind != SettingKind::kEnum)
+	if (!entry || !editable(cvar) || entry->row->Kind != SettingKind::kEnum)
 		return false;
 	bool known = false;
 	for (int i = 0; i < entry->row->OptionCount; ++i)
@@ -381,7 +387,7 @@ bool SettingsModel::validateString(const RowRuntime& entry, const char* text) co
 
 bool SettingsModel::setDraftString(const char* cvar, const char* text) {
 	RowRuntime* entry = runtime(cvar);
-	if (!entry || entry->missing || !rowUsesString(entry->row))
+	if (!entry || !editable(cvar) || !rowUsesString(entry->row))
 		return false;
 	// Committing the live value back is always the clean state - BEFORE the
 	// charset gate. The select widgets dispatch a change when their first
@@ -409,7 +415,7 @@ bool SettingsModel::setDraftString(const char* cvar, const char* text) {
 
 bool SettingsModel::adoptEngineValue(const char* cvar) {
 	RowRuntime* entry = runtime(cvar);
-	if (!entry || entry->missing)
+	if (!entry || !editable(cvar))
 		return false;
 	if (rowUsesString(entry->row))
 		adoptEngineTextLocked(*entry, entry->engineText);
@@ -430,7 +436,7 @@ void SettingsModel::resetDefaultsImpl(const std::vector<std::string>* Cvars) {
 	for (auto& Entry : Rows_) {
 		if (Cvars && std::find(Cvars->begin(), Cvars->end(), Entry.row->Cvar) == Cvars->end())
 			continue;
-		if (Entry.missing)
+		if (!editable(Entry.row->Cvar) || !Entry.row->HasDefault)
 			continue;
 		if (rowUsesString(Entry.row)) {
 			const std::string Fallback = Entry.row->DefaultString ? Entry.row->DefaultString : std::string();
@@ -464,7 +470,7 @@ void SettingsModel::cancel() {
 std::vector<ApplyResult> SettingsModel::apply() {
 	std::vector<ApplyResult> results;
 	for (auto& entry : Rows_) {
-		if (entry.missing || entry.state == RowState::kClean || entry.state == RowState::kQueued)
+		if (!editable(entry.row->Cvar) || entry.state == RowState::kClean || entry.state == RowState::kQueued)
 			continue;
 		if (entry.state == RowState::kInvalid) {
 			results.push_back({entry.row->Cvar, ApplyOutcome::kInvalidRefused});
@@ -585,6 +591,15 @@ bool SettingsModel::hasQueued() const {
 	return false;
 }
 
+bool SettingsModel::editable(const char* Cvar) const {
+	const auto* Entry = runtime(Cvar);
+	if (!Entry || Entry->missing || Entry->row->ReadOnly)
+		return false;
+	const auto* Required = Entry->row->RequireCvar;
+	return !Required || (Seams_.exists && Seams_.exists(Required)
+		&& (!Entry->row->RequireEnabled || (Seams_.readFloat && Seams_.readFloat(Required) > 0)));
+}
+
 // --- user.scr parser ---------------------------------------------------------
 //
 // The original CInfoDescription grammar (the header comment in the shipped
@@ -671,6 +686,7 @@ bool SettingsModel::parseUserScr(const char* text, UserScrTable& out) {
 			stored.Min = numberParts.size() >= 1 ? numberParts[0] : 0.0f;
 			stored.Max = numberParts.size() >= 2 ? numberParts[1] : 0.0f;
 			stored.Step = 0.0f;
+			stored.Bounded = !(stored.Min == -1 && stored.Max == -1);
 			parseValue(defaultValue.c_str(), parsedDefault);
 			stored.DefaultValue = parsedDefault;
 		} else if (type == "LIST") {

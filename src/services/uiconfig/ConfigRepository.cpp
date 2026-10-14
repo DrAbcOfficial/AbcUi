@@ -8,9 +8,9 @@ namespace services::uiconfig {
 namespace {
 // Existing fixed spray-color provider; not a menu/settings row definition.
 constexpr settings::SettingEnumOption kLogoColorOptions[] = {
-	{0.0f, "#Valve_Orange"}, {1.0f, "#Valve_Yellow"}, {2.0f, "#Valve_Blue"},
-	{3.0f, "#Valve_Ltblue"}, {4.0f, "#Valve_Green"}, {5.0f, "#Valve_Red"},
-	{6.0f, "#Valve_Brown"}, {7.0f, "#Valve_Ltgray"}, {8.0f, "#Valve_Dkgray"},
+	{0.0f, "Orange"}, {1.0f, "Yellow"}, {2.0f, "Blue"},
+	{3.0f, "Ltblue"}, {4.0f, "Green"}, {5.0f, "Red"},
+	{6.0f, "Brown"}, {7.0f, "Ltgray"}, {8.0f, "Dkgray"},
 };
 
 SettingDefinition copyRow(const settings::SettingRow& Row) {
@@ -24,6 +24,11 @@ SettingDefinition copyRow(const settings::SettingRow& Row) {
 	Result.Step = Row.Step;
 	Result.DefaultValue = Row.DefaultValue;
 	Result.DefaultString = Row.DefaultString ? Row.DefaultString : "";
+	Result.Bounded = Row.Bounded;
+	Result.HasDefault = Row.HasDefault;
+	Result.ReadOnly = Row.ReadOnly;
+	Result.RequireCvar = Row.RequireCvar ? Row.RequireCvar : "";
+	Result.RequireEnabled = Row.RequireEnabled;
 	for (int I = 0; I < Row.OptionCount; ++I)
 		Result.Options.push_back({Row.Options[I].Value, Row.Options[I].Label});
 	return Result;
@@ -89,9 +94,15 @@ void ConfigRepository::load(const std::filesystem::path& Root,
 		// A live user.scr replaces only the fallback items of its declared
 		// component page; other JSON pages remain authoritative.
 		if (Page.hasComponent("user-script") && !Advanced.empty()) {
-			Page.Items.clear();
-			for (const auto& Row : Advanced)
-				Page.Items.push_back(copyRow(Row));
+			// Preserve JSON-only extensions while replacing matching script rows.
+			for (const auto& Row : Advanced) {
+				auto Existing = std::find_if(Page.Items.begin(), Page.Items.end(),
+					[&](const auto& Item) { return Item.Cvar == Row.Cvar; });
+				if (Existing != Page.Items.end())
+					*Existing = copyRow(Row);
+				else
+					Page.Items.push_back(copyRow(Row));
+			}
 		}
 		std::string Conflict;
 		if (PageIds.count(Page.Id))
@@ -130,6 +141,11 @@ void ConfigRepository::buildRows() {
 				Item.Step, Item.DefaultValue, Item.Label.c_str(), Item.Section.c_str(),
 				Item.OptionViews.data(), static_cast<int>(Item.OptionViews.size())};
 			Row.DefaultString = Item.DefaultString.c_str();
+			Row.Bounded = Item.Bounded;
+			Row.ReadOnly = Item.ReadOnly;
+			Row.RequireCvar = Item.RequireCvar.empty() ? nullptr : Item.RequireCvar.c_str();
+			Row.RequireEnabled = Item.RequireEnabled;
+			Row.HasDefault = Item.HasDefault;
 			if (Item.Kind == settings::SettingKind::kCommandToggle) {
 				Row.StateName = Item.Cvar.c_str();
 				Row.OnCommand = Item.Cvar == "in_mlook" ? "+mlook" : "+jlook";

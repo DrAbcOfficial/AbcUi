@@ -13,19 +13,9 @@
       "action": "creategame"
     },
     {
-      "id": "main-connect",
-      "label": "#Loading_DirectConnectTitle",
-      "action": "directconnect"
-    },
-    {
       "id": "main-settings",
       "label": "#MainMenu_Settings",
       "action": "settings"
-    },
-    {
-      "id": "main-console",
-      "label": "#MainMenu_Console",
-      "action": "console"
     },
     {
       "id": "main-quit",

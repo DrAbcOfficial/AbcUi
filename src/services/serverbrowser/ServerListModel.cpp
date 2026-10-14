@@ -63,7 +63,17 @@ int ServerFilter::buildPairs(FilterPair* out, int max) const {
 
 bool ServerFilter::accepts(const ServerEntry& entry) const {
 	if (!entry.responded)
-		return true;  // nothing known yet - nothing to filter on
+		return !HideUnresponsive;
+	auto Contains = [](std::string Text, std::string Needle) {
+		auto Lower = [](unsigned char C) { return static_cast<char>(std::tolower(C)); };
+		std::transform(Text.begin(), Text.end(), Text.begin(), Lower);
+		std::transform(Needle.begin(), Needle.end(), Needle.begin(), Lower);
+		return Text.find(Needle) != std::string::npos;
+	};
+	if (!Contains(entry.name, Name) || !Contains(entry.map, Map)) return false;
+	if (NoPassword && entry.password) return false;
+	if (InsecureOnly && entry.secure) return false;
+	if (MaxPing > 0 && (entry.pingMs < 0 || entry.pingMs > MaxPing)) return false;
 	if (hideEmpty && entry.players <= 0)
 		return false;
 	if (hideFull && entry.maxPlayers > 0 && entry.players >= entry.maxPlayers)
@@ -95,6 +105,7 @@ bool ServerListModel::sync(const ServerQuery& query) {
 	const bool sortMoved = SortColumn != LastSortColumn || SortAscending != LastSortAscending;
 	if (HasSnapshot && generation == LastGeneration && query.revision() == LastRevision
 		&& count == LastCount && !filterMoved
+		&& (!Blacklist || Blacklist->revision() == LastBlacklistRevision)
 		&& !sortMoved)
 		return false;  // same snapshot, same view: nothing to do
 	LastGeneration = generation;
@@ -104,6 +115,7 @@ bool ServerListModel::sync(const ServerQuery& query) {
 	LastSortColumn = SortColumn;
 	LastSortAscending = SortAscending;
 	HasSnapshot = true;
+	LastBlacklistRevision = Blacklist ? Blacklist->revision() : 0;
 
 	// A new generation replaces every row: selection survives only by key.
 	rebuild(query);
@@ -129,7 +141,15 @@ void ServerListModel::rebuild(const ServerQuery& query) {
 	Rows.reserve(count);
 	for (int i = 0; i < count; ++i) {
 		const ServerEntry* entry = query.entry(i);
-		if (!entry || !Filter.accepts(*entry))
+		if (!entry)
+			continue;
+		// Compare Steam's reported AppID with the running application's
+		// ISteamUtils::GetAppID(), not a spoofable display description.
+		if ((entry->responded || entry->AppId != 0) && entry->AppId != query.appId())
+			continue;
+		const bool Blocked = Blacklist && Blacklist->contains(entry->ip,
+			entry->connectionPort ? entry->connectionPort : entry->queryPort);
+		if (Blocked != BlockedOnly || (!BlockedOnly && !Filter.accepts(*entry)))
 			continue;
 		Row row;
 		row.key = keyOf(*entry);

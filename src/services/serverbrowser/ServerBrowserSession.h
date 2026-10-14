@@ -14,6 +14,7 @@ public:
 	ServerBrowserSession(const ServerBrowserSession&) = delete;
 	ServerBrowserSession& operator=(const ServerBrowserSession&) = delete;
 	void setProvider(IServerQueryProvider* Provider) { Backend = Provider; }
+	void setBlacklist(ServerBlacklist* Value) { Blacklist = Value; List.setBlacklist(Value); }
 	void startContext();
 	void closeContext();
 
@@ -25,6 +26,7 @@ public:
 
 private:
 	IServerQueryProvider* Backend = nullptr;
+	ServerBlacklist* Blacklist = nullptr;
 };
 
 }
