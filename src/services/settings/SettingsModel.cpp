@@ -419,24 +419,34 @@ bool SettingsModel::adoptEngineValue(const char* cvar) {
 }
 
 void SettingsModel::resetDefaults() {
-	for (auto& entry : Rows_) {
-		if (entry.missing)
+	resetDefaultsImpl(nullptr);
+}
+
+void SettingsModel::resetDefaults(const std::vector<std::string>& Cvars) {
+	resetDefaultsImpl(&Cvars);
+}
+
+void SettingsModel::resetDefaultsImpl(const std::vector<std::string>* Cvars) {
+	for (auto& Entry : Rows_) {
+		if (Cvars && std::find(Cvars->begin(), Cvars->end(), Entry.row->Cvar) == Cvars->end())
 			continue;
-		if (rowUsesString(entry.row)) {
-			const std::string fallback = entry.row->DefaultString ? entry.row->DefaultString : std::string();
-			if (fallback == entry.engineText) {
-				adoptEngineTextLocked(entry, entry.engineText);
+		if (Entry.missing)
+			continue;
+		if (rowUsesString(Entry.row)) {
+			const std::string Fallback = Entry.row->DefaultString ? Entry.row->DefaultString : std::string();
+			if (Fallback == Entry.engineText) {
+				adoptEngineTextLocked(Entry, Entry.engineText);
 			} else {
-				entry.draftText = fallback;
-				entry.draftValue = 0.0f;
-				entry.state = RowState::kDirty;
+				Entry.draftText = Fallback;
+				Entry.draftValue = 0.0f;
+				Entry.state = RowState::kDirty;
 			}
 			continue;
 		}
-		const float fallback = entry.row->DefaultValue;
-		entry.draftText = formatValue(fallback);
-		entry.draftValue = fallback;
-		entry.state = sameValue(fallback, entry.engineValue) ? RowState::kClean : RowState::kDirty;
+		const float Fallback = Entry.row->DefaultValue;
+		Entry.draftText = formatValue(Fallback);
+		Entry.draftValue = Fallback;
+		Entry.state = sameValue(Fallback, Entry.engineValue) ? RowState::kClean : RowState::kDirty;
 	}
 }
 

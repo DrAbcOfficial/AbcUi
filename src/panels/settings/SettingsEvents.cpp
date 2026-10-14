@@ -20,13 +20,16 @@ void SettingsPage::handleClick(Rml::Event& event) {
 	const Rml::String rowKey = entry->GetAttribute<Rml::String>("data-row", "");
 	const std::string which = action;
 
+	if (which == "settings-page") {
+		selectPage(entry->GetAttribute<Rml::String>("data-page", ""));
+		return;
+	}
 	if (which == kActionApply) {
 		applyAndReport();
 	} else if (which == kActionReset) {
 		showLayer(kLayerReset); // restore-defaults always confirms first
 	} else if (which == kActionResetYes) {
-		if (Model)
-			Model->resetDefaults();
+		resetCurrentPage();
 		hideLayers();
 		render();
 	} else if (which == kActionResetNo) {

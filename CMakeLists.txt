@@ -44,6 +44,13 @@ add_subdirectory(thirdparty/RmlUi EXCLUDE_FROM_ALL)
 # Renderer.dll depends on). CRT is /MT inside the clone (self-contained DLL).
 add_subdirectory(thirdparty/FreeImage EXCLUDE_FROM_ALL)
 
+add_library(abc_ui_config STATIC
+    src/services/uiconfig/UiDefinitions.cpp
+    src/services/uiconfig/ConfigRepository.cpp)
+target_include_directories(abc_ui_config PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
+    PRIVATE "${ABC_CORE_DIR}/thirdparty/MetaHook/thirdparty/rapidjson/include")
+target_compile_features(abc_ui_config PUBLIC cxx_std_20)
+
 add_library(AbcUi MODULE
     src/plugins.cpp
     src/hooks.cpp
@@ -160,6 +167,7 @@ add_library(AbcUi MODULE
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp
     src/panels/settings/SettingsPage.cpp
+    src/panels/settings/SettingsNavigation.cpp
     src/panels/settings/SettingsEvents.cpp
     src/panels/settings/sections/CvarRows.cpp
     src/panels/settings/sections/BindingRows.cpp
@@ -179,7 +187,7 @@ add_library(AbcUi MODULE
 )
 target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS)
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
-target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32)
+target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32 abc_ui_config)
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).

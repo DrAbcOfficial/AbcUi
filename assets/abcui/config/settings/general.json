@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "general",
+  "label": "#Settings_SecBasic",
+  "order": 10,
+  "components": [],
+  "items": [
+    {
+      "cvar": "cl_crosshair",
+      "label": "#Settings_CrosshairEnable",
+      "section": "#Settings_SecBasic",
+      "kind": "bool",
+      "default": 1.0
+    },
+    {
+      "cvar": "cl_crosshairsize",
+      "label": "#Settings_CrosshairSize",
+      "section": "#Settings_SecBasic",
+      "kind": "float",
+      "default": 24.0,
+      "min": 4.0,
+      "max": 64.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "hud_scoreboard_showavatars",
+      "label": "#Settings_ScoreboardAvatars",
+      "section": "#Settings_SecBasic",
+      "kind": "bool",
+      "default": 1.0
+    }
+  ]
+}

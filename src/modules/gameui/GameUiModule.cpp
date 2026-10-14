@@ -3,6 +3,7 @@
 #include "modules/gameui/settings/SettingsResources.h"
 #include "modules/gameui/debug/DebugCommands.h"
 #include <abc/Console.h>
+#include <abc/Paths.h>
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
@@ -38,24 +39,27 @@ void GameUiModule::onInit() {
 	// interface lazily (Steam may not be up yet at HUD_Init) and is a
 	// process-lifetime singleton; the model owns the async lifecycle.
 	ServerBrowser.setProvider(services::serverbrowser::steamQueryProvider());
-	// T13 description table: the first batch + the advanced rows from the
-	// live (localized) user.scr - the shipped script is the same source
-	// the original advanced dialog parses. A failed parse keeps the
-	// static mirror of the shipped script (buildAdvancedTable), so the
-	// table is never empty. Must run before the first snapshot (page
-	// present) - the model owns row POINTERS into SettingsTable/Advanced,
-	// both module members that outlive the model.
-	Advanced = buildAdvancedTable();
-	SettingsTable.assign(services::settings::FirstBatchRows,
-		services::settings::FirstBatchRows + services::settings::FirstBatchCount);
-	SettingsTable.insert(SettingsTable.end(), Advanced.rows.begin(), Advanced.rows.end());
-	SettingsModel.setTable(SettingsTable.data(), static_cast<int>(SettingsTable.size()));
+	// Startup catalog owns the strings backing the model's row views.
+	// A live user.scr overrides the JSON fallback on its declared page.
+	// Parsing/loading finishes before any document or transaction observes it.
+	const auto Advanced = loadAdvancedScript();
+	UiConfig.load(abc::ModPath("abcui/config"), Advanced.Rows);
+	for (const auto& Error : UiConfig.errors())
+		abc::ConsoleWarn("[AbcUi] %s: %s: %s\n", Error.File.c_str(), Error.Field.c_str(), Error.Message.c_str());
+	SettingsModel.setTable(UiConfig.rows().data(), static_cast<int>(UiConfig.rows().size()));
 	// The multiplayer enumerations: directories (models/player) and the
 	// spray basenames (logos) - the same scans the shipped list fills
 	// run; empty scans leave the rows readable but unchangeable (the
 	// live engine value stays selectable).
-	SettingsModel.setStringOptions("model", scanModDirectories("models/player"));
-	SettingsModel.setStringOptions("cl_logofile", scanModFileBasenames("logos"));
+	for (const auto& Row : UiConfig.rows()) {
+		if (Row.Kind != services::settings::SettingKind::kStringEnum || !Row.StateName)
+			continue;
+		const std::string Source = Row.StateName;
+		if (Source == "models/player")
+			SettingsModel.setStringOptions(Row.Cvar, scanModDirectories("models/player"));
+		else if (Source == "logos")
+			SettingsModel.setStringOptions(Row.Cvar, scanModFileBasenames("logos"));
+	}
 	// T11 bind sources live in the mod dir (engine-owned data, not abcui
 	// assets): the action list, the factory defaults and the label table.
 	// Missing files degrade to an empty action table - the settings page

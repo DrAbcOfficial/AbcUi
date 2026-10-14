@@ -233,6 +233,7 @@ VideoConfirm_Revert = Restore previous mode
 VideoConfirm_TimeoutTime = Restoring automatically in {0}s
 Settings_SecBasic = General
 Settings_SecMouse = Mouse
+Settings_PageInput = Keyboard / Mouse
 Settings_SecAudio = Audio
 Settings_SecVideo = Video
 Settings_SecVoice = Voice

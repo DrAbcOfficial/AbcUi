@@ -1,13 +1,11 @@
 #pragma once
 
-// services::settings - the settings description table and the draft
-// transaction model (T10), extended in T13 with the remaining shipped
-// options (audio, mouse, instant video rows, voice cvars, multiplayer and
-// the user.scr advanced rows).
+// services::settings - backend-independent setting descriptors and draft
+// transactions. The startup JSON repository owns the production table.
 //
-// The description table is the single source of truth for what the settings
-// page offers. Every row cites a REAL, verified backend registration - never
-// a name guessed from a resource label (settings-inventory.md boundary):
+// Shipped JSON definitions preserve the verified registration data from the
+// previous table (frozen in tests/fixtures/LegacySettingsRows.h). Backend
+// registration remains independent from the UI definition:
 //   * engine cvars carry the registration evidence from the shipped binaries
 //     (default string + flags read out of the registering module, UI domain
 //     read out of the shipped GameUI page constructors),
@@ -15,9 +13,8 @@
 //     source the original MultiplayerAdvancedDialog parses),
 //   * AbcUi cvars cite our own CREATE_CVAR registration (the source IS the
 //     default source).
-// Rows whose backend cannot be verified stay OUT of the table; a row whose
-// cvar is not registered at runtime renders as unavailable instead of
-// silently no-oping.
+// JSON extensions may describe additional cvars; a row whose cvar is not
+// registered at runtime renders as unavailable instead of silently no-oping.
 //
 // Draft transaction: the page never writes a cvar outside Apply. snapshot()
 // reads engine truth; edits land in per-row drafts; apply() writes through
@@ -77,9 +74,8 @@ struct SettingEnumOption {
 	const char* Label;
 };
 
-// One description-table row. Static-literal fields for table rows; dynamic
-// rows (user.scr) own their strings in a UserScrTable arena that outlives
-// the model.
+// Borrowed description view. The JSON repository (or UserScrTable for direct
+// script consumers) owns all strings and options and must outlive the model.
 struct SettingRow {
 	const char* Cvar;        // engine-registered name, referenced verbatim
 	SettingKind Kind;
@@ -100,133 +96,6 @@ struct SettingRow {
 	const char* OnCommand = nullptr;  // kCommandToggle: checked-side command
 	const char* OffCommand = nullptr; // kCommandToggle: unchecked-side command
 };
-
-// The T10 first batch + T13 additions. Verification per row lives next to
-// the row (see the .cpp comments and execution/T13.md for the address-level
-// evidence): engine cvars cite the registering module (hw.dll static cvar
-// table entry or client.dll pfnRegisterVariable call site), UI domains cite
-// the shipped GameUI page constructors, user.scr rows cite the shipped
-// script, AbcUi cvars cite our CREATE_CVAR calls.
-inline constexpr SettingEnumOption kHpkMaxsizeOptions[] = {
-	{-1.0f, "#Settings_HpkDisabled"}, {2.0f, "#Settings_HpkSmall"},
-	{4.0f, "#Settings_HpkNormal"}, {16.0f, "#Settings_HpkLarge"},
-};
-inline constexpr SettingEnumOption kWeaponAutoSwitchOptions[] = {
-	{0.0f, "#Settings_AutoSwitchNever"}, {1.0f, "#Settings_AutoSwitchBetter"},
-	{2.0f, "#Settings_AutoSwitchAlways"},
-};
-inline constexpr SettingEnumOption kBobOptions[] = {
-	{0.0f, "#Settings_BobOff"}, {0.01f, "#Settings_BobNormal"},
-	{0.025f, "#Settings_BobExtra"},
-};
-inline constexpr SettingEnumOption kRollAngleOptions[] = {
-	{0.0f, "#Settings_BobOff"}, {2.0f, "#Settings_BobNormal"},
-	{5.0f, "#Settings_BobExtra"}, {-2.0f, "#Settings_BobInverted"},
-	{-5.0f, "#Settings_BobInvertedExtra"},
-};
-inline constexpr SettingEnumOption kDiscordOptions[] = {
-	{0.0f, "#Settings_DiscordGame"}, {1.0f, "#Settings_DiscordStats"},
-	{2.0f, "#Settings_DiscordInvites"},
-};
-inline constexpr SettingEnumOption kDeveloperOptions[] = {
-	{0.0f, "#Settings_DeveloperOff"}, {1.0f, "#Settings_DeveloperStandard"},
-	{2.0f, "#Settings_DeveloperVerbose"}, {3.0f, "#Settings_DeveloperVery"},
-	{4.0f, "#Settings_DeveloperExtreme"},
-};
-// cl_logocolor: the exact 9-entry table the shipped GameUI multiplayer page
-// iterates (GameUI.dll 0x100a5a98..0x100a5b28, applied via
-// `cl_logocolor <token>`); values keep the "#" prefix the engine stores
-// (config.cfg ships `cl_logocolor "#Valve_Ltblue"`).
-inline constexpr SettingEnumOption kLogoColorOptions[] = {
-	{0.0f, "#Valve_Orange"}, {1.0f, "#Valve_Yellow"}, {2.0f, "#Valve_Blue"},
-	{3.0f, "#Valve_Ltblue"}, {4.0f, "#Valve_Green"}, {5.0f, "#Valve_Red"},
-	{6.0f, "#Valve_Brown"}, {7.0f, "#Valve_Ltgray"}, {8.0f, "#Valve_Dkgray"},
-};
-
-inline constexpr SettingRow FirstBatchRows[] = {
-	// ---- T10 first batch (evidence: SettingsModel history / T10 record) ----
-	{"sensitivity", SettingKind::kFloat, 0.2f, 20.0f, 0.1f, 3.0f, "#Settings_Sensitivity", "#Settings_SecMouse"},
-	{"volume", SettingKind::kFloat, 0.0f, 1.0f, 0.05f, 0.7f, "#Settings_SfxVolume", "#Settings_SecAudio"},
-	{"cl_crosshair", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_CrosshairEnable", "#Settings_SecBasic"},
-	{"cl_crosshairsize", SettingKind::kFloat, 4.0f, 64.0f, 1.0f, 24.0f, "#Settings_CrosshairSize", "#Settings_SecBasic"},
-	{"hud_scoreboard_showavatars", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_ScoreboardAvatars", "#Settings_SecBasic"},
-	// ---- T13 audio (hw.dll cvar table entries; GameUI COptionsSubAudio
-	//      ctor 0x10017040 fixes the 0..1 domains and the hisound combo) ----
-	{"suitvolume", SettingKind::kFloat, 0.0f, 1.0f, 0.05f, 0.25f, "#Settings_SuitVolume", "#Settings_SecAudio"},
-	{"mp3volume", SettingKind::kFloat, 0.0f, 1.0f, 0.05f, 0.8f, "#Settings_Mp3Volume", "#Settings_SecAudio"},
-	{"hisound", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_Hisound", "#Settings_SecAudio"},
-	// ---- T13 instant video rows (T12 handover: evidence gathered there,
-	//      domain from COptionsSubVideo ctor FUN_1001cca0) ----
-	{"gl_vsync", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_VSync", "#Settings_SecVideo"},
-	{"brightness", SettingKind::kFloat, 0.0f, 2.0f, 0.05f, 1.0f, "#Settings_Brightness", "#Settings_SecVideo"},
-	{"gamma", SettingKind::kFloat, 1.8f, 3.0f, 0.05f, 2.5f, "#Settings_Gamma", "#Settings_SecVideo"},
-	{"r_detailtextures", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_DetailTextures", "#Settings_SecVideo"},
-	// ---- T13 mouse remainder (COptionsSubMouse ctor 0x10019eb0 control
-	//      set; registrations in client.dll FUN_1003a960 / FUN_1003c640 and
-	//      the hw.dll cvar table) ----
-	{"m_pitch", SettingKind::kNegate, -20.0f, 20.0f, 0.0f, 0.022f, "#Settings_ReverseMouse", "#Settings_SecMouse"},
-	{"m_filter", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_MouseFilter", "#Settings_SecMouse"},
-	{"joystick", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_Joystick", "#Settings_SecMouse"},
-	{"in_mlook", SettingKind::kCommandToggle, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_MouseLook", "#Settings_SecMouse",
-		nullptr, 0, "in_mlook", nullptr, "+mlook", "-mlook"},
-	{"in_jlook", SettingKind::kCommandToggle, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_JoystickLook", "#Settings_SecMouse",
-		nullptr, 0, "in_jlook", nullptr, "+jlook", "-jlook"},
-	{"m_rawinput", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_RawInput", "#Settings_SecMouse"},
-	{"sv_aim", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_AutoAim", "#Settings_SecMouse"},
-	// ---- T13 voice cvars (voice_scale: hw table "1" archive, GameUI voice
-	//      page slider 0..1; voice_modenable: client.dll FUN_1009dce0
-	//      registers "1" archive). The mic volume/boost/test hardware paths
-	//      live in VoiceModel, not here. ----
-	{"voice_scale", SettingKind::kFloat, 0.0f, 1.0f, 0.05f, 1.0f, "#Settings_VoiceReceive", "#Settings_SecVoice"},
-	{"voice_modenable", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_VoiceEnable", "#Settings_SecVoice"},
-	// ---- T13 multiplayer (hw.dll table defaults + flags; GameUI
-	//      COptionsSubMultiplayer ctor FUN_1001a680 domains: colors 0..255) --
-	{"name", SettingKind::kText, 0.0f, 0.0f, 0.0f, 0.0f, "#Settings_PlayerName", "#Settings_SecMultiplayer",
-		nullptr, 0, nullptr, "New Player"},
-	{"model", SettingKind::kStringEnum, 0.0f, 0.0f, 0.0f, 0.0f, "#Settings_PlayerModel", "#Settings_SecMultiplayer",
-		nullptr, 0, "models/player", ""},
-	{"topcolor", SettingKind::kFloat, 0.0f, 255.0f, 1.0f, 0.0f, "#Settings_PrimaryColor", "#Settings_SecMultiplayer"},
-	{"bottomcolor", SettingKind::kFloat, 0.0f, 255.0f, 1.0f, 0.0f, "#Settings_SecondaryColor", "#Settings_SecMultiplayer"},
-	{"cl_logofile", SettingKind::kStringEnum, 0.0f, 0.0f, 0.0f, 0.0f, "#Settings_Spraypaint", "#Settings_SecMultiplayer",
-		nullptr, 0, "logos", "lambda"},
-	{"cl_logocolor", SettingKind::kStringEnum, 0.0f, 0.0f, 0.0f, 0.0f, "#Settings_SpraypaintColor", "#Settings_SecMultiplayer",
-		kLogoColorOptions, 9, "logocolor", "Ltblue"},
-};
-
-// The advanced rows the original MultiplayerAdvancedDialog parses from the
-// shipped user.scr (CInfoDescription). The static rows here mirror that
-// script exactly (prompt -> lang token); parseUserScr() re-reads the live
-// file at init and OVERRIDES these with the mod's current script (a mod can
-// ship its own), so a modded script keeps working.
-inline constexpr SettingRow AdvancedScriptRows[] = {
-	{"crosshair", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_AdvCrosshair", "#Settings_SecAdvanced"},
-	{"hud_weaponautoswitch", SettingKind::kEnum, 0.0f, 2.0f, 1.0f, 1.0f, "#Settings_AdvAutoSwitch", "#Settings_SecAdvanced", kWeaponAutoSwitchOptions, 3},
-	{"cl_showfps", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvShowFps", "#Settings_SecAdvanced"},
-	{"hud_saytext", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_AdvSayText", "#Settings_SecAdvanced"},
-	{"hud_saytext_time", SettingKind::kFloat, 0.0f, 15.0f, 1.0f, 5.0f, "#Settings_AdvSayTextTime", "#Settings_SecAdvanced"},
-	{"hud_saytext_lines", SettingKind::kFloat, 0.0f, 20.0f, 1.0f, 6.0f, "#Settings_AdvSayTextLines", "#Settings_SecAdvanced"},
-	{"hud_saytext_block_muted", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvSayTextBlock", "#Settings_SecAdvanced"},
-	{"cl_hidextra", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvHideExtras", "#Settings_SecAdvanced"},
-	{"cl_hideadmin", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvHideAdmin", "#Settings_SecAdvanced"},
-	{"r_borderless", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvBorderless", "#Settings_SecAdvanced"},
-	{"hpk_maxsize", SettingKind::kEnum, -1.0f, 16.0f, 1.0f, 4.0f, "#Settings_AdvHpkMaxsize", "#Settings_SecAdvanced", kHpkMaxsizeOptions, 4},
-	{"mp_decals", SettingKind::kFloat, 1.0f, 4096.0f, 1.0f, 4096.0f, "#Settings_AdvDecals", "#Settings_SecAdvanced"},
-	{"cl_particles_max", SettingKind::kFloat, 0.0f, 4096.0f, 1.0f, 800.0f, "#Settings_AdvParticles", "#Settings_SecAdvanced"},
-	{"cl_bob", SettingKind::kEnum, 0.0f, 0.025f, 0.005f, 0.025f, "#Settings_AdvBob", "#Settings_SecAdvanced", kBobOptions, 3},
-	{"cl_rollangle", SettingKind::kEnum, -5.0f, 5.0f, 0.5f, 2.0f, "#Settings_AdvRollAngle", "#Settings_SecAdvanced", kRollAngleOptions, 5},
-	{"s_mute_unfocused", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_AdvMuteUnfocused", "#Settings_SecAdvanced"},
-	{"s_force_dsound", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvForceDSound", "#Settings_SecAdvanced"},
-	{"violence_ablood", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvAlienBlood", "#Settings_SecAdvanced"},
-	{"violence_agibs", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvAlienGibs", "#Settings_SecAdvanced"},
-	{"violence_hblood", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvHumanBlood", "#Settings_SecAdvanced"},
-	{"violence_hgibs", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 0.0f, "#Settings_AdvHumanGibs", "#Settings_SecAdvanced"},
-	{"cl_discord", SettingKind::kEnum, 0.0f, 2.0f, 1.0f, 2.0f, "#Settings_AdvDiscord", "#Settings_SecAdvanced", kDiscordOptions, 3},
-	{"con_mono", SettingKind::kBool, 0.0f, 1.0f, 1.0f, 1.0f, "#Settings_AdvMonoConsole", "#Settings_SecAdvanced"},
-	{"developer", SettingKind::kEnum, 0.0f, 4.0f, 1.0f, 0.0f, "#Settings_AdvDeveloper", "#Settings_SecAdvanced", kDeveloperOptions, 5},
-};
-
-constexpr int FirstBatchCount = static_cast<int>(sizeof(FirstBatchRows) / sizeof(FirstBatchRows[0]));
-constexpr int AdvancedScriptCount = static_cast<int>(sizeof(AdvancedScriptRows) / sizeof(AdvancedScriptRows[0]));
 
 // Per-row lifecycle. kClean -> (edit) -> kDirty -> (apply) -> kClean, with
 // the error branches never silently losing the user's input. kMissing is the
@@ -292,8 +161,8 @@ public:
 	SettingsModel(const SettingRow* rows, int count);
 	SettingsModel() = default;
 
-	// Replaces the row table (module init: FirstBatch + T13 static advanced
-	// rows + parsed user.scr overrides). Resets all runtime state - call
+	// Replaces the row table (module init: JSON + user.scr overrides).
+	// Resets all runtime state - call
 	// before the first snapshot.
 	void setTable(const SettingRow* rows, int count);
 
@@ -336,6 +205,7 @@ public:
 	// equals the default turn clean). Confirmation is the page's job; the
 	// write still waits for apply().
 	void resetDefaults();
+	void resetDefaults(const std::vector<std::string>& Cvars);
 
 	// Discards every draft and error flag. Provably writes nothing.
 	void cancel();
@@ -362,7 +232,7 @@ public:
 	// owning table with one row per DESCRIPTION entry (BOOL / NUMBER min max
 	// / STRING / LIST "label" "value" ...). Malformed entries are skipped;
 	// a table with zero rows reports false (caller keeps the static
-	// AdvancedScriptRows fallback). The arena strings outlive the model.
+	// JSON fallback). The arena strings outlive any borrowed row views.
 	struct UserScrTable {
 		std::vector<SettingRow> Rows;
 		std::vector<std::vector<SettingEnumOption>> Options;
@@ -391,6 +261,7 @@ private:
 	};
 
 	RowRuntime* runtime(const char* cvar);
+	void resetDefaultsImpl(const std::vector<std::string>* Cvars);
 	const RowRuntime* runtime(const char* cvar) const;
 	void adoptEngineLocked(RowRuntime& target, float value);
 	void adoptEngineTextLocked(RowRuntime& target, const std::string& text);

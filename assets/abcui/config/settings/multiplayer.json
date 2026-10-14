@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "id": "multiplayer",
+  "label": "#Settings_SecMultiplayer",
+  "order": 60,
+  "components": [],
+  "items": [
+    {
+      "cvar": "name",
+      "label": "#Settings_PlayerName",
+      "section": "#Settings_SecMultiplayer",
+      "kind": "text",
+      "default": "New Player"
+    },
+    {
+      "cvar": "model",
+      "label": "#Settings_PlayerModel",
+      "section": "#Settings_SecMultiplayer",
+      "kind": "string-enum",
+      "default": "",
+      "source": "models/player"
+    },
+    {
+      "cvar": "topcolor",
+      "label": "#Settings_PrimaryColor",
+      "section": "#Settings_SecMultiplayer",
+      "kind": "float",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 255.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "bottomcolor",
+      "label": "#Settings_SecondaryColor",
+      "section": "#Settings_SecMultiplayer",
+      "kind": "float",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 255.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "cl_logofile",
+      "label": "#Settings_Spraypaint",
+      "section": "#Settings_SecMultiplayer",
+      "kind": "string-enum",
+      "default": "lambda",
+      "source": "logos"
+    },
+    {
+      "cvar": "cl_logocolor",
+      "label": "#Settings_SpraypaintColor",
+      "section": "#Settings_SecMultiplayer",
+      "kind": "string-enum",
+      "default": "Ltblue",
+      "source": "logocolor"
+    }
+  ]
+}

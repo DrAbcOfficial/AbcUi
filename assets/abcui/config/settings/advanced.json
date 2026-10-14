@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "id": "advanced",
+  "label": "#Settings_SecAdvanced",
+  "order": 70,
+  "components": [
+    "user-script"
+  ],
+  "items": [
+    {
+      "cvar": "crosshair",
+      "label": "#Settings_AdvCrosshair",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 1.0
+    },
+    {
+      "cvar": "hud_weaponautoswitch",
+      "label": "#Settings_AdvAutoSwitch",
+      "section": "#Settings_SecAdvanced",
+      "kind": "enum",
+      "default": 1.0,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 1.0,
+      "options": [
+        {
+          "value": 0.0,
+          "label": "#Settings_AutoSwitchNever"
+        },
+        {
+          "value": 1.0,
+          "label": "#Settings_AutoSwitchBetter"
+        },
+        {
+          "value": 2.0,
+          "label": "#Settings_AutoSwitchAlways"
+        }
+      ]
+    },
+    {
+      "cvar": "cl_showfps",
+      "label": "#Settings_AdvShowFps",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "hud_saytext",
+      "label": "#Settings_AdvSayText",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 1.0
+    },
+    {
+      "cvar": "hud_saytext_time",
+      "label": "#Settings_AdvSayTextTime",
+      "section": "#Settings_SecAdvanced",
+      "kind": "float",
+      "default": 5.0,
+      "min": 0.0,
+      "max": 15.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "hud_saytext_lines",
+      "label": "#Settings_AdvSayTextLines",
+      "section": "#Settings_SecAdvanced",
+      "kind": "float",
+      "default": 6.0,
+      "min": 0.0,
+      "max": 20.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "hud_saytext_block_muted",
+      "label": "#Settings_AdvSayTextBlock",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "cl_hidextra",
+      "label": "#Settings_AdvHideExtras",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "cl_hideadmin",
+      "label": "#Settings_AdvHideAdmin",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "r_borderless",
+      "label": "#Settings_AdvBorderless",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "hpk_maxsize",
+      "label": "#Settings_AdvHpkMaxsize",
+      "section": "#Settings_SecAdvanced",
+      "kind": "enum",
+      "default": 4.0,
+      "min": -1.0,
+      "max": 16.0,
+      "step": 1.0,
+      "options": [
+        {
+          "value": -1.0,
+          "label": "#Settings_HpkDisabled"
+        },
+        {
+          "value": 2.0,
+          "label": "#Settings_HpkSmall"
+        },
+        {
+          "value": 4.0,
+          "label": "#Settings_HpkNormal"
+        },
+        {
+          "value": 16.0,
+          "label": "#Settings_HpkLarge"
+        }
+      ]
+    },
+    {
+      "cvar": "mp_decals",
+      "label": "#Settings_AdvDecals",
+      "section": "#Settings_SecAdvanced",
+      "kind": "float",
+      "default": 4096.0,
+      "min": 1.0,
+      "max": 4096.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "cl_particles_max",
+      "label": "#Settings_AdvParticles",
+      "section": "#Settings_SecAdvanced",
+      "kind": "float",
+      "default": 800.0,
+      "min": 0.0,
+      "max": 4096.0,
+      "step": 1.0
+    },
+    {
+      "cvar": "cl_bob",
+      "label": "#Settings_AdvBob",
+      "section": "#Settings_SecAdvanced",
+      "kind": "enum",
+      "default": 0.025,
+      "min": 0.0,
+      "max": 0.025,
+      "step": 0.005,
+      "options": [
+        {
+          "value": 0.0,
+          "label": "#Settings_BobOff"
+        },
+        {
+          "value": 0.01,
+          "label": "#Settings_BobNormal"
+        },
+        {
+          "value": 0.025,
+          "label": "#Settings_BobExtra"
+        }
+      ]
+    },
+    {
+      "cvar": "cl_rollangle",
+      "label": "#Settings_AdvRollAngle",
+      "section": "#Settings_SecAdvanced",
+      "kind": "enum",
+      "default": 2.0,
+      "min": -5.0,
+      "max": 5.0,
+      "step": 0.5,
+      "options": [
+        {
+          "value": 0.0,
+          "label": "#Settings_BobOff"
+        },
+        {
+          "value": 2.0,
+          "label": "#Settings_BobNormal"
+        },
+        {
+          "value": 5.0,
+          "label": "#Settings_BobExtra"
+        },
+        {
+          "value": -2.0,
+          "label": "#Settings_BobInverted"
+        },
+        {
+          "value": -5.0,
+          "label": "#Settings_BobInvertedExtra"
+        }
+      ]
+    },
+    {
+      "cvar": "s_mute_unfocused",
+      "label": "#Settings_AdvMuteUnfocused",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 1.0
+    },
+    {
+      "cvar": "s_force_dsound",
+      "label": "#Settings_AdvForceDSound",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "violence_ablood",
+      "label": "#Settings_AdvAlienBlood",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "violence_agibs",
+      "label": "#Settings_AdvAlienGibs",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "violence_hblood",
+      "label": "#Settings_AdvHumanBlood",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "violence_hgibs",
+      "label": "#Settings_AdvHumanGibs",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 0.0
+    },
+    {
+      "cvar": "cl_discord",
+      "label": "#Settings_AdvDiscord",
+      "section": "#Settings_SecAdvanced",
+      "kind": "enum",
+      "default": 2.0,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 1.0,
+      "options": [
+        {
+          "value": 0.0,
+          "label": "#Settings_DiscordGame"
+        },
+        {
+          "value": 1.0,
+          "label": "#Settings_DiscordStats"
+        },
+        {
+          "value": 2.0,
+          "label": "#Settings_DiscordInvites"
+        }
+      ]
+    },
+    {
+      "cvar": "con_mono",
+      "label": "#Settings_AdvMonoConsole",
+      "section": "#Settings_SecAdvanced",
+      "kind": "bool",
+      "default": 1.0
+    },
+    {
+      "cvar": "developer",
+      "label": "#Settings_AdvDeveloper",
+      "section": "#Settings_SecAdvanced",
+      "kind": "enum",
+      "default": 0.0,
+      "min": 0.0,
+      "max": 4.0,
+      "step": 1.0,
+      "options": [
+        {
+          "value": 0.0,
+          "label": "#Settings_DeveloperOff"
+        },
+        {
+          "value": 1.0,
+          "label": "#Settings_DeveloperStandard"
+        },
+        {
+          "value": 2.0,
+          "label": "#Settings_DeveloperVerbose"
+        },
+        {
+          "value": 3.0,
+          "label": "#Settings_DeveloperVery"
+        },
+        {
+          "value": 4.0,
+          "label": "#Settings_DeveloperExtreme"
+        }
+      ]
+    }
+  ]
+}

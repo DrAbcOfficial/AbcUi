@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "id": "video",
+  "label": "#Settings_SecVideo",
+  "order": 30,
+  "components": [
+    "video"
+  ],
+  "items": [
+    {
+      "cvar": "gl_vsync",
+      "label": "#Settings_VSync",
+      "section": "#Settings_SecVideo",
+      "kind": "bool",
+      "default": 1.0
+    },
+    {
+      "cvar": "brightness",
+      "label": "#Settings_Brightness",
+      "section": "#Settings_SecVideo",
+      "kind": "float",
+      "default": 1.0,
+      "min": 0.0,
+      "max": 2.0,
+      "step": 0.05
+    },
+    {
+      "cvar": "gamma",
+      "label": "#Settings_Gamma",
+      "section": "#Settings_SecVideo",
+      "kind": "float",
+      "default": 2.5,
+      "min": 1.8,
+      "max": 3.0,
+      "step": 0.05
+    },
+    {
+      "cvar": "r_detailtextures",
+      "label": "#Settings_DetailTextures",
+      "section": "#Settings_SecVideo",
+      "kind": "bool",
+      "default": 0.0
+    }
+  ]
+}

@@ -17,40 +17,55 @@ using namespace detail;
 void SettingsPage::buildRows() {
 	if (!Model || !document())
 		return;
-	Rml::Element* rows = document()->GetElementById("rows");
-	if (!rows)
+	Rml::Element* Rows = document()->GetElementById("rows");
+	if (!Rows)
 		return;
 	// One skeleton block per description-table row; row DOM ids derive from
 	// the cvar names ([a-z_], safe as ids). Delegated listeners need no
 	// per-element bindings here. Section headers emit whenever the row's
 	// Section token changes (the table is grouped by the original pages).
-	std::string rml;
-	LastSectionBuilt.clear();
-	for (const auto& view : Model->rows()) {
-		if (view.row->Section && view.row->Section != LastSectionBuilt) {
-			LastSectionBuilt = view.row->Section;
-			rml += "<div class=\"section-header\">";
-			rml += framework::TextUtil::escapeRml(translated(view.row->Section));
-			rml += "</div>";
+	std::string Markup;
+	const auto Views = Model->rows();
+	auto BuildPage = [&](const services::uiconfig::SettingsPageDefinition* Page) {
+		if (Page)
+			Markup += "<div class=\"settings-cvar-page\" id=\"settings-rows-" + Page->Id + "\">";
+		std::string LastSection;
+		for (const auto& View : Views) {
+			if (Page && std::find(Page->Cvars.begin(), Page->Cvars.end(), View.row->Cvar) == Page->Cvars.end())
+				continue;
+			if (View.row->Section && View.row->Section != LastSection) {
+				LastSection = View.row->Section;
+				Markup += "<div class=\"section-header\">";
+				Markup += framework::TextUtil::escapeRml(translated(View.row->Section));
+				Markup += "</div>";
+			}
+			Markup += "<div class=\"row\" id=\"row-";
+			Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
+			Markup += "\"><div class=\"row-label\"></div>";
+			if (isToggleKind(View.row->Kind)) {
+				Markup += "<button class=\"row-toggle\" data-action=\"toggle\" data-row=\"";
+			} else if (isSelectKind(View.row->Kind)) {
+				// Options transfer through the widget Add() at render time (the
+				// inline-option transfer is a next-Update delay - T12 pin); the
+				// skeleton only carries the empty select.
+				Markup += "<select class=\"row-select\" data-row=\"";
+			} else {
+				Markup += "<input class=\"row-input\" type=\"text\" data-row=\"";
+			}
+			Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
+			Markup += "\"/>";
+			Markup += "<div class=\"row-status\"></div></div>";
 		}
-		rml += "<div class=\"row\" id=\"row-";
-		rml += view.row->Cvar;
-		rml += "\"><div class=\"row-label\"></div>";
-		if (isToggleKind(view.row->Kind)) {
-			rml += "<button class=\"row-toggle\" data-action=\"toggle\" data-row=\"";
-		} else if (isSelectKind(view.row->Kind)) {
-			// Options transfer through the widget Add() at render time (the
-			// inline-option transfer is a next-Update delay - T12 pin); the
-			// skeleton only carries the empty select.
-			rml += "<select class=\"row-select\" data-row=\"";
-		} else {
-			rml += "<input class=\"row-input\" type=\"text\" data-row=\"";
-		}
-		rml += view.row->Cvar;
-		rml += "\"/>";
-		rml += "<div class=\"row-status\"></div></div>";
+		if (Page)
+			Markup += "</div>";
+	};
+	if (Pages) {
+		for (const auto& Page : *Pages)
+			BuildPage(&Page);
+	} else {
+		BuildPage(nullptr);
 	}
-	rows->SetInnerRML(rml);
+	Rows->SetInnerRML(Markup);
 }
 
 void SettingsPage::renderRow(const services::settings::RowView& view, bool skipInput) {

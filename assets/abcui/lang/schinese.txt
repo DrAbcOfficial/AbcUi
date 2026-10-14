@@ -235,6 +235,7 @@ VideoConfirm_Revert = 恢复之前的模式
 VideoConfirm_TimeoutTime = {0} 秒后自动恢复
 Settings_SecBasic = 通用
 Settings_SecMouse = 鼠标
+Settings_PageInput = 键盘 / 鼠标
 Settings_SecAudio = 音频
 Settings_SecVideo = 视频
 Settings_SecVoice = 语音

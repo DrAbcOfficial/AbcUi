@@ -4,14 +4,11 @@
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/settings.rcss"/>
 </head>
-<!-- T10 basic settings page, T11 key-binding section. The cvar row list is
-     built at load time from the production description table
-     (services::settings::FirstBatchRows); the bind row list from the
-     kb_act.lst action table (services::settings::KeyBindModel). These
-     skeletons only carry the fixed frames, the action bars and the
-     page-internal layers. Every dynamic string is injected escaped by
-     panels::settings::SettingsPage. -->
+<!-- Configuration owns page identities, labels, rows and component placement.
+     This document carries only navigation/content hosts, reusable special
+     controls, the global action bar and confirmation layers. -->
 <body id="menusettings">
+	<div id="settings-navigation"></div>
 	<div id="panel">
 		<h1 id="title">#Settings_Title</h1>
 		<div id="settings-status"></div>

@@ -28,6 +28,7 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 		logLoadOutcome(page->load(context));
 	};
 	Shell = std::make_unique<panels::mainmenu::MainMenuPage>();
+	Shell->setDefinition(UiConfig.menu());
 	SubStub = std::make_unique<panels::menushared::MenuStubPage>("menusub", "abcui/rml/menustub.rml");
 	// T16: the replacement console (was the menuconsole stub).
 	Console = std::make_unique<panels::console::ConsolePage>();
@@ -39,6 +40,7 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 		services::console::consoleBackend().submit(command.c_str());
 	});
 	Settings = std::make_unique<panels::settings::SettingsPage>();
+	Settings->setPages(&UiConfig.pages());
 	Settings->setModel(&SettingsModel);
 	Settings->setBindModel(&BindModel);
 	Settings->setVideoModel(&VideoModel);

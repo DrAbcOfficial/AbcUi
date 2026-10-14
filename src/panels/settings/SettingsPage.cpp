@@ -34,6 +34,7 @@ void SettingsPage::onDocumentReady() {
 	}
 	buildRows();
 	buildBindRows();
+	buildNavigation();
 	render();
 }
 

@@ -11,6 +11,25 @@ body#menusettings #panel {
 	width: 374dp;
 	height: 356dp;
 	overflow: auto;
+	left: 190dp;
+}
+
+#settings-navigation {
+	position: absolute;
+	left: 48dp;
+	top: 40dp;
+	width: 126dp;
+	height: 356dp;
+	overflow: auto;
+}
+
+#settings-navigation button.selected {
+	background-color: #144d14;
+	border: 1dp #00ff00;
+}
+
+.settings-cvar-page {
+	display: block;
 }
 
 /* RmlUi builds its scrollbar elements without any user-agent styles: they
@@ -18,18 +37,22 @@ body#menusettings #panel {
    swallows every click (live-caught: the bind buttons were unreachable).
    The sample pattern: a zero-width positioned container whose thin bar
    juts out to the left with negative margin. */
-body#menusettings #panel scrollbarvertical {
+body#menusettings #panel scrollbarvertical,
+#settings-navigation scrollbarvertical {
 	z-index: 100;
 	width: 0dp;
 }
-body#menusettings #panel scrollbarvertical sliderbar {
+body#menusettings #panel scrollbarvertical sliderbar,
+#settings-navigation scrollbarvertical sliderbar {
 	margin-left: -10dp;
 	width: 10dp;
 	min-height: 24dp;
 	background-color: #3a4148;
 }
 body#menusettings #panel scrollbarvertical sliderbar:hover,
-body#menusettings #panel scrollbarvertical sliderbar:active {
+body#menusettings #panel scrollbarvertical sliderbar:active,
+#settings-navigation scrollbarvertical sliderbar:hover,
+#settings-navigation scrollbarvertical sliderbar:active {
 	background-color: #55606c;
 }
 
@@ -314,7 +337,7 @@ body#menusettings #panel scrollbarvertical sliderbar:active {
 #settings-actions {
 	display: block;
 	position: absolute;
-	left: 48dp;
+	left: 190dp;
 	top: 404dp;
 	width: 374dp;
 	height: 64dp;

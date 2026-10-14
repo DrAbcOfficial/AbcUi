@@ -10,6 +10,7 @@
 #include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
+#include "services/uiconfig/ConfigRepository.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/playerlist/PlayerListPage.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
@@ -129,10 +130,9 @@ private:
 	static GameUiModule* Instance;
 	Rml::Context* Context = nullptr;
 	gameui::menu::MenuController Controller;
+	services::uiconfig::ConfigRepository UiConfig;
 	services::settings::SettingsModel SettingsModel;
 	services::settings::KeyBindModel BindModel;
-	std::vector<services::settings::SettingRow> SettingsTable;
-	settings::AdvancedTable Advanced;
 	services::settings::VoiceModel VoiceModel;
 	services::settings::VideoModeModel VideoModel;
 	services::loading::LoadingModel LoadingModelState;

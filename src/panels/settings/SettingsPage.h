@@ -29,6 +29,7 @@
 
 #include "../../framework/InteractiveDocument.h"
 #include "sections/VideoSection.h"
+#include "services/uiconfig/UiDefinitions.h"
 
 #include <RmlUi/Core/EventListener.h>
 
@@ -68,6 +69,9 @@ public:
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 	void setModel(services::settings::SettingsModel* model) { Model = model; }
+	void setPages(const std::vector<services::uiconfig::SettingsPageDefinition>* Value) { Pages = Value; }
+	bool selectPage(const std::string& Id);
+	const std::string& activePage() const { return ActivePage; }
 	void setBindModel(services::settings::KeyBindModel* model) { BindModel = model; }
 	// T12 video rows: staging goes through the model directly (like the bind
 	// rows); the apply intent ("video-apply") is reported to the module, which
@@ -116,6 +120,11 @@ private:
 	void handleClick(Rml::Event& event);
 	void handleChange(Rml::Event& event);
 	void buildRows();
+	void buildNavigation();
+	void projectPage();
+	void resetCurrentPage();
+	bool hasComponent(const char* Name) const;
+	const services::uiconfig::SettingsPageDefinition* currentPage() const;
 	void buildBindRows();
 	void renderRow(const services::settings::RowView& view, bool skipInput);
 	void renderBindRow(const services::settings::BindRowView& view);
@@ -138,6 +147,8 @@ private:
 
 	PageListener Listener;
 	ActionSink Sink;
+	const std::vector<services::uiconfig::SettingsPageDefinition>* Pages = nullptr;
+	std::string ActivePage;
 	services::settings::SettingsModel* Model = nullptr;
 	services::settings::KeyBindModel* BindModel = nullptr;
 	services::settings::VideoModeModel* VideoModel = nullptr;
@@ -154,9 +165,6 @@ private:
 	// builds their options (the T12 Add() pin) - the change handler must
 	// not start a nested render pass from inside one.
 	bool InRender_ = false;
-	// The cvar whose section header was last projected (header dividers are
-	// emitted on section changes while building rows).
-	std::string LastSectionBuilt;
 	// Page-internal modal state: "" when no layer is up, else the layer's
 	// DOM id ("reset-confirm" / "leave-confirm" / "bind-conflict" /
 	// "bind-reset-confirm"). The truth for event routing, kept in lockstep

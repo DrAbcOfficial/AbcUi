@@ -23,6 +23,7 @@
 // delegation, same focus mechanics).
 
 #include "../../framework/InteractiveDocument.h"
+#include "services/uiconfig/UiDefinitions.h"
 
 #include <RmlUi/Core/EventListener.h>
 
@@ -51,6 +52,8 @@ public:
 	~MainMenuPage() override;
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
+	void setDefinition(const services::uiconfig::MenuDefinition& Value) { Definition = Value; }
+	void setMultiplayer(bool Value);
 
 	// Makes one section the visible one and, when requested, lands keyboard
 	// focus on the section's first visible entry. Safe while hidden: the
@@ -81,6 +84,7 @@ private:
 	};
 
 	void handle(Rml::Event& event);
+	void buildEntries();
 	void updateFocusStatus(Rml::Element* focused);
 	void attachFocusBindings(Rml::Element* node);
 	void setEntryVisibleRecursive(Rml::Element* node, const char* action, bool visible);
@@ -88,6 +92,8 @@ private:
 
 	PageListener Listener;
 	ActionSink Sink;
+	services::uiconfig::MenuDefinition Definition = services::uiconfig::DefinitionParser::fallbackMenu();
+	bool Multiplayer = false;
 	Section VisibleSection = Section::kMain;
 	// Entry availability facts fed by the module (maxplayers): the focus
 	// scan reads these instead of the DOM - an element property only takes

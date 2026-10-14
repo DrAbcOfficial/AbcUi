@@ -13,6 +13,26 @@
 	padding: 16dp;
 }
 
+/* JSON can add more entries than fit in the original six-button shell. */
+body#mainmenu #panel {
+	max-height: 392dp;
+	overflow: auto;
+}
+body#mainmenu #panel scrollbarvertical {
+	z-index: 100;
+	width: 0dp;
+}
+body#mainmenu #panel scrollbarvertical sliderbar {
+	margin-left: -10dp;
+	width: 10dp;
+	min-height: 24dp;
+	background-color: #3a4148;
+}
+body#mainmenu #panel scrollbarvertical sliderbar:hover,
+body#mainmenu #panel scrollbarvertical sliderbar:active {
+	background-color: #55606c;
+}
+
 #title {
 	display: block;
 	font-size: 16dp;

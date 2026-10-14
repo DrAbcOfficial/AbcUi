@@ -44,6 +44,7 @@ MainMenuPage::~MainMenuPage() {
 }
 
 void MainMenuPage::onDocumentReady() {
+	buildEntries();
 	// One click binding for the whole document (bubbling); focus/blur do not
 	// bubble (RmlUi event spec), so every data-label element carries its own
 	// pair and the status line follows whichever control holds focus.
@@ -56,6 +57,51 @@ void MainMenuPage::onDocumentReady() {
 	if (Rml::Element* main = document()->GetElementById("page-main")) {
 		if (Rml::Element* pause = document()->GetElementById("page-pause"))
 			pause->SetProperty("display", "none");
+	}
+}
+
+void MainMenuPage::buildEntries() {
+	using framework::TextUtil::escapeRml;
+	using framework::TextUtil::escapeRmlAttribute;
+	if (!document()->GetElementById("page-main"))
+		return; // Standalone test/demo documents have their own controls.
+	if (auto* Title = document()->GetElementById("title"))
+		Title->SetInnerRML(escapeRml(resolveLabel(Definition.Title)));
+	auto Build = [&](const char* Id, const std::vector<services::uiconfig::MenuEntry>& Entries) {
+		auto* Root = document()->GetElementById(Id);
+		if (!Root)
+			return;
+		std::string Markup;
+		for (const auto& Entry : Entries) {
+			Markup += "<button id=\"" + escapeRmlAttribute(Entry.Id) + "\" data-action=\""
+				+ escapeRmlAttribute(Entry.Action) + "\" data-label=\""
+				+ escapeRmlAttribute(Entry.Label) + "\" data-condition=\""
+				+ escapeRmlAttribute(Entry.Condition) + "\">"
+				+ escapeRml(resolveLabel(Entry.Label)) + "</button>";
+		}
+		Root->SetInnerRML(Markup);
+	};
+	Build("page-main", Definition.Main);
+	Build("page-pause", Definition.Pause);
+	setMultiplayer(Multiplayer);
+}
+
+void MainMenuPage::setMultiplayer(bool Value) {
+	Multiplayer = Value;
+	if (!document())
+		return;
+	for (const auto* Entries : {&Definition.Main, &Definition.Pause}) {
+		for (const auto& Entry : *Entries) {
+			if (auto* Node = document()->GetElementById(Entry.Id)) {
+				const bool Visible = Entry.Condition == "always"
+					|| (Entry.Condition == "multiplayer" && Multiplayer)
+					|| (Entry.Condition == "singleplayer" && !Multiplayer);
+				const auto Fact = EntryVisible.find(Entry.Action);
+				const bool Allowed = Visible && (Fact == EntryVisible.end() || Fact->second);
+				Node->SetAttribute("data-available", Allowed ? "yes" : "no");
+				Node->SetProperty("display", Allowed ? "block" : "none");
+			}
+		}
 	}
 }
 
@@ -76,6 +122,8 @@ void MainMenuPage::showSection(Section section, bool focusDefault) {
 		for (int i = 0; i < count; i++) {
 			Rml::Element* child = node->GetChild(i);
 			if (!child || child->GetTagName() != "button" || !child->HasAttribute("data-action"))
+				continue;
+			if (child->GetAttribute<Rml::String>("data-available", "yes") == "no")
 				continue;
 			const auto fact = EntryVisible.find(child->GetAttribute<Rml::String>("data-action", ""));
 			if (fact != EntryVisible.end() && !fact->second)
@@ -98,6 +146,7 @@ void MainMenuPage::setEntryVisible(const char* action, bool visible) {
 	const int count = root->GetNumChildren();
 	for (int i = 0; i < count; i++)
 		setEntryVisibleRecursive(root->GetChild(i), action, visible);
+	setMultiplayer(Multiplayer);
 }
 
 void MainMenuPage::handle(Rml::Event& event) {
@@ -116,6 +165,8 @@ void MainMenuPage::handle(Rml::Event& event) {
 	// page afterwards.
 	Rml::Element* entry = actionNode(event.GetTargetElement());
 	if (!entry)
+		return;
+	if (entry->GetAttribute<Rml::String>("data-available", "yes") == "no")
 		return;
 	const Rml::String action = entry->GetAttribute<Rml::String>("data-action", "");
 	if (action.empty())

@@ -20,7 +20,7 @@ void GameUiModule::syncMenuPresentation() {
 	// The player list row (OnlyInGame + notsingle) therefore keys on the
 	// maxplayers fact alone on the pause page.
 	const bool multiplayer = menuBackend().maxClientsFact() > 1;
-	Shell->setEntryVisible("playerlist", multiplayer);
+	Shell->setMultiplayer(multiplayer);
 
 	// Project each implemented page from navigation state. The stub is only
 	// the defensive default for a page without a registered projection;

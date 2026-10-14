@@ -64,41 +64,33 @@ std::vector<std::string> scanModFileBasenames(const char* relativeDir) {
 	return names;
 }
 
-AdvancedTable buildAdvancedTable() {
-	AdvancedTable table;
+services::settings::SettingsModel::UserScrTable loadAdvancedScript() {
+	services::settings::SettingsModel::UserScrTable Table;
 	// Localized variant first (svencoop_schinese ships translated prompts):
-	// the path is CWD-relative like abc::ModPath - the engine mounts the
-	// language directory next to the mod directory.
-	std::string text;
+	// the Path is CWD-relative like abc::ModPath - the engine mounts the
+	// Language directory next to the mod directory.
+	std::string Text;
 	{
-		const char* language = vgui2ext::currentLanguage();
-		if (language && *language && std::strcmp(language, "english") != 0) {
-			std::string path = abc::GameDir();
-			path += "_";
-			path += language;
-			path += "/user.scr";
-			FILE* file = nullptr;
-			if (fopen_s(&file, path.c_str(), "rb") == 0 && file) {
-				char buffer[4096];
-				size_t got = 0;
-				while ((got = fread(buffer, 1, sizeof(buffer), file)) > 0)
-					text.append(buffer, got);
-				fclose(file);
+		const char* Language = vgui2ext::currentLanguage();
+		if (Language && *Language && std::strcmp(Language, "english") != 0) {
+			std::string Path = abc::GameDir();
+			Path += "_";
+			Path += Language;
+			Path += "/user.scr";
+			FILE* File = nullptr;
+			if (fopen_s(&File, Path.c_str(), "rb") == 0 && File) {
+				char Buffer[4096];
+				size_t Got = 0;
+				while ((Got = fread(Buffer, 1, sizeof(Buffer), File)) > 0)
+					Text.append(Buffer, Got);
+				fclose(File);
 			}
 		}
 	}
-	if (text.empty())
-		text = readModFile("user.scr");
-	if (services::settings::SettingsModel::parseUserScr(text.c_str(), table.parsed)
-		&& !table.parsed.Rows.empty()) {
-		table.rows = table.parsed.Rows;
-		table.valid = true;
-		return table;
-	}
-	// Static fallback: the exact mirror of the shipped script.
-	table.rows.assign(services::settings::AdvancedScriptRows,
-		services::settings::AdvancedScriptRows + services::settings::AdvancedScriptCount);
-	table.valid = true;
-	return table;
+	if (Text.empty())
+		Text = readModFile("user.scr");
+	// Empty/invalid scripts leave the JSON page's fallback items intact.
+	services::settings::SettingsModel::parseUserScr(Text.c_str(), Table);
+	return Table;
 }
 }
