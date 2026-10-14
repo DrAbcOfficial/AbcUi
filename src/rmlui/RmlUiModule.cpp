@@ -28,6 +28,7 @@
 
 #include "AbcRenderInterface.h"
 #include "model/ElementModel.h"
+#include "video/ElementVideo.h"
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
 #include "PaintGate.h"
@@ -320,6 +321,7 @@ void init() {
 	if (!Rml::Initialise())
 		framework::fatalExit("Rml::Initialise failed (Rml core unavailable)");
 	model::registerElement();
+	video::registerElement();
 
 	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
 	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
@@ -416,6 +418,10 @@ void onFrame(double frameTime) {
 	framework::PanelManager::setSessionActive(services::nativeUiBridge().hasLevel());
 	InputBridge::update(Context);
 	avatars::onFrame();
+	// Live <video> frames decode/upload on the HUD beat, before the Update
+	// pass, so a fresh frame and a fresh document state land in one update.
+	if (video::pumpFrames(frameTime))
+		Context->Update();
 	framework::PanelManager::onFrame(frameTime);
 	// T21: keep the debugger's log beacon off the strict UI (see the helper).
 	suppressDebugBeacon();
@@ -459,6 +465,7 @@ void onRedraw(double frameTime) {
 
 void onVidInit() {
 	modelpreview::invalidateAll();
+	video::invalidateAll();
 	sprites::vidInit();
 	if (Initialised) for (const auto& source : Rml::GetTextureSourceList())
 		if (source.rfind("spr://",0)==0) Rml::ReleaseTexture(source);

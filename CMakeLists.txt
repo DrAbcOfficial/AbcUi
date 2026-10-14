@@ -64,10 +64,14 @@ add_library(AbcUi MODULE
     src/hooks.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp
+    src/rmlui/video/ElementVideo.cpp
     src/services/modelpreview/Options.cpp
     src/services/modelpreview/Target.cpp
     src/services/video/Decoder.cpp
+    src/services/video/Options.cpp
+    src/services/video/VideoTexture.cpp
     src/modules/modeltest/ModelTest.cpp
+    src/modules/videotest/VideoTest.cpp
     src/rmlui/AbcSystemInterface.cpp
     src/rmlui/InputBridge.cpp
     src/rmlui/KeyMap.cpp

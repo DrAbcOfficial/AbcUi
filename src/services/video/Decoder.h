@@ -72,6 +72,9 @@ public:
 	// ABI matched). Distinguishes "no SDK installed" from "this file failed".
 	static bool available();
 
+	// Presentation time of the frame currently on screen (< 0 before the first).
+	double lastSeconds() const;
+
 	const std::string& error() const;
 
 private:

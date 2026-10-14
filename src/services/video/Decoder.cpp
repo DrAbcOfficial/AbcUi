@@ -381,6 +381,10 @@ const std::string& Decoder::error() const {
 	return Data ? Data->Error : Empty;
 }
 
+double Decoder::lastSeconds() const {
+	return Data ? Data->LastSeconds : -1.0;
+}
+
 bool Decoder::advance(double deltaSeconds) {
 	if (!isOpen())
 		return false;
