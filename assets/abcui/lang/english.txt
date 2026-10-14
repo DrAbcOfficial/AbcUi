@@ -271,6 +271,7 @@ Settings_PlayerModel = Player model
 Settings_PrimaryColor = Primary color
 Settings_SecondaryColor = Secondary color
 Settings_Spraypaint = Spraypaint image
+Settings_PlayerModelHint = Drag to turn the model
 Settings_SpraypaintColor = Spraypaint color
 Settings_AdvCrosshair = HUD: Show crosshair
 Settings_AdvAutoSwitch = HUD: New weapon auto-switch mode

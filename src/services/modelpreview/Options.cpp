@@ -105,6 +105,11 @@ bool Options::set(std::string_view Name, std::string_view Value) {
 		return true;
 	}
 	if (Name == "frame-margin") return number(Value, FrameMargin, 0.5f, 4.0f);
+	if (Name == "drag-rotate") {
+		if (Value != "true" && Value != "false" && Value != "1" && Value != "0") return false;
+		DragRotate = Value == "true" || Value == "1";
+		return true;
+	}
 	return true;
 }
 }

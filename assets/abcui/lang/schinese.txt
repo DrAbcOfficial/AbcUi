@@ -273,6 +273,7 @@ Settings_PlayerModel = 玩家模型
 Settings_PrimaryColor = 主颜色
 Settings_SecondaryColor = 副颜色
 Settings_Spraypaint = 喷漆图案
+Settings_PlayerModelHint = 拖动可旋转模型
 Settings_SpraypaintColor = 喷漆颜色
 Settings_AdvCrosshair = HUD：是否显示准星
 Settings_AdvAutoSwitch = HUD：是否自动切换捡起的武器

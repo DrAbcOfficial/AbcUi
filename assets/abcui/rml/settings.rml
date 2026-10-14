@@ -1,6 +1,7 @@
 <rml>
 <head>
 	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/theme.rcss"/>
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/settings.rcss"/>
 	<link type="text/rcss" href="../rcss/range.rcss"/>
@@ -16,7 +17,17 @@
 		<p id="settings-description"></p>
 		<div id="rows"></div>
 		<div id="multiplayer-previews">
-			<div class="preview-box"><p>#Settings_PlayerModel</p><img id="model-preview"/></div>
+			<!-- The player model preview is a live Studio render (font/HLP
+			     style inspection): drag it with the primary button to turn
+			     the character. -->
+			<div class="preview-box">
+				<p>#Settings_PlayerModel</p>
+				<model id="model-preview" auto-frame="true" frame-margin="1.25" drag-rotate="true"
+					sequence="2" animate="true"
+					camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
+					ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
+				<div id="model-preview-hint">#Settings_PlayerModelHint</div>
+			</div>
 			<div class="preview-box"><p>#Settings_Spraypaint</p><img id="spray-preview"/></div>
 		</div>
 		<h2 id="bind-title">#Settings_KeysTitle</h2>

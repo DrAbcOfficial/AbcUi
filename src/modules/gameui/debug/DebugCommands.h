@@ -29,6 +29,7 @@ private:
 	static void menuPageCommand();
 	static void menuModelCommand();
 	static void friendsTestCommand();
+	static void settingsPageCommand();
 	static void serverQueryCommand();
 	static void serverStatusCommand();
 	static void serverCancelCommand();

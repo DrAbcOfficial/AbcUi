@@ -10,6 +10,7 @@ void DebugCommands::registerCommands() {
 		abc::ADD_COMMAND("abc_ui_menu_page", menuPageCommand);
 		abc::ADD_COMMAND("abc_ui_menu_model", menuModelCommand);
 		abc::ADD_COMMAND("abc_ui_friends_test", friendsTestCommand);
+		abc::ADD_COMMAND("abc_ui_settings_page", settingsPageCommand);
 		abc::ADD_COMMAND("abc_ui_bind_status", bindStatusCommand);
 		abc::ADD_COMMAND("abc_ui_settings_status", settingsStatusCommand);
 		abc::ADD_COMMAND("abc_ui_settings_apply", settingsApplyCommand);

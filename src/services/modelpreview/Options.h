@@ -36,6 +36,10 @@ struct Options {
 	// (1.0 = the box is exactly filled, 1.15 leaves a margin).
 	bool AutoFrame = false;
 	float FrameMargin = 1.15f;
+	// Pointer drag rotation (the multiplayer settings' inspection preview):
+	// while the primary button is held, horizontal motion turns the entity and
+	// vertical motion tilts it within a clamped range.
+	bool DragRotate = false;
 
 	// Unknown DOM attributes (id/class/style) are not errors. Invalid known
 	// attributes leave the previous value unchanged and return false.

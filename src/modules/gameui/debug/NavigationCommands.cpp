@@ -133,5 +133,22 @@ void DebugCommands::friendsTestCommand() {
 	abc::ConsolePrint("[AbcUi] friends test: clear | add <name> <address> | open <index> | join <steamid>\n");
 }
 
+// abc_ui_settings_page <pageId> - Debug-only: open one settings page without
+// mouse navigation. Lists the available ids when called without arguments.
+void DebugCommands::settingsPageCommand() {
+	GameUiModule* module = GameUiModule::Instance;
+	if (!module || !module->Settings) {
+		abc::ConsoleWarn("[AbcUi] settings page not available\n");
+		return;
+	}
+	if (gEngfuncs.Cmd_Argc() < 2) {
+		for (const auto& page : module->UiConfig.pages())
+			abc::ConsolePrint("[AbcUi] settings page: %s\n", page.Id.c_str());
+		return;
+	}
+	const bool selected = module->Settings->selectPage(gEngfuncs.Cmd_Argv(1));
+	abc::ConsolePrint("[AbcUi] settings page '%s': %s\n", gEngfuncs.Cmd_Argv(1), selected ? "shown" : "unknown");
+}
+
 }
 #endif

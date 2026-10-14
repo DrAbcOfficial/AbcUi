@@ -27,7 +27,22 @@ void SettingsPage::renderPreviews() {
 			}
 		}
 	};
-	Set("model-preview", "preview://model/" + Text("model") + "/" + Color("topcolor") + "/" + Color("bottomcolor"));
+	// The player model is a LIVE Studio preview (drag to turn it): bind the
+	// cvar's model directory to a resolvable <model> source, the same mapping
+	// the main menu's character card uses. The player colors are not a preview
+	// property of the renderer, so they stay out of the 3D view.
+	{
+		const std::string model = Text("model");
+		std::string path = "models/player.mdl";
+		if (model.ends_with(".mdl"))
+			path = model;
+		else if (!model.empty())
+			path = "models/player/" + model + "/" + model + ".mdl";
+		if (auto* Preview = document()->GetElementById("model-preview")) {
+			if (Preview->GetAttribute<Rml::String>("src", "") != path)
+				Preview->SetAttribute("src", path);
+		}
+	}
 	Set("spray-preview", "preview://spray/" + Text("cl_logofile") + "/" + Text("cl_logocolor"));
 }
 void SettingsPage::releasePreviews() {

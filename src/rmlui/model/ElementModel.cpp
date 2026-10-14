@@ -2,6 +2,8 @@
 // render once at the end-of-frame UI boundary, never inside Rml geometry draws.
 #include "ElementModel.h"
 #include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/ElementInstancer.h>
 #include <RmlUi/Core/Factory.h>
 #include <abc/Console.h>
@@ -11,6 +13,11 @@
 
 namespace rmlui::model {
 namespace {
+// Drag sensitivity and limits (degrees per pixel / absolute tilt).
+constexpr float kYawPerPixel = 0.7f;
+constexpr float kPitchPerPixel = 0.45f;
+constexpr float kMaxPitch = 22.0f;
+
 std::vector<ElementModel*>& elements() {
 	static std::vector<ElementModel*> Elements;
 	return Elements;
@@ -18,7 +25,7 @@ std::vector<ElementModel*>& elements() {
 Rml::ElementInstancerGeneric<ElementModel> Instancer;
 }
 
-ElementModel::ElementModel(const Rml::String& Tag) : Element(Tag) {
+ElementModel::ElementModel(const Rml::String& Tag) : Element(Tag), Listener(this) {
 	auto Child = Rml::Factory::InstanceElement(this, "img", "img", {});
 	Image = Child.get();
 	if (Image) {
@@ -49,13 +56,79 @@ void ElementModel::OnAttributeChange(const Rml::ElementAttributes& Changed) {
 	Config = std::move(Updated);
 }
 
+void ElementModel::OnUpdate() {
+	Element::OnUpdate();
+	// (Re)bind the drag listeners to the owner document: it is only known
+	// after the element was appended to a document.
+	Rml::ElementDocument* document = GetOwnerDocument();
+	if (document == ListenedDocument)
+		return;
+	if (ListenedDocument) {
+		RemoveEventListener("mousedown", &Listener, false);
+		ListenedDocument->RemoveEventListener("mousemove", &Listener, false);
+		ListenedDocument->RemoveEventListener("mouseup", &Listener, false);
+		ListenedDocument = nullptr;
+	}
+	if (document && Config.DragRotate) {
+		// The element's own press starts the drag; the document keeps it alive
+		// while the pointer wanders off the box.
+		AddEventListener("mousedown", &Listener, false);
+		document->AddEventListener("mousemove", &Listener, false);
+		document->AddEventListener("mouseup", &Listener, false);
+		ListenedDocument = document;
+	}
+}
+
+void ElementModel::DragListener::ProcessEvent(Rml::Event& event) {
+	const Rml::EventId id = event.GetId();
+	if (id == Rml::EventId::Mousedown) {
+		if (event.GetParameter<int>("button", 0) == 0)
+			Owner->beginDrag(event.GetParameter<int>("mouse_x", 0), event.GetParameter<int>("mouse_y", 0));
+	} else if (id == Rml::EventId::Mousemove)
+		Owner->updateDrag(event.GetParameter<int>("mouse_x", 0), event.GetParameter<int>("mouse_y", 0));
+	else if (id == Rml::EventId::Mouseup)
+		Owner->endDrag();
+}
+
+void ElementModel::beginDrag(int x, int y) {
+	if (!Config.DragRotate)
+		return;
+	Dragging = true;
+	DragStartX = x;
+	DragStartY = y;
+	SetProperty("cursor", "move");
+}
+
+void ElementModel::updateDrag(int x, int y) {
+	if (!Dragging)
+		return;
+	const float yaw = static_cast<float>(x - DragStartX) * kYawPerPixel;
+	const float pitch = static_cast<float>(y - DragStartY) * kPitchPerPixel;
+	DragYaw = yaw;
+	DragPitch = std::clamp(pitch, -kMaxPitch, kMaxPitch);
+}
+
+void ElementModel::endDrag() {
+	if (!Dragging)
+		return;
+	Dragging = false;
+	SetProperty("cursor", "default");
+}
+
 bool ElementModel::renderPreview() {
 	if (!Image || !GetContext() || !IsVisible(true))
 		return false;
 	const auto Size = GetBox().GetSize(Rml::BoxArea::Content);
 	if (!std::isfinite(Size.x) || !std::isfinite(Size.y) || Size.x <= 0 || Size.y <= 0)
 		return false;
-	const bool Ready = Target.render(Config,
+	// The drag offsets ride the entity's angles: the camera keeps its framing
+	// and the model turns in place (an inspection gesture, not a camera move).
+	modelpreview::Options Effective = Config;
+	if (Config.DragRotate) {
+		Effective.Angles[1] = Config.Angles[1] + DragYaw;
+		Effective.Angles[0] = Config.Angles[0] + DragPitch;
+	}
+	const bool Ready = Target.render(Effective,
 		static_cast<int>(std::min(std::ceil(Size.x), 2048.0f)),
 		static_cast<int>(std::min(std::ceil(Size.y), 2048.0f)));
 	if (ImageReady == Ready)
