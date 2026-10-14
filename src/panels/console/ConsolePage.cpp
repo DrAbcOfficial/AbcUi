@@ -116,6 +116,10 @@ void ConsolePage::onDocumentReady() {
 		// Capture phase: the interaction keys are consumed before the editor
 		// widget (and the document's own TAB navigation default) sees them.
 		addListener(doc, "keydown", &Keys, true);
+		// Live completion dropdown: the keyup that follows an edit re-reads
+		// the editor and refreshes the list (the edit keydown is consumed
+		// before the widget applies it, so the value is only current here).
+		addListener(doc, "keyup", &Keys, true);
 	}
 	// A document (re)build re-seeds the projection from the buffer; the
 	// buffer itself survives document rebuilds (T15 process-scoped cache).
@@ -313,6 +317,18 @@ void ConsolePage::handleKey(Rml::Event& event) {
 	Rml::ElementDocument* doc = documentOrNull();
 	if (!doc)
 		return;
+	if (event.GetId() == Rml::EventId::Keyup) {
+		// Live suggestions: navigation keys keep the list they already own,
+		// the modal pane owns the keyboard, and an empty editor hides it.
+		const int released = event.GetParameter<int>("key_identifier", 0);
+		const bool navigation = released == Rml::Input::KI_UP || released == Rml::Input::KI_DOWN
+			|| released == Rml::Input::KI_RETURN || released == Rml::Input::KI_NUMPADENTER
+			|| released == Rml::Input::KI_TAB || released == Rml::Input::KI_ESCAPE;
+		if (navigation || !PendingText.empty())
+			return;
+		refreshSuggestions();
+		return;
+	}
 	const int key = event.GetParameter<int>("key_identifier", 0);
 	const bool ctrl = event.GetParameter<int>("ctrl_key", 0) != 0;
 	const bool confirmOpen = !PendingText.empty();
@@ -416,6 +432,17 @@ void ConsolePage::submitFromEditor() {
 }
 
 void ConsolePage::openCompletionFor(const std::string& prefix) {
+	rebuildCompletion(prefix, true);
+}
+
+void ConsolePage::refreshSuggestions() {
+	Rml::ElementDocument* doc = documentOrNull();
+	if (!doc)
+		return;
+	rebuildCompletion(controlValue(doc, "console-input"), false);
+}
+
+void ConsolePage::rebuildCompletion(const std::string& prefix, bool apply) {
 	Rml::ElementDocument* doc = documentOrNull();
 	Suggestions.clear();
 	SuggestionIndex = -1;
@@ -423,12 +450,19 @@ void ConsolePage::openCompletionFor(const std::string& prefix) {
 		hideCompletion();
 		return;
 	}
-	Suggestions = Backend->complete(prefix.c_str(), kMaxSuggestions);
+	// One extra match is requested so the dropdown can say that more exist
+	// without knowing the catalog size (the enumeration itself is capped in
+	// the backend, which is what keeps a 3000-entry catalog from stalling).
+	std::vector<std::string> matches = Backend->complete(prefix.c_str(), kMaxSuggestions + 1);
+	const bool more = static_cast<int>(matches.size()) > kMaxSuggestions;
+	if (more)
+		matches.resize(kMaxSuggestions);
+	Suggestions = std::move(matches);
 	if (Suggestions.empty()) {
 		hideCompletion();
 		return;
 	}
-	if (Suggestions.size() == 1) {
+	if (apply && Suggestions.size() == 1) {
 		// Unique match: complete in place, no list.
 		setControlValue(doc, "console-input", Suggestions[0]);
 		Suggestions.clear();
@@ -444,7 +478,7 @@ void ConsolePage::openCompletionFor(const std::string& prefix) {
 			++length;
 		common.resize(length);
 	}
-	if (common.size() > prefix.size())
+	if (apply && common.size() > prefix.size())
 		setControlValue(doc, "console-input", common);
 	Rml::Element* list = doc->GetElementById("console-suggestions");
 	if (!list)
@@ -460,6 +494,15 @@ void ConsolePage::openCompletionFor(const std::string& prefix) {
 		row->SetInnerRML(framework::TextUtil::escapeRml(Suggestions[i]));
 		list->AppendChild(std::move(row));
 	}
+	if (more) {
+		Rml::ElementPtr row = doc->CreateElement("div");
+		if (row) {
+			row->SetClass("console-suggestion", true);
+			row->SetClass("console-suggestion-more", true);
+			row->SetInnerRML("&hellip;");
+			list->AppendChild(std::move(row));
+		}
+	}
 	setVisible(doc, "console-suggestions", true);
 }
 
@@ -469,6 +512,13 @@ void ConsolePage::hideCompletion() {
 	SuggestionIndex = -1;
 	setVisible(doc, "console-suggestions", false);
 }
+
+#ifndef NDEBUG
+void ConsolePage::debugType(const char* text) {
+	setControlValue(documentOrNull(), "console-input", text ? text : "");
+	refreshSuggestions();
+}
+#endif
 
 void ConsolePage::applyCompletion(int index) {
 	Rml::ElementDocument* doc = documentOrNull();

@@ -60,7 +60,13 @@ public:
 	// Frozen projection caps (T16 record).
 	static constexpr int kInitialLines = 200;  // first render of a view
 	static constexpr int kMaxDomLines = 300;   // DOM row cap
-	static constexpr int kMaxSuggestions = 8;  // completion list cap
+	static constexpr int kMaxSuggestions = 10; // completion dropdown row cap
+
+#ifndef NDEBUG
+	// Debug seam (abc_ui_console_ui_type): drives the editor and the live
+	// dropdown without an injectable keyboard.
+	void debugType(const char* text);
+#endif
 
 	ConsolePage();
 	~ConsolePage() override;
@@ -129,6 +135,13 @@ private:
 	// Interaction.
 	void submitFromEditor();
 	void openCompletionFor(const std::string& prefix);
+	// Live dropdown refresh while typing: recomputes the list for the current
+	// editor content without ever applying a completion (Tab/Enter do that).
+	void refreshSuggestions();
+	// Shared dropdown builder. `apply` = the Tab path (unique match completes
+	// in place, multiple matches extend to the common prefix); the live path
+	// only presents.
+	void rebuildCompletion(const std::string& prefix, bool apply);
 	void hideCompletion();
 	void applyCompletion(int index);
 	void openConfirm(const std::string& text, bool fromPaste);

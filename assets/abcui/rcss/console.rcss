@@ -84,31 +84,44 @@
 	color: #9aa2ab;
 }
 
-/* Completion list: floats above the history bottom, capped visually. */
+/* Completion dropdown: sits directly above the command row (the modern
+   console shape), grows upward from the editor and never exceeds the row cap
+   the page enforces (kMaxSuggestions + the "more" hint row). */
 #console-suggestions {
 	position: absolute;
 	left: 6dp;
-	top: 200dp;
-	width: 240dp;
-	max-height: 96dp;
+	bottom: 22dp;
+	width: 260dp;
+	max-height: 132dp;
 	overflow-y: auto;
-	background-color: #0a0d10f0;
-	border: 1dp #3a4148;
+	background-color: #0b1115f7;
+	border: 1dp var(--abc-line);
+	border-left: 2dp var(--abc-accent);
+	padding-top: 2dp;
+	padding-bottom: 2dp;
 }
 
 .console-suggestion {
 	display: block;
-	height: 12dp;
+	height: 13dp;
 	font-family: Consolas;
 	font-size: 9dp;
-	line-height: 12dp;
-	padding-left: 4dp;
+	line-height: 13dp;
+	padding-left: 6dp;
 	padding-right: 4dp;
-	color: #dedede;
+	color: var(--abc-text);
 }
 
 .console-suggestion.selected {
-	background-color: #2a4a6a;
+	background-color: var(--abc-accent);
+	color: var(--abc-accent-ink);
+}
+
+/* The "more matches than shown" hint: never selectable, dimmer. */
+.console-suggestion-more {
+	color: var(--abc-text-dim);
+	text-align: right;
+	padding-right: 6dp;
 }
 
 /* The multi-line paste confirmation pane (modal over the box). */
