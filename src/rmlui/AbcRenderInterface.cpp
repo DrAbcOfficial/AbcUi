@@ -285,6 +285,11 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 		const auto* drawVertices = reinterpret_cast<const texturedrectvertex_t*>(
 			TransformActive ? scratchTextured : texturedVertices);
 		uint64_t program = AdditiveTextures.count(texture) ? kProgramSpriteAdditive : kProgramAlphaBlend;
+		if (!record->second.ExternalPrefix.empty()) {
+			const auto live = ExternalTextures.find(record->second.ExternalPrefix);
+			if (live != ExternalTextures.end() && live->second.Premultiplied)
+				program = DRAW_TEXTURED_RECT_PREMULTIPLIED_ALPHA_ENABLED;
+		}
 		// External masked textures (radar map): the mask id rides the registered
 		// slot, read live so a shape toggle needs no texture reload (the Rml
 		// cache holds one entry for the URI).
@@ -308,7 +313,7 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry, Rm
 }
 
 void AbcRenderInterface::registerExternalTexture(const Rml::String& uriPrefix, Rml::TextureHandle texture,
-	int width, int height, const int* maskSlot) {
+	int width, int height, const int* maskSlot, bool premultiplied) {
 	if (uriPrefix.empty() || texture == 0)
 		return;
 	ExternalTexture entry;
@@ -316,6 +321,7 @@ void AbcRenderInterface::registerExternalTexture(const Rml::String& uriPrefix, R
 	entry.Width = width;
 	entry.Height = height;
 	entry.MaskSlot = maskSlot;
+	entry.Premultiplied = premultiplied;
 	ExternalTextures[uriPrefix] = entry;
 	// A recycled handle must not stay marked as owned (a second
 	// registration of the same GL id after a frame-buffer regen).

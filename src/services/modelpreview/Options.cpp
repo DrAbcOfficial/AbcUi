@@ -1,0 +1,103 @@
+// New implementation; see Options.h. Parsing never forwards NaN, infinity,
+// trailing junk or unsafe entity modes to the native Studio renderer.
+#include "Options.h"
+
+#include <charconv>
+#include <cmath>
+#include <sstream>
+
+namespace modelpreview {
+namespace {
+template <class T>
+bool number(std::string_view Text, T& Output, T Min, T Max) {
+	T Value{};
+	const auto Result = std::from_chars(Text.data(), Text.data() + Text.size(), Value);
+	if (Result.ec != std::errc() || Result.ptr != Text.data() + Text.size() ||
+		!std::isfinite(static_cast<double>(Value)) || Value < Min || Value > Max)
+		return false;
+	Output = Value;
+	return true;
+}
+
+template <class T, size_t N>
+bool vector(std::string_view Text, T* Output, T Min, T Max) {
+	std::istringstream Stream{std::string(Text)};
+	std::array<T, N> Values{};
+	std::string Token;
+	for (T& Value : Values)
+		if (!(Stream >> Token) || !number(Token, Value, Min, Max))
+			return false;
+	if (Stream >> Token)
+		return false;
+	std::copy(Values.begin(), Values.end(), Output);
+	return true;
+}
+}
+
+bool Options::isModelPath(std::string_view Path) {
+	return Path.starts_with("models/") && Path.ends_with(".mdl") &&
+		Path.size() < 64 && Path.find("..") == Path.npos &&
+		Path.find_first_of("\\:\r\n\t") == Path.npos;
+}
+
+bool Options::set(std::string_view Name, std::string_view Value) {
+	if (Name == "src") {
+		if (!Value.empty() && !isModelPath(Value))
+			return false;
+		Source = Value;
+		return true;
+	}
+	if (Name == "camera-origin") return vector<float, 3>(Value, View.Origin, -16384, 16384);
+	if (Name == "camera-angles") return vector<float, 3>(Value, View.Angles, -360, 360);
+	if (Name == "fov") return number(Value, View.VerticalFov, 2.0f, 175.0f);
+	if (Name == "near") return number(Value, View.NearPlane, 0.01f, 64.0f);
+	if (Name == "far") return number(Value, View.FarPlane, 65.0f, 32768.0f);
+	if (Name == "ambient") return number(Value, View.Ambient, 0, 128);
+	if (Name == "shade") return number(Value, View.Shade, 0, 255);
+	if (Name == "light-color") return vector<float, 3>(Value, View.LightColor, 0, 1);
+	if (Name == "light-direction") {
+		float Direction[3];
+		if (!vector<float, 3>(Value, Direction, -1, 1) ||
+			(Direction[0] == 0 && Direction[1] == 0 && Direction[2] == 0))
+			return false;
+		std::copy(std::begin(Direction), std::end(Direction), View.LightDirection);
+		return true;
+	}
+	if (Name == "background") return vector<float, 4>(Value, View.Background, 0, 1);
+	if (Name == "origin") return vector<float, 3>(Value, Origin.data(), -16384, 16384);
+	if (Name == "angles") return vector<float, 3>(Value, Angles.data(), -360, 360);
+	if (Name == "rendercolor") return vector<int, 3>(Value, RenderColor.data(), 0, 255);
+	if (Name == "controllers") return vector<int, 4>(Value, Controllers.data(), 0, 255);
+	if (Name == "blending") return vector<int, 2>(Value, Blending.data(), 0, 255);
+	if (Name == "mouth") return number(Value, Mouth, 0, 255);
+	if (Name == "colormap") return number(Value, ColorMap, 0, 65535);
+	if (Name == "rendermode") {
+		int Mode = 0;
+		// kRenderGlow is a sprite-only mode.
+		if (!number(Value, Mode, 0, 5) || Mode == 3) return false;
+		RenderMode = Mode;
+		return true;
+	}
+	if (Name == "renderfx") {
+		int Fx = 0;
+		// Dead-player rendering dereferences a network player state.
+		if (!number(Value, Fx, 0, 20) || Fx == 17) return false;
+		RenderFx = Fx;
+		return true;
+	}
+	if (Name == "renderamt") return number(Value, RenderAmount, 0, 255);
+	if (Name == "sequence") return number(Value, Sequence, 0, 65535);
+	if (Name == "skin") return number(Value, Skin, 0, 65535);
+	if (Name == "body") return number(Value, Body, 0, 65535);
+	if (Name == "frame") return number(Value, Frame, 0.0f, 255.0f);
+	if (Name == "framerate") return number(Value, FrameRate, -16.0f, 16.0f);
+	if (Name == "scale") return number(Value, Scale, 0.01f, 16.0f);
+	if (Name == "animate" || Name == "lighting") {
+		if (Value != "true" && Value != "false" && Value != "1" && Value != "0") return false;
+		const bool Enabled = Value == "true" || Value == "1";
+		if (Name == "animate") Animate = Enabled;
+		else View.Lighting = Enabled;
+	}
+	return true;
+}
+}

@@ -95,7 +95,7 @@ public:
 	// changes when the engine regenerates frame buffers; the owner bumps the
 	// suffix and re-registers).
 	void registerExternalTexture(const Rml::String& uriPrefix, Rml::TextureHandle texture,
-		int width, int height, const int* maskSlot);
+		int width, int height, const int* maskSlot, bool premultiplied = false);
 	void unregisterExternalTexture(const Rml::String& uriPrefix);
 
 private:
@@ -141,6 +141,7 @@ private:
 		int Width = 0;
 		int Height = 0;
 		const int* MaskSlot = nullptr;
+		bool Premultiplied = false;
 	};
 	std::unordered_map<Rml::String, ExternalTexture> ExternalTextures;
 	struct TextureRecord { int Id; bool Owned; Rml::String ExternalPrefix; };

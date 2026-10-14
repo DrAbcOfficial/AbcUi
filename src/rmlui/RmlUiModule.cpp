@@ -27,6 +27,7 @@
 #include "../data/SpriteResource.h"
 
 #include "AbcRenderInterface.h"
+#include "model/ElementModel.h"
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
 #include "PaintGate.h"
@@ -111,7 +112,7 @@ public:
 	void OnBeginRendering(int*, int*, int*, int*) override {}
 	void OnRenderFrameStart() override {}
 	void OnBeginRenderingPost(int*, int*, int*, int*) override {}
-	void OnFreeFrameBuffers() override {}
+	void OnFreeFrameBuffers() override { modelpreview::invalidateAll(); }
 	void OnGenerateFrameBuffers() override {}
 	void OnPreRenderView() override {}
 	void OnPreRenderViewPost() override {}
@@ -127,6 +128,7 @@ public:
 		auto* renderer = abc::MetaRenderer();
 		if (!renderer || !RenderInterface || !Context)
 			return;
+		model::renderPreviews();
 		renderer->PushFrameBuffer();
 		renderer->BindFrameBuffer(renderer->GetFinalBufferFBO());
 		RenderInterface->beginFrame();
@@ -317,6 +319,7 @@ void init() {
 	Rml::SetRenderInterface(Callbacks.RenderInterface.get());
 	if (!Rml::Initialise())
 		framework::fatalExit("Rml::Initialise failed (Rml core unavailable)");
+	model::registerElement();
 
 	const auto width = static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth());
 	const auto height = static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight());
@@ -452,6 +455,7 @@ void onRedraw(double frameTime) {
 }
 
 void onVidInit() {
+	modelpreview::invalidateAll();
 	sprites::vidInit();
 	if (Initialised) for (const auto& source : Rml::GetTextureSourceList())
 		if (source.rfind("spr://",0)==0) Rml::ReleaseTexture(source);

@@ -57,6 +57,10 @@ add_library(AbcUi MODULE
     src/plugins.cpp
     src/hooks.cpp
     src/rmlui/AbcRenderInterface.cpp
+    src/rmlui/model/ElementModel.cpp
+    src/services/modelpreview/Options.cpp
+    src/services/modelpreview/Target.cpp
+    src/modules/modeltest/ModelTest.cpp
     src/rmlui/AbcSystemInterface.cpp
     src/rmlui/InputBridge.cpp
     src/rmlui/KeyMap.cpp
