@@ -358,7 +358,10 @@ void init() {
 void shutdown() {
 	// Ownership first (T06): tokens release and the pairing cleanups run
 	// while every owner can still clean up and the context (for the synth
-	// UI keyups) still exists.
+	// UI keyups) still exists. Teardown form: HUD_Shutdown runs after the
+	// engine unloaded GameUI.dll/vgui2.dll, so the sink's engine-side
+	// exclusive-change effects (cursor lock, game-mouse restore) must stay
+	// out of this path - they fault the exit (see Router::reset).
 	uiRouter().reset();
 	// Text/IME state next (T07): the handler's cached TextInputContext
 	// pointers die with the DOM below; drop them while it is alive.

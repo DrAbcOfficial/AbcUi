@@ -137,7 +137,14 @@ public:
 	// token force-released (owners notified top-down), engine down-state
 	// cleared as stale. Idempotent (the surface WndProc dispatches twice).
 	void onFocusLost();
-	// HUD_Shutdown/ExitGame teardown: same cleanup as focus loss.
+	// HUD_Shutdown/ExitGame teardown: same ownership cleanup as focus loss
+	// (tokens force-released, owners notified, held keys paired), but the
+	// sink's exclusive-change notification is NOT delivered. Teardown runs
+	// inside HUD_Shutdown, which the engine reaches only after it unloaded
+	// the VGUI modules the sink's engine-side effects call into
+	// (vgui2ext::lockCursor -> ISurface::CalculateMouseVisible -> the engine
+	// CBaseUI over a freed vgui2 IPanel): running them there faults the exit
+	// instead of restoring a cursor that no longer exists.
 	void reset();
 
 	// Inspection (tests and diagnostics).
@@ -160,7 +167,12 @@ private:
 	void releaseToken(const Token& token);
 	// Synthetic UI keyups for every tracked held key (pairing guarantee).
 	void releaseUiHeldKeys();
-	void removeAt(size_t index);
+	// Held-key pairing plus the stale engine down-state clear.
+	void resetKeyState();
+	// Force-release every owner entry top-down, notifying each owner;
+	// notifySink announces the empty transition to the sink (side effects).
+	void drainOwners(bool notifySink);
+	void removeAt(size_t index, bool notifySink);
 	void notifyLost(const Entry& entry);
 
 	Sink* Sink_;

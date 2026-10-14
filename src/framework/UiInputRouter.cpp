@@ -87,7 +87,7 @@ Token Router::acquire(Owner* owner, OwnerTier tier) {
 	return Token(this, owner, Stack[Count - 1].generation);
 }
 
-void Router::removeAt(size_t index) {
+void Router::removeAt(size_t index, bool notifySink) {
 	for (size_t i = index + 1; i < Count; i++)
 		Stack[i - 1] = Stack[i];
 	Count--;
@@ -98,7 +98,7 @@ void Router::removeAt(size_t index) {
 	if (Count == 0) {
 		for (int k = 0; k <= kMaxKeynum; k++)
 			PreHeld[k] = false;
-		if (Sink_)
+		if (Sink_ && notifySink)
 			Sink_->onExclusiveChange(false);
 	}
 }
@@ -116,7 +116,7 @@ void Router::releaseToken(const Token& token) {
 			// Normal release: the owner initiated it (it already cleaned its
 			// mirrored state), so no onOwnershipLost notification - that is
 			// reserved for force-releases (focus loss / reset).
-			removeAt(i);
+			removeAt(i, true);
 			return;
 		}
 	}
@@ -214,26 +214,37 @@ bool Router::exclusive() const {
 	return Count != 0;
 }
 
-void Router::onFocusLost() {
+void Router::drainOwners(bool notifySink) {
 	// Pop before notifying: an owner that re-enters release() from its
 	// mirrored-state cleanup must find its token already stale.
 	while (Count != 0) {
 		const Entry entry = Stack[topIndex()];
-		removeAt(topIndex());
+		removeAt(topIndex(), notifySink);
 		notifyLost(entry);
 	}
-	// Engine down-state is stale after focus loss (releases may never have
-	// been observed); the next acquire re-baselines from the live stream.
+}
+
+void Router::resetKeyState() {
 	releaseUiHeldKeys();
+	// Engine down-state is stale after focus loss / teardown (releases may
+	// never have been observed); the next acquire re-baselines from the live
+	// stream.
 	for (int k = 0; k <= kMaxKeynum; k++) {
 		EngineDown[k] = false;
 		PreHeld[k] = false;
 	}
 }
 
+void Router::onFocusLost() {
+	drainOwners(true);
+	resetKeyState();
+}
+
 void Router::reset() {
-	onFocusLost();
-	releaseUiHeldKeys();
+	// Teardown: the owners still clean up, but the sink must not run the
+	// engine-side exclusive-change effects (see the header contract).
+	drainOwners(false);
+	resetKeyState();
 }
 
 size_t Router::ownerCount() const {
