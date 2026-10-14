@@ -15,29 +15,18 @@
 // No cvar/command registration may happen before HUD_Init (plan 08 §4.9).
 
 #include <metahook.h>
+#include "data/NativePlayerInfo.h"
 
 // Batch C: the engine studio API (player mirror reads) - captured from the
 // HUD_GetStudioModelInterface chain (old exportfuncs.cpp gEngineStudio).
 // Valid after LoadClient; the struct is the engine's, never written.
 struct engine_studio_api_s;
-// Client dll's native HUD panel info row (SC native player data) - layout
-// from ABCEnchance exportfuncs.h, filled by the client dll itself.
-struct hudpanel_info_s {
-	float frags;
-	int death;
-	int classify;
-	char unknown[64];
-	float health;
-	float armor;
-	int donor;
-	int admin;
-};
 
 namespace hooks {
 
 // LoadClient time: chain our HUD_XXX implementations into the export table.
 void attachExports(cl_exportfuncs_t* pExportFuncs);
-// LoadClient time: locate the client's vanilla HUD list (sig-scan; fatal on
+// LoadClient time: locate the client's vanilla HUD list (gamedata; fatal on
 // miss like the old Sig_NotFound). See the suppression note in hooks.cpp.
 void locateVanillaHudList();
 // LoadClient time: locate the client's native HUD panel info array (fatal on
@@ -46,7 +35,7 @@ void locateNativeHudPanelInfo();
 // LoadClient time: locate the client's GetClientColor accessor (fatal on
 // miss; the scoreboard/playerboard tints ride it).
 void locatePlayerColor();
-// LoadClient time: inline-hook the client's ShowVGUIMenu (sig-scan, fatal on
+// LoadClient time: inline-hook the client's ShowVGUIMenu (gamedata, fatal on
 // miss) so the vanilla mission-brief/MOTD windows yield to the new motd
 // panel (see the hook in hooks.cpp for the menu id gate).
 void hookVanillaMenuRoute();
@@ -55,9 +44,9 @@ void unhookVanillaMenuRoute();
 
 // Direct-call captures (09 §3.4): data-layer read-only access.
 extern engine_studio_api_s* EngineStudioApi;
-extern const hudpanel_info_s* NativeHudPanelInfo;
+extern NativePlayerInfoView NativeHudPanelInfo;
 // Client dll's GetClientColor(index) - the per-player tint (float[3] 0..1).
-// Sig-located like the old SC_GETCLIENTCOLOR_SIG; null = engineless gray.
+// Gamedata-resolved; null = engineless gray.
 using GetClientColorFn = float* (*)(int index);
 extern GetClientColorFn GetClientColor;
 

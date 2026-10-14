@@ -195,6 +195,23 @@ add_library(AbcUi MODULE
 target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS)
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32 abc_ui_config)
+
+include("${ABC_CORE_DIR}/cmake/AbcGameData.cmake")
+abc_add_gamedata(AbcUi "${CMAKE_CURRENT_SOURCE_DIR}/scripts/manifests/abcui.json")
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+add_custom_target(AbcUiLayoutGameData
+    COMMAND "${Python3_EXECUTABLE}"
+        "${ABC_CORE_DIR}/thirdparty/Renderer/scripts/validate-gamedata.py"
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
+    COMMENT "Validating binary-specific AbcUi native layouts"
+    VERBATIM)
+add_dependencies(AbcUi AbcUiLayoutGameData)
+if(ABC_GAME_DIR)
+    set(ABC_UI_LAYOUT_DEST "${ABC_GAME_DIR}/svencoop/metahook/gamedata/abcui-layout")
+else()
+    set(ABC_UI_LAYOUT_DEST "svencoop/metahook/gamedata/abcui-layout")
+endif()
+install(DIRECTORY assets/gamedata/abcui-layout/ DESTINATION "${ABC_UI_LAYOUT_DEST}")
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).

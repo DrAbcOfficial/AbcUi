@@ -4,6 +4,7 @@
 #include "hooks.h"
 
 #include <abc/Console.h>
+#include <abc/GameData.h>
 #include <abc/Plugin.h>
 
 #include <keydefs.h>
@@ -30,25 +31,21 @@
 namespace hooks {
 
 engine_studio_api_s* EngineStudioApi = nullptr;
-const hudpanel_info_s* NativeHudPanelInfo = nullptr;
+NativePlayerInfoView NativeHudPanelInfo;
 GetClientColorFn GetClientColor = nullptr;
 
 namespace {
 
-// Vanilla HUD suppression (from: ABCEnchance exportfuncs.cpp HUDList sig +
-// the HUD_Redraw flag clear). The SC client keeps its built-in HUD panels in
-// a list headed by a client-dll variable; the old mod located that variable
-// through the mov-ecx-imm32 prologue byte of the client's HUD_VidInit and
-// cleared every panel's visible bit per HUD_Redraw so the Rml HUD stands
-// alone. VanilliaHud layout: {vtable, x, y, type, flags} - visible bit =
-// flags bit0.
+// Vanilla HUD suppression: gHUD begins with the native HUD list head.
+// Resolve the object by its canonical global name, without decoding VidInit.
+// Only the visible flag is changed; list ownership stays with the client.
 //
 // Index 3 is SKIPPED on purpose: every historical variant of the old code
 // left exactly one list slot visible (the dynamic_cast era commented out its
 // clear; the index era's switch is 0,1,2,4). Which SC panel that slot is was
 // not fully pinned down (candidates: CHudAmmoSecondary / CHudMenu); the port
 // reproduces the old code's observable behavior.
-constexpr size_t kVanillaHudFlagsOffset = 16;
+uint32_t VanillaHudFlagsOffset = 0;
 constexpr size_t kVanillaHudMaxPanels = 5;
 constexpr size_t kVanillaHudSkipIndex = 3; // deliberately NOT suppressed (old code parity)
 
@@ -57,23 +54,9 @@ DWORD VanillaHudPanels[kVanillaHudMaxPanels] = {};
 size_t VanillaHudPanelCount = 0;
 
 void findVanillaHudList() {
-	// g_pMetaSave->pExportFuncs = the pristine client export table (pre-patch).
-	auto* clientVidInit = reinterpret_cast<void*>(g_pMetaSave->pExportFuncs->HUD_VidInit);
-	if (!clientVidInit)
-		return;
-	// The pattern is deliberately minimal (the mov-ecx-imm32 prologue byte
-	// within the first 0x10 bytes of HUD_VidInit - a wider signature would
-	// need a per-build disassembly), so the extracted pointer is range-
-	// checked against the mirrored client image before anything reads it.
-	const auto addr = static_cast<unsigned char*>(
-		g_pMetaHookAPI->SearchPattern(clientVidInit, 0x10, "\xB9", 1));
-	if (!addr)
-		abc::SysError("[AbcUi] Could not found: HUDList");
-	const DWORD clientBase = reinterpret_cast<DWORD>(g_pMetaHookAPI->GetClientBase());
-	const DWORD clientSize = g_pMetaHookAPI->GetClientSize();
-	VanillaHudListAddr = *(DWORD*)(addr + 1);
-	if (VanillaHudListAddr < clientBase || VanillaHudListAddr - clientBase >= clientSize)
-		abc::SysError("[AbcUi] HUDList pointer outside the client image: %08x", VanillaHudListAddr);
+	VanillaHudListAddr = reinterpret_cast<DWORD>(abc::ResolveGameSymbol(
+		abc::g_dwClientBase, "client", "gHUD", MH_GAMESYMBOL_KIND_GLOBAL));
+	VanillaHudFlagsOffset = abc::GameStructMember(abc::g_dwClientBase, "AbcUiHudBaseView.flags");
 }
 
 void rebuildVanillaHudPanels() {
@@ -94,7 +77,7 @@ void rebuildVanillaHudPanels() {
 
 void hideVanillaHudPanels() {
 	for (size_t i = 0; i < VanillaHudPanelCount; i++)
-		(*(DWORD*)(VanillaHudPanels[i] + kVanillaHudFlagsOffset)) &= ~1;
+		(*(DWORD*)(VanillaHudPanels[i] + VanillaHudFlagsOffset)) &= ~1;
 }
 
 } // namespace
@@ -284,32 +267,21 @@ void attachExports(cl_exportfuncs_t* pExportFuncs) {
 }
 
 void locatePlayerColor() {
-	// from: ABCEnchance exportfuncs.cpp SC_GETCLIENTCOLOR_SIG (the client's
-	// per-player color table accessor the scoreboard/playerboard tint with).
-	constexpr char pattern[] = "\x8B\x4C\x24\x04\x85\xC9\x2A\x2A\x6B\xC1\x5C\x0F\xBF\x80\x2A\x2A\x2A\x2A\x48\x83";
-	GetClientColor = reinterpret_cast<GetClientColorFn>(g_pMetaHookAPI->SearchPattern(
-		g_pMetaHookAPI->GetClientBase(), g_pMetaHookAPI->GetClientSize(), pattern, sizeof(pattern) - 1));
-	if (!GetClientColor)
-		abc::SysError("[AbcUi] Could not found: GetClientColor");
+	GetClientColor = reinterpret_cast<GetClientColorFn>(abc::ResolveGameSymbol(
+		abc::g_dwClientBase, "client", "GetClientColor", MH_GAMESYMBOL_KIND_FUNCTION));
 }
 
 void locateNativeHudPanelInfo() {
-	// from: ABCEnchance exportfuncs.cpp NativeHUDPanelInfo (SC client keeps
-	// its native per-player HUD data - frags/health/armor/donor/admin - in a
-	// global array; the old sig pins the mov-imm32 that stores its address).
-	// Pattern deliberately byte-scoped; the extracted pointer is range-
-	// checked against the mirrored client image before anything reads it.
-	constexpr char pattern[] = "\xC6\x85\x8F\xFE\xFF\xFF\x01\x66\x89\x90";
-	const auto addr = static_cast<unsigned char*>(g_pMetaHookAPI->SearchPattern(
-		g_pMetaHookAPI->GetClientBase(), g_pMetaHookAPI->GetClientSize(), pattern, sizeof(pattern) - 1));
-	if (!addr)
-		abc::SysError("[AbcUi] Could not found: NativeHUDPanelInfo");
-	const DWORD clientBase = reinterpret_cast<DWORD>(g_pMetaHookAPI->GetClientBase());
-	const DWORD clientSize = g_pMetaHookAPI->GetClientSize();
-	const DWORD tableAddr = *(DWORD*)(addr + 10) + 8;
-	if (tableAddr < clientBase || tableAddr - clientBase >= clientSize)
-		abc::SysError("[AbcUi] NativeHUDPanelInfo pointer outside the client image: %08x", tableAddr);
-	NativeHudPanelInfo = reinterpret_cast<const hudpanel_info_s*>(tableAddr);
+	NativeHudPanelInfo.base = static_cast<const std::byte*>(abc::ResolveGameSymbol(
+		abc::g_dwClientBase, "client", "g_PlayerExtraInfo", MH_GAMESYMBOL_KIND_GLOBAL));
+	NativeHudPanelInfo.stride = abc::GameScalar(abc::g_dwClientBase, "AbcUi_PlayerExtraInfo_stride");
+	NativeHudPanelInfo.donorOffset = abc::GameStructMember(abc::g_dwClientBase, "AbcUiPlayerExtraInfoView.donor");
+	const auto base = reinterpret_cast<uintptr_t>(abc::g_dwClientBase);
+	const auto table = reinterpret_cast<uintptr_t>(NativeHudPanelInfo.base);
+	const auto size = abc::g_dwClientSize;
+	if (!NativeHudPanelInfo.valid() || table < base || table - base >= size ||
+		NativeHudPanelInfo.stride > (size - (table - base)) / 33)
+		abc::SysError("[AbcUi] Invalid g_PlayerExtraInfo layout or array outside client image");
 }
 
 void locateVanillaHudList() {
@@ -319,7 +291,7 @@ void locateVanillaHudList() {
 namespace {
 
 // Native viewport menu route (from: ABCEnchance exportfuncs.cpp
-// TFV_ShowVGUIMenu + TFV_SHOWVGUIMENU_SHIT_SIG). The SC client opens every
+// TFV_ShowVGUIMenu). The SC client opens every
 // built-in viewport window through CTeamFortressViewport::ShowVGUIMenu(id);
 // the old mod inline-hooked it so the vanilla mission brief (4) never opens
 // (the missionbriefing command chain feeds the new motd panel) and the
@@ -347,13 +319,8 @@ static void __fastcall H_TFV_ShowVGUIMenu(void* pthis, int dummy, int menu) {
 } // namespace
 
 void hookVanillaMenuRoute() {
-	// The old sig scans the whole client image; \x2A is the MetaHook
-	// wildcard (the two jal/cond displacements move per build).
-	constexpr char pattern[] = "\xA1\x2A\x2A\x2A\x2A\x57\x8B\xF9\x8B\x40\x04\xFF\xD0\x85\xC0\x0F\x85\x2A\x2A\x2A\x2A\x55\x8B\x6C\x24\x0C\x39\x05";
-	const auto target = static_cast<void*>(g_pMetaHookAPI->SearchPattern(
-		g_pMetaHookAPI->GetClientBase(), g_pMetaHookAPI->GetClientSize(), pattern, sizeof(pattern) - 1));
-	if (!target)
-		abc::SysError("[AbcUi] Could not found: TFV_ShowVGUIMenu");
+	const auto target = abc::ResolveGameSymbol(abc::g_dwClientBase, "client",
+		"TeamFortressViewport_ShowVGUIMenu", MH_GAMESYMBOL_KIND_FUNCTION);
 	ShowVguiMenuHook = g_pMetaHookAPI->InlineHook(target, H_TFV_ShowVGUIMenu, reinterpret_cast<void**>(&OriginalShowVguiMenu));
 }
 

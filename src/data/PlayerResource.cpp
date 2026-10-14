@@ -35,9 +35,9 @@ std::array<PlayerInfo, kMaxPlayers + 1>& infos() {
 // Old PlayerInfo::Update donor read: the native HUD panel table carries the
 // donor/admin columns the wire omits.
 void readNativeFlags(PlayerInfo& info) {
-	const auto* table = hooks::NativeHudPanelInfo;
-	info.donor = (info.hideExtra != HideExtra::No && table)
-		? static_cast<Donor>(table[info.index - 1].donor)
+	int32_t donor = 0;
+	info.donor = (info.hideExtra != HideExtra::No && hooks::NativeHudPanelInfo.readDonor(info.index, donor))
+		? static_cast<Donor>(donor)
 		: Donor::None;
 	// ADMIN rides the wire (ScoreInfo admin byte); the native table's admin
 	// column stayed unread by the old code - same here.

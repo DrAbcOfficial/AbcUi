@@ -214,21 +214,12 @@ UICallbacks UICallbacksInstance;
 // NativeEntryCallbacks.cpp (T21a) and reach this TU through NativeEntrySeams.
 void installPasswordPromptHook();
 
-// T14: the server-password prompt rides IGameUI slot +0x58 (byte offset from
-// the vtable start; CGameUI vtable 0x10080530 + 0x58 -> 0x10006c60,
-// ShowServerPasswordDialog) - a Sven-added method BEYOND the 19 slots the
-// VGUI2Extension proxies, so it gets its own VFTHook on the same instance.
-// The replacement owns the prompt: the hook copies the borrowed server name
-// into the loading feed and does NOT call the original (the vanilla
-// ServerPasswordDialog must never be created - it is not reliably
-// paint-gated because it is created outside the proxied callback set).
+// The Sven-only password prompt extends IGameUI beyond the methods proxied
+// by VGUI2Extension. Its verified slot is supplied by binary-specific gamedata.
+// Unknown binaries are skipped, never assigned a guessed interface slot.
 IGameUI* PasswordPromptGameUi = nullptr;
 hook_t* PasswordPromptHook = nullptr;
-// Engine-truthful view: ShowServerPasswordDialog(void* this, const char*
-// serverName, int flag) - FUN_10006c60 forwards to the dialog with
-// (name, flag): flag == 0 selects "#GameUI_ServerPasswordInvalid", nonzero
-// "#GameUI_ServerRequiresPassword" (FUN_1000bc20). Slot index 22 =
-// byte offset 0x58 (methods are 1-based; slot 0 is the destroying dtor).
+// ShowServerPasswordDialog(this, serverName, flag): zero means invalid password.
 using ShowServerPasswordFn = void(__fastcall*)(void*, int, const char*, int);
 
 void __fastcall Hook_ShowServerPasswordDialog(void* pthis, int dummy, const char* serverName, int flag) {
@@ -243,11 +234,7 @@ void __fastcall Hook_ShowServerPasswordDialog(void* pthis, int dummy, const char
 	// its creation is not provably gated (see the note above).
 }
 
-// Installed from the GameUI::Start notification (GameUI.dll mapped, vtable
-// live; the VGUI2Extension proxy already owns slots 1..19 - index 22 does
-// not overlap). Fail-closed: a slot that does not point into the GameUI.dll
-// image means the layout drifted - skip with a warning (no guessed address,
-// no crash); the attempt stays cancellable through the loading page.
+// Installed at GameUI::Start, after GameUI.dll and its live vtable exist.
 void installPasswordPromptHook() {
 	if (PasswordPromptHook)
 		return;
@@ -280,23 +267,31 @@ void installPasswordPromptHook() {
 		abc::ConsoleWarn("[AbcUi] password prompt hook: metahook API unavailable\n");
 		return;
 	}
+	uint32_t promptIndex = 0;
+	const auto status = g_pMetaHookAPI->QueryGameSymbolScalar(gameUi,
+		"AbcUi_CGameUI_ShowServerPasswordDialog_index", &promptIndex);
+	if (status != MH_GAMESYMBOL_OK || promptIndex > 255) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: gamedata unavailable or invalid (%s), skipping\n",
+			g_pMetaHookAPI->GetGameSymbolStatusString(status));
+		return;
+	}
 	void** vtable = *reinterpret_cast<void***>(gameUiInstance);
-	const void* slot22 = vtable[22];
-	if (slot22 < imageBase || slot22 >= imageEnd) {
-		abc::ConsoleWarn("[AbcUi] password prompt hook: IGameUI slot 22 (%p) outside the GameUI.dll image; layout drifted, skipping\n",
-			slot22);
+	const void* promptEntry = vtable[promptIndex];
+	if (promptEntry < imageBase || promptEntry >= imageEnd) {
+		abc::ConsoleWarn("[AbcUi] password prompt hook: IGameUI password prompt slot (%p) outside the GameUI.dll image; layout drifted, skipping\n",
+			promptEntry);
 		return;
 	}
 	void* original = nullptr;
-	hook_t* hook = g_pMetaHookAPI->VFTHook(gameUiInstance, 0, 22,
+	hook_t* hook = g_pMetaHookAPI->VFTHook(gameUiInstance, 0, promptIndex,
 		reinterpret_cast<void*>(&Hook_ShowServerPasswordDialog), &original);
 	if (!hook) {
-		abc::ConsoleWarn("[AbcUi] password prompt hook: VFTHook slot 22 failed\n");
+		abc::ConsoleWarn("[AbcUi] password prompt hook: VFTHook gamedata slot failed\n");
 		return;
 	}
 	PasswordPromptGameUi = gameUiInstance;
 	PasswordPromptHook = hook;
-	abc::ConsolePrint("[AbcUi] password prompt hook installed (IGameUI slot 22 -> 0x%p)\n", slot22);
+	abc::ConsolePrint("[AbcUi] password prompt hook installed (IGameUI password prompt slot -> 0x%p)\n", promptEntry);
 }
 
 // --- T15: console backend production seams ----------------------------------

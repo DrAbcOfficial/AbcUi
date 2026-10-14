@@ -6,6 +6,7 @@
 #include <IPanel.h>
 
 #include <abc/Console.h>
+#include <abc/GameData.h>
 #include <abc/Plugin.h>
 
 #include "../services/GameUiBridge.h"
@@ -115,33 +116,34 @@ void installPaintGate() {
 		abc::SysError("[AbcUi] paint gate: \"%s\" unavailable from vgui2.dll", VGUI_PANEL_INTERFACE_VERSION);
 	}
 
-	// Step 3: slot identity (hook-contract §8): both slots must point into
-	// the vgui2 image. A foreign pointer means the layout drifted - fail
-	// closed instead of hooking something unknown. Slot numbers follow the
-	// IPanel declaration order (methods are 1-based; the destroying
-	// destructor holds slot 0): PaintTraverse = 41, IsWithinTraverse = 43 -
-	// the same numbering the T02 probe proved for slot 41.
+	// Step 3: query the binary-matched slots before validating their owners.
+	// MetaHook omits slot-only virtualFunction declarations from its runtime
+	// catalog; the local scalar preserves the published PaintTraverse index.
+	const auto paintIndex = abc::GameScalar(vgui2, "AbcUi_IPanel_PaintTraverse_index");
+	const auto hitTestIndex = abc::GameScalar(vgui2, "AbcUi_IPanel_IsWithinTraverse_index");
+	if (paintIndex > 255 || hitTestIndex > 255)
+		abc::SysError("[AbcUi] paint gate: invalid gamedata virtual slot");
 	void** vtable = *reinterpret_cast<void***>(panel);
-	const void* slot41 = vtable[41];
-	const void* slot43 = vtable[43];
-	if (slot41 < imageBase || slot41 >= imageEnd) {
+	const void* paintEntry = vtable[paintIndex];
+	const void* hitTestEntry = vtable[hitTestIndex];
+	if (paintEntry < imageBase || paintEntry >= imageEnd) {
 		failCleanup();
-		abc::SysError("[AbcUi] paint gate: IPanel slot 41 (%p) outside the vgui2 image [%p..%p); layout drifted",
-			slot41, imageBase, imageEnd);
+		abc::SysError("[AbcUi] paint gate: IPanel PaintTraverse (%p) outside the vgui2 image [%p..%p); layout drifted",
+			paintEntry, imageBase, imageEnd);
 	}
-	if (slot43 < imageBase || slot43 >= imageEnd) {
+	if (hitTestEntry < imageBase || hitTestEntry >= imageEnd) {
 		failCleanup();
-		abc::SysError("[AbcUi] paint gate: IPanel slot 43 (%p) outside the vgui2 image; layout drifted",
-			slot43, imageBase, imageEnd);
+		abc::SysError("[AbcUi] paint gate: IPanel IsWithinTraverse (%p) outside the vgui2 image; layout drifted",
+			hitTestEntry, imageBase, imageEnd);
 	}
 
 	// Step 4: install both hooks. The bridge stays unarmed until this
 	// succeeded, so a failed install cannot have suppressed anything yet.
 	void* originalTraverse = nullptr;
-	hook_t* traverseHook = g_pMetaHookAPI->VFTHook(panel, 0, 41, reinterpret_cast<void*>(&H_PaintTraverse), &originalTraverse);
+	hook_t* traverseHook = g_pMetaHookAPI->VFTHook(panel, 0, paintIndex, reinterpret_cast<void*>(&H_PaintTraverse), &originalTraverse);
 	void* originalHitTest = nullptr;
 	hook_t* hitTestHook = traverseHook
-		? g_pMetaHookAPI->VFTHook(panel, 0, 43, reinterpret_cast<void*>(&H_IsWithinTraverse), &originalHitTest)
+		? g_pMetaHookAPI->VFTHook(panel, 0, hitTestIndex, reinterpret_cast<void*>(&H_IsWithinTraverse), &originalHitTest)
 		: nullptr;
 	if (!traverseHook || !originalTraverse || !hitTestHook || !originalHitTest) {
 		if (traverseHook)
@@ -149,7 +151,7 @@ void installPaintGate() {
 		if (hitTestHook)
 			g_pMetaHookAPI->UnHook(hitTestHook);
 		failCleanup();
-		abc::SysError("[AbcUi] paint gate: VFTHook of IPanel slots 41/43 failed");
+		abc::SysError("[AbcUi] paint gate: VFTHook of IPanel gamedata slots failed");
 	}
 
 	Panel = panel;
@@ -159,7 +161,7 @@ void installPaintGate() {
 	HitTestHook = hitTestHook;
 	Installed = true;
 	services::nativeUiBridge().arm();
-	abc::ConsolePrint("[AbcUi] paint gate: installed (IPanel slots 41/43; native UI suppression armed)\n");
+	abc::ConsolePrint("[AbcUi] paint gate: installed (IPanel gamedata slots; native UI suppression armed)\n");
 }
 
 void uninstallPaintGate() {

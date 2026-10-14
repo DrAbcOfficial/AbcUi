@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 4,
+  "versions": [
+    {
+      "gameVersion": "svencoop-10257",
+      "url": "svencoop-10257.d25f8b414444fd11673c808a9ce2515897de8eb7fcb0490f4c4adadd62cb4a22.json",
+      "sha256": "d25f8b414444fd11673c808a9ce2515897de8eb7fcb0490f4c4adadd62cb4a22",
+      "size": 2798,
+      "snapshotSchemaVersion": 8,
+      "fileCount": 6,
+      "lastPublishTime": "2026-10-14T00:00:00Z"
+    },
+    {
+      "gameVersion": "svencoop-8948",
+      "url": "svencoop-8948.fe9f6d45e1643e7670e347d5ea60902cc64ce8193a733497fbbf2c57cfacabab.json",
+      "sha256": "fe9f6d45e1643e7670e347d5ea60902cc64ce8193a733497fbbf2c57cfacabab",
+      "size": 2212,
+      "snapshotSchemaVersion": 8,
+      "fileCount": 5,
+      "lastPublishTime": "2026-10-14T00:00:00Z"
+    }
+  ]
+}
