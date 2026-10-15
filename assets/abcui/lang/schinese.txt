@@ -599,3 +599,9 @@ Valve_Footsteps = 脚步声
 Valve_Autocrosshair = 是否启用准星
 
 CG_MapSearch=搜索地图
+
+Settings_Menu=主菜单
+Settings_MenuVideo=背景视频路径
+Settings_MenuMusic=菜单音乐路径
+Settings_MenuVolume=音乐音量
+Settings_MenuBlur=背景模糊

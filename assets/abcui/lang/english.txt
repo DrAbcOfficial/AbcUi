@@ -600,3 +600,9 @@ Valve_Ltgray = Ltgray
 Valve_Dkgray = Dkgray
 
 CG_MapSearch=Search maps
+
+Settings_Menu=Menu
+Settings_MenuVideo=Background video path
+Settings_MenuMusic=Menu music path
+Settings_MenuVolume=Music volume
+Settings_MenuBlur=Background blur
