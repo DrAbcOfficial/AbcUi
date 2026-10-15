@@ -10,6 +10,25 @@
 #include <string>
 namespace panels::settings {
 using namespace detail;
+
+namespace {
+
+// kb_act.lst delimits its sections with "blank" rows whose label is the
+// vanilla file's ASCII rule ("==========================="). Those rows are
+// file typography, not content: this theme renders the real titles only, so
+// the rules (and any label-less divider) are dropped from the skeleton.
+bool bindHeaderIsRule(const services::settings::BindRowView& view) {
+	if (!view.action)
+		return true;
+	for (char c : view.action->Label) {
+		if (c != '=' && c != ' ' && c != '\t')
+			return false;
+	}
+	return true;  // a pure run of '=' (or nothing at all)
+}
+
+} // namespace
+
 void SettingsPage::buildBindRows() {
 	if (!BindModel || !document())
 		return;
@@ -22,6 +41,8 @@ void SettingsPage::buildBindRows() {
 	std::string rml;
 	for (const auto& view : BindModel->rows()) {
 		if (view.header) {
+			if (bindHeaderIsRule(view))
+				continue;
 			rml += "<div class=\"bind-header\"><span>"
 				+ framework::TextUtil::escapeRml(bindActionLabel(view))
 				+ "</span><span class=\"bind-header-columns\">"
