@@ -44,7 +44,8 @@
 		<!-- sequence 2 is the player model's own deep_idle (verified against
 		     the shipped models: [2] 'deep_idle', 31 frames @12fps), and the
 		     camera is the Renderer preview's verified default view. -->
-		<model id="player-model" src="models/player.mdl" sequence="2" animate="true"
+		<model id="player-model" src="models/player.mdl" sequence="2" animate="true" angles="0 25 0"
+			controllers="127 127 127 127" blending="127 127"
 			auto-frame="true" frame-margin="1.2"
 			camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
 			ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
