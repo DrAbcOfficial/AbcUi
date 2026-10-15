@@ -184,8 +184,10 @@ Settings_BoolDomain = sí/no
 Settings_On = Sí
 Settings_Off = No
 Settings_ResetConfirm = ¿Restaurar todos los valores de esta página a sus valores predeterminados? Los cambios sin aplicar se reemplazarán (no se escribe nada hasta Aplicar).
+Settings_ResetConfirmTitle = Restaurar valores
 Settings_ResetYes = Restaurar
 Settings_UnsavedConfirm = Hay cambios sin aplicar. ¿Descartarlos y volver?
+Settings_UnsavedConfirmTitle = Cambios sin aplicar
 Settings_DiscardReturn = Descartar y volver
 Settings_Stay = Seguir editando
 Settings_Sensitivity = Sensibilidad del ratón
@@ -206,11 +208,13 @@ Settings_BindUnavailable = no disponible (tabla de teclas inaccesible)
 Settings_BindClean = Las teclas coinciden con el motor.
 Settings_BindDirtySummary = Hay cambios de teclas sin aplicar - Aplica para escribirlos.
 Settings_BindConflictSummary = Tecla ya en uso - ¿reemplazar?
+Settings_BindConflictTitle = Conflicto de teclas
 Settings_BindConflictLead = La tecla
 Settings_BindBoundTo = está asignada a
 Settings_BindConflictYes = Reemplazar
 Settings_BindResetDefaults = Restaurar teclas predeterminadas
 Settings_BindResetConfirm = ¿Restaurar las teclas predeterminadas de las acciones de esta página? Las entradas que apuntan fuera de esta página no se tocan y nada se escribe hasta aplicar.
+Settings_BindResetConfirmTitle = Restaurar teclas
 
 # T12 video settings
 Settings_VideoTitle = Vídeo

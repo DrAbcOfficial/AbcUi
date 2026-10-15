@@ -92,21 +92,25 @@
 		     before replacing. Safe default focus sits on the non-destructive
 		     entry. -->
 		<div id="reset-confirm" class="settings-layer">
+			<h1 class="settings-layer-title">#Settings_ResetConfirmTitle</h1>
 			<p id="reset-confirm-text">#Settings_ResetConfirm</p>
 			<button id="reset-yes" data-action="reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
 			<button id="reset-no" data-action="reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
 		</div>
 		<div id="leave-confirm" class="settings-layer">
+			<h1 class="settings-layer-title">#Settings_UnsavedConfirmTitle</h1>
 			<p id="leave-confirm-text">#Settings_UnsavedConfirm</p>
 			<button id="leave-discard" data-action="leave-discard" data-label="#Settings_DiscardReturn">#Settings_DiscardReturn</button>
 			<button id="leave-stay" data-action="leave-stay" data-label="#Settings_Stay" autofocus="autofocus">#Settings_Stay</button>
 		</div>
 		<div id="bind-conflict" class="settings-layer">
+			<h1 class="settings-layer-title">#Settings_BindConflictTitle</h1>
 			<p id="bind-conflict-text"></p>
 			<button id="bind-conflict-yes" data-action="bind-conflict-yes" data-label="#Settings_BindConflictYes">#Settings_BindConflictYes</button>
 			<button id="bind-conflict-no" data-action="bind-conflict-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
 		</div>
 		<div id="bind-reset-confirm" class="settings-layer">
+			<h1 class="settings-layer-title">#Settings_BindResetConfirmTitle</h1>
 			<p id="bind-reset-confirm-text">#Settings_BindResetConfirm</p>
 			<button id="bind-reset-yes" data-action="bind-reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
 			<button id="bind-reset-no" data-action="bind-reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>

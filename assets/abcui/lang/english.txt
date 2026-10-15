@@ -193,8 +193,10 @@ Settings_BoolDomain = on/off
 Settings_On = On
 Settings_Off = Off
 Settings_ResetConfirm = Restore all values on this page to their defaults? Unapplied changes will be replaced (nothing is written until Apply).
+Settings_ResetConfirmTitle = Restore defaults
 Settings_ResetYes = Restore
 Settings_UnsavedConfirm = There are unapplied changes. Discard them and go back?
+Settings_UnsavedConfirmTitle = Unapplied changes
 Settings_DiscardReturn = Discard and Return
 Settings_Stay = Keep Editing
 Settings_Sensitivity = Mouse sensitivity
@@ -215,11 +217,13 @@ Settings_BindUnavailable = unavailable (binding table not reachable)
 Settings_BindClean = Key bindings are as the engine reports them.
 Settings_BindDirtySummary = Unapplied key changes - Apply to write.
 Settings_BindConflictSummary = Key already in use - replace?
+Settings_BindConflictTitle = Key conflict
 Settings_BindConflictLead = The key
 Settings_BindBoundTo = is bound to
 Settings_BindConflictYes = Replace
 Settings_BindResetDefaults = Restore Key Defaults
 Settings_BindResetConfirm = Restore the default keys of the actions on this page? Entries pointing outside this page are left alone, and nothing is written until Apply.
+Settings_BindResetConfirmTitle = Restore key defaults
 
 # T12 video settings
 Settings_VideoTitle = Video

@@ -345,15 +345,24 @@ p {
 }
 #confirm-actions button:first-child { margin-left: 0dp; }
 
-/* Modal confirmation is centered over a scrim. It carries the shared
-   .settings-layer prompt frame (the same component the settings page
-   links), so this block only moves the shared box and marks the title:
-   surface, padding, border and the left-aligned body/button rows all come
-   from settings.rcss. The safe cancel button keeps the keyboard focus. */
+/* Modal confirmation is centered over a scrim. This is the prompt the
+   settings page mirrors: the surface, 372dp content box, hairline border
+   with the amber top rule, padding and headline all come from the shared
+   #panel frame and the title rule here. The centered-with-5dp-lift anchor
+   matches the settings prompt (the 50vh rows plus the auto margins centre
+   the box whatever its height, the transform lifts it 5dp). The safe
+   cancel button keeps the keyboard focus. */
 body#menuconfirm { background-color: #00000088; }
 body#menuconfirm #panel {
-	left: 50%;
-	margin-left: -186dp; /* half of the shared 372dp prompt box */
+	left: 50vw;
+	top: 50vh;
+	bottom: 50vh;
+	margin-left: -186dp; /* half of the 372dp box */
+	margin-top: auto;
+	margin-bottom: auto;
+	transform: translateY(-5dp);
+	min-height: 128dp;
+	padding: 20dp;
 }
 #confirm-title {
 	font-size: 16dp;

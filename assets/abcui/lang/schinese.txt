@@ -195,8 +195,10 @@ Settings_BoolDomain = 开/关
 Settings_On = 开
 Settings_Off = 关
 Settings_ResetConfirm = 将本页所有数值恢复为默认值？未应用的修改将被替换（应用前不会写入）。
+Settings_ResetConfirmTitle = 恢复默认值
 Settings_ResetYes = 恢复
 Settings_UnsavedConfirm = 存在未应用的修改。放弃并返回？
+Settings_UnsavedConfirmTitle = 存在未应用的修改
 Settings_DiscardReturn = 放弃并返回
 Settings_Stay = 继续编辑
 Settings_Sensitivity = 鼠标灵敏度
@@ -217,11 +219,13 @@ Settings_BindUnavailable = 不可用（无法访问绑定表）
 Settings_BindClean = 按键绑定与引擎一致。
 Settings_BindDirtySummary = 有未应用的按键修改 - 点击应用写入。
 Settings_BindConflictSummary = 该键已被占用 - 是否替换？
+Settings_BindConflictTitle = 按键冲突
 Settings_BindConflictLead = 按键
 Settings_BindBoundTo = 当前绑定为
 Settings_BindConflictYes = 替换
 Settings_BindResetDefaults = 恢复默认按键
 Settings_BindResetConfirm = 将本页动作的按键恢复为默认值？指向本页之外绑定（如控制台）的条目不会改动，且在点击应用前不会写入。
+Settings_BindResetConfirmTitle = 恢复默认按键
 
 # T12 video settings
 Settings_VideoTitle = 视频
