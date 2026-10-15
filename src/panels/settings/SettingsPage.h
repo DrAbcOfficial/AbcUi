@@ -28,6 +28,7 @@
 // display property lands at the next layout frame - T09 focus-guard fact).
 
 #include "../../framework/InteractiveDocument.h"
+#include "sections/CrosshairPreview.h"
 #include "sections/VideoSection.h"
 #include "services/uiconfig/UiDefinitions.h"
 
@@ -89,6 +90,9 @@ public:
 	// render() rewrites every row - too heavy per frame).
 	void renderVoiceSection();
 	void renderPreviews();
+	// Live crosshair preview (the ten part elements of its widget block),
+	// drawn from the draft cvar values with the shared geometry.
+	void renderCrosshairPreview();
 
 	// True while Apply would still change (or has failed to change)
 	// something: the module's ESC/return guard asks before discarding.
@@ -163,6 +167,7 @@ private:
 	// value strings). The mode list is engine-stable per session; the select
 	// is rebuilt only when the set actually changed (no per-render churn).
 	sections::VideoSection VideoView;
+	sections::CrosshairPreviewState CrosshairPreview;
 	std::map<std::string, std::vector<std::string>> SelectValuesShown;
 	// The mic-volume field of the change commit currently in flight (its
 	// caret/IME state must survive the status refresh, like the row inputs).

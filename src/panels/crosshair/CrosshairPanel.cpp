@@ -22,6 +22,7 @@
 #include "../../data/PlayerTrace.h"
 #include "../../data/WeaponResource.h"
 #include "../../framework/Projection.h"
+#include "../../services/crosshair/Geometry.h"
 
 namespace panels {
 
@@ -275,11 +276,15 @@ void CrosshairPanel::onRedraw(double frameTime) {
 	const float* punch = hudstate::punchangle();
 	float drift = (punch ? fabsf(punch[0]) : 0.0f) + (punch ? fabsf(punch[1]) : 0.0f);
 	drift = drift * 5.0f * (crosshair::Multiple ? crosshair::Multiple->value : 3.0f);
-	const float width = crosshair::Thickness ? crosshair::Thickness->value : 2.0f;
-	const float length = crosshair::Size ? crosshair::Size->value : 24.0f;
-	const float outlineWidth = crosshair::OutlineWidth ? crosshair::OutlineWidth->value : 1.0f;
-	const float widthOffset = width / 2.0f;
-	const float finalOffset = drift + (crosshair::Gap ? crosshair::Gap->value : 16.0f) + widthOffset;
+	const bool outlineOn = crosshair::OutlineDraw && crosshair::OutlineDraw->value > 0;
+	services::crosshair::Layout layout;
+	layout.Thickness = crosshair::Thickness ? crosshair::Thickness->value : 2.0f;
+	layout.Length = crosshair::Size ? crosshair::Size->value : 24.0f;
+	layout.Offset = drift + (crosshair::Gap ? crosshair::Gap->value : 16.0f);
+	layout.OutlineWidth = outlineOn ? (crosshair::OutlineWidth ? crosshair::OutlineWidth->value : 1.0f) : 0.0f;
+	layout.Dot = crosshair::Dot && crosshair::Dot->value > 0;
+	layout.TShape = crosshair::TShape && crosshair::TShape->value > 0;
+	const float finalOffset = layout.Offset + layout.Thickness / 2.0f;
 
 	char color[40];
 	sprintf_s(color, "rgba(%d, %d, %d, %d)",
@@ -295,12 +300,6 @@ void CrosshairPanel::onRedraw(double frameTime) {
 		static_cast<int>(crosshair::OutlineAlpha ? crosshair::OutlineAlpha->value : 255.0f));
 	const Rml::String outlineColor = color;
 
-	// Per-part alpha rules: center dot only with cl_crosshairdot, top bar
-	// hidden in T shape (old ctor SetBgColor dance).
-	const bool dotOn = crosshair::Dot && crosshair::Dot->value > 0;
-	const bool topOn = !(crosshair::TShape && crosshair::TShape->value > 0);
-	const bool partOn[5] = {dotOn, topOn, true, true, true};
-
 	// Old DrawDefaultCrosshair ran in PaintBackground (every frame, outside
 	// the bounds throttle).
 	drawDefaultCrosshair();
@@ -314,28 +313,23 @@ void CrosshairPanel::onRedraw(double frameTime) {
 	AnimTime = now;
 	PreOffset = finalOffset;
 
-	const float core[5][4] = {
-		{CenterX - widthOffset, CenterY - widthOffset, width, width},
-		{CenterX - widthOffset, CenterY - finalOffset - length, width, length},
-		{CenterX - widthOffset, CenterY + finalOffset, width, length},
-		{CenterX - finalOffset - length, CenterY - widthOffset, length, width},
-		{CenterX + finalOffset, CenterY - widthOffset, length, width},
-	};
-	const bool outlineOn = crosshair::OutlineDraw && crosshair::OutlineDraw->value > 0;
-	const float ow = outlineOn ? outlineWidth : 0.0f;
-	const float outline[5][4] = {
-		{CenterX - widthOffset - ow, CenterY - widthOffset - ow, 2 * ow + width, 2 * ow + width},
-		{CenterX - widthOffset - ow, CenterY - finalOffset - length - ow, 2 * ow + width, 2 * ow + length},
-		{CenterX - widthOffset - ow, CenterY + finalOffset - ow, 2 * ow + width, 2 * ow + length},
-		{CenterX - finalOffset - length - ow, CenterY - widthOffset - ow, 2 * ow + length, 2 * ow + width},
-		{CenterX + finalOffset - ow, CenterY - widthOffset - ow, 2 * ow + length, 2 * ow + width},
-	};
-
+	// Shared with the settings preview: one geometry implementation, so the
+	// preview cannot drift from what the game draws.
+	services::crosshair::Rect CoreGeometry[services::crosshair::kPartCount];
+	services::crosshair::Rect OutlineGeometry[services::crosshair::kPartCount];
+	services::crosshair::coreRects(layout, CoreGeometry);
+	services::crosshair::outlineRects(layout, OutlineGeometry);
 	for (int i = 0; i < 5; i++) {
+		const auto WhichPart = static_cast<services::crosshair::Part>(i);
+		const bool shown = services::crosshair::partVisible(layout, WhichPart);
+		const float coreBounds[4] = {CenterX + CoreGeometry[i].X, CenterY + CoreGeometry[i].Y,
+			CoreGeometry[i].Width, CoreGeometry[i].Height};
+		const float outlineBounds[4] = {CenterX + OutlineGeometry[i].X, CenterY + OutlineGeometry[i].Y,
+			OutlineGeometry[i].Width, OutlineGeometry[i].Height};
 		applyPart(Document->GetElementById(Parts[i].core), Core[i],
-			partOn[i] ? coreColor.c_str() : kTransparent, core[i]);
+			shown ? coreColor.c_str() : kTransparent, coreBounds);
 		applyPart(Document->GetElementById(Parts[i].outline), Outline[i],
-			(outlineOn && partOn[i]) ? outlineColor.c_str() : kTransparent, outline[i]);
+			(outlineOn && shown) ? outlineColor.c_str() : kTransparent, outlineBounds);
 	}
 }
 

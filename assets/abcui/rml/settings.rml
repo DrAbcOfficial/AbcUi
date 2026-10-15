@@ -49,6 +49,28 @@
 					<div id="spray-preview-hint">#Settings_SprayPreviewHint</div>
 				</div>
 			</div>
+			<div class="settings-widget" id="widget-crosshair-preview">
+				<!-- The same five core bars + five outline bars the in-game
+				     crosshair panel draws, laid out by the shared
+				     services::crosshair::Geometry math from the draft cvar
+				     values (1:1 pixel geometry, no drift - the preview shows
+				     the configured shape, not the aim spread). -->
+				<div class="preview-box preview-box-square">
+					<div id="crosshair-preview">
+						<div id="cx-outline-center" class="cx-outline"></div>
+						<div id="cx-outline-top" class="cx-outline"></div>
+						<div id="cx-outline-bottom" class="cx-outline"></div>
+						<div id="cx-outline-left" class="cx-outline"></div>
+						<div id="cx-outline-right" class="cx-outline"></div>
+						<div id="cx-core-center" class="cx-core"></div>
+						<div id="cx-core-top" class="cx-core"></div>
+						<div id="cx-core-bottom" class="cx-core"></div>
+						<div id="cx-core-left" class="cx-core"></div>
+						<div id="cx-core-right" class="cx-core"></div>
+					</div>
+					<div id="crosshair-preview-hint">#Settings_CrosshairPreviewHint</div>
+				</div>
+			</div>
 			<div class="settings-widget" id="widget-bindings">
 				<div id="bind-status"></div>
 				<div id="bindrows"></div>

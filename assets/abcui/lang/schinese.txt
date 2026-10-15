@@ -280,6 +280,7 @@ Settings_Spraypaint = 喷漆图案
 Settings_PlayerModelHint = 拖动可旋转模型
 Settings_SpraypaintColor = 喷漆颜色
 Settings_SprayPreviewHint = 所选图案与颜色的预览
+Settings_CrosshairPreviewHint = 所选准星设置的预览
 Settings_AdvCrosshair = HUD：是否显示准星
 Settings_AdvAutoSwitch = HUD：是否自动切换捡起的武器
 Settings_AdvShowFps = HUD：显示帧率（左上角）

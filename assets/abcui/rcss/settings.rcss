@@ -502,11 +502,36 @@ input:disabled {
 }
 
 #model-preview-hint,
-#spray-preview-hint {
+#spray-preview-hint,
+#crosshair-preview-hint {
 	display: block;
 	font-size: 8dp;
 	color: var(--abc-text-dim);
 	margin-top: 3dp;
+}
+
+/* Crosshair preview: a fixed 150dp window on the dark inset; the parts are
+   absolutely positioned around the box centre by the projection (percent
+   anchoring + a translate in raw px keeps the geometry independent of the
+   density ratio, exactly like the in-game panel's pixel values). Parts that
+   are switched off keep the transparent colour. */
+#crosshair-preview {
+	position: relative;
+	display: block;
+	box-sizing: border-box;
+	width: 150dp;
+	height: 150dp;
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
+	overflow: hidden;
+}
+
+#crosshair-preview .cx-core,
+#crosshair-preview .cx-outline {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	background-color: rgba(0, 0, 0, 0);
 }
 
 /* The widget parking space: invisible in configured runs (the projection

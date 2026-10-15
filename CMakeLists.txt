@@ -165,6 +165,7 @@ add_library(AbcUi MODULE
     src/services/settings/VideoModeModel.cpp
     src/services/settings/VideoPendingStore.cpp
     src/services/settings/VoiceModel.cpp
+    src/services/crosshair/Geometry.cpp
     src/framework/PanelManager.cpp
     src/framework/PanelManagerLifecycle.cpp
     src/framework/Theme.cpp
@@ -196,6 +197,7 @@ add_library(AbcUi MODULE
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp
     src/panels/settings/sections/PreviewSection.cpp
+    src/panels/settings/sections/CrosshairPreview.cpp
     src/panels/settings/SettingsPage.cpp
     src/panels/settings/SettingsNavigation.cpp
     src/panels/settings/SettingsEvents.cpp

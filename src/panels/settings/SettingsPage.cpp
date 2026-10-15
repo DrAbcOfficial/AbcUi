@@ -64,6 +64,7 @@ void SettingsPage::render(const char* skipInputRow) {
 	renderVideoSection();
 	renderVoiceSection();
 	renderPreviews();
+	renderCrosshairPreview();
 	setStatusSummary();
 	setBindStatusSummary();
 	InRender_ = false;
