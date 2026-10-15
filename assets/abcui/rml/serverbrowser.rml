@@ -5,34 +5,50 @@
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/serverbrowser.rcss"/>
 </head>
-<!-- T18 server browser page (kServers). The four tab entries mirror the
-     shipped browser's list kinds (Internet/LAN/Favorites/History); the list
-     window, the detail panel and every dynamic string are injected by
-     panels::serverbrowser::ServerBrowserPage (escaped). The connect /
-     favorites actions arrive with T18b; until then this page lists, filters,
-     sorts and inspects. -->
+<!-- Find Servers (kServers), rebuilt as four visually separate modules on
+     the shared main-menu theme (2026-10-15 browser redesign):
+
+       1. #sb-tabs          the view tabs (Internet/.../Blacklisted)
+       2. #sb-list-module   the server table: count bar, sortable column
+                            header, the row window, paging. The blacklist
+                            view swaps its body for the rules editor.
+       3. #sb-filter-module the filter column, docked at the right edge
+       4. #sb-actions       the bottom action bar (Return/Refresh/Quick
+                            Refresh/Connect), right-aligned
+
+     Dynamic content (rows, counts, filter values, the detail window and the
+     row context menu) is injected by panels::serverbrowser::ServerBrowserPage
+     with every server-derived string escaped. The row buttons only ever
+     carry fixed data-action names; a left click opens the detail window, a
+     right click opens the secondary menu of the row. -->
 <body id="menuserverbrowser">
-	<div id="sb-panel">
-		<h1 id="sb-title">#SB_Title</h1>
-		<div id="sb-tabs">
-			<button id="sb-tab-internet" data-action="sb-tab-internet">#SB_TabInternet</button>
-			<button id="sb-tab-lan" data-action="sb-tab-lan">#SB_TabLan</button>
-			<button id="sb-tab-favorites" data-action="sb-tab-favorites">#SB_TabFavorites</button>
-			<button id="sb-tab-history" data-action="sb-tab-history">#SB_TabHistory</button>
-			<button id="sb-tab-friends" data-action="sb-tab-friends">#SB_TabFriends</button>
-			<button id="sb-tab-blacklist" data-action="sb-tab-blacklist">#SB_TabBlacklist</button>
-		</div>
-		<div id="sb-toolbar">
-			<button id="sb-refresh" data-action="sb-refresh">#SB_Refresh</button>
-			<button id="sb-stop" data-action="sb-stop">#SB_Stop</button>
-			<span id="sb-spacer"></span>
-			<button id="sb-filters" data-action="sb-filters">#SB_Filters</button>
+	<div id="sb-head">
+		<div id="sb-brand">Sven Co-op</div>
+		<div id="sb-title">#SB_Title</div>
+	</div>
+
+	<!-- Module 1: the list kinds the shipped browser exposes. -->
+	<div id="sb-tabs">
+		<button id="sb-tab-internet" data-action="sb-tab-internet">#SB_TabInternet</button>
+		<button id="sb-tab-favorites" data-action="sb-tab-favorites">#SB_TabFavorites</button>
+		<button id="sb-tab-history" data-action="sb-tab-history">#SB_TabHistory</button>
+		<button id="sb-tab-lan" data-action="sb-tab-lan">#SB_TabLan</button>
+		<button id="sb-tab-friends" data-action="sb-tab-friends">#SB_TabFriends</button>
+		<button id="sb-tab-blacklist" data-action="sb-tab-blacklist">#SB_TabBlacklist</button>
+	</div>
+
+	<!-- Module 2: the server table -->
+	<div id="sb-list-module">
+		<div id="sb-module-bar">
+			<span id="sb-count"></span>
+			<span id="sb-status"></span>
 		</div>
 		<div id="sb-header">
-			<span class="c-flags">#SB_Flags</span><span class="c-bots">#SB_Bots</span>
+			<span class="sb-col c-vac">#SB_ColumnVac</span>
 			<button id="sb-col-name" class="sb-col c-name" data-action="sb-sort" data-column="name">#SB_ColumnName</button>
 			<button id="sb-col-map" class="sb-col c-map" data-action="sb-sort" data-column="map">#SB_ColumnMap</button>
 			<button id="sb-col-players" class="sb-col c-players" data-action="sb-sort" data-column="players">#SB_ColumnPlayers</button>
+			<span class="sb-col c-bots">#SB_ColumnBots</span>
 			<button id="sb-col-ping" class="sb-col c-ping" data-action="sb-sort" data-column="ping">#SB_ColumnPing</button>
 		</div>
 		<div id="sb-list"></div>
@@ -41,37 +57,62 @@
 			<span id="sb-page-label"></span>
 			<button id="sb-page-next" data-action="sb-page-next">&gt;</button>
 		</div>
-		<div id="sb-detail-box">
-			<div id="sb-detail-info"></div>
-			<div id="sb-detail-players"></div>
-		</div>
-		<p id="sb-status"></p>
+		<!-- The blacklist tab's body: the rules editor replaces the table. -->
 		<div id="sb-blacklist-panel">
-			<p>#SB_BlacklistAddress</p>
+			<p id="sb-blacklist-hint">#SB_BlacklistAddress</p>
 			<input id="sb-blacklist-address" type="text" maxlength="21"/>
 			<button id="sb-rule-add" data-action="sb-rule-add">#SB_BlacklistAdd</button>
 			<div id="sb-blacklist-rules"></div>
 			<p id="sb-blacklist-status"></p>
 		</div>
 	</div>
-	<div id="sb-actions">
-		<button id="sb-connect" data-action="sb-connect" data-label="#SB_Connect" autofocus="autofocus">#SB_Connect</button>
-		<button id="sb-favorite-toggle" data-action="sb-favorite-toggle" data-label="#SB_FavoriteAdd">#SB_FavoriteAdd</button>
-		<button id="sb-block" data-action="sb-block">#SB_Block</button>
-		<button id="sb-block-ip" data-action="sb-block-ip">#SB_BlockIp</button>
-		<button id="sb-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
+
+	<!-- Module 3: the filter column, docked at the right edge. Controls
+	     apply on change; the reset button restores every filter. -->
+	<div id="sb-filter-module">
+		<div id="sb-filter-title" class="abc-sectitle">#SB_Filters</div>
+		<div id="sb-filter-body">
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterGame</span><span id="sb-filter-game" class="sb-fvalue">Sven Co-op</span></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterName</span><input id="sb-filter-name" type="text" maxlength="256"/></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterMap</span><input id="sb-filter-map" type="text" maxlength="256"/></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterPing</span><select id="sb-filter-ping"></select></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterNotEmpty</span><select id="sb-filter-empty"></select></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterNotFull</span><select id="sb-filter-full"></select></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterSecure</span><select id="sb-filter-secure"></select></div>
+			<div class="sb-frow"><span class="sb-flabel">#SB_FilterNoPassword</span><select id="sb-filter-password"></select></div>
+			<button id="sb-filters-reset" data-action="sb-filters-reset">#SB_FilterReset</button>
+		</div>
+		<div id="sb-filter-note">#SB_GameFixed</div>
 	</div>
-<div id="sb-filter-panel"><div id="sb-filter-content">
-	<h1>#SB_Filters</h1><p>#SB_GameFixed</p>
-	<p>#SB_FilterName</p><input id="sb-filter-name" type="text" maxlength="256"/>
-	<p>#SB_FilterMap</p><input id="sb-filter-map" type="text" maxlength="256"/>
-	<p>#SB_FilterPing</p><select id="sb-filter-ping"></select>
-			<button id="sb-filter-empty" data-action="sb-filter-empty">#SB_FilterNotEmpty</button>
-			<button id="sb-filter-full" data-action="sb-filter-full">#SB_FilterNotFull</button>
-			<button id="sb-filter-secure" data-action="sb-filter-secure">#SB_FilterSecure</button>
-	<button id="sb-filter-password" data-action="sb-filter-password">#SB_FilterNoPassword</button>
-	<div><button id="sb-filters-apply" data-action="sb-filters-apply">#Settings_Apply</button>
-	<button id="sb-filters-cancel" data-action="sb-filters-cancel">#Settings_Cancel</button></div>
-</div></div>
+
+	<!-- Module 4: the action bar. Refresh doubles as Stop while a list query
+	     is live (the shipped browser's own Refresh/Stop discipline). -->
+	<div id="sb-actions">
+		<button id="sb-return" data-action="return">#MainMenu_Return</button>
+		<button id="sb-refresh" data-action="sb-refresh">#SB_Refresh</button>
+		<button id="sb-quick-refresh" data-action="sb-quick-refresh">#SB_QuickRefresh</button>
+		<button id="sb-connect" data-action="sb-connect">#SB_Connect</button>
+	</div>
+
+	<!-- The server detail window: a left click on a row opens it, ESC or the
+	     Close button dismisses it. The page blocks the background while it
+	     is up (a modal subpage, like the settings prompts). -->
+	<div id="sb-detail-overlay">
+		<div id="sb-detail-window">
+			<div id="sb-detail-title">#SB_DetailTitle</div>
+			<button id="sb-detail-close" data-action="sb-detail-close">#SB_DetailClose</button>
+			<div id="sb-detail-info"></div>
+			<div id="sb-detail-players"></div>
+		</div>
+	</div>
+
+	<!-- The secondary menu of a row (right click): join, favorite, and the two
+	     blacklist entries. It is positioned at the click point. -->
+	<div id="sb-context-menu">
+		<div id="sb-menu-join" class="sb-menu-entry" data-action="sb-connect">#SB_ContextJoin</div>
+		<div id="sb-menu-favorite" class="sb-menu-entry" data-action="sb-favorite-toggle">#SB_FavoriteAdd</div>
+		<div id="sb-menu-block" class="sb-menu-entry" data-action="sb-block">#SB_ContextBlock</div>
+		<div id="sb-menu-block-ip" class="sb-menu-entry" data-action="sb-block-ip">#SB_ContextBlockIp</div>
+	</div>
 </body>
 </rml>

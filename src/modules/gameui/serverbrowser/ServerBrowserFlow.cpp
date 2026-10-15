@@ -9,9 +9,15 @@ using namespace navigation;
 void GameUiModule::presentServerBrowserPage() {
 	if (!Browser)
 		return;
-	auto Filter = ServerBrowser.List.filter();
-	Filter.HideUnresponsive = abc::CVAR_GET_FLOAT("abc_ui_browser_hide_unresponsive") != 0;
-	ServerBrowser.List.setFilter(Filter);
+	if (!ServerBrowser.Presented) {
+		// Fresh opening: no subpage (detail window / row menu) survives from
+		// the last visit, and the cvar-owned unresponsive rule is sampled
+		// again (the page never reads cvars itself).
+		Browser->closeSubpage();
+		auto Filter = ServerBrowser.List.filter();
+		Filter.HideUnresponsive = abc::CVAR_GET_FLOAT("abc_ui_browser_hide_unresponsive") != 0;
+		ServerBrowser.List.setFilter(Filter);
+	}
 	Browser->show();
 	ServerBrowser.Presented = true;
 }
@@ -143,7 +149,12 @@ void GameUiModule::handleServerAction(ActionKind Kind) {
 		beginServerQuery(QueryKind::History);
 	else if (Kind == ActionKind::kSbTabFriends)
 		beginServerQuery(QueryKind::Friends);
-	else if (Kind == ActionKind::kSbFiltersApply)
+	else if (Kind == ActionKind::kSbFiltersApply || Kind == ActionKind::kSbFilterEmpty
+		|| Kind == ActionKind::kSbFilterFull || Kind == ActionKind::kSbFilterSecure)
+		// The docked filter column owns the values now: the page applies and
+		// projects them, and a change re-issues the list query so the
+		// master-side pairs (gamedir/empty/full/secure) follow - the same
+		// apply semantics the old modal's button had.
 		beginServerQuery(ServerBrowser.Query.kind());
 	else if (Kind == ActionKind::kSbRefresh) {
 		// The shipped Refresh button semantics (T17 pin): RefreshQuery
@@ -157,21 +168,6 @@ void GameUiModule::handleServerAction(ActionKind Kind) {
 	else if (Kind == ActionKind::kSbStop) {
 		ServerBrowser.Query.cancel();
 		logServerQueryChange();
-	}
-	else if (Kind == ActionKind::kSbFilterEmpty || Kind == ActionKind::kSbFilterFull
-		|| Kind == ActionKind::kSbFilterSecure) {
-		// The view model owns the filter truth; a toggle re-issues the
-		// list query with the new master pairs (the original's filter
-		// apply). Client-side the same rules re-project immediately.
-		services::serverbrowser::ServerFilter filter = ServerBrowser.List.filter();
-		if (Kind == ActionKind::kSbFilterEmpty)
-			filter.hideEmpty = !filter.hideEmpty;
-		else if (Kind == ActionKind::kSbFilterFull)
-			filter.hideFull = !filter.hideFull;
-		else
-			filter.secureOnly = !filter.secureOnly;
-		ServerBrowser.List.setFilter(filter);
-		beginServerQuery(ServerBrowser.Query.kind());
 	}
 	else if (Kind == ActionKind::kSbConnect) {
 		connectSelectedServer();

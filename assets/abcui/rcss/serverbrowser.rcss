@@ -1,359 +1,827 @@
-/* serverbrowser.rcss - T18 server browser page. All units dp (the context
-   density ratio scales; the logical screen is 640x480dp, Theme::applyScale).
-   Every region is ABSOLUTELY positioned with explicit dp width/height - the
-   same recipe the T16 console history uses: an in-flow auto-width block
-   collapsed to a zero-width client box on the live context (rows painted,
-   hits landed on a stray scrollbar track; recorded in execution/T18.md).
-   The panel is 560dp wide so it fits the logical screen with its margins.
-   The list is a bounded scrolling window (64 rows in the DOM max - the T18a
-   render cap; paging reaches the rest). */
+/* serverbrowser.rcss - the find-servers page of the 2026-10-15 redesign.
 
-#sb-panel {
+   Four modules share the main-menu theme tokens (theme.rcss): the view tabs,
+   the server table (count bar / sortable header / bounded row window /
+   paging), the filter column docked at the right viewport edge, and the
+   right-aligned bottom action bar. Read the geometry the same way every
+   other page does: absolute dp on the 640x480dp logical screen, scaled by
+   the context density ratio (framework::Theme::applyScale). The table
+   columns are percentages of the module width so the table fills whatever
+   the aspect ratio leaves between the page gutter and the filter column. */
+
+/* ---- page identity ------------------------------------------------------ */
+
+#sb-head {
+	position: absolute;
+	left: 16dp;
+	top: 10dp;
+	width: 320dp;
+	height: 30dp;
+}
+
+#sb-brand {
+	display: block;
+	font-size: 8dp;
+	font-weight: bold;
+	letter-spacing: 3dp;
+	text-transform: uppercase;
+	color: var(--abc-accent);
+	margin-bottom: 2dp;
+}
+
+#sb-title {
+	display: block;
+	font-size: 15dp;
+	font-weight: bold;
+	letter-spacing: 0.5dp;
+	color: var(--abc-text-strong);
+}
+
+/* ---- module 1: the view tabs ------------------------------------------- */
+
+#sb-tabs {
+	position: absolute;
+	left: 16dp;
+	top: 46dp;
+	width: 600dp;
+	height: 22dp;
+}
+
+#sb-tabs button {
+	display: inline-block;
+	min-width: 0dp;
+	width: auto;
+	height: 22dp;
+	line-height: 22dp;
+	margin: 0dp 3dp 0dp 0dp;
+	padding-left: 11dp;
+	padding-right: 11dp;
+	background-color: #111920cc;
+	border: 1dp var(--abc-line-soft);
+	color: var(--abc-text-dim);
+	font-size: 9dp;
+	letter-spacing: 1dp;
+	text-transform: uppercase;
+}
+
+#sb-tabs button:hover {
+	background-color: var(--abc-surface-3);
+	color: var(--abc-text);
+}
+
+#sb-tabs button:focus {
+	border: 1dp var(--abc-accent);
+	color: var(--abc-accent);
+}
+
+#sb-tabs button.sb-active {
+	background-color: var(--abc-surface-2);
+	border: 1dp var(--abc-line);
+	border-top: 2dp var(--abc-accent);
+	color: var(--abc-text-strong);
+	font-weight: bold;
+}
+
+/* ---- module 2: the server table ---------------------------------------- */
+
+#sb-list-module {
+	position: absolute;
+	left: 16dp;
+	right: 204dp;
+	width: auto;
+	top: 74dp;
+	height: 356dp;
+	background-color: var(--abc-surface);
+	border: 1dp var(--abc-line);
+}
+
+/* Count + query status strip: the module's own title bar. */
+#sb-module-bar {
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	width: auto;
+	top: 0dp;
+	height: 22dp;
+	background-color: var(--abc-surface-2);
+	border-bottom: 1dp var(--abc-line);
+}
+
+#sb-count {
+	position: absolute;
+	left: 8dp;
+	top: 0dp;
+	width: 200dp;
+	height: 22dp;
+	line-height: 22dp;
+	font-size: 8.5dp;
+	font-weight: bold;
+	letter-spacing: 0.8dp;
+	color: var(--abc-accent);
+	text-transform: uppercase;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+#sb-status {
+	position: absolute;
+	right: 8dp;
+	top: 0dp;
+	width: 320dp;
+	height: 22dp;
+	line-height: 22dp;
+	text-align: right;
+	font-size: 8.5dp;
+	color: var(--abc-text-dim);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* The sortable column strip. Cells share the row percentages so the strip
+   and the rows stay in one grid. */
+#sb-header {
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	width: auto;
+	top: 22dp;
+	height: 20dp;
+	background-color: #10171c;
+	border-bottom: 1dp var(--abc-line);
+}
+
+#sb-header .sb-col {
+	display: inline-block;
+	box-sizing: border-box;
+	min-width: 0dp;
+	height: 19dp;
+	line-height: 19dp;
+	margin: 0dp;
+	padding: 0dp 4dp 0dp 4dp;
+	background-color: transparent;
+	border: 0dp;
+	vertical-align: top;
+	text-align: left;
+	font-size: 8dp;
+	letter-spacing: 0.6dp;
+	text-transform: uppercase;
+	color: var(--abc-text-dim);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+#sb-header button.sb-col:hover {
+	background-color: var(--abc-surface-3);
+	color: var(--abc-text);
+}
+
+#sb-header button.sb-col:focus {
+	border: 1dp var(--abc-accent);
+	color: var(--abc-accent);
+}
+
+#sb-header .sb-sort-asc {
+	color: var(--abc-accent);
+	font-weight: bold;
+}
+
+#sb-header .sb-sort-desc {
+	color: var(--abc-warn);
+	font-weight: bold;
+}
+
+/* The one scrolling region: fixed box, explicit height through the anchors. */
+#sb-list {
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	width: auto;
+	top: 42dp;
+	bottom: 26dp;
+	height: auto;
+	overflow: auto;
+	background-color: #0c1114;
+}
+
+.sb-row {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 22dp;
+	line-height: 22dp;
+	border-left: 2dp #00000000;
+	border-bottom: 1dp var(--abc-line-soft);
+	color: var(--abc-text);
+	font-size: 9dp;
+	tab-index: auto;
+	overflow: hidden;
+}
+
+.sb-row:nth-child(even) {
+	background-color: #0f151a;
+}
+
+.sb-row:hover {
+	background-color: var(--abc-surface-3);
+}
+
+.sb-row:focus {
+	border-left: 2dp var(--abc-accent);
+}
+
+.sb-row.sb-selected {
+	background-color: #1d2830;
+	border-left: 2dp var(--abc-accent);
+	color: var(--abc-text-strong);
+}
+
+.sb-row span {
+	display: inline-block;
+	box-sizing: border-box;
+	height: 21dp;
+	line-height: 21dp;
+	vertical-align: top;
+	padding-right: 6dp;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* One grid for the header strip and every row: VAC | name | map | players |
+   bots | ping - the order this page has always displayed its information in
+   (the icon column keeps the password lock and the VAC shield). */
+.c-vac {
+	width: 7%;
+}
+
+.c-name {
+	width: 38%;
+}
+
+.c-map {
+	width: 20%;
+}
+
+.c-players {
+	width: 12%;
+}
+
+.c-bots {
+	width: 11%;
+}
+
+.c-ping {
+	width: 12%;
+}
+
+.server-icon {
+	display: inline-block;
+	width: 16dp;
+	height: 16dp;
+	margin: 3dp 2dp 0dp 4dp;
+	vertical-align: top;
+}
+
+.m-bots, .m-ping {
+	color: var(--abc-text-dim);
+}
+
+.m-unknown {
+	color: var(--abc-text-dim);
+}
+
+.sb-empty, .sb-hint {
+	display: block;
+	height: 22dp;
+	line-height: 22dp;
+	padding-left: 8dp;
+	font-size: 8.5dp;
+	color: var(--abc-text-dim);
+}
+
+#sb-paging {
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	width: auto;
+	bottom: 0dp;
+	height: 26dp;
+	background-color: var(--abc-surface-2);
+	border-top: 1dp var(--abc-line);
+}
+
+#sb-paging button {
+	display: inline-block;
+	min-width: 0dp;
+	width: 22dp;
+	height: 20dp;
+	line-height: 18dp;
+	margin: 3dp 4dp 0dp 8dp;
+	padding: 0dp;
+	font-size: 9dp;
+}
+
+#sb-page-next {
+	margin-left: 2dp;
+}
+
+#sb-page-label {
+	display: inline-block;
+	height: 20dp;
+	line-height: 20dp;
+	margin-top: 3dp;
+	font-size: 8.5dp;
+	color: var(--abc-text-dim);
+}
+
+#sb-paging button.sb-disabled {
+	color: var(--abc-text-dim);
+	background-color: var(--abc-inset);
+	border-color: var(--abc-line);
+}
+
+/* The blacklist tab's body replaces the table body 1:1. */
+#sb-list-module.sb-blacklist-mode #sb-header,
+#sb-list-module.sb-blacklist-mode #sb-list,
+#sb-list-module.sb-blacklist-mode #sb-paging {
+	display: none;
+}
+
+#sb-blacklist-panel {
+	display: none;
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	width: auto;
+	top: 22dp;
+	bottom: 0dp;
+	height: auto;
+	padding: 10dp;
+	box-sizing: border-box;
+}
+
+#sb-blacklist-panel.sb-open {
+	display: block;
+}
+
+#sb-blacklist-hint {
+	display: block;
+	height: 14dp;
+	line-height: 14dp;
+	font-size: 8.5dp;
+	color: var(--abc-text-dim);
+	margin-bottom: 6dp;
+}
+
+#sb-blacklist-address {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 210dp;
+	height: 20dp;
+	line-height: 18dp;
+	margin: 0dp 6dp 8dp 0dp;
+	padding: 0dp 6dp;
+	background-color: var(--abc-inset);
+	color: var(--abc-text);
+	border: 1dp var(--abc-line);
+	font-size: 9dp;
+	tab-index: auto;
+}
+
+#sb-blacklist-address:focus {
+	border: 1dp var(--abc-accent);
+}
+
+#sb-blacklist-address caret {
+	background-color: var(--abc-text-strong);
+}
+
+#sb-rule-add {
+	display: inline-block;
+	min-width: 0dp;
+	height: 20dp;
+	line-height: 18dp;
+	margin: 0dp;
+	padding: 0dp 10dp;
+	font-size: 8.5dp;
+}
+
+#sb-blacklist-rules {
+	display: block;
+	width: 100%;
+	height: 230dp;
+	overflow: auto;
+}
+
+.sb-blacklist-rule {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 24dp;
+	line-height: 24dp;
+	border-bottom: 1dp var(--abc-line-soft);
+	font-size: 9dp;
+	color: var(--abc-text);
+}
+
+.sb-blacklist-rule span {
+	display: inline-block;
+	width: 78%;
+	height: 24dp;
+	vertical-align: top;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.sb-blacklist-rule button {
+	display: inline-block;
+	min-width: 0dp;
+	height: 20dp;
+	line-height: 18dp;
+	margin: 2dp 0dp 0dp 0dp;
+	padding: 0dp 8dp;
+	font-size: 8dp;
+}
+
+#sb-blacklist-status {
+	display: block;
+	height: 14dp;
+	line-height: 14dp;
+	margin-top: 6dp;
+	font-size: 8.5dp;
+	color: var(--abc-warn);
+}
+
+#sb-blacklist-rules scrollbarvertical {
+	width: 0dp;
+}
+
+#sb-blacklist-rules scrollbarvertical sliderbar {
+	width: 10dp;
+	min-height: 24dp;
+	margin-left: -10dp;
+	background-color: #46525a;
+}
+
+/* ---- module 3: the filter column --------------------------------------- */
+
+#sb-filter-module {
+	position: absolute;
+	right: 16dp;
+	width: 178dp;
+	top: 74dp;
+	height: 356dp;
+	background-color: var(--abc-surface);
+	border: 1dp var(--abc-line);
+}
+
+#sb-filter-module.sb-hidden {
+	display: none;
+}
+
+#sb-filter-title {
+	position: absolute;
+	left: 10dp;
+	top: 8dp;
+	width: 158dp;
+}
+
+#sb-filter-body {
+	position: absolute;
+	left: 10dp;
+	right: 10dp;
+	width: auto;
+	top: 30dp;
+}
+
+.sb-frow {
+	display: block;
+	height: 26dp;
+	width: 100%;
+}
+
+.sb-flabel {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 82dp;
+	height: 26dp;
+	line-height: 26dp;
+	vertical-align: top;
+	font-size: 8.5dp;
+	color: var(--abc-text);
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+.sb-fvalue {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 74dp;
+	height: 26dp;
+	line-height: 26dp;
+	vertical-align: top;
+	font-size: 8.5dp;
+	color: var(--abc-accent);
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+#sb-filter-body input, #sb-filter-body select {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 74dp;
+	height: 22dp;
+	margin: 2dp 0dp 0dp 0dp;
+	padding: 0dp 4dp;
+	vertical-align: top;
+	font-size: 8.5dp;
+	line-height: 20dp;
+	background-color: var(--abc-inset);
+	color: var(--abc-text);
+	border: 1dp var(--abc-line);
+	tab-index: auto;
+}
+
+#sb-filter-body input:focus, #sb-filter-body select:hover {
+	border: 1dp var(--abc-accent);
+}
+
+#sb-filter-body input caret {
+	background-color: var(--abc-text-strong);
+}
+
+#sb-filter-body select selectvalue {
+	display: block;
+	height: 20dp;
+	line-height: 20dp;
+	margin-right: 16dp;
+	padding-left: 3dp;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+#sb-filter-body select selectarrow {
+	width: 16dp;
+	height: 20dp;
+	background-color: var(--abc-surface-3);
+	decorator: image(../img/select-arrow.png);
+}
+
+#sb-filters-reset {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 22dp;
+	line-height: 20dp;
+	margin: 10dp 0dp 0dp 0dp;
+	padding: 0dp;
+	font-size: 8.5dp;
+}
+
+#sb-filter-note {
+	position: absolute;
+	left: 10dp;
+	right: 10dp;
+	width: auto;
+	bottom: 10dp;
+	height: 40dp;
+	padding-top: 6dp;
+	border-top: 1dp var(--abc-line-soft);
+	font-size: 8dp;
+	line-height: 12dp;
+	color: var(--abc-text-dim);
+	white-space: normal;
+	overflow: hidden;
+}
+
+/* ---- module 4: the action bar ------------------------------------------ */
+
+#sb-actions {
+	position: absolute;
+	right: 16dp;
+	width: 400dp;
+	top: 440dp;
+	height: 26dp;
+	text-align: right;
+}
+
+#sb-actions button {
+	display: inline-block;
+	min-width: 64dp;
+	height: 24dp;
+	line-height: 22dp;
+	margin: 0dp 0dp 0dp 6dp;
+	padding-left: 12dp;
+	padding-right: 12dp;
+	font-size: 9dp;
+}
+
+#sb-connect {
+	border: 1dp var(--abc-accent-soft);
+	color: var(--abc-accent);
+}
+
+#sb-connect:focus {
+	color: var(--abc-accent-ink);
+}
+
+#sb-actions button.sb-disabled, #sb-actions button.sb-disabled:focus {
+	background-color: var(--abc-inset);
+	color: var(--abc-text-dim);
+	border: 1dp var(--abc-line);
+}
+
+/* ---- the server detail window ------------------------------------------ */
+
+#sb-detail-overlay {
+	display: none;
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 100%;
+	height: 100%;
+	background-color: #000000bb;
+	z-index: 300;
+}
+
+#sb-detail-overlay.sb-open {
+	display: block;
+}
+
+#sb-detail-window {
 	position: absolute;
 	left: 50%;
-	margin-left: -280dp;
-	top: 24dp;
-	width: 560dp;
-	height: 418dp;
+	margin-left: -190dp;
+	top: 34dp;
+	box-sizing: border-box;
+	width: 380dp;
+	height: 412dp;
+	padding: 12dp;
 	background-color: var(--abc-surface);
 	border: 1dp var(--abc-line);
 	border-top: 2dp var(--abc-accent);
 }
 
-#sb-title {
-	position: absolute;
-	left: 16dp;
-	top: 8dp;
-	width: 300dp;
-	height: 22dp;
-	line-height: 22dp;
-	font-size: 16dp;
+#sb-detail-title {
+	display: block;
+	width: 240dp;
+	height: 20dp;
+	line-height: 20dp;
+	font-size: 14dp;
 	font-weight: bold;
 	color: var(--abc-accent);
+	margin-bottom: 6dp;
 }
 
-#sb-tabs {
+#sb-detail-close {
 	position: absolute;
-	left: 16dp;
-	top: 34dp;
-	width: 520dp;
-	height: 24dp;
-}
-
-#sb-tabs button {
-	display: inline-block;
-	width: auto;
-	height: 24dp;
-	line-height: 24dp;
-	margin-right: 6dp;
-	margin-bottom: 0dp;
-	padding-left: 10dp;
-	padding-right: 10dp;
-}
-
-#sb-tabs button.sb-active {
-	background-color: var(--abc-accent-soft);
-	border: 1dp var(--abc-accent);
-	color: #ffffff;
-}
-
-#sb-toolbar {
-	position: absolute;
-	left: 16dp;
-	top: 62dp;
-	width: 520dp;
-	height: 24dp;
-}
-
-#sb-toolbar button {
-	display: inline-block;
-	width: auto;
-	height: 24dp;
-	line-height: 24dp;
-	margin-right: 6dp;
-	margin-bottom: 0dp;
-	padding-left: 10dp;
-	padding-right: 10dp;
-}
-
-#sb-spacer {
-	display: inline-block;
-	width: 16dp;
-}
-
-/* Filter toggles show their state; disabled entries are dimmed. */
-#sb-toolbar button.sb-on {
-	background-color: var(--abc-accent-soft);
-	border: 1dp var(--abc-accent);
-	color: #ffffff;
-}
-
-#sb-toolbar button.sb-disabled, #sb-paging button.sb-disabled {
-	color: #6f757c;
-	border-color: #3a4047;
-}
-
-/* Column header row: sortable buttons above the list, grid-aligned with the
-   row cells (both use the same column widths, sum 506dp <= 526dp content). */
-#sb-header {
-	position: absolute;
-	left: 16dp;
-	top: 92dp;
-	width: 526dp;
+	right: 12dp;
+	top: 10dp;
+	min-width: 56dp;
 	height: 20dp;
-	background-color: #161c22;
-	border: 1dp var(--abc-line);
+	line-height: 18dp;
+	margin: 0dp;
+	padding: 0dp 10dp;
+	font-size: 8.5dp;
 }
 
-.sb-col {
-	min-width: 0dp;
-	margin-right: 0dp;
-	display: inline-block;
+#sb-detail-info {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 134dp;
+	margin-bottom: 8dp;
+	padding-bottom: 6dp;
+	border-bottom: 1dp var(--abc-line-soft);
+	overflow: hidden;
+}
+
+#sb-detail-name {
+	display: block;
 	height: 18dp;
 	line-height: 18dp;
-	background-color: transparent;
-	border: 0dp var(--abc-line);
-	text-align: left;
-	margin-bottom: 0dp;
-	padding: 0dp;
-	vertical-align: top;
-}
-
-.sb-col:hover {
-	background-color: #232b32;
-}
-
-.sb-col:focus {
-	background-color: #232b32;
-}
-
-.c-name {
-	width: 226dp;
-}
-
-.c-map {
-	width: 130dp;
-}
-
-.c-players {
-	width: 90dp;
-}
-
-.c-ping {
-	width: 60dp;
-}
-
-/* Sort direction: the active column lights up (an arrow glyph would need a
-   font feature the shipped faces do not carry). */
-.sb-sort-asc {
-	color: var(--abc-accent);
+	font-size: 12dp;
 	font-weight: bold;
-}
-
-.sb-sort-desc {
-	color: #e8c020;
-	font-weight: bold;
-}
-
-/* The row window: the only scrolling region (absolute; explicit box). */
-#sb-list {
-	position: absolute;
-	left: 16dp;
-	top: 112dp;
-	width: 526dp;
-	height: 190dp;
-	overflow: auto;
-	background-color: #0d1114;
-	border: 1dp var(--abc-line);
-}
-
-.sb-row {
-	display: block;
-	width: 508dp;
-	height: 26dp;
-	line-height: 26dp;
-	border-bottom: 1dp var(--abc-line-soft);
-	tab-index: auto;
-	font-size: 9dp;
-	overflow: hidden;
-}
-
-.sb-row:nth-child(even) {
-	background-color: #11161b;
-}
-
-.sb-row.sb-selected {
-	background-color: var(--abc-accent-soft);
-}
-
-.sb-row span {
-	box-sizing: border-box;
-	display: inline-block;
-	height: 26dp;
-	vertical-align: top;
-	overflow: hidden;
+	color: var(--abc-text-strong);
+	margin-bottom: 4dp;
 	white-space: nowrap;
-	text-overflow: ellipsis;
-	padding-right: 6dp;
-}
-
-/* The password marker rides the name cell (detail panel spells it out). */
-.m-flag {
-	color: #e8c020;
-}
-
-.sb-empty, .sb-hint {
-	display: block;
-	font-size: 9dp;
-	color: #8a9199;
-	padding: 6dp;
-}
-
-#sb-paging {
-	position: absolute;
-	left: 16dp;
-	top: 306dp;
-	width: 526dp;
-	height: 22dp;
-}
-
-#sb-paging button {
-	min-width: 0dp;
-	display: inline-block;
-	width: 24dp;
-	height: 22dp;
-	line-height: 22dp;
-	margin-right: 6dp;
-	margin-bottom: 0dp;
-}
-
-#sb-page-label {
-	display: inline-block;
-	height: 22dp;
-	line-height: 22dp;
-	font-size: 9dp;
-	color: #8a9199;
-	vertical-align: top;
-}
-
-/* Detail panel: the selected server + its player list (single slot). */
-#sb-detail-box {
-	position: absolute;
-	left: 16dp;
-	top: 332dp;
-	width: 526dp;
-	height: 52dp;
-	box-sizing: border-box;
-	background-color: #161c22;
-	border: 1dp var(--abc-line);
-	padding: 6dp;
 	overflow: hidden;
-}
-
-#sb-detail-info h2, #sb-detail-name {
-	display: block;
-	font-size: 11dp;
-	font-weight: bold;
-	color: var(--abc-text);
-	margin-bottom: 2dp;
+	text-overflow: ellipsis;
 }
 
 .sb-detail-line {
 	display: block;
+	height: 14dp;
+	line-height: 14dp;
 	font-size: 9dp;
-	color: #8a9199;
-	margin-bottom: 2dp;
+	color: var(--abc-text);
 }
 
-.sb-player {
-	display: block;
-	height: 12dp;
-	line-height: 12dp;
-	font-size: 8.5dp;
-}
-
-.sb-player span {
+.sb-detail-line .k {
 	display: inline-block;
-	height: 12dp;
+	box-sizing: border-box;
+	width: 74dp;
+	height: 14dp;
+	color: var(--abc-text-dim);
 	vertical-align: top;
 	overflow: hidden;
 	white-space: nowrap;
 }
 
-.dp-name {
-	width: 260dp;
+.sb-detail-line .v {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 250dp;
+	height: 14dp;
+	vertical-align: top;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
 }
 
-.dp-score {
-	width: 90dp;
+#sb-detail-players {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 216dp;
+	overflow: auto;
 }
 
-.dp-time {
-	width: 60dp;
+.sb-player-head {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 16dp;
+	line-height: 16dp;
+	border-bottom: 1dp var(--abc-line);
+	margin-bottom: 2dp;
+	color: var(--abc-text-dim);
+	font-size: 8dp;
 }
 
-#sb-status {
-	position: absolute;
-	left: 16dp;
-	top: 402dp;
-	width: 526dp;
-	height: 12dp;
-	font-size: 9dp;
+.sb-player-head span, .sb-player span {
+	display: inline-block;
+	box-sizing: border-box;
+	height: 16dp;
+	vertical-align: top;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.sb-player {
+	display: block;
+	height: 18dp;
+	line-height: 18dp;
+	font-size: 8.5dp;
 	color: var(--abc-text);
 }
 
-#sb-actions {
+.dp-name {
+	width: 232dp;
+}
+
+.dp-score {
+	width: 50dp;
+}
+
+.dp-time {
+	width: 70dp;
+}
+
+/* ---- the row context menu (the secondary menu) ------------------------- */
+
+#sb-context-menu {
+	display: none;
 	position: absolute;
-	left: 50%;
-	margin-left: -280dp;
-	top: 448dp;
-	width: 560dp;
-	height: 22dp;
+	width: 132dp;
+	padding: 2dp;
+	background-color: #10161af8;
+	border: 1dp var(--abc-line);
+	z-index: 400;
 }
 
-.sb-row:hover { background-color: var(--abc-surface-3); }
-#sb-connect { border-color: var(--abc-accent-soft); color: var(--abc-accent); }
-
-#sb-actions button {
-	display: inline-block;
-	width: auto;
-	height: 22dp;
-	line-height: 22dp;
-	padding-left: 12dp;
-	padding-right: 12dp;
-	margin-bottom: 0dp;
+#sb-context-menu.sb-open {
+	display: block;
 }
 
-/* Original icon columns: password, VAC status, bot count. */
-.c-flags { display: inline-block; width: 42dp; height: 18dp; vertical-align: top; }
-.c-bots { display: inline-block; width: 30dp; height: 18dp; font-size: 9dp; vertical-align: top; }
-.c-name { width: 154dp; }
-.server-icon { display: inline-block; width: 16dp; height: 16dp; margin-right: 3dp; }
-#sb-header .c-flags { font-size: 8dp; }
-#sb-tabs button { padding: 0dp 6dp; margin-right: 3dp; }
-#sb-filter-panel { display: none; position: absolute; left: 0dp; top: 0dp; width: 100%; height: 100%; z-index: 200; background-color: #000000bb; }
-#sb-filter-content { position: absolute; left: 50%; margin-left: -186dp; top: 50dp; width: 340dp; padding: 16dp; background-color: var(--abc-surface); border: 1dp var(--abc-line); }
-#sb-filter-content h1 { display: block; font-size: 16dp; color: var(--abc-accent); }
-#sb-filter-content input, #sb-filter-content select { display: block; width: 324dp; height: 24dp; margin-bottom: 8dp; font-size: 10dp; }
-#sb-filter-content input, #sb-blacklist-address { background-color: #0a0e12; color: #e8e8e8; border: 1dp #536071; tab-index: auto; }
-#sb-filter-content button { display: inline-block; box-sizing: border-box; width: 150dp; font-size: 9dp; margin: 3dp; }
-#sb-filter-content button.sb-on { background-color: var(--abc-accent-soft); border: 1dp var(--abc-accent); }
-#sb-blacklist-panel { display: none; position: absolute; top: 236dp; left: 16dp; width: 526dp; height: 160dp; }
-#sb-blacklist-address { width: 240dp; height: 22dp; font-size: 10dp; }
-#sb-blacklist-panel button { display: inline-block; height: 22dp; font-size: 9dp; }
-#sb-blacklist-rules { display: block; height: 95dp; overflow: auto; }
-.sb-blacklist-rule { display: block; height: 26dp; }
-.sb-blacklist-rule span { display: inline-block; width: 410dp; height: 24dp; font-size: 9dp; color: #dce1e7; overflow: hidden; }
-.sb-blacklist-rule button { width: 70dp; }
-#sb-panel.sb-blacklist-mode #sb-list { height: 90dp; }
-#sb-panel.sb-blacklist-mode #sb-paging { top: 206dp; }
-#sb-panel.sb-blacklist-mode #sb-detail-box { display: none; }
-#sb-blacklist-rules scrollbarvertical { width: 0dp; }
-#sb-blacklist-rules scrollbarvertical sliderbar { width: 10dp; min-height: 24dp; margin-left: -10dp; background-color: #536071; }
-#sb-actions button { padding: 0dp 5dp; font-size: 9dp; }
-#sb-connect:focus { color: var(--abc-accent-ink); }
-#sb-actions button.sb-disabled, #sb-actions button.sb-disabled:focus {
-	background-color: var(--abc-inset);
-	color: var(--abc-text-dim);
-	border-color: var(--abc-line);
+.sb-menu-entry {
+	display: block;
+	height: 20dp;
+	line-height: 20dp;
+	padding-left: 8dp;
+	padding-right: 4dp;
+	font-size: 8.5dp;
+	color: var(--abc-text);
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+	tab-index: auto;
+}
+
+.sb-menu-entry:hover, .sb-menu-entry:focus {
+	background-color: var(--abc-accent);
+	color: var(--abc-accent-ink);
 }

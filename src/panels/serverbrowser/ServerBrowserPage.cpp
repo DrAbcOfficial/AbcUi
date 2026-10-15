@@ -2,8 +2,10 @@
 // projection contract and the shipped-binary references behind the rules.
 #include "ServerBrowserPage.h"
 
+#include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
@@ -27,11 +29,9 @@ constexpr const char* kActionTabInternet = "sb-tab-internet";
 constexpr const char* kActionTabLan = "sb-tab-lan";
 constexpr const char* kActionTabFavorites = "sb-tab-favorites";
 constexpr const char* kActionTabHistory = "sb-tab-history";
+constexpr const char* kActionTabFriends = "sb-tab-friends";
 constexpr const char* kActionRefresh = "sb-refresh";
 constexpr const char* kActionStop = "sb-stop";
-constexpr const char* kActionFilterEmpty = "sb-filter-empty";
-constexpr const char* kActionFilterFull = "sb-filter-full";
-constexpr const char* kActionFilterSecure = "sb-filter-secure";
 constexpr const char* kActionSort = "sb-sort";
 constexpr const char* kActionRow = "sb-row";
 constexpr const char* kActionPagePrev = "sb-page-prev";
@@ -46,6 +46,24 @@ Rml::Element* actionNode(Rml::Element* node) {
 			return it;
 	}
 	return nullptr;
+}
+
+// The nearest row element (the right-click path needs the row under the
+// cursor, not the element that happened to carry the action attribute).
+Rml::Element* rowNode(Rml::Element* node) {
+	for (Rml::Element* it = node; it; it = it->GetParentNode()) {
+		if (it->HasAttribute("data-row"))
+			return it;
+	}
+	return nullptr;
+}
+
+bool insideNode(Rml::Element* node, Rml::Element* container) {
+	for (Rml::Element* it = node; it; it = it->GetParentNode()) {
+		if (it == container)
+			return true;
+	}
+	return false;
 }
 
 // Token resolution: our own table first; an unknown token passes through as
@@ -77,18 +95,23 @@ void setHtml(Rml::ElementDocument* doc, const char* id, const std::string& html)
 		node->SetInnerRML(html);
 }
 
-void setPressed(Rml::ElementDocument* doc, const char* id, bool on) {
-	if (!doc)
-		return;
-	if (Rml::Element* node = doc->GetElementById(id))
-		node->SetClass("sb-on", on);
-}
-
 void setDisabled(Rml::ElementDocument* doc, const char* id, bool disabled) {
 	if (!doc)
 		return;
 	if (Rml::Element* node = doc->GetElementById(id))
 		node->SetClass("sb-disabled", disabled);
+}
+
+// Programmatic select writes dispatch a change event in RmlUi, so the value
+// is only written when the control actually moved (and the handlers below
+// re-check the model value before acting - no projection feedback loop).
+void syncSelect(Rml::ElementDocument* doc, const char* id, const std::string& value) {
+	if (!doc)
+		return;
+	auto* select = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(doc->GetElementById(id));
+	if (!select || select->GetValue() == value.c_str())
+		return;
+	select->SetValue(value.c_str());
 }
 
 // FNV-1a byte mixin for the projection signature.
@@ -115,12 +138,35 @@ std::string playersCell(const ServerEntry& entry) {
 	return buffer;
 }
 
+std::string botsCell(const ServerEntry& entry) {
+	if (!entry.responded)
+		return "?";
+	return std::to_string(entry.botPlayers);
+}
+
 std::string pingCell(const ServerEntry& entry) {
 	if (!entry.responded || entry.pingMs < 0)
 		return "-";
 	char buffer[16];
 	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "%d", entry.pingMs);
 	return buffer;
+}
+
+std::string addressCell(const ServerEntry& entry) {
+	if (entry.ip == 0)
+		return "-";
+	const uint16_t port = entry.connectionPort ? entry.connectionPort : entry.queryPort;
+	std::string text = services::serverbrowser::formatServerIp(entry.ip);
+	if (port)
+		text += ":" + std::to_string(port);
+	return text;
+}
+
+// One "label: value" line of the detail window.
+std::string detailLine(const char* labelToken, const std::string& value) {
+	return "<div class=\"sb-detail-line\"><span class=\"k\">"
+		+ framework::TextUtil::escapeRml(token(labelToken))
+		+ "</span><span class=\"v\">" + framework::TextUtil::escapeRml(value) + "</span></div>";
 }
 
 std::string playTime(int seconds) {
@@ -146,13 +192,13 @@ const char* tabActionOf(QueryKind kind) {
 	case QueryKind::History:
 		return kActionTabHistory;
 	case QueryKind::Friends:
-		return "sb-tab-friends";
+		return kActionTabFriends;
 	default:
 		return kActionTabInternet;
 	}
 }
 
-}
+}  // namespace
 
 ServerBrowserPage::ServerBrowserPage()
 	: InteractiveDocument("menuserverbrowser", "abcui/rml/serverbrowser.rml", true), Listener(this) {}
@@ -164,10 +210,40 @@ ServerBrowserPage::~ServerBrowserPage() {
 void ServerBrowserPage::onDocumentReady() {
 	if (Rml::ElementDocument* doc = document()) {
 		addListener(doc, "click", &Listener);
+		addListener(doc, "mousedown", &Listener);
 		addListener(doc, "change", &Listener);
 	}
+	buildFilterOptions();
 	Projected = false;
 	HaveSignature = false;
+}
+
+// The filter selects carry fixed option sets; the labels are localized once
+// per document load (the projection then only moves the selection).
+void ServerBrowserPage::buildFilterOptions() {
+	Rml::ElementDocument* doc = document();
+	if (!doc)
+		return;
+	const auto fillYesNo = [&](const char* id) {
+		auto* select = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(doc->GetElementById(id));
+		if (!select)
+			return;
+		select->RemoveAll();
+		select->Add(framework::TextUtil::escapeRml(token("SB_Any")).c_str(), "0");
+		select->Add(framework::TextUtil::escapeRml(token("SB_Yes")).c_str(), "1");
+		select->SetSelection(0);
+	};
+	for (const char* id : {"sb-filter-empty", "sb-filter-full", "sb-filter-secure", "sb-filter-password"})
+		fillYesNo(id);
+	if (auto* ping = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(doc->GetElementById("sb-filter-ping"))) {
+		ping->RemoveAll();
+		for (int value : {0, 50, 100, 150, 250, 350, 500}) {
+			const std::string text =
+				value ? std::to_string(value) + " ms" : framework::TextUtil::escapeRml(token("SB_Any"));
+			ping->Add(text.c_str(), std::to_string(value));
+		}
+		ping->SetSelection(0);
+	}
 }
 
 void ServerBrowserPage::tick() {
@@ -205,7 +281,8 @@ std::size_t ServerBrowserPage::projectionSignature() const {
 	mixValue(hash, list.sortAscending());
 	mixValue(hash, list.selectedKey());
 	mixValue(hash, list.blockedOnly());
-	mixValue(hash, FilterOpen);
+	mixValue(hash, DetailsOpen);
+	mixValue(hash, MenuOpen);
 	if (Blacklist) mixValue(hash, Blacklist->revision());
 	const auto& filter = list.filter();
 	mixValue(hash, filter.hideEmpty);
@@ -267,7 +344,7 @@ void ServerBrowserPage::render() {
 	const auto& query = *Query;
 	const auto& list = *List;
 
-	// --- status line --------------------------------------------------------
+	// --- status line (the module bar's right half) --------------------------
 	std::string status;
 	switch (query.status()) {
 	case QueryStatus::Idle:
@@ -301,21 +378,36 @@ void ServerBrowserPage::render() {
 		}
 		break;
 	}
+	if (!RuleStatus.empty())
+		status = RuleStatus;  // the blacklist editor's own feedback wins
 	setHtml(doc, "sb-status", framework::TextUtil::escapeRml(status));
+	// The module bar's left half: the visible row count of the active view.
+	setHtml(doc, "sb-count", framework::TextUtil::escapeRml(
+		tokenValue("SB_ServerCount", list.rowCount())));
 
-	// --- tabs / buttons / filters --------------------------------------------
+	// --- tabs ---------------------------------------------------------------
 	for (auto Kind : {QueryKind::Internet, QueryKind::Lan, QueryKind::Favorites, QueryKind::History, QueryKind::Friends}) {
 		if (Rml::Element* tab = doc->GetElementById(tabActionOf(Kind)))
 			tab->SetClass("sb-active", Kind == query.kind() && !list.blockedOnly());
 	}
-	setPressed(doc, "sb-filter-empty", list.filter().hideEmpty);
-	setPressed(doc, "sb-filter-full", list.filter().hideFull);
-	setPressed(doc, "sb-filter-secure", list.filter().secureOnly);
-	// Stop only acts on a live query; Refresh acts in every state (the shipped
-	// RefreshQuery is valid while querying AND after completion - T17 pin).
-	setDisabled(doc, "sb-stop", query.status() != QueryStatus::Querying);
+	if (Rml::Element* tab = doc->GetElementById("sb-tab-blacklist"))
+		tab->SetClass("sb-active", list.blockedOnly());
 
-	// --- sort markers ---------------------------------------------------------
+	// --- the action bar -----------------------------------------------------
+	// Refresh doubles as Stop while a list query is live: the shipped
+	// browser's own Refresh/Stop discipline keeps cancellation reachable
+	// without adding a fifth button.
+	if (Rml::Element* refresh = doc->GetElementById("sb-refresh")) {
+		const bool live = query.status() == QueryStatus::Querying;
+		refresh->SetAttribute("data-action", live ? kActionStop : kActionRefresh);
+		refresh->SetInnerRML(framework::TextUtil::escapeRml(token(live ? "SB_Stop" : "SB_Refresh")));
+		setDisabled(doc, "sb-refresh", false);
+	}
+	// Quick refresh re-pings the page's own servers: meaningless while the
+	// list query is still running, and in the blacklist view.
+	setDisabled(doc, "sb-quick-refresh", query.status() == QueryStatus::Querying || list.blockedOnly());
+
+	// --- sort markers -------------------------------------------------------
 	const auto mark = [&](const char* id, services::serverbrowser::ServerSort column) {
 		if (Rml::Element* node = doc->GetElementById(id)) {
 			const bool active = list.sortColumn() == column;
@@ -328,7 +420,7 @@ void ServerBrowserPage::render() {
 	mark("sb-col-players", services::serverbrowser::ServerSort::Players);
 	mark("sb-col-ping", services::serverbrowser::ServerSort::Ping);
 
-	// --- rows (the bounded page window) ----------------------------------------
+	// --- rows (the bounded page window) -------------------------------------
 	const int selectedRow = list.selectedRow();
 	std::string rows;
 	for (int row = 0; row < services::serverbrowser::ServerListModel::kPageSize; ++row) {
@@ -345,20 +437,21 @@ void ServerBrowserPage::render() {
 		rows += kActionRow;
 		rows += "\" data-row=\"";
 		rows += std::to_string(row);
-		rows += "\"><span class=\"c-flags\">";
+		rows += "\"><span class=\"c-vac\">";
 		if (entry->responded && entry->password)
 			rows += "<img class=\"server-icon\" src=\"../img/server-lock.png\" title=\""
 				+ framework::TextUtil::escapeRmlAttribute(token("SB_PasswordYes")) + "\"/>";
 		if (entry->responded && entry->secure)
 			rows += "<img class=\"server-icon\" src=\"../img/server-vac.png\" title=\""
 				+ framework::TextUtil::escapeRmlAttribute(token("SB_SecureYes")) + "\"/>";
-		rows += "</span><span class=\"c-bots\">" + (entry->responded ? std::to_string(entry->botPlayers) : "?")
-			+ "</span><span class=\"c-name\">";
+		rows += "</span><span class=\"c-name\">";
 		rows += framework::TextUtil::escapeRml(entry->name);
 		rows += "</span><span class=\"c-map\">";
 		rows += framework::TextUtil::escapeRml(entry->map);
 		rows += "</span><span class=\"c-players\">";
 		rows += playersCell(*entry);
+		rows += "</span><span class=\"c-bots\">";
+		rows += botsCell(*entry);
 		rows += "</span><span class=\"c-ping\">";
 		rows += pingCell(*entry);
 		rows += "</span></div>";
@@ -368,7 +461,7 @@ void ServerBrowserPage::render() {
 			+ "</p>";
 	setHtml(doc, "sb-list", rows);
 
-	// --- paging ------------------------------------------------------------------
+	// --- paging -------------------------------------------------------------
 	setDisabled(doc, "sb-page-prev", list.page() <= 0);
 	setDisabled(doc, "sb-page-next", list.page() >= list.pageCount() - 1);
 	char pageLabel[48];
@@ -376,7 +469,7 @@ void ServerBrowserPage::render() {
 		list.pageCount());
 	setHtml(doc, "sb-page-label", framework::TextUtil::escapeRml(pageLabel));
 
-	// --- detail panel (the CURRENT single slot only) ------------------------------
+	// --- the detail window's content (the CURRENT single slot only) ---------
 	const ServerEntry* selected = list.selectedEntry(query);
 	if (!selected) {
 		setHtml(doc, "sb-detail-info",
@@ -384,38 +477,23 @@ void ServerBrowserPage::render() {
 				+ "</p>");
 		setHtml(doc, "sb-detail-players", "");
 		setDisabled(doc, "sb-connect", true);
-		setDisabled(doc, "sb-favorite-toggle", true);
 	} else {
-		std::string info = "<h2 id=\"sb-detail-name\">";
+		std::string info = "<div id=\"sb-detail-name\">";
 		info += framework::TextUtil::escapeRml(selected->name);
-		info += "</h2><p class=\"sb-detail-line\">";
-		info += framework::TextUtil::escapeRml(selected->map);
-		info += " | ";
-		info += framework::TextUtil::escapeRml(playersCell(*selected));
-		info += " | ";
-		info += framework::TextUtil::escapeRml(pingCell(*selected));
-		if (selected->password) {
-			info += " | ";
-			info += framework::TextUtil::escapeRml(token("SB_PasswordYes"));
-		}
-		if (selected->secure) {
-			info += " | ";
-			info += framework::TextUtil::escapeRml(token("SB_SecureYes"));
-		}
-		info += "</p>";
+		info += "</div>";
+		info += detailLine("SB_Address", addressCell(*selected));
+		info += detailLine("SB_ColumnMap", selected->map);
+		info += detailLine("SB_ColumnPlayers", playersCell(*selected));
+		info += detailLine("SB_ColumnBots", botsCell(*selected));
+		info += detailLine("SB_ColumnPing", pingCell(*selected));
+		if (!selected->gameDir.empty())
+			info += detailLine("SB_Game", selected->gameDir);
+		std::string security = token("SB_SecureYes");
+		if (selected->password)
+			security = token("SB_PasswordYes") + " | " + security;
+		info += detailLine("SB_Flags", security);
 		setHtml(doc, "sb-detail-info", info);
 		setDisabled(doc, "sb-connect", list.blockedOnly() || !selected->responded);
-
-		// The favorite state is READ from the authoritative store each
-		// projection (never cached: Steam is the one truth; the toggle lands
-		// through the module and the next tick re-reads).
-		const auto key = services::serverbrowser::favoriteKeyOf(*selected);
-		const bool isFavorite = Favorites && key.valid()
-			&& Favorites->isFavorite(key.ip, key.connPort, key.queryPort);
-		setDisabled(doc, "sb-favorite-toggle", !(Favorites && Favorites->available()));
-		if (Rml::Element* fav = doc->GetElementById("sb-favorite-toggle"))
-			fav->SetInnerRML(framework::TextUtil::escapeRml(
-				token(isFavorite ? "SB_FavoriteRemove" : "SB_FavoriteAdd")));
 
 		std::string players;
 		if (query.detailKind() == services::serverbrowser::DetailKind::Players
@@ -446,19 +524,182 @@ void ServerBrowserPage::render() {
 		}
 		setHtml(doc, "sb-detail-players", players);
 	}
+
+	renderControls();
+}
+
+// The sub-state projection: the blacklist view, the filter column's values,
+// the detail window's visibility and the row menu. The handlers below can
+// call it directly for immediate feedback (its own writes never re-enter).
+void ServerBrowserPage::renderControls() {
+	Rml::ElementDocument* doc = document();
+	if (!doc || !List || InControls)
+		return;
+	InControls = true;
+	const auto Node = [&](const char* id) { return doc->GetElementById(id); };
+	const bool blocked = List->blockedOnly();
+
+	if (auto* module = Node("sb-list-module"))
+		module->SetClass("sb-blacklist-mode", blocked);
+	if (auto* panel = Node("sb-blacklist-panel"))
+		panel->SetClass("sb-open", blocked);
+	if (auto* panel = Node("sb-filter-module"))
+		panel->SetClass("sb-hidden", blocked);
+
+	// The filter column's projection (the model is the one truth; a focused
+	// text control keeps what the user is typing until the change commits).
+	const auto& filter = List->filter();
+	if (auto* name = rmlui_dynamic_cast<Rml::ElementFormControl*>(Node("sb-filter-name"))) {
+		if (!name->IsPseudoClassSet("focus") && name->GetValue() != filter.Name.c_str())
+			name->SetValue(filter.Name.c_str());
+	}
+	if (auto* map = rmlui_dynamic_cast<Rml::ElementFormControl*>(Node("sb-filter-map"))) {
+		if (!map->IsPseudoClassSet("focus") && map->GetValue() != filter.Map.c_str())
+			map->SetValue(filter.Map.c_str());
+	}
+	syncSelect(doc, "sb-filter-ping", std::to_string(filter.MaxPing));
+	syncSelect(doc, "sb-filter-empty", filter.hideEmpty ? "1" : "0");
+	syncSelect(doc, "sb-filter-full", filter.hideFull ? "1" : "0");
+	syncSelect(doc, "sb-filter-secure", filter.secureOnly ? "1" : "0");
+	syncSelect(doc, "sb-filter-password", filter.NoPassword ? "1" : "0");
+
+	// The detail window: a modal subpage. Its content is projected by
+	// render(); this only moves the visibility.
+	if (auto* overlay = Node("sb-detail-overlay"))
+		overlay->SetClass("sb-open", DetailsOpen);
+
+	// The row menu: the favorite entry reads the store through (Steam is the
+	// one truth), and an unavailable store leaves the entry inert.
+	if (auto* menu = Node("sb-context-menu"))
+		menu->SetClass("sb-open", MenuOpen);
+	const bool favoriteAvailable = Favorites && Favorites->available();
+	if (auto* entry = Node("sb-menu-favorite")) {
+		bool isFavorite = false;
+		if (Favorites && Query) {
+			if (const ServerEntry* selected = List->selectedEntry(*Query)) {
+				const auto key = services::serverbrowser::favoriteKeyOf(*selected);
+				isFavorite = key.valid() && Favorites->isFavorite(key.ip, key.connPort, key.queryPort);
+			}
+		}
+		entry->SetInnerRML(framework::TextUtil::escapeRml(
+			token(isFavorite ? "SB_FavoriteRemove" : "SB_FavoriteAdd")));
+		entry->SetClass("sb-disabled", !favoriteAvailable);
+	}
+	if (auto* entry = Node("sb-menu-join"))
+		entry->SetClass("sb-disabled", List->blockedOnly());
+	if (auto* entry = Node("sb-menu-block"))
+		entry->SetClass("sb-disabled", List->blockedOnly());
+	if (auto* entry = Node("sb-menu-block-ip"))
+		entry->SetClass("sb-disabled", List->blockedOnly());
+
+	// The blacklist editor.
+	if (Blacklist && Node("sb-blacklist-rules")) {
+		std::string Markup;
+		for (const auto& Rule : Blacklist->rules()) {
+			Markup += "<div class=\"sb-blacklist-rule\"><span>"
+				+ framework::TextUtil::escapeRml(Rule.address() + " " + Rule.Name)
+				+ "</span><button data-action=\"sb-rule-remove\" data-address=\""
+				+ Rule.address() + "\">" + framework::TextUtil::escapeRml(token("SB_Unblock")) + "</button></div>";
+		}
+		Node("sb-blacklist-rules")->SetInnerRML(Markup);
+	}
+	if (auto* status = Node("sb-blacklist-status"))
+		status->SetInnerRML(framework::TextUtil::escapeRml(RuleStatus));
+	InControls = false;
+}
+
+// Opens the row's secondary menu at the click point, clamped into the
+// viewport (the menu is 132dp wide and 4 x 20dp tall plus padding).
+void ServerBrowserPage::openContextMenu(int x, int y) {
+	Rml::ElementDocument* doc = document();
+	if (!doc)
+		return;
+	Rml::Element* menu = doc->GetElementById("sb-context-menu");
+	if (!menu)
+		return;
+	MenuOpen = true;
+	const float ratio = doc->GetContext() ? doc->GetContext()->GetDensityIndependentPixelRatio() : 1.0f;
+	const int width = static_cast<int>(132.0f * ratio) + 6;
+	const int height = static_cast<int>((4 * 20 + 4 + 2) * ratio) + 6;
+	const int viewportW = static_cast<int>(doc->GetClientWidth());
+	const int viewportH = static_cast<int>(doc->GetClientHeight());
+	int left = x;
+	int top = y;
+	if (viewportW > 0 && left + width > viewportW)
+		left = x - width;
+	if (viewportH > 0 && top + height > viewportH)
+		top = y - height;
+	if (left < 0)
+		left = 0;
+	if (top < 0)
+		top = 0;
+	char buffer[32];
+	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "%dpx", left);
+	menu->SetProperty("left", buffer);
+	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "%dpx", top);
+	menu->SetProperty("top", buffer);
+	menu->SetClass("sb-open", true);
+}
+
+void ServerBrowserPage::closeContextMenu() {
+	if (!MenuOpen)
+		return;
+	MenuOpen = false;
+	Projected = false;
+	renderControls();
+}
+
+void ServerBrowserPage::closeDetails() {
+	if (!DetailsOpen)
+		return;
+	DetailsOpen = false;
+	if (Query)
+		Query->cancelDetail();  // the window is the only consumer of the slot
+	Projected = false;
 	renderControls();
 }
 
 void ServerBrowserPage::handleClick(Rml::Event& event) {
+	Rml::Element* target = event.GetTargetElement();
+	Rml::ElementDocument* doc = document();
+	Rml::Element* menu = doc ? doc->GetElementById("sb-context-menu") : nullptr;
+	const bool insideMenu = target && menu && insideNode(target, menu);
+	if (!insideMenu)
+		closeContextMenu();  // any click outside the menu dismisses it
+	Rml::Element* entry = actionNode(target);
+	const Rml::String action = entry ? entry->GetAttribute<Rml::String>("data-action", "") : "";
+
+	if (insideMenu && MenuOpen) {
+		// The secondary menu entries: join/favorite travel to the module,
+		// the blacklist mutations stay page-owned. A dimmed entry is inert.
+		if (entry && !entry->IsClassSet("sb-disabled") && !action.empty()) {
+			if (action == kActionConnect || action == kActionFavoriteToggle) {
+				const ActionSink Action = Sink;
+				if (Action)
+					Action(action.c_str());
+			} else if (action == "sb-block" || action == "sb-block-ip") {
+				handleControls(event);
+			}
+		}
+		closeContextMenu();
+		return;
+	}
+
+	if (DetailsOpen) {
+		// A modal subpage: only the Close button answers; every other click
+		// inside the background is inert.
+		if (action == "sb-detail-close")
+			closeDetails();
+		return;
+	}
 	if (handleControls(event))
 		return;
-	Rml::Element* entry = actionNode(event.GetTargetElement());
 	if (!entry)
 		return;
-	const Rml::String action = entry->GetAttribute<Rml::String>("data-action", "");
 
 	// Page-internal view state first: selection, sort, paging (no module trip;
-	// the re-render is immediate, within this click).
+	// the re-render is the next tick's - the DOM is never rebuilt from inside
+	// its own event dispatch).
 	if (action == kActionRow) {
 		if (!List || !Query)
 			return;
@@ -468,7 +709,8 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 		if (selected)
 			Query->requestPlayers(*selected);  // single-slot replace (T17 model)
 		List->sync(*Query);
-		render();
+		DetailsOpen = selected != nullptr;  // the left click opens the window
+		Projected = false;
 		return;
 	}
 	if (action == kActionSort) {
@@ -488,36 +730,58 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 			List->setSort(sort, !List->sortAscending());
 		else
 			List->setSort(sort, true);
-		render();
+		Projected = false;
 		return;
 	}
 	if (action == kActionPagePrev) {
 		if (List && List->pagePrev())
-			render();
+			Projected = false;
 		return;
 	}
 	if (action == kActionPageNext) {
 		if (List && List->pageNext())
-			render();
+			Projected = false;
 		return;
 	}
 
 	// Module intents (fixed names; the module owns the query lifecycle, the
 	// filter truth and every engine/Steam mutation, the tick re-projects).
 	if (action == kActionTabInternet || action == kActionTabLan || action == kActionTabFavorites
-		|| action == kActionTabHistory || action == "sb-tab-friends" || action == kActionRefresh || action == kActionStop
-		|| action == kActionFilterEmpty || action == kActionFilterFull
-		|| action == kActionFilterSecure || action == kActionConnect
-		|| action == kActionFavoriteToggle || action == kActionReturn) {
+		|| action == kActionTabHistory || action == "sb-tab-friends" || action == kActionRefresh
+		|| action == kActionStop || action == kActionConnect
+		|| action == kActionFavoriteToggle || action == kActionReturn
+		|| action == "sb-filters-apply") {
 		const ActionSink Action = Sink;
 		if (Action)
 			Action(action.c_str());
 	}
 }
 
+// Right click on a row: select it (no detail request - it stays a view
+// action) and open the secondary menu at the pointer.
+void ServerBrowserPage::handleMouseDown(Rml::Event& event) {
+	if (event.GetParameter<int>("button", 0) != 1)
+		return;
+	if (DetailsOpen || !List || !Query || List->blockedOnly())
+		return;
+	Rml::Element* row = rowNode(event.GetTargetElement());
+	if (!row)
+		return;
+	const Rml::String rowText = row->GetAttribute<Rml::String>("data-row", "-1");
+	List->selectRow(std::atoi(rowText.c_str()));
+	List->sync(*Query);
+	openContextMenu(event.GetParameter<int>("mouse_x", 0), event.GetParameter<int>("mouse_y", 0));
+	if (document())
+		if (Rml::Element* first = document()->GetElementById("sb-menu-join"))
+			first->Focus();
+	Projected = false;
+}
+
 void ServerBrowserPage::PageListener::ProcessEvent(Rml::Event& event) {
 	if (event.GetType() == "change")
 		Owner->handleChange(event);
+	else if (event.GetType() == "mousedown")
+		Owner->handleMouseDown(event);
 	else
 		Owner->handleClick(event);
 }
@@ -527,4 +791,4 @@ void ServerBrowserPage::refocusDefault() {
 		fallback->Focus();
 }
 
-}
+}  // namespace panels::serverbrowser

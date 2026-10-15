@@ -1,3 +1,8 @@
+// The page-owned controls of the find-servers page (the 2026-10-15
+// redesign): ESC subpage handling, the docked filter column, the quick
+// refresh of the current page, the blacklist editor and the row menu's
+// blacklist entries. Module intents travel through the sink instead (see
+// ServerBrowserPage.cpp).
 #include "ServerBrowserPage.h"
 #include "framework/Localization.h"
 #include "framework/TextUtil.h"
@@ -18,98 +23,86 @@ Rml::Element* actionNode(Rml::Element* Node) {
 		if (Node->HasAttribute("data-action")) return Node;
 	return nullptr;
 }
+int intValue(const Rml::String& Text, int Fallback) {
+	int Value = 0;
+	const auto R = std::from_chars(Text.data(), Text.data() + Text.size(), Value);
+	if (R.ec == std::errc() && R.ptr == Text.data() + Text.size())
+		return Value;
+	return Fallback;
 }
+}  // namespace
+
+// ESC on the page closes one subpage: the row menu first, then the detail
+// window. False hands the press back to the module (leave the page).
 bool ServerBrowserPage::closeSubpage() {
-	if (!FilterOpen) return false;
-	FilterOpen = false;
-	renderControls();
-	refocusDefault();
-	return true;
-}
-void ServerBrowserPage::renderControls() {
-	if (!document() || !List || InControls) return;
-	InControls = true;
-	auto Node = [&](const char* Id) { return document()->GetElementById(Id); };
-	if (auto* Panel = Node("sb-filter-panel")) Panel->SetProperty("display", FilterOpen ? "block" : "none");
-	if (auto* Panel = Node("sb-panel")) Panel->SetClass("sb-blacklist-mode", List->blockedOnly());
-	if (auto* Panel = Node("sb-blacklist-panel")) Panel->SetProperty("display", List->blockedOnly() ? "block" : "none");
-	if (auto* Tab = Node("sb-tab-blacklist")) Tab->SetClass("sb-active", List->blockedOnly());
-	for (const auto* Id : {"sb-filter-empty", "sb-filter-full", "sb-filter-secure", "sb-filter-password"}) {
-		bool On = std::string(Id) == "sb-filter-empty" ? DraftFilter.hideEmpty
-			: std::string(Id) == "sb-filter-full" ? DraftFilter.hideFull
-			: std::string(Id) == "sb-filter-secure" ? DraftFilter.secureOnly : DraftFilter.NoPassword;
-		if (auto* Button = Node(Id)) Button->SetClass("sb-on", On);
+	if (MenuOpen) {
+		closeContextMenu();
+		refocusDefault();
+		return true;
 	}
-	if (Blacklist && Node("sb-blacklist-rules")) {
-		std::string Markup;
-		for (const auto& Rule : Blacklist->rules()) {
-			Markup += "<div class=\"sb-blacklist-rule\"><span>"
-				+ framework::TextUtil::escapeRml(Rule.address() + " " + Rule.Name)
-				+ "</span><button data-action=\"sb-rule-remove\" data-address=\""
-				+ Rule.address() + "\">" + framework::TextUtil::escapeRml(label("SB_Unblock")) + "</button></div>";
-		}
-		Node("sb-blacklist-rules")->SetInnerRML(Markup);
+	if (DetailsOpen) {
+		closeDetails();
+		refocusDefault();
+		return true;
 	}
-	if (auto* Status = Node("sb-blacklist-status"))
-		Status->SetInnerRML(framework::TextUtil::escapeRml(RuleStatus));
-	if (!RuleStatus.empty() && Node("sb-status"))
-		Node("sb-status")->SetInnerRML(framework::TextUtil::escapeRml(RuleStatus));
-	InControls = false;
+	return false;
 }
 
+// Page-owned controls, resolved before any module intent is dispatched.
 bool ServerBrowserPage::handleControls(Rml::Event& Event) {
-	auto* Entry = actionNode(Event.GetTargetElement());
+	Rml::Element* Entry = actionNode(Event.GetTargetElement());
 	if (!Entry || !List || !Query) return false;
 	const auto Action = Entry->GetAttribute<Rml::String>("data-action", "");
-	if (Action == "sb-filters") {
-		DraftFilter = List->filter();
-		FilterOpen = true;
-		InControls = true;
-		auto SetText = [&](const char* Id, const std::string& Text) {
-			if (auto* Control = rmlui_dynamic_cast<Rml::ElementFormControl*>(document()->GetElementById(Id)))
-				Control->SetValue(Text);
-		};
-		SetText("sb-filter-name", DraftFilter.Name);
-		SetText("sb-filter-map", DraftFilter.Map);
-		if (auto* Ping = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(document()->GetElementById("sb-filter-ping"))) {
-			Ping->RemoveAll();
-			Ping->Add(DraftFilter.MaxPing ? std::to_string(DraftFilter.MaxPing) + " ms" : label("SB_Any"),
-				std::to_string(DraftFilter.MaxPing));
-			for (int Max : {0, 50, 100, 150, 250, 350, 500}) {
-				if (Max == DraftFilter.MaxPing) continue;
-				Ping->Add(Max ? std::to_string(Max) + " ms" : label("SB_Any"), std::to_string(Max));
+	if (Action == "sb-detail-close") {
+		closeDetails();
+		refocusDefault();
+		return true;
+	}
+	if (Action == "sb-quick-refresh") {
+		// Quick refresh re-pings ONLY the servers of the current page through
+		// the list handle - no master server round trip. With no live list
+		// the module's ordinary refresh is the honest fallback.
+		using services::serverbrowser::QueryStatus;
+		const auto Status = Query->status();
+		const bool Live = Query->listRequest() != 0
+			&& (Status == QueryStatus::Querying || Status == QueryStatus::Completed);
+		int Refreshed = 0;
+		if (Live && !List->blockedOnly()) {
+			for (int Row = 0; Row < services::serverbrowser::ServerListModel::kPageSize; ++Row) {
+				const int Index = List->entryIndexAt(Row);
+				if (Index < 0)
+					break;
+				if (Query->refreshServer(Index))
+					++Refreshed;
 			}
-			Ping->SetSelection(0);
 		}
-		InControls = false;
-		renderControls();
-		if (auto* Name = document()->GetElementById("sb-filter-name")) Name->Focus();
+		if (Refreshed == 0) {
+			const ActionSink Action = Sink;
+			if (Action)
+				Action("sb-refresh");
+		}
+		Projected = false;
 		return true;
 	}
-	if (Action == "sb-filters-cancel") { closeSubpage(); return true; }
-	if (Action == "sb-filters-apply") {
-		if (!FilterOpen) return true;
-		List->setFilter(DraftFilter);
-		closeSubpage();
-		const auto Callback = Sink;
-		if (Callback) Callback("sb-filters-apply");
+	if (Action == "sb-filters-reset") {
+		// Reset restores every filter to its default; the game identity
+		// (gamedir) and the cvar-owned unresponsive rule stay. The module
+		// re-issues the query so the master-side pairs follow.
+		services::serverbrowser::ServerFilter Reset;
+		Reset.gameDir = List->filter().gameDir;
+		Reset.HideUnresponsive = List->filter().HideUnresponsive;
+		List->setFilter(Reset);
+		Projected = false;
+		const ActionSink Action = Sink;
+		if (Action)
+			Action("sb-filters-apply");
 		return true;
 	}
-	if (Action == "sb-filter-empty" || Action == "sb-filter-full" || Action == "sb-filter-secure"
-		|| Action == "sb-filter-password") {
-		if (!FilterOpen) return true;
-		if (Action == "sb-filter-empty") DraftFilter.hideEmpty = !DraftFilter.hideEmpty;
-		if (Action == "sb-filter-full") DraftFilter.hideFull = !DraftFilter.hideFull;
-		if (Action == "sb-filter-secure") DraftFilter.secureOnly = !DraftFilter.secureOnly;
-		if (Action == "sb-filter-password") DraftFilter.NoPassword = !DraftFilter.NoPassword;
-		renderControls();
-		return true;
-	}
-	if (FilterOpen) return true; // background rows/actions cannot bypass the subpage
 	if (Action == "sb-tab-blacklist") {
 		List->setBlockedOnly(true);
 		Query->cancelDetail();
-		tick();
+		DetailsOpen = false;
+		Projected = false;
 		return true;
 	}
 	if (Action.rfind("sb-tab-", 0) == 0) {
@@ -132,23 +125,64 @@ bool ServerBrowserPage::handleControls(Rml::Event& Event) {
 		}
 		RuleStatus = label(Ok ? "SB_BlacklistSaved" : "SB_BlacklistError");
 		Projected = false;
-		tick();
+		renderControls();
 		return true;
 	}
 	return false;
 }
+
+// The docked filter column's change events. Text and ping filters apply
+// client-side only; the three master-pair toggles report the change to the
+// module (which re-issues the query). Every path re-checks the model value
+// first: a projection write that echoes the same value is a no-op, so the
+// select's own change echo cannot loop.
 void ServerBrowserPage::handleChange(Rml::Event& Event) {
-	if (!FilterOpen || InControls || !Event.GetTargetElement()) return;
+	if (!List || !Query || InControls || !Event.GetTargetElement()) return;
 	const auto Id = Event.GetTargetElement()->GetId();
 	const auto Text = Event.GetParameter<Rml::String>("value", "");
 	if (Text.size() > 256) return;
-	if (Id == "sb-filter-name") DraftFilter.Name = Text;
-	if (Id == "sb-filter-map") DraftFilter.Map = Text;
-	if (Id == "sb-filter-ping") {
-		int Value = 0;
-		auto R = std::from_chars(Text.data(), Text.data() + Text.size(), Value);
-		if (R.ec == std::errc() && R.ptr == Text.data() + Text.size() && Value >= 0 && Value <= 500)
-			DraftFilter.MaxPing = Value;
+	services::serverbrowser::ServerFilter Filter = List->filter();
+	bool Changed = false;
+	bool MasterPair = false;
+	if (Id == "sb-filter-name") {
+		Changed = Filter.Name != Text.c_str();
+		Filter.Name = Text.c_str();
+	} else if (Id == "sb-filter-map") {
+		Changed = Filter.Map != Text.c_str();
+		Filter.Map = Text.c_str();
+	} else if (Id == "sb-filter-ping") {
+		const int Value = intValue(Text, Filter.MaxPing);
+		if (Value < 0 || Value > 500) return;
+		Changed = Filter.MaxPing != Value;
+		Filter.MaxPing = Value;
+	} else if (Id == "sb-filter-password") {
+		const bool Value = Text == "1";
+		Changed = Filter.NoPassword != Value;
+		Filter.NoPassword = Value;
+	} else if (Id == "sb-filter-empty" || Id == "sb-filter-full" || Id == "sb-filter-secure") {
+		const bool Value = Text == "1";
+		if (Id == "sb-filter-empty") {
+			Changed = Filter.hideEmpty != Value;
+			Filter.hideEmpty = Value;
+		} else if (Id == "sb-filter-full") {
+			Changed = Filter.hideFull != Value;
+			Filter.hideFull = Value;
+		} else {
+			Changed = Filter.secureOnly != Value;
+			Filter.secureOnly = Value;
+		}
+		MasterPair = true;
+	} else {
+		return;
+	}
+	if (!Changed) return;
+	List->setFilter(Filter);
+	Projected = false;
+	if (MasterPair) {
+		// The master-side pair moved: the module re-issues the list query.
+		const ActionSink Action = Sink;
+		if (Action)
+			Action(Id.c_str());
 	}
 }
 } // namespace panels::serverbrowser

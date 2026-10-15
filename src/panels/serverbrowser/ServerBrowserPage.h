@@ -28,7 +28,23 @@
 // Details: selecting a row issues the single-slot player query directly on
 // the model (the model's own discipline replaces the previous detail request
 // and drops stale generations - T17 step b; T18a step 3 "旧选中项响应不得
-// 覆盖新详情"). The detail panel renders the CURRENT slot only.
+// 覆盖新详情"). The detail WINDOW renders the CURRENT slot only.
+//
+// 2026-10-15 redesign (four modules, main-menu theme):
+//   - The filter column is docked at the right edge instead of a modal
+//     subpage: text/ping controls apply client-side on change, the three
+//     master-pair toggles report their change to the module (which re-issues
+//     the list query), and the reset button restores the defaults.
+//   - A LEFT click on a row selects it and opens the server detail window
+//     (a modal subpage: the background is inert while it is up; ESC and the
+//     Close button dismiss it - closeSubpage()).
+//   - A RIGHT click on a row selects it and opens the row's secondary menu
+//     (join, favorite toggle, block address, block entire IP). The entries
+//     reuse the fixed module intents (sb-connect / sb-favorite-toggle) and
+//     the page-owned blacklist mutations (sb-block / sb-block-ip).
+//   - Quick refresh re-pings only the servers of the current page
+//     (ServerQuery::refreshServer, no master round trip); with no live
+//     request it falls back to the module's refresh intent.
 
 #include "../../framework/InteractiveDocument.h"
 #include "../../services/serverbrowser/ServerFavorites.h"
@@ -56,7 +72,8 @@ namespace serverbrowser {
 
 // Same seam contract as the other menu windows: fixed page-internal action
 // names only ("sb-tab-*", "sb-refresh", "sb-stop", "sb-filter-*",
-// "sb-sort"/"sb-row"/"sb-page-*" resolved inside the page, "sb-connect"/
+// "sb-sort"/"sb-row"/"sb-page-*"/"sb-quick-refresh"/"sb-detail-close"/
+// "sb-filters-reset" resolved inside the page, "sb-connect"/
 // "sb-favorite-toggle"/"return" reported to the module).
 using ActionSink = std::function<void(const char* action)>;
 
@@ -90,7 +107,8 @@ protected:
 	void onDocumentReady() override;
 
 private:
-	// One delegated listener: click on the document (bubbling).
+	// One delegated listener: click / mousedown / change on the document
+	// (bubbling).
 	class PageListener final : public Rml::EventListener {
 	public:
 		explicit PageListener(ServerBrowserPage* owner) : Owner(owner) {}
@@ -101,8 +119,13 @@ private:
 	};
 
 	void handleClick(Rml::Event& event);
+	void handleMouseDown(Rml::Event& event);
 	bool handleControls(Rml::Event& Event);
 	void handleChange(Rml::Event& Event);
+	void openContextMenu(int x, int y);
+	void closeContextMenu();
+	void closeDetails();
+	void buildFilterOptions();
 	void renderControls();
 	void render();
 	std::size_t projectionSignature() const;
@@ -112,8 +135,10 @@ private:
 	services::serverbrowser::ServerListModel* List = nullptr;
 	services::serverbrowser::IServerFavorites* Favorites = nullptr;
 	services::serverbrowser::ServerBlacklist* Blacklist = nullptr;
-	services::serverbrowser::ServerFilter DraftFilter;
-	bool FilterOpen = false;
+	// The detail window is up (a modal subpage).
+	bool DetailsOpen = false;
+	// The row's secondary menu is up.
+	bool MenuOpen = false;
 	bool InControls = false;
 	std::string RuleStatus;
 	PageListener Listener;
