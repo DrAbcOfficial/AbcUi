@@ -284,3 +284,55 @@ if(ABC_GAME_DIR)
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
         COMMENT "Deploying AbcUi.dll, FreeImage.dll and assets to ${ABC_GAME_DIR}")
 endif()
+
+# --- Packaging ---------------------------------------------------------------
+# `cmake --build <build-dir> --config Release --target dist` produces
+# AbcUi-<version>.zip, laid out to unpack into the Sven Co-op root:
+#   AbcUi-<version>/svencoop/metahook/plugins/AbcUi.dll
+#   AbcUi-<version>/svencoop/metahook/dlls/FreeImage/FreeImage.dll
+#   AbcUi-<version>/svencoop/metahook/dlls/Mile.FFmpeg/Mile.FFmpeg.dll
+#   AbcUi-<version>/svencoop/metahook/gamedata/abcui/** (generated symbols)
+#   AbcUi-<version>/svencoop/metahook/gamedata/abcui-layout/** (native layouts)
+#   AbcUi-<version>/svencoop/abc/abcui/** (rml/rcss/images/lang/config/scence)
+#   AbcUi-<version>/README.md
+# The target is named `dist` because `package` is reserved by the CPack
+# configuration that thirdparty/FreeImage pulls in.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins.cpp" ABC_UI_VERSION_LINE
+    REGEX "CAbcPluginBase\\(\"AbcUi\"")
+string(REGEX MATCH "\"([0-9]+\\.[0-9]+\\.[0-9]+)\"" ABC_UI_VERSION "${ABC_UI_VERSION_LINE}")
+set(ABC_UI_VERSION "${CMAKE_MATCH_1}")
+if(NOT ABC_UI_VERSION)
+    message(WARNING "Could not parse the AbcUi version from src/plugins.cpp; packaging as 0.0.0")
+    set(ABC_UI_VERSION "0.0.0")
+endif()
+set(ABC_UI_STAGE_DIR "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/dist")
+add_custom_target(dist
+    COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ABC_UI_STAGE_DIR}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/FreeImage"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/Mile.FFmpeg"
+        "${ABC_UI_STAGE_DIR}/svencoop/abc"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:AbcUi>"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:FreeImage>"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/FreeImage/"
+    COMMAND "${CMAKE_COMMAND}" -E copy "${ABCUI_MILE_FFMPEG_SDK}/Redist/x86/Mile.FFmpeg.dll"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/Mile.FFmpeg/"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/abcui"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abcui"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abcui-layout"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui"
+        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui"
+    COMMAND "${CMAKE_COMMAND}" -E rm -f "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/.gitkeep"
+    COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
+    COMMAND "${CMAKE_COMMAND}" -E tar cfv "AbcUi-${ABC_UI_VERSION}.zip" --format=zip
+        "AbcUi-${ABC_UI_VERSION}"
+    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
+    DEPENDS AbcUi AbcUiGameData FreeImage
+    COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")

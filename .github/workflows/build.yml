@@ -1,0 +1,80 @@
+name: build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.config }}
+    runs-on: windows-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        config: [Debug, Release]
+    steps:
+      # The pinned Renderer commit currently only exists in the DrAbcOfficial
+      # fork (upstream PR open); keep recursive submodule fetches working until
+      # the commit lands in MetaHookSv/Renderer.
+      - name: Route the Renderer submodule through the fork
+        shell: pwsh
+        run: |
+          git config --global url."https://github.com/DrAbcOfficial/Renderer".insteadOf "https://github.com/MetaHookSv/Renderer"
+
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          # AbcCore is a private submodule until the repositories are
+          # published; while private, provide a fine-grained token with
+          # contents:read on the DrAbcOfficial repositories as the
+          # SUBMODULE_TOKEN secret. Public repositories need no token.
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+          submodules: recursive
+
+      # The runner image ships an older CMake than the project requires; the
+      # newest release number is resolved at run time through the GitHub CLI.
+      - name: Install the latest CMake (resolved through gh)
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = gh api repos/Kitware/CMake/releases/latest --jq .tag_name
+          if (-not $tag) { $tag = 'v4.4.4' }
+          $version = $tag.TrimStart('v')
+          $url = "https://github.com/Kitware/CMake/releases/download/$tag/cmake-$version-windows-x86_64.zip"
+          Write-Host "Installing CMake $version from $url"
+          Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\cmake.zip"
+          Expand-Archive -Path "$env:RUNNER_TEMP\cmake.zip" -DestinationPath "$env:RUNNER_TEMP\cmake" -Force
+          "$env:RUNNER_TEMP\cmake\cmake-$version-windows-x86_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Configure
+        # The CMake presets pin the Visual Studio 18 2026 generator, which the
+        # runner image does not carry yet; configure the same Win32/x86 target
+        # with the bundled Visual Studio 2022 generator instead.
+        run: |
+          cmake --version
+          cmake -S . -B build/ci -G "Visual Studio 17 2022" -A Win32
+
+      - name: Build (${{ matrix.config }})
+        run: cmake --build build/ci --config ${{ matrix.config }} --parallel
+
+      - name: Package (Release)
+        if: matrix.config == 'Release'
+        run: cmake --build build/ci --config Release --target dist
+
+      - name: Upload package
+        if: matrix.config == 'Release'
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: AbcUi-package
+          path: build/ci/dist/*.zip
+          if-no-files-found: error
