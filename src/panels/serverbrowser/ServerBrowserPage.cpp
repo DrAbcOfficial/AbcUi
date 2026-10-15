@@ -13,6 +13,7 @@
 
 #include <abc/Console.h>
 
+#include <ctime>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -181,6 +182,23 @@ std::string playTime(int seconds) {
 	return buffer;
 }
 
+// The blacklist's "blocked at" cell. A rule written before the timestamp
+// existed stays visibly unknown ("-") - never an invented date.
+std::string blockedAtCell(uint64_t seconds) {
+	constexpr uint64_t kMinimum = 946684800ull;   // 2000-01-01
+	constexpr uint64_t kMaximum = 4102444800ull;  // 2100-01-01 (the store bound)
+	if (seconds < kMinimum || seconds > kMaximum)
+		return "-";
+	const std::time_t stamp = static_cast<std::time_t>(seconds);
+	std::tm parts{};
+	if (localtime_s(&parts, &stamp) != 0)
+		return "-";
+	char buffer[32];
+	_snprintf_s(buffer, sizeof(buffer), _TRUNCATE, "%04d-%02d-%02d %02d:%02d",
+		parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday, parts.tm_hour, parts.tm_min);
+	return buffer;
+}
+
 const char* tabActionOf(QueryKind kind) {
 	switch (kind) {
 	case QueryKind::Internet:
@@ -283,6 +301,7 @@ std::size_t ServerBrowserPage::projectionSignature() const {
 	mixValue(hash, list.blockedOnly());
 	mixValue(hash, DetailsOpen);
 	mixValue(hash, MenuOpen);
+	mixValue(hash, AutoRetryJoin);
 	if (Blacklist) mixValue(hash, Blacklist->revision());
 	const auto& filter = list.filter();
 	mixValue(hash, filter.hideEmpty);
@@ -381,9 +400,11 @@ void ServerBrowserPage::render() {
 	if (!RuleStatus.empty())
 		status = RuleStatus;  // the blacklist editor's own feedback wins
 	setHtml(doc, "sb-status", framework::TextUtil::escapeRml(status));
-	// The module bar's left half: the visible row count of the active view.
-	setHtml(doc, "sb-count", framework::TextUtil::escapeRml(
-		tokenValue("SB_ServerCount", list.rowCount())));
+	// The module bar's left half: the visible row count of the active view
+	// (the blacklist view counts blocked rules, not servers).
+	setHtml(doc, "sb-count", framework::TextUtil::escapeRml(list.blockedOnly()
+		? tokenValue("SB_BlacklistCount", list.rowCount())
+		: tokenValue("SB_ServerCount", list.rowCount())));
 
 	// --- tabs ---------------------------------------------------------------
 	for (auto Kind : {QueryKind::Internet, QueryKind::Lan, QueryKind::Favorites, QueryKind::History, QueryKind::Friends}) {
@@ -403,9 +424,9 @@ void ServerBrowserPage::render() {
 		refresh->SetInnerRML(framework::TextUtil::escapeRml(token(live ? "SB_Stop" : "SB_Refresh")));
 		setDisabled(doc, "sb-refresh", false);
 	}
-	// Quick refresh re-pings the page's own servers: meaningless while the
-	// list query is still running, and in the blacklist view.
-	setDisabled(doc, "sb-quick-refresh", query.status() == QueryStatus::Querying || list.blockedOnly());
+	// 自动重试 is a toggle: the lit state is the player's own switch.
+	if (Rml::Element* toggle = doc->GetElementById("sb-auto-retry"))
+		toggle->SetClass("sb-toggled", AutoRetryJoin);
 
 	// --- sort markers -------------------------------------------------------
 	const auto mark = [&](const char* id, services::serverbrowser::ServerSort column) {
@@ -603,10 +624,18 @@ void ServerBrowserPage::renderControls() {
 	if (Blacklist && Node("sb-blacklist-rules")) {
 		std::string Markup;
 		for (const auto& Rule : Blacklist->rules()) {
-			Markup += "<div class=\"sb-blacklist-rule\"><span>"
-				+ framework::TextUtil::escapeRml(Rule.address() + " " + Rule.Name)
-				+ "</span><button data-action=\"sb-rule-remove\" data-address=\""
-				+ Rule.address() + "\">" + framework::TextUtil::escapeRml(token("SB_Unblock")) + "</button></div>";
+			// The Source dialog's shape: the blocked server, its address and
+			// the moment it was blocked. A rule with no recorded name stays
+			// visibly unnamed instead of repeating its address as a label.
+			Markup += "<div class=\"sb-blacklist-rule\"><span class=\"bl-name\">"
+				+ framework::TextUtil::escapeRml(Rule.Name.empty() ? "-" : Rule.Name)
+				+ "</span><span class=\"bl-ip\">"
+				+ framework::TextUtil::escapeRml(Rule.address())
+				+ "</span><span class=\"bl-time\">"
+				+ framework::TextUtil::escapeRml(blockedAtCell(Rule.BlockedAt))
+				+ "</span><span class=\"bl-action\"><button data-action=\"sb-rule-remove\" data-address=\""
+				+ Rule.address() + "\">" + framework::TextUtil::escapeRml(token("SB_Unblock"))
+				+ "</button></span></div>";
 		}
 		Node("sb-blacklist-rules")->SetInnerRML(Markup);
 	}
@@ -697,10 +726,17 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 	}
 
 	if (DetailsOpen) {
-		// A modal subpage: only the Close button answers; every other click
-		// inside the background is inert.
-		if (action == "sb-detail-close")
+		// A modal subpage: only its own bottom row answers; every other click
+		// inside the background is inert. 加入 joins the shown server through
+		// the ordinary connect intent (the selection is the shown server).
+		if (action == "sb-detail-close") {
 			closeDetails();
+			refocusDefault();
+		} else if (action == kActionConnect) {
+			const ActionSink Action = Sink;
+			if (Action)
+				Action(action.c_str());
+		}
 		return;
 	}
 	if (handleControls(event))
@@ -711,6 +747,11 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 	// Page-internal view state first: selection, sort, paging (no module trip;
 	// the re-render is the next tick's - the DOM is never rebuilt from inside
 	// its own event dispatch).
+	if (action == "sb-auto-retry") {
+		AutoRetryJoin = !AutoRetryJoin;
+		Projected = false;
+		return;
+	}
 	if (action == kActionRow) {
 		if (!List || !Query)
 			return;

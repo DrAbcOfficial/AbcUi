@@ -37,14 +37,18 @@
 //     the list query), and the reset button restores the defaults.
 //   - A LEFT click on a row selects it and opens the server detail window
 //     (a modal subpage: the background is inert while it is up; ESC and the
-//     Close button dismiss it - closeSubpage()).
+//     Close button dismiss it - closeSubpage(). The window's own 加入/关闭
+//     buttons live in its bottom row).
 //   - A RIGHT click on a row selects it and opens the row's secondary menu
 //     (join, favorite toggle, block address, block entire IP). The entries
 //     reuse the fixed module intents (sb-connect / sb-favorite-toggle) and
 //     the page-owned blacklist mutations (sb-block / sb-block-ip).
-//   - Quick refresh re-pings only the servers of the current page
-//     (ServerQuery::refreshServer, no master round trip); with no live
-//     request it falls back to the module's refresh intent.
+//   - The action bar reads 加入 / 自动重试 / 刷新 / 返回: join, the join
+//     auto-retry toggle (the module re-enters the typed retry path when a
+//     join fails), refresh (which reads as Stop while a list query is live)
+//     and return. 自动重试 is page-owned view state, like sort and paging.
+//   - The blacklist view is a table (name / address / blocked-at), the
+//     Source dialog's shape.
 
 #include "../../framework/InteractiveDocument.h"
 #include "../../services/serverbrowser/ServerFavorites.h"
@@ -72,8 +76,8 @@ namespace serverbrowser {
 
 // Same seam contract as the other menu windows: fixed page-internal action
 // names only ("sb-tab-*", "sb-refresh", "sb-stop", "sb-filter-*",
-// "sb-sort"/"sb-row"/"sb-page-*"/"sb-quick-refresh"/"sb-detail-close"/
-// "sb-filters-reset" resolved inside the page, "sb-connect"/
+// "sb-sort"/"sb-row"/"sb-page-*"/"sb-auto-retry"/"sb-detail-close"/
+// "sb-filters-reset"/"sb-block*" resolved inside the page, "sb-connect"/
 // "sb-favorite-toggle"/"return" reported to the module).
 using ActionSink = std::function<void(const char* action)>;
 
@@ -87,6 +91,10 @@ public:
 	void setListModel(services::serverbrowser::ServerListModel* model) { List = model; }
 	void setBlacklist(services::serverbrowser::ServerBlacklist* Value) { Blacklist = Value; }
 	bool closeSubpage();
+	// 自动重试 (the action bar's toggle): the module reads it when a join
+	// attempt fails and re-enters the typed retry path itself; the page owns
+	// the switch's truth (view state, like sort and paging).
+	bool autoRetryJoin() const { return AutoRetryJoin; }
 	// T18b: the authoritative favorites store (Steam) for the selected-row
 	// state projection; never written from here - the module owns mutations
 	// (the page only reports the toggle intent).
@@ -139,6 +147,8 @@ private:
 	bool DetailsOpen = false;
 	// The row's secondary menu is up.
 	bool MenuOpen = false;
+	// 自动重试 enabled (the action bar toggle; off by default).
+	bool AutoRetryJoin = false;
 	bool InControls = false;
 	std::string RuleStatus;
 	PageListener Listener;

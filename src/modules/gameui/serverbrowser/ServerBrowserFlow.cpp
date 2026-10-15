@@ -55,6 +55,9 @@ void GameUiModule::connectSelectedServer() {
 	// live attempt only - a cancel/failure retires it.
 	PendingHistory = services::serverbrowser::favoriteKeyOf(*selected);
 	PendingHistoryValid = PendingHistory.valid();
+	// A user-initiated join starts a fresh auto-retry chain.
+	AutoRetryCount = 0;
+	AutoRetryDelay = -1.0;
 	Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
 	finishDispatch();
 }

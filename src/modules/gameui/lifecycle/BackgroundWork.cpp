@@ -21,6 +21,10 @@ void GameUiModule::pumpBackgroundWork() {
 	// status-edge log rides the same beat.
 	ServerBrowser.Query.pump();
 	logServerQueryChange();
+	// 自动重试: the connection-error overlay's bounded auto-retry beat (the
+	// browser page's toggle is the enable bit). Runs before the page
+	// projections so a fired retry re-projects through the same frame.
+	tickAutoRetry();
 	// T18: the browser page's projection beat (sync + bounded re-render on
 	// change). Runs on the presented latch like the other pages.
 	if (MenuPresented && ServerBrowser.Presented && Browser)

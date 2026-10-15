@@ -106,6 +106,9 @@ void GameUiModule::onFriendJoin(uint64_t steamId, const char* address) {
 		return;
 	}
 	abc::ConsolePrint("[AbcUi] joining friend %llu at %s\n", static_cast<unsigned long long>(steamId), address);
+	// A user-initiated attempt begins a fresh auto-retry chain.
+	AutoRetryCount = 0;
+	AutoRetryDelay = -1.0;
 	Controller.dispatch(gameui::menu::makeConnectRequest(address));
 	finishDispatch();
 }

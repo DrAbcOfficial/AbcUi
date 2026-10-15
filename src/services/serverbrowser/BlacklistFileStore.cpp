@@ -41,6 +41,14 @@ bool BlacklistFileStore::load(const std::filesystem::path& Path, ServerBlacklist
 			}
 			Rule.Name.assign(Item["name"].GetString(), Item["name"].GetStringLength());
 		}
+		// Optional: files written before the timestamp existed load as
+		// "unknown" (0) instead of inventing a date.
+		if (Item.HasMember("blockedAt")) {
+			if (!Item["blockedAt"].IsUint64() || Item["blockedAt"].GetUint64() > 4102444800ull) {
+				Error = "invalid blacklist timestamp"; return false;
+			}
+			Rule.BlockedAt = Item["blockedAt"].GetUint64();
+		}
 		if (Seen.insert(Rule.address()).second) Rules.push_back(std::move(Rule));
 	}
 	Output.restore(std::move(Rules));
@@ -59,7 +67,11 @@ bool BlacklistFileStore::save(const std::filesystem::path& Path, const std::vect
 			rapidjson::CrtAllocator, rapidjson::kWriteValidateEncodingFlag> NameWriter(NameBuffer);
 		const auto Length = static_cast<rapidjson::SizeType>(Rule.Name.size());
 		const bool ValidName = NameWriter.String(Rule.Name.data(), Length);
-		Writer.Key("name"); Writer.String(ValidName ? Rule.Name.data() : "", ValidName ? Length : 0); Writer.EndObject();
+		Writer.Key("name"); Writer.String(ValidName ? Rule.Name.data() : "", ValidName ? Length : 0);
+		if (Rule.BlockedAt != 0) {
+			Writer.Key("blockedAt"); Writer.Uint64(Rule.BlockedAt);
+		}
+		Writer.EndObject();
 	}
 	Writer.EndArray(); Writer.EndObject();
 	std::error_code EC;

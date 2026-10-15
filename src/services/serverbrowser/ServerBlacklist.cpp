@@ -1,8 +1,13 @@
 #include "ServerBlacklist.h"
 #include <algorithm>
 #include <charconv>
+#include <ctime>
 
 namespace services::serverbrowser {
+uint64_t ServerBlacklist::nowSeconds() {
+	const std::time_t Now = std::time(nullptr);
+	return Now > 0 ? static_cast<uint64_t>(Now) : 0;
+}
 std::string BlacklistRule::address() const {
 	std::string Text = std::to_string(Ip >> 24) + "." + std::to_string((Ip >> 16) & 255)
 		+ "." + std::to_string((Ip >> 8) & 255) + "." + std::to_string(Ip & 255);
@@ -52,6 +57,7 @@ bool ServerBlacklist::add(const std::string& Address, const std::string& Name) {
 		return Existing.Ip == Rule.Ip && Existing.Port == Rule.Port;
 	})) return true;
 	Rule.Name = Name;
+	Rule.BlockedAt = Clock ? Clock() : 0;
 	auto Next = Rules;
 	Next.push_back(std::move(Rule));
 	return commit(std::move(Next));

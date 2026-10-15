@@ -88,6 +88,8 @@ private:
 	void logServerQueryChange();
 	void showStubPage(panels::menushared::MenuStubPage* stub, MenuPage page, bool console);
 	void onMenuAction(const char* action);
+	bool retryServerAttempt();
+	void tickAutoRetry();
 	void handleCreateGameAction(navigation::ActionKind Kind);
 	void handlePlayerListAction(navigation::ActionKind Kind);
 	void handleConnectionAction(navigation::ActionKind Kind);
@@ -155,6 +157,11 @@ private:
 	bool PlayerListPresented = false;
 	services::serverbrowser::FavoriteKey PendingHistory;
 	bool PendingHistoryValid = false;
+	// 自动重试 (the browser's toggle): a failed join attempt re-enters the
+	// existing typed retry path, bounded per failure chain. The page owns the
+	// toggle's truth; these count/timer fields are the module's run state.
+	int AutoRetryCount = 0;
+	double AutoRetryDelay = -1.0;  // < 0 = not armed
 	std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
 	std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
 	std::unique_ptr<panels::console::ConsolePage> Console;

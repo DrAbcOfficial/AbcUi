@@ -55,6 +55,10 @@ void GameUiModule::onInit() {
 		if (!Saved) abc::ConsoleWarn("[AbcUi] blacklist save: %s\n", Error.c_str());
 		return Saved;
 	});
+	// New rules are stamped with the wall clock at the moment they are
+	// blocked (the blacklist view shows it); the pure service never reads
+	// the system time on its own.
+	Blacklist.setClock(&services::serverbrowser::ServerBlacklist::nowSeconds);
 	ServerBrowser.setBlacklist(&Blacklist);
 	// Startup catalog owns the strings backing the model's row views.
 	// A live user.scr overrides the JSON fallback on its declared page.

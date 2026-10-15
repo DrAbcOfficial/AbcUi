@@ -53,37 +53,6 @@ bool ServerBrowserPage::handleControls(Rml::Event& Event) {
 	Rml::Element* Entry = actionNode(Event.GetTargetElement());
 	if (!Entry || !List || !Query) return false;
 	const auto Action = Entry->GetAttribute<Rml::String>("data-action", "");
-	if (Action == "sb-detail-close") {
-		closeDetails();
-		refocusDefault();
-		return true;
-	}
-	if (Action == "sb-quick-refresh") {
-		// Quick refresh re-pings ONLY the servers of the current page through
-		// the list handle - no master server round trip. With no live list
-		// the module's ordinary refresh is the honest fallback.
-		using services::serverbrowser::QueryStatus;
-		const auto Status = Query->status();
-		const bool Live = Query->listRequest() != 0
-			&& (Status == QueryStatus::Querying || Status == QueryStatus::Completed);
-		int Refreshed = 0;
-		if (Live && !List->blockedOnly()) {
-			for (int Row = 0; Row < services::serverbrowser::ServerListModel::kPageSize; ++Row) {
-				const int Index = List->entryIndexAt(Row);
-				if (Index < 0)
-					break;
-				if (Query->refreshServer(Index))
-					++Refreshed;
-			}
-		}
-		if (Refreshed == 0) {
-			const ActionSink Action = Sink;
-			if (Action)
-				Action("sb-refresh");
-		}
-		Projected = false;
-		return true;
-	}
 	if (Action == "sb-filters-reset") {
 		// Reset restores every filter to its default; the game identity
 		// (gamedir) and the cvar-owned unresponsive rule stay. The module
