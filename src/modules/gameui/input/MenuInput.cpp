@@ -104,7 +104,9 @@ void GameUiModule::onClaimedKeyDown(int keynum) {
 		return;
 	if (Controller.state().overlays.empty()
 		&& Controller.state().pages.topIs(MenuPage::kSettings) && Settings
-		&& Settings->isDirty()) {
+		&& (Settings->isDirty() || Settings->sprayBrowsing())) {
+		// The page owns the answer: a spray picker in flight closes on ESC
+		// (requestLeave), a dirty page raises the unsaved-changes prompt.
 		Settings->requestLeave();
 		syncMenuPresentation();
 		return;

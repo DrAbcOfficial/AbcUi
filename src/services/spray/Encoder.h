@@ -34,6 +34,10 @@ bool fitSize(int width, int height, const SizeLimits& limits, int& outWidth, int
 
 struct EncodedSpray {
 	std::vector<unsigned char> Bytes;
+	// The encoded pixels as top-down RGBA (transparent index -> alpha 0) for
+	// the UI's result preview: what the spray will look like, quantization and
+	// all, not the source image.
+	framework::ImageLoader::DecodedImage Preview;
 	int Width = 0;
 	int Height = 0;
 	// Palette entries written (always 256; index 255 is the transparent blue

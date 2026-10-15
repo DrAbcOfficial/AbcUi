@@ -121,6 +121,7 @@ void GameUiModule::onShutdown() {
 	// The mic test is a device resource: stop it before anything tears
 	// down (the pairing guarantee covers the shutdown path too).
 	VoiceModel.stopTest();
+	shutdownSprayPreview();
 	CaptureToken.release();
 	PageToken.release();
 	// Stop callbacks and release queries before any observing document dies.

@@ -1,4 +1,5 @@
 #include "panels/settings/SettingsPage.h"
+#include "panels/settings/SettingsUi.h"
 #include "services/settings/SettingsModel.h"
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Core.h>
@@ -43,7 +44,10 @@ void SettingsPage::renderPreviews() {
 				Preview->SetAttribute("src", path);
 		}
 	}
-	Set("spray-preview", "preview://spray/" + Text("cl_logofile") + "/" + Text("cl_logocolor"));
+	// The engine's stored colour token ("#Valve_Ltblue") normalizes to the
+	// bare palette name the preview decoder expects.
+	Set("spray-preview", "preview://spray/" + Text("cl_logofile") + "/"
+		+ detail::logoColorName(Text("cl_logocolor")));
 }
 void SettingsPage::releasePreviews() {
 	if (!document()) return;

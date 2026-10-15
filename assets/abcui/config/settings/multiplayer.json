@@ -16,7 +16,8 @@
       "id": "spray",
       "label": "#Settings_SecSpray",
       "components": [
-        "spray-preview"
+        "spray-preview",
+        "spray-maker"
       ]
     }
   ],

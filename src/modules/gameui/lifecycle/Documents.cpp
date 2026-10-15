@@ -62,6 +62,7 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	Settings->setBindModel(&BindModel);
 	Settings->setVideoModel(&VideoModel);
 	Settings->setVoiceModel(&VoiceModel);
+	Settings->setSpraySink([this](const std::string& path) { makeSprayPaint(path); });
 	// T18: the server browser page (was the kServers stub). The query is
 	// the module's T17 member; the list model is the module-owned view;
 	// the favorites store is Steam's authoritative one (T18b).

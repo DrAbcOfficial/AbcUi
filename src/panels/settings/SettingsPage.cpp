@@ -65,6 +65,7 @@ void SettingsPage::render(const char* skipInputRow) {
 	renderVoiceSection();
 	renderPreviews();
 	renderCrosshairPreview();
+	renderSprayMaker();
 	setStatusSummary();
 	setBindStatusSummary();
 	InRender_ = false;
@@ -142,6 +143,12 @@ bool SettingsPage::isDirty() const {
 void SettingsPage::requestLeave() {
 	if (!Model)
 		return;
+	// A picker in flight consumes the leave intent: ESC/return closes the
+	// browser, never the whole page (the layer is the top-most surface).
+	if (Spray.browsing()) {
+		closeSprayBrowser();
+		return;
+	}
 	if (!isDirty()) { // both models: a pending bind draft also blocks a silent exit
 		const ActionSink action = Sink;
 		if (action)
@@ -174,11 +181,56 @@ void SettingsPage::hideLayers() {
 	Rml::ElementDocument* doc = document();
 	if (!doc)
 		return;
-	for (const char* id : {kLayerReset, kLayerLeave, kLayerBindConflict, kLayerBindReset}) {
+	for (const char* id : {kLayerReset, kLayerLeave, kLayerBindConflict, kLayerBindReset, kLayerSprayFile}) {
 		if (Rml::Element* layer = doc->GetElementById(id))
 			layer->SetProperty("display", "none");
 	}
 	ActiveLayer.clear();
+	if (Spray.browsing())
+		Spray.close(doc);
+}
+
+void SettingsPage::openSprayBrowser() {
+	Rml::ElementDocument* doc = document();
+	if (!doc)
+		return;
+	hideLayers();
+	Spray.open(doc);
+	if (Rml::Element* layer = doc->GetElementById(kLayerSprayFile)) {
+		layer->SetProperty("display", "block");
+		ActiveLayer = kLayerSprayFile;
+	}
+	if (Rml::Element* focus = doc->GetElementById(safeFocusForLayer(kLayerSprayFile)))
+		focus->Focus();
+}
+
+void SettingsPage::closeSprayBrowser() {
+	hideLayers();
+}
+
+void SettingsPage::setSprayResult(bool ok, const std::string& message, const std::string& previewUri) {
+	Spray.setResult(ok, message);
+	Spray.setPreviewUri(previewUri);
+	hideLayers();
+	render();
+}
+
+void SettingsPage::renderSprayMaker() {
+	Rml::ElementDocument* doc = document();
+	if (!doc)
+		return;
+	if (Rml::Element* status = doc->GetElementById("spray-maker-status"))
+		status->SetInnerRML(framework::TextUtil::escapeRml(translated(Spray.statusText().c_str())));
+	if (Rml::Element* image = doc->GetElementById("spray-made-preview")) {
+		if (!Spray.hasPreview()) {
+			image->SetProperty("display", "none");
+			return;
+		}
+		const std::string& uri = Spray.previewUri();
+		if (image->GetAttribute<Rml::String>("src", "") != uri)
+			image->SetAttribute("src", uri);
+		image->SetProperty("display", "block");
+	}
 }
 
 void SettingsPage::refocusDefault() {

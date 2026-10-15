@@ -76,6 +76,9 @@ add_library(AbcUi MODULE
     src/services/video/AsyncDecoder.cpp
     src/services/video/Options.cpp
     src/services/video/VideoTexture.cpp
+    src/services/texture/DynamicTexture.cpp
+    src/services/filedialog/FileBrowser.cpp
+    src/services/spray/Encoder.cpp
     src/modules/modeltest/ModelTest.cpp
     src/modules/videotest/VideoTest.cpp
     src/rmlui/AbcSystemInterface.cpp
@@ -123,6 +126,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/navigation/MenuAction.cpp
     src/modules/gameui/input/MenuInput.cpp
     src/modules/gameui/settings/SettingsFlow.cpp
+    src/modules/gameui/settings/SprayMakerFlow.cpp
     src/modules/gameui/settings/VideoFlow.cpp
     src/modules/gameui/serverbrowser/ServerBrowserFlow.cpp
     src/modules/gameui/creategame/CreateGameFlow.cpp
@@ -198,6 +202,7 @@ add_library(AbcUi MODULE
     src/panels/settings/sections/VoiceSection.cpp
     src/panels/settings/sections/PreviewSection.cpp
     src/panels/settings/sections/CrosshairPreview.cpp
+    src/panels/settings/sections/SpraySection.cpp
     src/panels/settings/SettingsPage.cpp
     src/panels/settings/SettingsNavigation.cpp
     src/panels/settings/SettingsEvents.cpp

@@ -36,6 +36,16 @@ std::string numberText(float value) {
 	return buffer;
 }
 
+std::string logoColorName(const std::string& value) {
+	std::string name = value;
+	if (!name.empty() && name[0] == '#')
+		name.erase(0, 1);
+	constexpr const char* kValvePrefix = "Valve_";
+	if (name.rfind(kValvePrefix, 0) == 0)
+		name.erase(0, std::strlen(kValvePrefix));
+	return name;
+}
+
 bool isOn(float value) {
 	return value > 0.5f;
 }
@@ -75,6 +85,8 @@ const char* safeFocusForLayer(const char* id) {
 		return "bind-conflict-no";
 	if (std::string(id) == kLayerBindReset)
 		return "bind-reset-no";
+	if (std::string(id) == kLayerSprayFile)
+		return "spray-file-cancel";
 	return "leave-stay";
 }
 

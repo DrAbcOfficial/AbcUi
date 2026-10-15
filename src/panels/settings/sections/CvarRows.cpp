@@ -232,7 +232,7 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 			// the scanned set (model / cl_logofile) follow.
 			const auto StringLabel = [&](const std::string& Value) {
 				return view.row->StateName && std::string(view.row->StateName) == "logocolor"
-					? translated(("#Valve_" + Value).c_str()) : Value;
+					? translated(("#Valve_" + logoColorName(Value)).c_str()) : Value;
 			};
 			if (shownText.empty())
 				addOption("", translated("#Settings_Unset"));

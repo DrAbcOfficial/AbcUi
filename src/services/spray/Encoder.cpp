@@ -197,6 +197,23 @@ bool encode(const framework::ImageLoader::DecodedImage& source, EncodedSpray& ou
 	bytes[11] = static_cast<unsigned char>((lumpOffset >> 24) & 0xFF);
 
 	output.Bytes = std::move(bytes);
+	// Result preview: the quantized pixels with the transparent entry cleared.
+	output.Preview.Width = width;
+	output.Preview.Height = height;
+	output.Preview.Pixels.resize(static_cast<std::size_t>(width) * height * 4);
+	for (std::size_t i = 0; i < indexed.Indices.size(); ++i) {
+		unsigned char* pixel = output.Preview.Pixels.data() + i * 4;
+		const unsigned char index = indexed.Indices[i];
+		if (index == kPaletteSize - 1) {
+			pixel[0] = pixel[1] = pixel[2] = pixel[3] = 0;
+			continue;
+		}
+		const auto& color = palette[index];
+		pixel[0] = color.Red;
+		pixel[1] = color.Green;
+		pixel[2] = color.Blue;
+		pixel[3] = 255;
+	}
 	output.Width = width;
 	output.Height = height;
 	output.ColorCount = kPaletteSize;

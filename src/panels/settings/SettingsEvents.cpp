@@ -24,6 +24,26 @@ void SettingsPage::handleClick(Rml::Event& event) {
 		selectPage(entry->GetAttribute<Rml::String>("data-page", ""));
 		return;
 	}
+	// Spray maker: the picker layer. Its intents are handled by the spray
+	// section, which owns the browser state; the page keeps the layer frame.
+	if (which == kActionSprayChoose) {
+		openSprayBrowser();
+		return;
+	}
+	if (which == kActionSprayOpen || which == kActionSprayUp || which == kActionSprayRoot) {
+		Spray.handleAction(which, entry, document());
+		return;
+	}
+	if (which == kActionSprayConfirm) {
+		// A confirmed pick travels to the module (decode/encode/write); the
+		// layer closes when the answer lands (setSprayResult).
+		Spray.handleAction(which, entry, document());
+		return;
+	}
+	if (which == kActionSprayCancel) {
+		closeSprayBrowser();
+		return;
+	}
 	if (which == kActionApply) {
 		applyAndReport();
 	} else if (which == kActionReset) {

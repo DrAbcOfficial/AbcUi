@@ -68,6 +68,11 @@ private:
 	void reconcilePhase();
 	void syncMenuPresentation();
 	void presentSettingsPage();
+	// Spray maker: decode, encode and write one picked image, then answer the
+	// settings page (message + the preview pixels of the made spray).
+	void makeSprayPaint(const std::string& path);
+	// Releases the spray preview texture (renderer still alive).
+	void shutdownSprayPreview();
 	void presentServerBrowserPage();
 	void presentCreateGamePage();
 	void loadMapCatalog();

@@ -49,6 +49,18 @@
 					<div id="spray-preview-hint">#Settings_SprayPreviewHint</div>
 				</div>
 			</div>
+			<div class="settings-widget" id="widget-spray-maker">
+				<!-- Spray maker: pick an image anywhere on disk, the module
+				     decodes it (FreeImage), encodes the WAD3 spray and writes
+				     tempdecal.wad; this block shows the result preview and
+				     the outcome line. -->
+				<div class="preview-box preview-box-square">
+					<img id="spray-made-preview"/>
+					<div id="spray-maker-hint">#Settings_SprayMakerHintTitle</div>
+					<button id="spray-maker-choose" data-action="spray-choose">#Settings_SprayMakerChoose</button>
+					<div id="spray-maker-status"></div>
+				</div>
+			</div>
 			<div class="settings-widget" id="widget-crosshair-preview">
 				<!-- The same five core bars + five outline bars the in-game
 				     crosshair panel draws, laid out by the shared
@@ -153,6 +165,22 @@
 		<p id="bind-reset-confirm-text">#Settings_BindResetConfirm</p>
 		<button id="bind-reset-yes" data-action="bind-reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
 		<button id="bind-reset-no" data-action="bind-reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
+	</div>
+	<!-- The spray picker: a wider prompt holding the directory model's view -
+	     quick roots, the current path, the entry list and the actions. Rows
+	     are injected by sections::SpraySection; a click selects, confirm
+	     starts the maker. -->
+	<div id="spray-file" class="settings-layer settings-layer-wide">
+		<h1 class="settings-layer-title">#Settings_SprayMakerTitle</h1>
+		<div id="spray-file-roots"></div>
+		<div id="spray-file-path"></div>
+		<div id="spray-file-list"></div>
+		<div id="spray-file-status"></div>
+		<div id="spray-file-actions">
+			<button id="spray-file-confirm" data-action="spray-file-confirm">#Settings_SprayMakerMake</button>
+			<button id="spray-file-up" data-action="spray-file-up">#Settings_SprayMakerUp</button>
+			<button id="spray-file-cancel" data-action="spray-file-cancel" autofocus="autofocus">#Settings_Cancel</button>
+		</div>
 	</div>
 </body>
 </rml>

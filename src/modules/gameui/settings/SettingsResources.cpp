@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <vector>
 #include <string>
+#include <cstdio>
 namespace gameui::settings {
 std::string readModFile(const char* relativePath) {
 	constexpr unsigned MaxBytes = 4 * 1024 * 1024;
@@ -65,6 +66,40 @@ std::vector<std::string> scanMounted(const char* Directory, bool Directories) {
 }
 std::vector<std::string> scanModDirectories(const char* Directory) { return scanMounted(Directory, true); }
 std::vector<std::string> scanModFileBasenames(const char* Directory) { return scanMounted(Directory, false); }
+
+bool writeModFile(const char* relativePath, const std::vector<unsigned char>& bytes, std::string& error) {
+	error.clear();
+	if (bytes.empty()) {
+		error = "nothing to write";
+		return false;
+	}
+	// The engine filesystem first: it writes beside the mod's own files (the
+	// same place the engine reads tempdecal.wad from).
+	if (abc::g_pFileSystem) {
+		if (auto* file = abc::g_pFileSystem->Open(relativePath, "wb")) {
+			const int written = abc::g_pFileSystem->Write(bytes.data(),
+				static_cast<int>(bytes.size()), file);
+			abc::g_pFileSystem->Close(file);
+			if (written == static_cast<int>(bytes.size()))
+				return true;
+			error = "short write";
+			return false;
+		}
+	}
+	const std::string absolute = abc::ModPath(relativePath);
+	FILE* file = nullptr;
+	if (fopen_s(&file, absolute.c_str(), "wb") != 0 || !file) {
+		error = "cannot open " + absolute;
+		return false;
+	}
+	const std::size_t written = fwrite(bytes.data(), 1, bytes.size(), file);
+	fclose(file);
+	if (written != bytes.size()) {
+		error = "short write to " + absolute;
+		return false;
+	}
+	return true;
+}
 
 services::settings::SettingsModel::UserScrTable loadAdvancedScript() {
 	services::settings::SettingsModel::UserScrTable Table;

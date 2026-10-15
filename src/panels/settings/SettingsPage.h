@@ -29,6 +29,7 @@
 
 #include "../../framework/InteractiveDocument.h"
 #include "sections/CrosshairPreview.h"
+#include "sections/SpraySection.h"
 #include "sections/VideoSection.h"
 #include "services/uiconfig/UiDefinitions.h"
 
@@ -81,6 +82,14 @@ public:
 	// T13 voice section: cvar rows ride the settings model, the hardware
 	// rows (mic volume/boost/test) ride this model.
 	void setVoiceModel(services::settings::VoiceModel* model) { VoiceModel_ = model; }
+	// Spray maker: the module owns decode/encode/write, so a confirmed pick
+	// travels out through this sink and the answer comes back through
+	// setSprayResult (message + the pixels to preview).
+	void setSpraySink(sections::SpraySection::RequestSink sink) { Spray.setRequestSink(std::move(sink)); }
+	// The module's answer: the outcome line plus the Rml source of the preview
+	// texture it uploaded (empty clears the preview).
+	void setSprayResult(bool ok, const std::string& message, const std::string& previewUri = {});
+	bool sprayBrowsing() const { return Spray.browsing(); }
 
 	// Re-projects the whole model into the DOM. Safe while hidden. When
 	// `skipInputRow` is non-null, that row's text field keeps its exact
@@ -93,6 +102,8 @@ public:
 	// Live crosshair preview (the ten part elements of its widget block),
 	// drawn from the draft cvar values with the shared geometry.
 	void renderCrosshairPreview();
+	// Spray maker status + the preview of the spray just made.
+	void renderSprayMaker();
 
 	// True while Apply would still change (or has failed to change)
 	// something: the module's ESC/return guard asks before discarding.
@@ -131,6 +142,10 @@ private:
 	// section that declares its component; unclaimed blocks wait hidden in
 	// the widget host.
 	void projectWidgets();
+	// Spray picker (page-internal layer): the section owns the browser, the
+	// page owns the layer frame and its focus.
+	void openSprayBrowser();
+	void closeSprayBrowser();
 	void resetCurrentPage();
 	void releasePreviews();
 	bool hasComponent(const char* Name) const;
@@ -168,6 +183,7 @@ private:
 	// is rebuilt only when the set actually changed (no per-render churn).
 	sections::VideoSection VideoView;
 	sections::CrosshairPreviewState CrosshairPreview;
+	sections::SpraySection Spray;
 	std::map<std::string, std::vector<std::string>> SelectValuesShown;
 	// The mic-volume field of the change commit currently in flight (its
 	// caret/IME state must survive the status refresh, like the row inputs).

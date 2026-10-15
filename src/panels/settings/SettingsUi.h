@@ -26,10 +26,17 @@ inline constexpr const char* kActionVideoApply = "video-apply";
 inline constexpr const char* kActionVideoWindowed = "video-toggle-windowed";
 inline constexpr const char* kActionVoiceTest = "voice-test";
 inline constexpr const char* kActionVoiceBoost = "voice-mic-boost";
+inline constexpr const char* kActionSprayChoose = "spray-choose";
+inline constexpr const char* kActionSprayOpen = "spray-file-open";
+inline constexpr const char* kActionSprayUp = "spray-file-up";
+inline constexpr const char* kActionSprayRoot = "spray-file-root";
+inline constexpr const char* kActionSprayConfirm = "spray-file-confirm";
+inline constexpr const char* kActionSprayCancel = "spray-file-cancel";
 inline constexpr const char* kLayerReset = "reset-confirm";
 inline constexpr const char* kLayerLeave = "leave-confirm";
 inline constexpr const char* kLayerBindConflict = "bind-conflict";
 inline constexpr const char* kLayerBindReset = "bind-reset-confirm";
+inline constexpr const char* kLayerSprayFile = "spray-file";
 Rml::Element* actionNode(Rml::Element* node);
 std::string translated(const char* token);
 std::string numberText(float value);
@@ -39,6 +46,11 @@ bool isToggleKind(services::settings::SettingKind kind);
 bool isSelectKind(services::settings::SettingKind kind);
 bool toggleDraftOn(const services::settings::RowView& view);
 const char* safeFocusForLayer(const char* id);
+// The engine stores cl_logocolor as a localized token ("#Valve_Ltblue") while
+// the shipped option table uses bare names ("Ltblue"); both spellings select
+// the same spray colour, so labels and the preview URI normalize to the bare
+// name. Other values pass through unchanged.
+std::string logoColorName(const std::string& value);
 
 // The section components that own one singleton widget block in
 // settings.rml: component name -> block element id. Each claimed block is
