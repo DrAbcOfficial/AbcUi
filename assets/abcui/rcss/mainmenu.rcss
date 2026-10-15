@@ -285,11 +285,11 @@
 	width: 100%;
 	height: 24dp;
 	line-height: 22dp;
-	background-color: #0a0d10;
-	color: #dedede;
+	background-color: var(--abc-inset);
+	color: var(--abc-text);
 	font-size: 10dp;
 	padding: 0dp 6dp;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	tab-index: auto;
 	white-space: nowrap;
 	margin-bottom: 8dp;
@@ -303,7 +303,7 @@
 }
 
 #text-field:focus, #password-field:focus, #area-field:focus {
-	border: 1dp #00ff00;
+	border: 1dp var(--abc-accent);
 	background-color: #0e1418;
 }
 
@@ -328,7 +328,7 @@
 p {
 	display: block;
 	font-size: 10dp;
-	color: #dedede;
+	color: var(--abc-text);
 	margin-bottom: 12dp;
 }
 

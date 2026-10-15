@@ -58,7 +58,7 @@ body#menusettings #panel scrollbarvertical sliderbar,
 	margin-left: -10dp;
 	width: 10dp;
 	min-height: 24dp;
-	background-color: #3a4148;
+	background-color: var(--abc-line);
 }
 body#menusettings #panel scrollbarvertical sliderbar:hover,
 body#menusettings #panel scrollbarvertical sliderbar:active,
@@ -100,17 +100,17 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	width: 336dp;
 	height: 24dp;
 	line-height: 22dp;
-	background-color: #0a0d10;
-	color: #dedede;
+	background-color: var(--abc-inset);
+	color: var(--abc-text);
 	font-size: 10dp;
 	padding: 0dp 6dp;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	tab-index: auto;
 	white-space: nowrap;
 }
 
 .row-input:focus {
-	border: 1dp #00ff00;
+	border: 1dp var(--abc-accent);
 	background-color: #0e1418;
 }
 
@@ -129,7 +129,7 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	background-color: #1c2329;
 	color: #e8e8e8;
 	font-size: 10dp;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	tab-index: auto;
 }
 
@@ -138,8 +138,8 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 }
 
 .row-toggle:focus {
-	background-color: #144d14;
-	border: 1dp #00ff00;
+	background-color: var(--abc-accent-soft);
+	border: 1dp var(--abc-accent);
 	color: #ffffff;
 }
 
@@ -233,7 +233,7 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	background-color: #1c2329;
 	color: #e8e8e8;
 	font-size: 9dp;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	margin: 0dp 0dp 0dp 3dp; /* mainmenu button margin-bottom would stack here */
 	vertical-align: middle;
 	tab-index: auto;
@@ -245,8 +245,8 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 }
 
 .bind-btn:focus {
-	background-color: #144d14;
-	border: 1dp #00ff00;
+	background-color: var(--abc-accent-soft);
+	border: 1dp var(--abc-accent);
 	color: #ffffff;
 }
 
@@ -310,11 +310,11 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	width: 200dp;
 	height: 24dp;
 	line-height: 22dp;
-	background-color: #0a0d10;
-	color: #dedede;
+	background-color: var(--abc-inset);
+	color: var(--abc-text);
 	font-size: 10dp;
 	padding: 0dp 6dp;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	tab-index: auto;
 }
 
@@ -384,14 +384,14 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	width: 372dp;
 	min-height: 200dp;
 	background-color: #101418f8;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	padding: 16dp;
 }
 
 .settings-layer p {
 	display: block;
 	font-size: 10dp;
-	color: #dedede;
+	color: var(--abc-text);
 	margin-bottom: 12dp;
 }
 
