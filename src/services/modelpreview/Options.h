@@ -4,10 +4,15 @@
 // Target consumes the validated options; ElementModel supplies string values.
 #include <IModelPreviewRenderer.h>
 #include <array>
+#include <functional>
 #include <string>
 #include <string_view>
 
 namespace modelpreview {
+
+// The shipped generic player model: every resolution chain ends here (it is
+// the stock `models/player.mdl` the card's document also defaults to).
+constexpr const char* kGenericModelPath = "models/player.mdl";
 
 // Resolves a Studio path spelling the way the shipped cvars spell one: a
 // value that already names a file (".../*.mdl") is used verbatim, anything
@@ -15,6 +20,19 @@ namespace modelpreview {
 // or unusable spelling falls back to `Fallback` (same grammar) and then to
 // the generic player model, so the card is never left without a source.
 std::string resolveModelPath(std::string_view Spelling, std::string_view Fallback);
+
+// Existence probe for one resolved Studio path (engine filesystem fact).
+using ModelExists = std::function<bool(const std::string&)>;
+
+// The character card's source: `Spelling` (the menu's own override cvar; empty
+// when unset) resolves through the grammar above with `PlayerModel` as the
+// spelling fallback. A path the engine cannot see is not presented: it falls
+// back to the shipped generic model, so the card never points at a source the
+// preview renderer cannot load (an unloadable source used to leave the box
+// blank/white). An empty probe means "no filesystem fact" - the resolved
+// spelling is then trusted.
+std::string resolveCardModelPath(std::string_view Spelling, std::string_view PlayerModel,
+	const ModelExists& Exists);
 
 struct Options {
 	ModelPreviewView View;

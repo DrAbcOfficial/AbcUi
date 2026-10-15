@@ -35,6 +35,12 @@ ElementModel::ElementModel(const Rml::String& Tag) : Element(Tag), Listener(this
 		Image->SetProperty("pointer-events", "none");
 		// FBO pixels have bottom-left origin, Rml images top-left.
 		Image->SetProperty("transform", "scaleY(-1)");
+		// Nothing is presented before the first FBO lands. An img whose
+		// texture is unresolved draws as a filled rectangle (the render
+		// interface's untextured fast path), i.e. a white box for a source
+		// that cannot load - renderPreview unhides it only when the preview
+		// produced pixels.
+		Image->SetProperty("visibility", "hidden");
 		AppendChild(std::move(Child));
 	}
 	elements().push_back(this);

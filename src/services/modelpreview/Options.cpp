@@ -57,8 +57,16 @@ std::string resolveModelPath(std::string_view Spelling, std::string_view Fallbac
 	if (!Options::isModelPath(Resolved))
 		Resolved = spell(Fallback);
 	if (!Options::isModelPath(Resolved))
-		Resolved = "models/player.mdl";
+		Resolved = kGenericModelPath;
 	return Resolved;
+}
+
+std::string resolveCardModelPath(std::string_view Spelling, std::string_view PlayerModel,
+	const ModelExists& Exists) {
+	std::string Card = resolveModelPath(Spelling, PlayerModel);
+	if (Exists && !Exists(Card))
+		Card = kGenericModelPath;
+	return Card;
 }
 
 bool Options::set(std::string_view Name, std::string_view Value) {

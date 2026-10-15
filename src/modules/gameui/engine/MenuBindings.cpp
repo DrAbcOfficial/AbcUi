@@ -25,9 +25,16 @@ PlayerCardFacts playerCardFacts() {
 	// model cvar itself holds the model DIRECTORY under models/player/
 	// (Sven Co-op enumerates those folders for its own player-model list)
 	// while a value that already names a .mdl is used verbatim - the shared
-	// resolver owns both spellings and the never-empty guarantee.
-	Facts.ModelPath = modelpreview::resolveModelPath(
-		readCvarString("abc_ui_menu_model_path"), Facts.ModelName);
+	// resolver owns both spellings, the never-empty guarantee and the
+	// missing-file fallback. Existence is the engine's own filesystem - the
+	// same view the Renderer's model loader uses - so a spelling the game
+	// cannot load (a model folder that is not installed) shows the stock
+	// generic model instead of an empty card.
+	Facts.ModelPath = modelpreview::resolveCardModelPath(
+		readCvarString("abc_ui_menu_model_path"), Facts.ModelName,
+		[](const std::string& Path) {
+			return !abc::g_pFileSystem || abc::g_pFileSystem->FileExists(Path.c_str());
+		});
 	return Facts;
 }
 
