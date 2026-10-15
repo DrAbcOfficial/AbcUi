@@ -24,8 +24,19 @@ body#menusettings #panel {
 }
 
 #settings-navigation button.selected {
-	background-color: #144d14;
-	border: 1dp #00ff00;
+	background-color: var(--abc-surface-3);
+	border-left: 2dp var(--abc-accent);
+	color: var(--abc-accent);
+}
+
+#settings-navigation button {
+	display: block;
+	box-sizing: border-box;
+	width: 116dp;
+	height: 30dp;
+	line-height: 28dp;
+	text-align: left;
+	margin-bottom: 4dp;
 }
 
 .settings-cvar-page {

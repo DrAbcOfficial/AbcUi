@@ -97,7 +97,7 @@ body {
 }
 
 /* Primary/secondary flat buttons (dialogs, action bars). */
-.abc-button {
+button, .abc-button {
 	display: inline-block;
 	height: 22dp;
 	line-height: 20dp;
@@ -113,13 +113,91 @@ body {
 	tab-index: auto;
 }
 
-.abc-button:hover {
+button:hover, .abc-button:hover {
 	background-color: var(--abc-surface-3);
 	border: 1dp var(--abc-text-dim);
 }
 
-.abc-button:focus {
+button:focus, .abc-button:focus {
 	background-color: var(--abc-accent);
 	border: 1dp var(--abc-accent);
 	color: var(--abc-accent-ink);
 }
+
+/* Shared dialog frame. Home navigation deliberately does not use #panel. */
+#panel {
+	position: absolute;
+	box-sizing: border-box;
+	left: 48dp;
+	top: 40dp;
+	width: 372dp;
+	padding: 16dp;
+	background-color: var(--abc-surface);
+	border: 1dp var(--abc-line);
+	border-top: 2dp var(--abc-accent);
+}
+
+button:disabled {
+	color: var(--abc-text-dim);
+	background-color: var(--abc-inset);
+}
+
+input caret, textarea caret { background-color: var(--abc-text-strong); }
+
+/* RmlUi has no browser user-agent sheet. Native dropdown internals must
+   be laid out explicitly; retain WidgetDropDown's visibility/keyboard logic. */
+select {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 200dp;
+	height: 26dp;
+	color: var(--abc-text);
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
+	font-size: 10dp;
+	tab-index: auto;
+}
+select:focus, select:hover { border-color: var(--abc-accent); }
+select selectvalue {
+	display: block;
+	height: 24dp;
+	line-height: 24dp;
+	margin-right: 24dp;
+	padding-left: 8dp;
+	white-space: nowrap;
+}
+select selectarrow {
+	width: 22dp;
+	height: 24dp;
+	background-color: var(--abc-surface-3);
+	decorator: image(../img/select-arrow.png);
+}
+select selectbox {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	max-height: 176dp;
+	margin-top: 2dp;
+	background-color: #10171cff;
+	border: 1dp var(--abc-accent-soft);
+	padding: 3dp;
+}
+select option {
+	display: block;
+	box-sizing: border-box;
+	min-height: 24dp;
+	line-height: 24dp;
+	padding: 0dp 8dp;
+	white-space: nowrap;
+}
+select option:hover, select option:checked {
+	background-color: var(--abc-surface-3);
+	color: var(--abc-accent);
+}
+scrollbarvertical { width: 10dp; }
+scrollbarvertical slidertrack { background-color: var(--abc-inset); }
+scrollbarvertical sliderbar {
+	min-height: 24dp;
+	background-color: #46525a;
+}
+scrollbarvertical sliderbar:hover { background-color: var(--abc-accent-soft); }

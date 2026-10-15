@@ -1,6 +1,7 @@
 <rml>
 <head>
 	<link type="text/rcss" href="../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/theme.rcss"/>
 	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 </head>
 <!-- T05/T07 offline-test fixture (the original T05 demo page)
