@@ -339,36 +339,24 @@ p {
 #confirm-actions button {
 	display: inline-block;
 	width: auto;
-	margin: 0dp 5dp;
+	/* The shared prompt's button spacing; size, surface and focus fill come
+	   from the theme's button rule. */
+	margin: 0dp 0dp 0dp 8dp;
 }
 #confirm-actions button:first-child { margin-left: 0dp; }
-#confirm-actions button:last-child { margin-right: 0dp; }
 
-/* Modal confirmation is a centered, shrink-to-fit prompt over a scrim. It
-   carries the shared .settings-layer frame (the same prompt component the
-   settings page links) so every confirmation reads identically; this block
-   only supplies this window's own strings and placement, while its body
-   text, padding, border and centered action row come from settings.rcss.
-   The safe cancel button keeps the keyboard focus. */
+/* Modal confirmation is centered over a scrim. It carries the shared
+   .settings-layer prompt frame (the same component the settings page
+   links), so this block only moves the shared box and marks the title:
+   surface, padding, border and the left-aligned body/button rows all come
+   from settings.rcss. The safe cancel button keeps the keyboard focus. */
 body#menuconfirm { background-color: #00000088; }
 body#menuconfirm #panel {
-	display: inline-block;
 	left: 50%;
-	top: 40dp;
-	/* The shared #panel rule pins a 372dp width; the prompt fits its own
-	   text, so release it here. */
-	width: auto;
-	min-height: 128dp;
-	transform: translate(-50%, 0dp);
-	text-align: center;
+	margin-left: -186dp; /* half of the shared 372dp prompt box */
 }
-#confirm-actions { text-align: center; }
 #confirm-title {
 	font-size: 16dp;
 	color: var(--abc-accent);
-	margin: 8dp 4dp 12dp 4dp;
-}
-#confirm-body {
-	line-height: 16dp;
-	margin: 0dp 4dp 16dp 4dp;
+	margin-bottom: 12dp;
 }

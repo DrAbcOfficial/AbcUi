@@ -395,52 +395,41 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
    turns the display property on (the layer member tracks the state - a
    SetProperty lands at the next layout frame).
 
-   Every prompt shares the quit-confirmation frame: the same surface,
-   hairline border, amber top rule, centered text and centered action row
-   (confirmquit.rml carries this class on its panel). The layer box
-   itself is shrink-to-fit - inline-block width, auto height - so a one
-   line prompt gets a small centered box and a long one grows instead of
-   clipping, while the 50% translate keeps it viewport-centered at every
-   logical width. The layer rides above the action bar (z-index 1). */
+   Every prompt shares the frame the quit confirmation shipped with: the
+   same surface and hairline border with the amber top rule, the same
+   fixed 372dp box, 16dp padding, 10dp left-aligned body text and a single
+   left-aligned button row (confirmquit.rml carries this class on its
+   panel, so that window now takes the shared definition instead of
+   duplicating it). The layer rides above the action bar (z-index 1). */
 .settings-layer {
-	position: absolute;
-	box-sizing: border-box;
 	display: none;
+	position: absolute;
 	z-index: 2;
-	left: 50%;
+	left: 48dp;
 	top: 40dp;
-	width: auto;
-	min-width: 260dp;
-	max-width: 460dp; /* long prompts wrap instead of spanning the screen */
+	width: 372dp; /* the panel width the prompt interrupts */
 	min-height: 128dp;
 	background-color: #101418f8;
 	border: 1dp var(--abc-line);
 	border-top: 2dp var(--abc-accent);
 	padding: 16dp;
-	transform: translate(-50%, 0dp);
-	text-align: center;
 }
 
 .settings-layer p {
 	display: block;
 	font-size: 10dp;
 	color: var(--abc-text);
-	line-height: 16dp;
-	margin: 8dp 4dp 16dp 4dp;
+	margin-bottom: 12dp;
 }
 
 .settings-layer button {
 	display: inline-block;
 	width: auto;
-	margin: 0dp 5dp;
+	margin: 0dp 0dp 0dp 8dp;
 }
 
 .settings-layer button:first-child {
 	margin-left: 0dp;
-}
-
-.settings-layer button:last-child {
-	margin-right: 0dp;
 }
 
 .bind-header { background-color: #303d49; padding: 5dp; margin: 10dp 0dp; color: #bce0f4; }
