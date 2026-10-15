@@ -172,18 +172,40 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	display: block;
 }
 
-/* Preview column: the live model / spray / crosshair boxes stack here.
-   Floated so the item column keeps a fixed width (a block next to a float
-   would have overlapped it) and the card grows with either column. */
+/* Preview column: the previews live in the right half of the card, in the
+   space the 232dp row column leaves. The body is one flex row so the preview
+   column takes exactly the remaining width (a fixed 150dp float left dead
+   space beside the rows - live-caught) and its items stretch to the row
+   column's height. Two previews in one card (classic + custom spray) share
+   the column in one row. */
+.settings-card-body {
+	display: block;
+}
+
+.settings-card.has-preview .settings-card-body {
+	display: flex;
+	align-items: stretch;
+}
+
+.settings-card.has-preview .settings-card-items {
+	flex: 0 0 232dp;
+	width: 232dp;
+}
+
 .settings-card.has-preview .settings-card-widgets {
-	float: right;
-	width: 150dp;
-	margin-left: 10dp;
-	margin-bottom: 6dp;
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	flex: 1 1 0%;
+	min-width: 0dp;
+	margin-left: 12dp;
 }
 
 .settings-card.has-preview .settings-card-widgets .settings-widget {
-	margin-bottom: 8dp;
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 0%;
+	min-width: 0dp;
 }
 
 /* Full-width widget blocks (bind list, display modes, microphone hardware)
@@ -191,10 +213,6 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 .settings-card.has-block .settings-card-widgets {
 	display: block;
 	margin-bottom: 8dp;
-}
-
-.settings-card.has-preview .settings-card-items {
-	width: 232dp;
 }
 
 /* ---- rows ---------------------------------------------------------------- */
@@ -480,22 +498,30 @@ input:disabled {
 }
 
 .preview-box {
-	display: block;
-	width: 150dp;
+	display: flex;
+	flex-direction: column;
+	flex: 1 1 auto;
+	width: 100%;
+	min-height: 0dp;
 }
 
 .preview-box img {
 	display: block;
-	width: 150dp;
-	height: 150dp;
+	width: 100%;
+	height: auto;
 	background-color: var(--abc-inset);
 	border: 1dp var(--abc-line);
 }
 
+/* The player model preview fills its whole cell: the live FBO re-renders at
+   the box's size, so it grows with the card instead of sitting in a 150dp
+   slot with dead space beside it. */
 #model-preview {
 	display: block;
-	width: 150dp;
-	height: 170dp;
+	flex: 1 1 auto;
+	width: 100%;
+	height: auto;
+	min-height: 0dp;
 	background-color: var(--abc-inset);
 	border: 1dp var(--abc-line);
 	cursor: move;
@@ -519,8 +545,9 @@ input:disabled {
 	position: relative;
 	display: block;
 	box-sizing: border-box;
-	width: 150dp;
-	height: 150dp;
+	flex: 1 1 auto;
+	width: 100%;
+	min-height: 0dp;
 	background-color: var(--abc-inset);
 	border: 1dp var(--abc-line);
 	overflow: hidden;
@@ -536,10 +563,12 @@ input:disabled {
 
 /* ---- spray maker --------------------------------------------------------- */
 
+/* The made spray keeps its own aspect: the encoded spray is capped at 256
+   pixels and 16-aligned, so a wide source stays wide. */
 #spray-made-preview {
 	display: block;
-	width: 150dp;
-	height: 150dp;
+	width: 100%;
+	height: auto;
 	background-color: var(--abc-inset);
 	border: 1dp var(--abc-line);
 	image-color: #ffffffff; /* the made spray shows its own colours 1:1 */
@@ -555,7 +584,7 @@ input:disabled {
 #spray-maker-choose {
 	display: block;
 	box-sizing: border-box;
-	width: 150dp;
+	width: 100%;
 	height: 24dp;
 	margin: 6dp 0dp 0dp 0dp;
 }

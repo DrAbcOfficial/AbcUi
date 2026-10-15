@@ -65,11 +65,23 @@ void SettingsPage::buildRows() {
 		if (!TitleToken.empty())
 			Markup += "<div class=\"settings-card-title section-header\">"
 				+ framework::TextUtil::escapeRml(translated(TitleToken.c_str())) + "</div>";
-		Markup += "<div class=\"settings-card-widgets\" id=\"" + CardId + "-widgets\"></div>";
-		Markup += "<div class=\"settings-card-items\">";
+		if (HasPreview) {
+			// Preview card: the rows and the widget column share one flex row
+			// (the rows keep their left column, the previews take the rest of
+			// the card), so a live preview grows with the card instead of
+			// sitting in a fixed 150dp slot with dead space beside it. The
+			// widget column closes the body in CloseCard.
+			Markup += "<div class=\"settings-card-body\"><div class=\"settings-card-items\">";
+		} else {
+			Markup += "<div class=\"settings-card-widgets\" id=\"" + CardId + "-widgets\"></div>";
+			Markup += "<div class=\"settings-card-items\">";
+		}
 	};
-	auto CloseCard = [&] {
-		Markup += "</div></div>"; // items, card
+	auto CloseCard = [&](const std::string& CardId, bool HasPreview) {
+		Markup += "</div>"; // items
+		if (HasPreview)
+			Markup += "<div class=\"settings-card-widgets\" id=\"" + CardId + "-widgets\"></div></div>";
+		Markup += "</div>"; // card
 	};
 	// Configured page: one card per declared section, in declaration order.
 	auto BuildDeclaredPage = [&](const services::uiconfig::SettingsPageDefinition* Page) {
@@ -93,7 +105,7 @@ void SettingsPage::buildRows() {
 					continue;
 				AppendRow(View);
 			}
-			CloseCard();
+			CloseCard("settings-card-" + Page->Id + "-" + Section.Id, HasPreview);
 		}
 		Markup += "</div>";
 	};
@@ -111,7 +123,7 @@ void SettingsPage::buildRows() {
 			if (View.row->Section && View.row->Section != LastSection) {
 				LastSection = View.row->Section;
 				if (Open)
-					CloseCard();
+					CloseCard("", false);
 				OpenLegacyCard(View.row->Section);
 			} else if (!Open) {
 				OpenLegacyCard("");
@@ -119,7 +131,7 @@ void SettingsPage::buildRows() {
 			AppendRow(View);
 		}
 		if (Open)
-			CloseCard();
+			CloseCard("", false);
 	};
 	if (Pages) {
 		for (const auto& Page : *Pages)

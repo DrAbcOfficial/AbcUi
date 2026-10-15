@@ -68,9 +68,12 @@ bool parsePreviewUri(const std::string& Uri, PreviewRequest& Output) {
 
 bool decodePreview(const PreviewRequest& Request, const std::vector<unsigned char>& Bytes,
 	ImageLoader::DecodedImage& Output) {
+	// The 9 sprays the engine's multiplayer page offers, byte-exact from its
+	// own table (GameUI.dll 0x100a5a98: "#Valve_<name>" + RGB), so a preview
+	// shows the same colour the game will paint.
 	const std::array<const char*, 9> Names = {"Orange", "Yellow", "Blue", "Ltblue", "Green", "Red", "Brown", "Ltgray", "Dkgray"};
-	const unsigned char Colors[9][3] = {{255,120,0},{255,255,0},{0,0,255},{0,180,255},{0,255,0},
-		{255,0,0},{128,64,0},{192,192,192},{64,64,64}};
+	const unsigned char Colors[9][3] = {{255,120,24},{225,180,24},{0,60,255},{0,167,255},{0,167,0},
+		{255,43,0},{123,73,0},{100,100,100},{36,36,36}};
 	const auto It = std::find(Names.begin(), Names.end(), Request.SprayColor);
 	// FreeImage owns format detection, header validation, decompression and
 	// palette access. This callback only supplies the preview's color policy.
@@ -79,12 +82,16 @@ bool decodePreview(const PreviewRequest& Request, const std::vector<unsigned cha
 		if (Request.Model) {
 			if (Index >= 160 && Index <= 191) hue(Pixel, Request.Top);
 			if (Index >= 192 && Index <= 223) hue(Pixel, Request.Bottom);
-		} else if (It != Names.end() && Index != 255) {
-			const float Light = std::max({Pixel.Red, Pixel.Green, Pixel.Blue}) / 255.0f;
+		} else if (It != Names.end()) {
+			// A spray logo's palette is a grey ramp: the background sits at
+			// index 0, the artwork near the far end. The engine recolours by
+			// replacing the palette with color * index / 256 (logos/remapped.bmp
+			// is its own output of exactly this mapping), which paints the
+			// background black and the artwork in the chosen colour.
 			const auto& Color = Colors[It - Names.begin()];
-			Pixel.Red = static_cast<unsigned char>(Color[0] * Light);
-			Pixel.Green = static_cast<unsigned char>(Color[1] * Light);
-			Pixel.Blue = static_cast<unsigned char>(Color[2] * Light);
+			Pixel.Red = static_cast<unsigned char>(Color[0] * Index / 256);
+			Pixel.Green = static_cast<unsigned char>(Color[1] * Index / 256);
+			Pixel.Blue = static_cast<unsigned char>(Color[2] * Index / 256);
 		}
 	});
 }
