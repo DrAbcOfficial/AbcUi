@@ -17,7 +17,7 @@
 #include "../../rmlui/AbcRenderInterface.h"
 #include "../../rmlui/RmlUiModule.h"
 #include "../GameUiBridge.h"
-#include "../video/Decoder.h"
+#include "../video/AsyncDecoder.h"
 #include "../video/VideoTexture.h"
 
 namespace menubackdrop {
@@ -53,7 +53,7 @@ struct Backdrop::State {
 	int TargetWidth = 0;
 	int TargetHeight = 0;
 
-	video::Decoder Media;
+	video::AsyncDecoder Media;
 	video::VideoTexture Frame;
 	bool VideoAttempted = false;
 	bool VideoFailed = false;
@@ -139,8 +139,12 @@ Backdrop::Diagnostics Backdrop::diagnostics() const {
 	return out;
 }
 
-void Backdrop::pumpVideo(double frameTime) {
+void Backdrop::pumpVideo(double frameTime, bool Enabled) {
 	State& state = *Data;
+	if (!Enabled || state.Requested == Mode::kLive || state.Requested == Mode::kSolid) {
+		state.Media.pause();
+		return;
+	}
 	if (state.VideoSource.empty() || state.VideoFailed)
 		return;
 	if (!state.Media.isOpen()) {
@@ -158,8 +162,13 @@ void Backdrop::pumpVideo(double frameTime) {
 		}
 		state.Media.setLooping(true);
 	}
-	if (!state.Media.advance(frameTime))
+	if (!state.Media.advance(frameTime)) {
+		if (!state.Media.error().empty()) {
+			state.VideoFailed = true;
+			abc::ConsoleWarn("%s %s: %s\n", kSeenWarnTag, state.VideoSource.c_str(), state.Media.error().c_str());
+		}
 		return;
+	}
 	const video::FrameView& frame = state.Media.frame();
 	if (frame.Pixels)
 		state.Frame.upload(frame.Pixels, frame.Width, frame.Height);

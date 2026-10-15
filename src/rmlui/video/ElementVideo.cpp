@@ -70,6 +70,7 @@ ElementVideo::~ElementVideo() {
 void ElementVideo::closeMedia() {
 	Media.close();
 	Texture.release();
+	Hidden = true;
 	DecodeSize = {};
 	SourceApplied = false;
 	for (float& value : Placement)
@@ -159,8 +160,10 @@ bool ElementVideo::openMedia(const char* reason) {
 	const std::string path = abc::ModPath(Config.Source.c_str());
 	const int width = DecodeSize.x > 0 ? DecodeSize.x : kMaxDecodeEdge;
 	const int height = DecodeSize.y > 0 ? DecodeSize.y : kMaxDecodeEdge;
-	if (Media.open(path.c_str(), width, height))
+	if (Media.open(path.c_str(), width, height)) {
+		SourceApplied = true;
 		return true;
+	}
 	// One warning per distinct failure per element; the document keeps
 	// running with the element invisible.
 	if (LastError != Media.error()) {
@@ -170,9 +173,11 @@ bool ElementVideo::openMedia(const char* reason) {
 	return false;
 }
 
-bool ElementVideo::pump(double frameTime) {
-	if (!Image || !GetContext() || !IsVisible(true))
+bool ElementVideo::pump(double frameTime, bool Enabled) {
+	if (!Enabled || !Image || !GetContext() || !IsVisible(true)) {
+		Media.pause();
 		return false;
+	}
 	if (Config.Source.empty()) {
 		if (SourceApplied)
 			closeMedia();
@@ -183,12 +188,29 @@ bool ElementVideo::pump(double frameTime) {
 		AppliedSource = Config.Source;
 	}
 	const auto size = GetBox().GetSize(Rml::BoxArea::Content);
-	if (!std::isfinite(size.x) || !std::isfinite(size.y) || size.x <= 1.0f || size.y <= 1.0f)
+	if (!std::isfinite(size.x) || !std::isfinite(size.y) || size.x <= 1.0f || size.y <= 1.0f) {
+		Media.pause();
 		return false;
+	}
 
 	if (!Media.isOpen() && !openMedia("open")) {
 		DecodeSize = {};
 		return false;
+	}
+
+	Media.setLooping(Config.Loop);
+	// autoplay=false holds the very first frame: the clock only moves when the
+	// document asked for playback.
+	const double delta = Config.Autoplay ? static_cast<double>(frameTime) * Config.Speed : 0.0;
+	const bool advanced = Media.advance(delta);
+	if (advanced) {
+		const ::video::FrameView& frame = Media.frame();
+		if (frame.Pixels && !Texture.upload(frame.Pixels, frame.Width, frame.Height))
+			return false;
+	}
+	if (!Media.error().empty() && LastError != Media.error()) {
+		LastError = Media.error();
+		abc::ConsoleWarn("[AbcUi video] %s: %s\n", Config.Source.c_str(), LastError.c_str());
 	}
 
 	const Rml::Vector2i box{static_cast<int>(size.x + 0.5f), static_cast<int>(size.y + 0.5f)};
@@ -203,24 +225,15 @@ bool ElementVideo::pump(double frameTime) {
 	const Rml::Vector2i target{
 		std::clamp(static_cast<int>(displayed.x * quality), kMinDecodeEdge, kMaxDecodeEdge),
 		std::clamp(static_cast<int>(displayed.y * quality), kMinDecodeEdge, kMaxDecodeEdge)};
-	if (DecodeSize.x != target.x || DecodeSize.y != target.y) {
-		// Re-open keeps the media clock: the movie continues where it was.
+	if (std::abs(DecodeSize.x - target.x) > kResizeHysteresis
+		|| std::abs(DecodeSize.y - target.y) > kResizeHysteresis) {
+		// Reconfigure on the worker, not in the HUD frame. Tiny layout
+		// changes keep the current output target rather than reopening.
 		DecodeSize = target;
 		if (!openMedia("resize")) {
 			DecodeSize = {};
 			return false;
 		}
-	}
-	Media.setLooping(Config.Loop);
-
-	// autoplay=false holds the very first frame: the clock only moves when the
-	// document asked for playback.
-	const double delta = Config.Autoplay ? static_cast<double>(frameTime) * Config.Speed : 0.0;
-	const bool advanced = Media.advance(delta);
-	if (advanced) {
-		const ::video::FrameView& frame = Media.frame();
-		if (frame.Pixels && !Texture.upload(frame.Pixels, frame.Width, frame.Height))
-			return false;
 	}
 	applyImageSource();
 	return advanced;
@@ -230,7 +243,7 @@ void registerElement() {
 	Rml::Factory::RegisterElementInstancer("video", &Instancer);
 }
 
-bool pumpFrames(double frameTime) {
+bool pumpFrames(double frameTime, bool Enabled) {
 #ifndef NDEBUG
 	LARGE_INTEGER frequency, start, end;
 	QueryPerformanceFrequency(&frequency);
@@ -238,7 +251,7 @@ bool pumpFrames(double frameTime) {
 #endif
 	bool changed = false;
 	for (auto* element : elements())
-		if (element->pump(frameTime))
+		if (element->pump(frameTime, Enabled))
 			changed = true;
 #ifndef NDEBUG
 	QueryPerformanceCounter(&end);

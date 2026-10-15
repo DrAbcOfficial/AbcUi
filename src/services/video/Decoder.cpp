@@ -1,5 +1,6 @@
 // services::video::Decoder implementation - see Decoder.h.
 #include "Decoder.h"
+#include <mutex>
 
 #include <windows.h>
 
@@ -74,9 +75,8 @@ struct FfmpegApi {
 FfmpegApi& ffmpegApi() {
 	static FfmpegApi Api;
 	static HMODULE Module = nullptr;
-	static bool Attempted = false;
-	if (!Attempted) {
-		Attempted = true;
+	static std::once_flag Once;
+	std::call_once(Once, [] {
 		Module = LoadLibraryA("Mile.FFmpeg.dll");
 		if (Module) {
 #define VIDEO_LOAD_API(Name)                                                        \
@@ -92,7 +92,7 @@ FfmpegApi& ffmpegApi() {
 			} while (false);
 #undef VIDEO_LOAD_API
 		}
-	}
+	});
 	return Api;
 }
 

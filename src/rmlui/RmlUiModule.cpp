@@ -435,13 +435,13 @@ void onFrame(double frameTime) {
 	framework::PanelManager::setSessionActive(services::nativeUiBridge().hasLevel());
 	InputBridge::update(Context);
 	avatars::onFrame();
-	// Background movie for the menu backdrop: the same HUD beat as the live
-	// <video> elements, only while a backdrop is on screen.
-	if (backdrop::anyVisible())
-		menubackdrop::menuBackdrop().pumpVideo(frameTime);
-	// Live <video> frames decode/upload on the HUD beat, before the Update
-	// pass, so a fresh frame and a fresh document state land in one update.
-	if (video::pumpFrames(frameTime))
+	// One scene gate for both video consumers. Even the pause-menu backdrop
+	// uses the live world, so it must not keep a hidden movie decoding.
+	const bool MenuVideoEnabled = backdrop::anyVisible() && !services::nativeUiBridge().hasLevel();
+	menubackdrop::menuBackdrop().pumpVideo(frameTime, MenuVideoEnabled);
+	// Poll completed CPU frames and upload on the render thread. FFmpeg open,
+	// decode and conversion run only on the bounded worker.
+	if (video::pumpFrames(frameTime, MenuVideoEnabled))
 		Context->Update();
 	framework::PanelManager::onFrame(frameTime);
 	// T21: keep the debugger's log beacon off the strict UI (see the helper).

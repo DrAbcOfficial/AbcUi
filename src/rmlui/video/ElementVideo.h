@@ -17,7 +17,7 @@
 //   fit       cover|contain|fill (default cover)
 //   muted     accepted, inert: audio is never decoded
 
-#include "../../services/video/Decoder.h"
+#include "../../services/video/AsyncDecoder.h"
 #include "../../services/video/Options.h"
 #include "../../services/video/VideoTexture.h"
 
@@ -36,7 +36,7 @@ public:
 
 	// Decodes/uploads for the current HUD frame. Returns true when the element
 	// changed something that needs an Rml update pass afterwards.
-	bool pump(double frameTime);
+	bool pump(double frameTime, bool Enabled);
 
 	// Drops the decoder and the texture (vid restart): the next pump re-opens
 	// at the new box size. Safe on a hidden element.
@@ -61,7 +61,7 @@ private:
 	// note: qualified as ::video:: - the element namespace is rmlui::video and
 	// would otherwise shadow the services namespace.
 	::video::Options Config;
-	::video::Decoder Media;
+	::video::AsyncDecoder Media;
 	::video::VideoTexture Texture;
 	Rml::Element* Image = nullptr;
 	bool SourceApplied = false;
@@ -78,7 +78,7 @@ private:
 void registerElement();
 // One decode/upload step per live element; called from the module's HUD_Frame
 // beat (never inside a geometry pass). Returns true when any element changed.
-bool pumpFrames(double frameTime);
+bool pumpFrames(double frameTime, bool Enabled = true);
 // Releases decoders and textures (vid restart / shutdown): the next pump
 // re-opens at the new box size.
 void invalidateAll();

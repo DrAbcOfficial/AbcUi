@@ -54,7 +54,7 @@ public:
 	int blurRounds() const;
 
 	// HUD beat: decodes the background movie (video mode only).
-	void pumpVideo(double frameTime);
+	void pumpVideo(double frameTime, bool Enabled = true);
 	// Render-end beat, before the Rml pass: captures the source, runs the blur
 	// chain and publishes the result. Returns true when the published texture
 	// changed (a new URI or a first-time registration).
