@@ -25,6 +25,10 @@ struct FriendEntry {
 	std::string Game;     // e.g. "Sven Co-op"; empty when not in a game
 	std::string Connect;  // "ip:port" when joinable, empty when not
 	bool InGame = false;
+	// The friend plays a game that is not this one. The board names that
+	// fact instead of printing the other game's AppID (a friend in our own
+	// game keeps Game, which spells our name).
+	bool OtherGame = false;
 };
 
 // Provider seam: one enumeration of the friend list.

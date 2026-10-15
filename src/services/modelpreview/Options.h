@@ -9,6 +9,13 @@
 
 namespace modelpreview {
 
+// Resolves a Studio path spelling the way the shipped cvars spell one: a
+// value that already names a file (".../*.mdl") is used verbatim, anything
+// else is read as the model's directory name under models/player/. An empty
+// or unusable spelling falls back to `Fallback` (same grammar) and then to
+// the generic player model, so the card is never left without a source.
+std::string resolveModelPath(std::string_view Spelling, std::string_view Fallback);
+
 struct Options {
 	ModelPreviewView View;
 	std::string Source;

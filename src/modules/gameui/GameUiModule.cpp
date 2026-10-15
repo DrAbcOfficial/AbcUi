@@ -68,6 +68,9 @@ void GameUiModule::onInit() {
 	// reads the source once per presentation change and the volume live.
 	abc::CREATE_CVAR("abc_ui_menu_music", "abcui/menu/opfor.wav", abc::FCVAR_VALUE, nullptr);
 	abc::CREATE_CVAR("abc_ui_menu_music_volume", "0.45", abc::FCVAR_VALUE, nullptr);
+	// The character card's model source override; empty follows the player's
+	// own `model` cvar (gameui::engine::playerCardFacts).
+	abc::CREATE_CVAR("abc_ui_menu_model_path", "", abc::FCVAR_VALUE, nullptr);
 	std::string ServerScript = readModFile("settings.scr");
 	if (ServerScript.empty()) ServerScript = readModFile("abcui/config/server_options.scr");
 	CreateGame.setOptions(services::creategame::parseServerOptions(ServerScript));

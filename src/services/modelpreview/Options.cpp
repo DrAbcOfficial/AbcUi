@@ -41,6 +41,26 @@ bool Options::isModelPath(std::string_view Path) {
 		Path.find_first_of("\\:\r\n\t") == Path.npos;
 }
 
+namespace {
+// One spelling through the models/player/ directory grammar.
+std::string spell(std::string_view Name) {
+	if (Name.empty())
+		return {};
+	if (Name.ends_with(".mdl"))
+		return std::string(Name);
+	return "models/player/" + std::string(Name) + "/" + std::string(Name) + ".mdl";
+}
+} // namespace
+
+std::string resolveModelPath(std::string_view Spelling, std::string_view Fallback) {
+	std::string Resolved = spell(Spelling);
+	if (!Options::isModelPath(Resolved))
+		Resolved = spell(Fallback);
+	if (!Options::isModelPath(Resolved))
+		Resolved = "models/player.mdl";
+	return Resolved;
+}
+
 bool Options::set(std::string_view Name, std::string_view Value) {
 	if (Name == "src") {
 		if (!Value.empty() && !isModelPath(Value))

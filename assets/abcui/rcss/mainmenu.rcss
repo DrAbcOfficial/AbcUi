@@ -80,24 +80,48 @@
 	padding-left: 2dp;
 }
 
-/* ---- side column: friends above the character -------------------------- */
-/* Anchored to the RIGHT edge: the Rml logical screen is
+/* ---- side column: the character as the subject, the board in the corner -- */
+/* The card is anchored with percentages: the Rml logical screen is
    screenWidth / (screenHeight / 480) dp wide (768dp at 16:10, 853dp at 16:9),
-   so a left coordinate would drift with the aspect ratio. */
+   so fixed coordinates would drift with the aspect ratio - the composition
+   (card centred between the entry column and the board) has to hold at every
+   aspect. The board keeps a fixed right anchor; it is small enough that the
+   two only share the corner the card's framing box crosses. */
 
+#player-card {
+	position: absolute;
+	left: 42%;
+	top: 48dp;
+	width: 34%;
+	height: 396dp;
+}
+
+/* The live Studio preview; the Renderer draws it into its own FBO and the
+   element presents it, so the box here is exactly what the camera frames. */
+#player-model {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+/* The friends board is a support surface: compact rows, a bounded list, and
+   the local player's own row (row 0) kept as the board's subject - the
+   reference's leader row reads larger than the names under it. */
 #friends-panel {
 	position: absolute;
 	right: 26dp;
 	top: 92dp;
-	width: 218dp;
-	max-height: 134dp;
-	padding: 8dp;
+	width: 190dp;
+	max-height: 118dp;
+	padding: 7dp;
 	overflow: hidden;
 }
 
+/* Four rows fit the 96dp box (the self row 32+1, three friend rows 20+1);
+   the rest scrolls under the board's own scrollbar. */
 #friends-list {
 	display: block;
-	max-height: 108dp;
+	max-height: 96dp;
 	overflow-y: auto;
 }
 
@@ -105,21 +129,27 @@
 .friend-row {
 	position: relative;
 	display: block;
-	height: 26dp;
-	line-height: 26dp;
+	height: 20dp;
+	line-height: 20dp;
 	border-bottom: 1dp var(--abc-line-soft);
 	background-color: transparent;
 	color: var(--abc-text);
-	font-size: 8dp;
+	font-size: 7dp;
 	padding-left: 4dp;
-	padding-right: 6dp;
+	padding-right: 5dp;
 }
 
 .friend-row:hover {
 	background-color: var(--abc-surface-3);
 }
 
+/* The local player: one row taller than a friend row, a bigger avatar and
+   the board's only bold name. */
 .friend-row.friend-self {
+	height: 32dp;
+	line-height: 32dp;
+	font-size: 10dp;
+	font-weight: bold;
 	color: var(--abc-accent);
 }
 
@@ -129,22 +159,36 @@
 
 .friend-avatar {
 	display: inline-block;
-	width: 18dp;
-	height: 18dp;
-	margin-right: 6dp;
+	width: 13dp;
+	height: 13dp;
+	margin-right: 5dp;
 	margin-top: 3dp;
 	vertical-align: top;
 }
 
+.friend-row.friend-self .friend-avatar {
+	width: 22dp;
+	height: 22dp;
+	margin-right: 6dp;
+	margin-top: 5dp;
+}
+
 .friend-name {
 	display: inline-block;
-	height: 24dp;
-	line-height: 24dp;
-	font-size: 8dp;
-	width: 142dp;
+	height: 18dp;
+	line-height: 18dp;
+	font-size: 7dp;
+	width: 104dp;
 	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
+}
+
+.friend-row.friend-self .friend-name {
+	height: 30dp;
+	line-height: 30dp;
+	font-size: 10dp;
+	width: 118dp;
 }
 
 .friend-state {
@@ -152,11 +196,18 @@
 	right: 2dp;
 	top: 0dp;
 	display: inline-block;
-	height: 24dp;
-	line-height: 24dp;
-	font-size: 7dp;
+	height: 18dp;
+	line-height: 18dp;
+	font-size: 6.5dp;
 	float: right;
 	color: var(--abc-text-dim);
+}
+
+.friend-row.friend-self .friend-state {
+	height: 30dp;
+	line-height: 30dp;
+	font-size: 8dp;
+	color: var(--abc-accent);
 }
 
 #friends-empty {
@@ -190,25 +241,6 @@
 .friend-menu-entry:hover {
 	background-color: var(--abc-accent);
 	color: var(--abc-accent-ink);
-}
-
-/* ---- character card ---------------------------------------------------- */
-
-#player-card {
-	position: absolute;
-	right: 26dp;
-	top: 232dp;
-	width: 258dp;
-	height: 216dp;
-}
-
-/* The live Studio preview; the Renderer draws it into its own FBO and the
-   element presents it, so the box here is exactly what the camera frames. */
-#player-model {
-	display: block;
-	width: 132dp;
-	height: 176dp;
-	margin-left: 63dp;
 }
 
 #player-strip {

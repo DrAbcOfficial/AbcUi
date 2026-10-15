@@ -100,13 +100,14 @@ IFriendsProvider* steamFriendsProvider() {
 			FriendGameInfo_t info{};
 			if (Friends->GetFriendGamePlayed(id, &info)) {
 				out.InGame = true;
-				if (info.m_gameID.AppID() != 0) {
-					char text[32];
-					std::snprintf(text, sizeof(text), "App %u", info.m_gameID.AppID());
-					out.Game = text;
+				// The board shows our game's name and, for every other game,
+				// the "playing another game" fact - never the raw AppID.
+				if (info.m_gameID.AppID() != 0 && Utils) {
+					if (Utils->GetAppID() == info.m_gameID.AppID())
+						out.Game = "Sven Co-op";
+					else
+						out.OtherGame = true;
 				}
-				if (Utils && Utils->GetAppID() == info.m_gameID.AppID())
-					out.Game = "Sven Co-op";
 			}
 			// Rich presence first: the client that publishes "connect" is the
 			// one whose matchmaking the player actually used.

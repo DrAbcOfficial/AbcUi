@@ -74,7 +74,8 @@ void FriendsModel::rebuild(uint64_t localSteamId, const char* localName) {
 	const bool changed = rows.size() != Rows.size()
 		|| !std::equal(rows.begin(), rows.end(), Rows.begin(), [](const FriendEntry& left, const FriendEntry& right) {
 			return left.SteamId == right.SteamId && left.Name == right.Name
-				&& left.Game == right.Game && left.Connect == right.Connect;
+				&& left.Game == right.Game && left.Connect == right.Connect
+				&& left.OtherGame == right.OtherGame;
 		});
 	if (changed) {
 		Rows = std::move(rows);

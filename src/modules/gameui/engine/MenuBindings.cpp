@@ -3,6 +3,7 @@
 #include <abc/Plugin.h>
 #include "rmlui/VGUI2ExtensionImport.h"
 #include "data/PlayerResource.h"
+#include "services/modelpreview/Options.h"
 #include "services/playerlist/MuteBackend.h"
 #include <cstring>
 #include <string>
@@ -19,16 +20,14 @@ PlayerCardFacts playerCardFacts() {
 	PlayerCardFacts Facts;
 	Facts.PlayerName = readCvarString("name");
 	Facts.ModelName = readCvarString("model");
-	// The cvar holds the model DIRECTORY under models/player/ (Sven Co-op
-	// enumerates those folders for its own player-model list); a value that
-	// already names a .mdl is used verbatim, and an empty value falls back to
-	// the generic player model so the card is never empty.
-	if (Facts.ModelName.empty())
-		Facts.ModelPath = "models/player.mdl";
-	else if (Facts.ModelName.ends_with(".mdl"))
-		Facts.ModelPath = Facts.ModelName;
-	else
-		Facts.ModelPath = "models/player/" + Facts.ModelName + "/" + Facts.ModelName + ".mdl";
+	// The menu's own override (abc_ui_menu_model_path) wins while it is set;
+	// empty follows the player's chosen model, the documented default. The
+	// model cvar itself holds the model DIRECTORY under models/player/
+	// (Sven Co-op enumerates those folders for its own player-model list)
+	// while a value that already names a .mdl is used verbatim - the shared
+	// resolver owns both spellings and the never-empty guarantee.
+	Facts.ModelPath = modelpreview::resolveModelPath(
+		readCvarString("abc_ui_menu_model_path"), Facts.ModelName);
 	return Facts;
 }
 

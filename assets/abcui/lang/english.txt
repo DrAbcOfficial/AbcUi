@@ -161,6 +161,7 @@ MainMenu_FriendsLoading = Loading Steam friends...
 MainMenu_FriendsUnavailable = Steam friends unavailable
 MainMenu_FriendJoin = Join server
 MainMenu_FriendInGame = In game
+MainMenu_FriendOtherGame = Playing another game
 MainMenu_Hint = Arrows navigate - Enter selects - Esc returns
 MainMenu_You = You
 
@@ -648,6 +649,7 @@ Settings_MenuVideo=Background video path
 Settings_MenuMusic=Menu music path
 Settings_MenuVolume=Music volume
 Settings_MenuBlur=Background blur
+Settings_MenuModel=Menu player model (path)
 
 # Section headlines (page -> sections -> widgets layout)
 Settings_SecPlayer=Player

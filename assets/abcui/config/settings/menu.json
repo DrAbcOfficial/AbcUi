@@ -37,6 +37,12 @@
       "default": 0.45
     },
     {
+      "cvar": "abc_ui_menu_model_path",
+      "label": "#Settings_MenuModel",
+      "section": "menu",
+      "kind": "text"
+    },
+    {
       "cvar": "abc_ui_menu_backdrop_blur",
       "label": "#Settings_MenuBlur",
       "section": "menu",

@@ -70,8 +70,9 @@ public:
 
 	// Friends board projection (WS4): one row per entry, the local player
 	// first; the row's avatar resolves through avatar://<steamid> and the
-	// state line shows the game. Re-projection is the caller's decision (the
-	// model's generation), so a steady list writes no DOM.
+	// state line shows the game - a friend in a game that is not this one is
+	// reported as such, never by AppID. Re-projection is the caller's
+	// decision (the model's generation), so a steady list writes no DOM.
 	void setFriends(const std::vector<services::friends::FriendEntry>& rows, bool steamAvailable);
 
 #ifndef NDEBUG

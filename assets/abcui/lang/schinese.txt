@@ -163,6 +163,7 @@ MainMenu_FriendsLoading = 正在读取 Steam 好友……
 MainMenu_FriendsUnavailable = Steam 好友不可用
 MainMenu_FriendJoin = 加入服务器
 MainMenu_FriendInGame = 游戏中
+MainMenu_FriendOtherGame = 正在游玩其他游戏
 MainMenu_Hint = 方向键选择 - 回车确认 - ESC 返回
 MainMenu_You = 你
 
@@ -647,6 +648,7 @@ Settings_MenuVideo=背景视频路径
 Settings_MenuMusic=菜单音乐路径
 Settings_MenuVolume=音乐音量
 Settings_MenuBlur=背景模糊
+Settings_MenuModel=主菜单玩家模型路径
 
 # Section headlines (page -> sections -> widgets layout)
 Settings_SecPlayer=玩家

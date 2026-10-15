@@ -191,8 +191,12 @@ void MainMenuPage::setFriends(const std::vector<services::friends::FriendEntry>&
 		if (row.SteamId != 0)
 			markup += "<img class=\"friend-avatar\" src=\"avatar://" + std::to_string(row.SteamId) + "\"/>";
 		markup += "<span class=\"friend-name\">" + escapeRml(row.Name) + "</span>";
+		// A game that is not this one is named as such: the board never
+		// prints a raw AppID. Joinable friends in this game carry the game's
+		// name; in-game friends without an address are just "in game".
 		const char* state = self ? "#MainMenu_You"
-			: (row.Connect.empty() ? (row.InGame ? "#MainMenu_FriendInGame" : "") : row.Game.c_str());
+			: (row.OtherGame ? "#MainMenu_FriendOtherGame"
+				: (row.Connect.empty() ? (row.InGame ? "#MainMenu_FriendInGame" : "") : row.Game.c_str()));
 		if (state && *state)
 			markup += "<span class=\"friend-state\">" + escapeRml(localized(state)) + "</span>";
 		markup += "</div>";
