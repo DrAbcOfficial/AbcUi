@@ -114,11 +114,17 @@
 #cg-apply { border-color: var(--abc-accent-soft); color: var(--abc-accent); }
 
 #cg-fields { position: absolute; left: 16dp; top: 44dp; width: 388dp; height: 270dp; overflow: auto; }
-#cg-fields .cg-label { position: static; display: block; width: 370dp; height: auto; margin: 6dp 0dp; }
-#cg-fields input, #cg-fields select, #cg-map, #cg-players, #cg-name, #cg-password { position: static; display: inline-block; width: 330dp; height: 24dp; font-size: 10dp; margin-bottom: 5dp; }
+#cg-fields .cg-label { position: static; display: block; width: 370dp; height: 16dp; line-height: 16dp; margin: 3dp 0dp; }
+#cg-fields input, #cg-fields select, #cg-map, #cg-players, #cg-name, #cg-password { position: static; display: inline-block; box-sizing: border-box; width: 330dp; height: 24dp; font-size: 10dp; margin-bottom: 2dp; }
 #cg-fields input { background-color: #101418; color: var(--abc-text); border: 1dp #536071; tab-index: auto; }
 #cg-fields input:focus { border: 1dp var(--abc-accent); }
 #cg-lan { width: 90dp; }
 #cg-hint { top: 316dp; height: 20dp; }
 #cg-fields scrollbarvertical { width: 0dp; }
 #cg-fields scrollbarvertical sliderbar { width: 10dp; min-height: 24dp; margin-left: -10dp; background-color: #536071; }
+#cg-fields input.cg-slider {
+	width: 296dp;
+	background-color: transparent;
+	border-width: 0dp;
+}
+#cg-apply:focus { color: var(--abc-accent-ink); }
