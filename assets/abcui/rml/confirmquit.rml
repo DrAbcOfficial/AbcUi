@@ -8,7 +8,7 @@
      only path to the quit backend; cancelling never quits. Default focus
      sits on the cancel entry so a stray Enter cannot end the game. -->
 <body id="menuconfirm">
-	<div id="panel">
+	<div id="panel" class="settings-layer">
 		<h1 id="confirm-title">#MainMenu_QuitConfirmTitle</h1>
 		<p id="confirm-body">#MainMenu_QuitConfirmBody</p>
 		<div id="confirm-actions">

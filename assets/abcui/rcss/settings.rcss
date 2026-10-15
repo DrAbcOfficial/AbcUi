@@ -349,38 +349,45 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	color: #d8b45a;
 }
 
-/* Explicit columns prevent auto-sized inline buttons from overflowing or
-   wrapping Return below the viewport. Apply/Return are always on the first
-   row, destructive default-reset entries on the second. Bottom = 468dp.
-   The bar keeps the panel's left anchor and stretches to the same 48dp
-   right gutter, so the "Return" and bind reset columns sit under the
-   panel's right border; their fixed 179dp width keeps the two columns
-   from overlapping once the bar is wider than the buttons. */
+/* One flat row: Apply, Return and the page's default-reset entry share the
+   bar (the key-binding reset joins them on the keyboard page, where the
+   page entry is hidden). A flex line distributes them equally and never
+   wraps, so no column can push Return below the viewport. The bar keeps
+   the panel's left anchor and stretches to the same 48dp right gutter,
+   and anchors to the bottom gutter so the footer holds its 48dp margin
+   when a narrower window raises the logical viewport height. */
 #settings-actions {
-	display: block;
+	display: flex;
 	position: absolute;
 	left: 190dp;
 	right: 48dp;
-	top: 404dp;
+	bottom: 48dp;
 	width: auto;
-	height: 64dp;
+	height: 28dp;
 	z-index: 1;
 }
 
 #settings-actions button {
 	display: block;
-	position: absolute;
 	box-sizing: border-box;
-	width: 179dp;
+	flex: 1 1 0%;
+	min-width: 0dp;
+	width: auto;
 	height: 28dp;
-	margin: 0dp;
+	margin: 0dp 0dp 0dp 10dp;
 	white-space: nowrap;
 	overflow: hidden;
 }
-#settings-apply { left: 0dp; top: 0dp; }
-#settings-return { right: 0dp; top: 0dp; }
-#settings-reset { left: 0dp; top: 36dp; }
-#bind-reset { right: 0dp; top: 36dp; }
+#settings-actions button:first-child { margin-left: 0dp; }
+
+/* The defaults entries preview their destructive effect on hover. Focus
+   keeps the shared amber treatment (the theme sheet's :focus rule wins on
+   hover-click). */
+#settings-reset:hover, #bind-reset:hover {
+	background-color: #3a1c1c;
+	border-color: var(--abc-danger);
+	color: var(--abc-danger);
+}
 
 /* Page-internal confirm layers are document-level overlays (direct children
    of the body, NOT of the scrollable panel - absolute layers inside the
@@ -388,37 +395,52 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
    turns the display property on (the layer member tracks the state - a
    SetProperty lands at the next layout frame).
 
-   They sit at the top of the page, horizontally centered in the viewport
-   (the same 50% / negative-half-width recipe as the shared confirm panel,
-   which also keeps the box centered once the settings panel stretches),
-   and keep the shared dialog frame's width so the prompt reads as part of
-   the panel it interrupts. The layer rides above the action bar
-   (z-index 1) like any modal. */
+   Every prompt shares the quit-confirmation frame: the same surface,
+   hairline border, amber top rule, centered text and centered action row
+   (confirmquit.rml carries this class on its panel). The layer box
+   itself is shrink-to-fit - inline-block width, auto height - so a one
+   line prompt gets a small centered box and a long one grows instead of
+   clipping, while the 50% translate keeps it viewport-centered at every
+   logical width. The layer rides above the action bar (z-index 1). */
 .settings-layer {
-	display: none;
 	position: absolute;
+	box-sizing: border-box;
+	display: none;
 	z-index: 2;
 	left: 50%;
-	margin-left: -203dp; /* half of the 372dp box + 16dp padding + border */
 	top: 40dp;
-	width: 372dp;
-	min-height: 200dp;
+	width: auto;
+	min-width: 260dp;
+	max-width: 460dp; /* long prompts wrap instead of spanning the screen */
+	min-height: 128dp;
 	background-color: #101418f8;
 	border: 1dp var(--abc-line);
 	border-top: 2dp var(--abc-accent);
 	padding: 16dp;
+	transform: translate(-50%, 0dp);
+	text-align: center;
 }
 
 .settings-layer p {
 	display: block;
 	font-size: 10dp;
 	color: var(--abc-text);
-	margin-bottom: 12dp;
+	line-height: 16dp;
+	margin: 8dp 4dp 16dp 4dp;
 }
 
 .settings-layer button {
 	display: inline-block;
-	margin-right: 8dp;
+	width: auto;
+	margin: 0dp 5dp;
+}
+
+.settings-layer button:first-child {
+	margin-left: 0dp;
+}
+
+.settings-layer button:last-child {
+	margin-right: 0dp;
 }
 
 .bind-header { background-color: #303d49; padding: 5dp; margin: 10dp 0dp; color: #bce0f4; }

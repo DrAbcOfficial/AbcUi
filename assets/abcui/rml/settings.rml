@@ -77,6 +77,9 @@
 		<button id="settings-apply" data-action="apply" data-label="#Settings_Apply" autofocus="autofocus">#Settings_Apply</button>
 		<button id="settings-return" data-action="return" data-label="#MainMenu_Return">#MainMenu_Return</button>
 		<button id="settings-reset" data-action="reset-defaults" data-label="#Settings_ResetDefaults">#Settings_ResetDefaults</button>
+		<!-- The key-binding defaults entry rides the same row: it is only
+		     visible on the keyboard page, where the page defaults entry is
+		     absent, so the row never shows two destructive entries. -->
 		<button id="bind-reset" data-action="bind-reset-defaults" data-label="#Settings_BindResetDefaults">#Settings_BindResetDefaults</button>
 	</div>
 	<!-- Page-internal layers live OUTSIDE the scrollable panel: they
