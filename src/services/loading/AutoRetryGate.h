@@ -1,7 +1,8 @@
 #pragma once
 
-// services::loading::AutoRetryGate - the pure run policy behind the browser
-// page's 自动重试 toggle: when a join attempt fails, the module keeps
+// services::loading::AutoRetryGate - the pure run policy behind the detail
+// window's 自动重试 toggle: while it is armed, a failed join (the typical
+// case being a FULL server, whose slots free up on their own schedule) keeps
 // re-entering the SAME typed retry path, bounded per failure chain and paced
 // by a delay. Deliberately free of engine/Rml includes so the exact policy
 // links into the offline tests (05 doc tier 1).
@@ -28,7 +29,9 @@ namespace services::loading {
 
 class AutoRetryGate {
 public:
-	static constexpr int kMaxAttempts = 3;
+	// A full server may free a slot minutes later, so the chain is patient
+	// but still bounded (the player can cancel at any point, which resets).
+	static constexpr int kMaxAttempts = 10;
 	static constexpr double kDelaySeconds = 5.0;
 
 	// One frame of the policy. Returns true exactly on the frame the caller

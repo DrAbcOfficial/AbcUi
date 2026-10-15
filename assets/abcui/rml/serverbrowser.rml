@@ -60,8 +60,10 @@
 		<!-- The blacklist tab's body: the rules editor replaces the table. -->
 		<div id="sb-blacklist-panel">
 			<p id="sb-blacklist-hint">#SB_BlacklistAddress</p>
-			<input id="sb-blacklist-address" type="text" maxlength="21"/>
-			<button id="sb-rule-add" data-action="sb-rule-add">#SB_BlacklistAdd</button>
+			<div id="sb-blacklist-addrow">
+				<input id="sb-blacklist-address" type="text" maxlength="21"/>
+				<button id="sb-rule-add" data-action="sb-rule-add">#SB_BlacklistAdd</button>
+			</div>
 			<div id="sb-blacklist-head">
 				<span class="bl-name">#SB_ColumnName</span>
 				<span class="bl-ip">#SB_BlacklistIp</span>
@@ -69,7 +71,6 @@
 				<span class="bl-action"></span>
 			</div>
 			<div id="sb-blacklist-rules"></div>
-			<p id="sb-blacklist-status"></p>
 		</div>
 	</div>
 
@@ -90,20 +91,20 @@
 	</div>
 
 	<!-- Module 4: the action bar, in the player's own action order: join,
-	     auto retry (a toggle), refresh, return. Refresh doubles as Stop while
-	     a list query is live (the shipped browsers' own Refresh/Stop
-	     discipline). -->
+	     refresh, return. Refresh doubles as Stop while a list query is live
+	     (the shipped browsers' own Refresh/Stop discipline). -->
 	<div id="sb-actions">
 		<button id="sb-connect" data-action="sb-connect">#SB_ContextJoin</button>
-		<button id="sb-auto-retry" data-action="sb-auto-retry">#SB_AutoRetry</button>
 		<button id="sb-refresh" data-action="sb-refresh">#SB_Refresh</button>
 		<button id="sb-return" data-action="return">#MainMenu_Return</button>
 	</div>
 
 	<!-- The server detail window: a left click on a row opens it, ESC or the
 	     Close button dismisses it. Its own buttons live in the window's
-	     bottom row; the page blocks the background while it is up (a modal
-	     subpage, like the settings prompts). -->
+	     bottom row - join, the join auto-retry toggle (keep trying a full
+	     server until a slot frees up) and close; the page blocks the
+	     background while it is up (a modal subpage, like the settings
+	     prompts). -->
 	<div id="sb-detail-overlay">
 		<div id="sb-detail-window">
 			<div id="sb-detail-title">#SB_DetailTitle</div>
@@ -111,6 +112,7 @@
 			<div id="sb-detail-players"></div>
 			<div id="sb-detail-actions">
 				<button id="sb-detail-join" data-action="sb-connect">#SB_ContextJoin</button>
+				<button id="sb-auto-retry" data-action="sb-auto-retry">#SB_AutoRetry</button>
 				<button id="sb-detail-close" data-action="sb-detail-close">#SB_DetailClose</button>
 			</div>
 		</div>

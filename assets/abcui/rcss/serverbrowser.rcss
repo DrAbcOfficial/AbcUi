@@ -387,13 +387,23 @@
 	margin-bottom: 6dp;
 }
 
+/* The address input and the add button share one row (explicitly floated:
+   the two inline-blocks otherwise wrapped onto separate lines on the live
+   context, which the offline geometry check now pins). */
+#sb-blacklist-addrow {
+	display: block;
+	height: 22dp;
+	margin-bottom: 8dp;
+}
+
 #sb-blacklist-address {
-	display: inline-block;
+	display: block;
+	float: left;
 	box-sizing: border-box;
-	width: 210dp;
+	width: 240dp;
 	height: 20dp;
 	line-height: 18dp;
-	margin: 0dp 6dp 8dp 0dp;
+	margin: 0dp;
 	padding: 0dp 6dp;
 	background-color: var(--abc-inset);
 	color: var(--abc-text);
@@ -411,11 +421,12 @@
 }
 
 #sb-rule-add {
-	display: inline-block;
+	display: block;
+	float: left;
 	min-width: 0dp;
 	height: 20dp;
 	line-height: 18dp;
-	margin: 0dp;
+	margin: 0dp 0dp 0dp 6dp;
 	padding: 0dp 10dp;
 	font-size: 9dp;
 }
@@ -490,15 +501,6 @@
 	margin: 2dp 0dp 0dp 0dp;
 	padding: 0dp 4dp;
 	font-size: 8dp;
-}
-
-#sb-blacklist-status {
-	display: block;
-	height: 14dp;
-	line-height: 14dp;
-	margin-top: 6dp;
-	font-size: 9dp;
-	color: var(--abc-warn);
 }
 
 #sb-blacklist-rules scrollbarvertical {
@@ -645,17 +647,6 @@
 	color: var(--abc-accent-ink);
 }
 
-/* 自动重试 is a toggle: lit while the browser keeps retrying a failed join. */
-#sb-auto-retry.sb-toggled {
-	border: 1dp var(--abc-accent);
-	color: var(--abc-accent);
-	background-color: var(--abc-accent-soft);
-}
-
-#sb-auto-retry.sb-toggled:focus {
-	color: var(--abc-accent-ink);
-}
-
 #sb-actions button.sb-disabled, #sb-actions button.sb-disabled:focus {
 	background-color: var(--abc-inset);
 	color: var(--abc-text-dim);
@@ -794,6 +785,22 @@
 }
 
 #sb-detail-join:focus {
+	color: var(--abc-accent-ink);
+}
+
+/* 自动重试 (the detail window's toggle): lit while the browser keeps trying
+   to join the shown server. */
+#sb-auto-retry {
+	min-width: 88dp;
+}
+
+#sb-auto-retry.sb-toggled {
+	border: 1dp var(--abc-accent);
+	color: var(--abc-accent);
+	background-color: var(--abc-accent-soft);
+}
+
+#sb-auto-retry.sb-toggled:focus {
 	color: var(--abc-accent-ink);
 }
 

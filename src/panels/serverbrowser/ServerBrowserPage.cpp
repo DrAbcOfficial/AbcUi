@@ -399,6 +399,8 @@ void ServerBrowserPage::render() {
 	}
 	if (!RuleStatus.empty())
 		status = RuleStatus;  // the blacklist editor's own feedback wins
+	else if (list.blockedOnly())
+		status.clear();  // the list query's count is noise in the rules view
 	setHtml(doc, "sb-status", framework::TextUtil::escapeRml(status));
 	// The module bar's left half: the visible row count of the active view
 	// (the blacklist view counts blocked rules, not servers).
@@ -639,8 +641,6 @@ void ServerBrowserPage::renderControls() {
 		}
 		Node("sb-blacklist-rules")->SetInnerRML(Markup);
 	}
-	if (auto* status = Node("sb-blacklist-status"))
-		status->SetInnerRML(framework::TextUtil::escapeRml(RuleStatus));
 	InControls = false;
 }
 
@@ -728,10 +728,14 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 	if (DetailsOpen) {
 		// A modal subpage: only its own bottom row answers; every other click
 		// inside the background is inert. 加入 joins the shown server through
-		// the ordinary connect intent (the selection is the shown server).
+		// the ordinary connect intent (the selection is the shown server),
+		// 自动重试 arms the join auto-retry for the full-server case.
 		if (action == "sb-detail-close") {
 			closeDetails();
 			refocusDefault();
+		} else if (action == "sb-auto-retry") {
+			AutoRetryJoin = !AutoRetryJoin;
+			Projected = false;
 		} else if (action == kActionConnect) {
 			const ActionSink Action = Sink;
 			if (Action)
@@ -747,11 +751,6 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 	// Page-internal view state first: selection, sort, paging (no module trip;
 	// the re-render is the next tick's - the DOM is never rebuilt from inside
 	// its own event dispatch).
-	if (action == "sb-auto-retry") {
-		AutoRetryJoin = !AutoRetryJoin;
-		Projected = false;
-		return;
-	}
 	if (action == kActionRow) {
 		if (!List || !Query)
 			return;
