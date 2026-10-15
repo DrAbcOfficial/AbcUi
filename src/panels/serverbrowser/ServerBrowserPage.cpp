@@ -509,6 +509,13 @@ void ServerBrowserPage::render() {
 			if (query.playerCount() == 0)
 				players = "<p class=\"sb-hint\">"
 					+ framework::TextUtil::escapeRml(token("SB_NoPlayers")) + "</p>";
+			else
+				players = "<div class=\"sb-player-head\"><span class=\"dp-name\">"
+					+ framework::TextUtil::escapeRml(token("SB_PlayerName"))
+					+ "</span><span class=\"dp-score\">"
+					+ framework::TextUtil::escapeRml(token("SB_Score"))
+					+ "</span><span class=\"dp-time\">"
+					+ framework::TextUtil::escapeRml(token("SB_Time")) + "</span></div>";
 			for (int i = 0; i < query.playerCount(); ++i) {
 				const auto* player = query.player(i);
 				if (!player)
@@ -668,6 +675,10 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 		closeContextMenu();  // any click outside the menu dismisses it
 	Rml::Element* entry = actionNode(target);
 	const Rml::String action = entry ? entry->GetAttribute<Rml::String>("data-action", "") : "";
+#ifndef NDEBUG
+	abc::ConsolePrint("[AbcUi] browser click action='%s' details=%d menu=%d insideMenu=%d\n",
+		action.c_str(), DetailsOpen ? 1 : 0, MenuOpen ? 1 : 0, insideMenu ? 1 : 0);
+#endif
 
 	if (insideMenu && MenuOpen) {
 		// The secondary menu entries: join/favorite travel to the module,
@@ -760,7 +771,14 @@ void ServerBrowserPage::handleClick(Rml::Event& event) {
 // Right click on a row: select it (no detail request - it stays a view
 // action) and open the secondary menu at the pointer.
 void ServerBrowserPage::handleMouseDown(Rml::Event& event) {
-	if (event.GetParameter<int>("button", 0) != 1)
+	const int button = event.GetParameter<int>("button", 0);
+#ifndef NDEBUG
+	Rml::Element* target = event.GetTargetElement();
+	abc::ConsolePrint("[AbcUi] browser mousedown button=%d target=%s#%s details=%d menu=%d\n",
+		button, target ? target->GetTagName().c_str() : "-",
+		target ? target->GetId().c_str() : "-", DetailsOpen ? 1 : 0, MenuOpen ? 1 : 0);
+#endif
+	if (button != 1)
 		return;
 	if (DetailsOpen || !List || !Query || List->blockedOnly())
 		return;

@@ -9,6 +9,13 @@
    columns are percentages of the module width so the table fills whatever
    the aspect ratio leaves between the page gutter and the filter column. */
 
+/* Typography note (live-verified 2026-10-15, 1280x800 = 480dp/1.667px per
+   dp): text at 8.5dp (a 14.17px font handle) painted every glyph as a filled
+   black box on this page, at every colour and every element - measured with
+   pixel probes plus an in-game colour experiment. 9dp renders normally, so
+   this page stays on the 9dp body tier (the same size the theme's buttons
+   use). The pre-existing playerlist 8.5dp rule is outside this page. */
+
 /* ---- page identity ------------------------------------------------------ */
 
 #sb-head {
@@ -114,7 +121,7 @@
 	width: 200dp;
 	height: 22dp;
 	line-height: 22dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	font-weight: bold;
 	letter-spacing: 0.8dp;
 	color: var(--abc-accent);
@@ -131,7 +138,7 @@
 	height: 22dp;
 	line-height: 22dp;
 	text-align: right;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text-dim);
 	white-space: nowrap;
 	overflow: hidden;
@@ -296,7 +303,7 @@
 	height: 22dp;
 	line-height: 22dp;
 	padding-left: 8dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text-dim);
 }
 
@@ -331,7 +338,7 @@
 	height: 20dp;
 	line-height: 20dp;
 	margin-top: 3dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text-dim);
 }
 
@@ -342,6 +349,12 @@
 }
 
 /* The blacklist tab's body replaces the table body 1:1. */
+#sb-list-module.sb-blacklist-mode {
+	/* The filter column is hidden in this view: the editor takes the whole
+	   row instead of leaving the docked column's gutter empty. */
+	right: 16dp;
+}
+
 #sb-list-module.sb-blacklist-mode #sb-header,
 #sb-list-module.sb-blacklist-mode #sb-list,
 #sb-list-module.sb-blacklist-mode #sb-paging {
@@ -369,7 +382,7 @@
 	display: block;
 	height: 14dp;
 	line-height: 14dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text-dim);
 	margin-bottom: 6dp;
 }
@@ -404,7 +417,7 @@
 	line-height: 18dp;
 	margin: 0dp;
 	padding: 0dp 10dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 }
 
 #sb-blacklist-rules {
@@ -450,7 +463,7 @@
 	height: 14dp;
 	line-height: 14dp;
 	margin-top: 6dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-warn);
 }
 
@@ -509,7 +522,7 @@
 	height: 26dp;
 	line-height: 26dp;
 	vertical-align: top;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text);
 	overflow: hidden;
 	white-space: nowrap;
@@ -522,7 +535,7 @@
 	height: 26dp;
 	line-height: 26dp;
 	vertical-align: top;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-accent);
 	overflow: hidden;
 	white-space: nowrap;
@@ -536,7 +549,7 @@
 	margin: 2dp 0dp 0dp 0dp;
 	padding: 0dp 4dp;
 	vertical-align: top;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	line-height: 20dp;
 	background-color: var(--abc-inset);
 	color: var(--abc-text);
@@ -577,7 +590,7 @@
 	line-height: 20dp;
 	margin: 10dp 0dp 0dp 0dp;
 	padding: 0dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 }
 
 #sb-filter-note {
@@ -684,7 +697,7 @@
 	line-height: 18dp;
 	margin: 0dp;
 	padding: 0dp 10dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 }
 
 #sb-detail-info {
@@ -775,7 +788,7 @@
 	display: block;
 	height: 18dp;
 	line-height: 18dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text);
 }
 
@@ -813,7 +826,7 @@
 	line-height: 20dp;
 	padding-left: 8dp;
 	padding-right: 4dp;
-	font-size: 8.5dp;
+	font-size: 9dp;
 	color: var(--abc-text);
 	overflow: hidden;
 	white-space: nowrap;
