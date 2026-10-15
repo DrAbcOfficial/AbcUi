@@ -26,7 +26,6 @@
 		     the browser/create/list row follows the maxplayers fact. -->
 		<div id="page-main"></div>
 		<div id="page-pause"></div>
-		<div id="focus-status">#MainMenu_FocusNone</div>
 	</div>
 
 	<div id="friends-panel" class="abc-panel">
@@ -49,17 +48,9 @@
 			auto-frame="true" frame-margin="1.2"
 			camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
 			ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
-		<div id="player-strip">
-			<div id="player-name"></div>
-			<div id="player-model-row">
-				<span id="player-model-label">#MainMenu_PlayerModel</span>
-				<span id="player-model-name"></span>
-			</div>
-		</div>
 	</div>
 
 	<div id="menu-footer">
-		<div id="menu-hint" class="abc-muted">#MainMenu_Hint</div>
 		<div id="menu-version" class="abc-muted"></div>
 	</div>
 </body>

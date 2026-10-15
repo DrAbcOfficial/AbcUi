@@ -202,6 +202,13 @@ void MainMenuPage::setFriends(const std::vector<services::friends::FriendEntry>&
 
 void MainMenuPage::showSection(Section section, bool focusDefault) {
 	VisibleSection = section;
+	if (document()) {
+		for (const char* Id : {"friends-panel", "player-card"})
+			if (auto* Node = document()->GetElementById(Id))
+				Node->SetProperty("display", section == Section::kMain ? "block" : "none");
+		if (section != Section::kMain)
+			closeFriendMenu();
+	}
 	if (Rml::Element* main = document() ? document()->GetElementById("page-main") : nullptr)
 		main->SetProperty("display", section == Section::kMain ? "block" : "none");
 	if (Rml::Element* pause = document() ? document()->GetElementById("page-pause") : nullptr)

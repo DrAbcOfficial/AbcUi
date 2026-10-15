@@ -89,22 +89,25 @@
 	position: absolute;
 	right: 26dp;
 	top: 92dp;
-	width: 258dp;
-	height: 132dp;
+	width: 218dp;
+	max-height: 134dp;
+	padding: 8dp;
 	overflow: hidden;
 }
 
 #friends-list {
 	display: block;
-	height: 96dp;
+	max-height: 108dp;
 	overflow-y: auto;
 }
 
 /* Friend rows: avatar, persona, state; right-click opens the join menu. */
 .friend-row {
+	position: relative;
 	display: block;
-	height: 24dp;
-	line-height: 24dp;
+	height: 26dp;
+	line-height: 26dp;
+	border-bottom: 1dp var(--abc-line-soft);
 	background-color: transparent;
 	color: var(--abc-text);
 	font-size: 8dp;
@@ -138,9 +141,16 @@
 	height: 24dp;
 	line-height: 24dp;
 	font-size: 8dp;
+	width: 142dp;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .friend-state {
+	position: absolute;
+	right: 2dp;
+	top: 0dp;
 	display: inline-block;
 	height: 24dp;
 	line-height: 24dp;
