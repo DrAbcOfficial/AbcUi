@@ -139,6 +139,54 @@ bool loadStream(FreeImageIO& io, fi_handle handle, DecodedImage& out, const Pale
 	return decodeToRgba(FreeImage_LoadFromHandle(format, &io, handle, 0), out, Transform);
 }
 
+// Builds a bottom-up 32-bit FIBITMAP from a top-down RGBA image. FreeImage's
+// own scan order is bottom-up, so the rows are written in reverse and read
+// back the same way; no other code sees the flip.
+FIBITMAP* toBitmap(const DecodedImage& Image) {
+	FIBITMAP* Bitmap = FreeImage_Allocate(Image.Width, Image.Height, 32,
+		FI_RGBA_RED_MASK, FI_RGBA_GREEN_MASK, FI_RGBA_BLUE_MASK);
+	if (!Bitmap)
+		return nullptr;
+	const int Stride = Image.Width * 4;
+	for (int Y = 0; Y < Image.Height; ++Y) {
+		BYTE* Line = FreeImage_GetScanLine(Bitmap, Image.Height - 1 - Y);
+		const unsigned char* Source = Image.Pixels.data() + static_cast<std::size_t>(Y) * Stride;
+		for (int X = 0; X < Image.Width; ++X) {
+			Line[X * 4 + FI_RGBA_RED] = Source[X * 4 + 0];
+			Line[X * 4 + FI_RGBA_GREEN] = Source[X * 4 + 1];
+			Line[X * 4 + FI_RGBA_BLUE] = Source[X * 4 + 2];
+			Line[X * 4 + FI_RGBA_ALPHA] = Source[X * 4 + 3];
+		}
+	}
+	return Bitmap;
+}
+
+// Reads a 32-bit FIBITMAP back into a top-down RGBA image (the inverse of
+// toBitmap; truecolor input only).
+bool fromBitmap(FIBITMAP* Bitmap, DecodedImage& Output) {
+	Output = DecodedImage();
+	if (!validDimensions(Bitmap))
+		return false;
+	BitmapHandle Owned(Bitmap, FreeImage_Unload);
+	const int Width = static_cast<int>(FreeImage_GetWidth(Bitmap));
+	const int Height = static_cast<int>(FreeImage_GetHeight(Bitmap));
+	const int Stride = Width * 4;
+	Output.Pixels.resize(static_cast<std::size_t>(Stride) * Height);
+	for (int Y = 0; Y < Height; ++Y) {
+		const BYTE* Line = FreeImage_GetScanLine(Bitmap, Height - 1 - Y);
+		unsigned char* Target = Output.Pixels.data() + static_cast<std::size_t>(Y) * Stride;
+		for (int X = 0; X < Width; ++X) {
+			Target[X * 4 + 0] = Line[X * 4 + FI_RGBA_RED];
+			Target[X * 4 + 1] = Line[X * 4 + FI_RGBA_GREEN];
+			Target[X * 4 + 2] = Line[X * 4 + FI_RGBA_BLUE];
+			Target[X * 4 + 3] = Line[X * 4 + FI_RGBA_ALPHA];
+		}
+	}
+	Output.Width = Width;
+	Output.Height = Height;
+	return true;
+}
+
 } // namespace
 
 bool loadFromFile(const char* path, DecodedImage& out) {
@@ -176,6 +224,55 @@ bool loadFromMemory(const unsigned char* Data, std::size_t Size, DecodedImage& O
 	stream.Data = Data;
 	stream.Size = Size;
 	return loadStream(io, &stream, Output, Transform);
+}
+
+bool rescale(const DecodedImage& Input, int Width, int Height, DecodedImage& Output) {
+	Output = DecodedImage();
+	if (!Input.valid() || Width <= 0 || Height <= 0)
+		return false;
+	std::size_t Bytes = 0;
+	if (!ResourceLimits::imageBytes(Width, Height, Bytes))
+		return false;
+	BitmapHandle Source(toBitmap(Input), FreeImage_Unload);
+	if (!Source)
+		return false;
+	return fromBitmap(FreeImage_Rescale(Source.get(), Width, Height, FILTER_BILINEAR), Output);
+}
+
+bool quantizeIndexed(const DecodedImage& Input, int MaxColors, IndexedImage& Output) {
+	Output = IndexedImage();
+	if (!Input.valid() || MaxColors < 1 || MaxColors > 256)
+		return false;
+	BitmapHandle Source(toBitmap(Input), FreeImage_Unload);
+	if (!Source)
+		return false;
+	BitmapHandle Quantized(FreeImage_ColorQuantizeEx(Source.get(), FIQ_WUQUANT, MaxColors),
+		FreeImage_Unload);
+	if (!Quantized)
+		return false;
+	const int Width = static_cast<int>(FreeImage_GetWidth(Quantized.get()));
+	const int Height = static_cast<int>(FreeImage_GetHeight(Quantized.get()));
+	if (!validDimensions(Quantized.get()))
+		return false;
+	RGBQUAD* Palette = FreeImage_GetPalette(Quantized.get());
+	if (!Palette)
+		return false;
+	const unsigned Count = (std::min)(FreeImage_GetColorsUsed(Quantized.get()),
+		static_cast<unsigned>(MaxColors));
+	if (Count == 0)
+		return false;
+	Output.Palette.resize(Count);
+	for (unsigned I = 0; I < Count; ++I)
+		Output.Palette[I] = {Palette[I].rgbRed, Palette[I].rgbGreen, Palette[I].rgbBlue};
+	Output.Indices.resize(static_cast<std::size_t>(Width) * Height);
+	for (int Y = 0; Y < Height; ++Y) {
+		const BYTE* Line = FreeImage_GetScanLine(Quantized.get(), Height - 1 - Y);
+		memcpy(Output.Indices.data() + static_cast<std::size_t>(Y) * Width, Line,
+			static_cast<std::size_t>(Width));
+	}
+	Output.Width = Width;
+	Output.Height = Height;
+	return true;
 }
 
 }

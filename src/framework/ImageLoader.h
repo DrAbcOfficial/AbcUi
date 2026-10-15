@@ -40,6 +40,20 @@ struct PaletteColor {
 };
 using PaletteTransform = std::function<void(unsigned Index, PaletteColor& Color)>;
 
+// An 8-bit indexed image: one palette index per pixel (top-down, row-major)
+// plus the palette the indices refer to. The spray encoder's input format.
+struct IndexedImage {
+	std::vector<unsigned char> Indices;
+	std::vector<PaletteColor> Palette;
+	int Width = 0;
+	int Height = 0;
+
+	bool valid() const {
+		return Width > 0 && Height > 0 && !Palette.empty()
+			&& Indices.size() == static_cast<std::size_t>(Width) * static_cast<std::size_t>(Height);
+	}
+};
+
 // Detects the format from the file content (file signature, with the name
 // only as fallback for headerless formats) and decodes it. Returns false
 // silently on any failure (unknown format, unreadable, bad header) - the
@@ -51,6 +65,14 @@ bool loadFromFile(const char* path, DecodedImage& out);
 // channel). Format detection runs on the leading bytes.
 bool loadFromMemory(const unsigned char* Data, std::size_t Size, DecodedImage& Output,
 	const PaletteTransform& Transform = {});
+
+// Bilinear resize to exactly Width x Height (FreeImage's default filter, the
+// same one the original spray path rescaled with).
+bool rescale(const DecodedImage& Input, int Width, int Height, DecodedImage& Output);
+
+// Wu quantization to at most MaxColors (1..256) entries. The returned palette
+// holds exactly the entries the indices use.
+bool quantizeIndexed(const DecodedImage& Input, int MaxColors, IndexedImage& Output);
 
 }
 
