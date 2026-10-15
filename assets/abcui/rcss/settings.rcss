@@ -397,15 +397,20 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 
    Every prompt shares the frame the quit confirmation shipped with: the
    same surface and hairline border with the amber top rule, the same
-   fixed 372dp box, 16dp padding, 10dp left-aligned body text and a single
+   372dp box (border-box: the padding rides inside, not on top of, the
+   panel width), 16dp padding, 10dp left-aligned body text and a single
    left-aligned button row (confirmquit.rml carries this class on its
    panel, so that window now takes the shared definition instead of
-   duplicating it). The layer rides above the action bar (z-index 1). */
+   duplicating it). The 50% anchor plus the half-box offset centers the
+   prompt in the viewport exactly like the quit confirmation; the layer
+   rides above the action bar (z-index 1). */
 .settings-layer {
+	box-sizing: border-box;
 	display: none;
 	position: absolute;
 	z-index: 2;
-	left: 48dp;
+	left: 50%;
+	margin-left: -186dp; /* half of the 372dp border box */
 	top: 40dp;
 	width: 372dp; /* the panel width the prompt interrupts */
 	min-height: 128dp;
