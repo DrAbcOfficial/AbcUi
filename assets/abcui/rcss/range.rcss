@@ -7,6 +7,7 @@ input.row-slider, input.cg-slider {
 	padding: 0dp;
 	border-width: 0dp;
 	background-color: transparent;
+	vertical-align: top;
 	tab-index: auto;
 }
 input.row-slider slidertrack, input.cg-slider slidertrack {
@@ -23,7 +24,7 @@ input.row-slider sliderbar, input.cg-slider sliderbar {
 }
 input.row-slider sliderbar:hover, input.cg-slider sliderbar:hover,
 input.row-slider:focus sliderbar, input.cg-slider:focus sliderbar {
-	background-color: #76c676;
+	background-color: var(--abc-accent);
 }
 input.row-slider sliderarrowdec, input.row-slider sliderarrowinc,
 input.cg-slider sliderarrowdec, input.cg-slider sliderarrowinc {
@@ -35,5 +36,8 @@ input.cg-slider sliderarrowdec, input.cg-slider sliderarrowinc {
 	font-size: 10dp;
 	color: #e8e8e8;
 	text-align: right;
+	height: 24dp;
+	line-height: 24dp;
+	vertical-align: top;
 }
 .row-readonly, input:disabled { opacity: 0.55; }
