@@ -10,12 +10,14 @@
 
 #sb-panel {
 	position: absolute;
-	left: 40dp;
+	left: 50%;
+	margin-left: -280dp;
 	top: 24dp;
 	width: 560dp;
-	height: 430dp;
-	background-color: #101418ee;
-	border: 1dp #3a4148;
+	height: 418dp;
+	background-color: var(--abc-surface);
+	border: 1dp var(--abc-line);
+	border-top: 2dp var(--abc-accent);
 }
 
 #sb-title {
@@ -27,7 +29,7 @@
 	line-height: 22dp;
 	font-size: 16dp;
 	font-weight: bold;
-	color: #00ff00;
+	color: var(--abc-accent);
 }
 
 #sb-tabs {
@@ -50,8 +52,8 @@
 }
 
 #sb-tabs button.sb-active {
-	background-color: #144d14;
-	border: 1dp #00ff00;
+	background-color: var(--abc-accent-soft);
+	border: 1dp var(--abc-accent);
 	color: #ffffff;
 }
 
@@ -81,8 +83,8 @@
 
 /* Filter toggles show their state; disabled entries are dimmed. */
 #sb-toolbar button.sb-on {
-	background-color: #144d14;
-	border: 1dp #00ff00;
+	background-color: var(--abc-accent-soft);
+	border: 1dp var(--abc-accent);
 	color: #ffffff;
 }
 
@@ -100,15 +102,17 @@
 	width: 526dp;
 	height: 20dp;
 	background-color: #161c22;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 }
 
 .sb-col {
+	min-width: 0dp;
+	margin-right: 0dp;
 	display: inline-block;
 	height: 18dp;
 	line-height: 18dp;
 	background-color: transparent;
-	border: 0dp #3a4148;
+	border: 0dp var(--abc-line);
 	text-align: left;
 	margin-bottom: 0dp;
 	padding: 0dp;
@@ -142,7 +146,7 @@
 /* Sort direction: the active column lights up (an arrow glyph would need a
    font feature the shipped faces do not carry). */
 .sb-sort-asc {
-	color: #00ff00;
+	color: var(--abc-accent);
 	font-weight: bold;
 }
 
@@ -160,14 +164,16 @@
 	height: 190dp;
 	overflow: auto;
 	background-color: #0d1114;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 }
 
 .sb-row {
 	display: block;
 	width: 508dp;
-	height: 18dp;
-	line-height: 18dp;
+	height: 26dp;
+	line-height: 26dp;
+	border-bottom: 1dp var(--abc-line-soft);
+	tab-index: auto;
 	font-size: 9dp;
 	overflow: hidden;
 }
@@ -177,12 +183,12 @@
 }
 
 .sb-row.sb-selected {
-	background-color: #144d14;
+	background-color: var(--abc-accent-soft);
 }
 
 .sb-row span {
 	display: inline-block;
-	height: 18dp;
+	height: 26dp;
 	vertical-align: top;
 	overflow: hidden;
 	white-space: nowrap;
@@ -232,9 +238,10 @@
 	left: 16dp;
 	top: 332dp;
 	width: 526dp;
-	height: 64dp;
+	height: 52dp;
+	box-sizing: border-box;
 	background-color: #161c22;
-	border: 1dp #3a4148;
+	border: 1dp var(--abc-line);
 	padding: 6dp;
 	overflow: hidden;
 }
@@ -243,7 +250,7 @@
 	display: block;
 	font-size: 11dp;
 	font-weight: bold;
-	color: #dedede;
+	color: var(--abc-text);
 	margin-bottom: 2dp;
 }
 
@@ -288,16 +295,20 @@
 	width: 526dp;
 	height: 12dp;
 	font-size: 9dp;
-	color: #dedede;
+	color: var(--abc-text);
 }
 
 #sb-actions {
 	position: absolute;
-	left: 40dp;
-	top: 458dp;
+	left: 50%;
+	margin-left: -280dp;
+	top: 448dp;
 	width: 560dp;
 	height: 22dp;
 }
+
+.sb-row:hover { background-color: var(--abc-surface-3); }
+#sb-connect { border-color: var(--abc-accent-soft); color: var(--abc-accent); }
 
 #sb-actions button {
 	display: inline-block;
@@ -322,7 +333,7 @@
 #sb-filter-content input, #sb-filter-content select { display: block; width: 324dp; height: 24dp; margin-bottom: 8dp; font-size: 10dp; }
 #sb-filter-content input, #sb-blacklist-address { background-color: #0a0e12; color: #e8e8e8; border: 1dp #536071; tab-index: auto; }
 #sb-filter-content button { display: inline-block; width: 150dp; font-size: 9dp; margin: 3dp; }
-#sb-filter-content button.sb-on { background-color: #144d14; border: 1dp #00ff00; }
+#sb-filter-content button.sb-on { background-color: var(--abc-accent-soft); border: 1dp var(--abc-accent); }
 #sb-blacklist-panel { display: none; position: absolute; top: 236dp; left: 16dp; width: 526dp; height: 160dp; }
 #sb-blacklist-address { width: 240dp; height: 22dp; font-size: 10dp; }
 #sb-blacklist-panel button { display: inline-block; height: 22dp; font-size: 9dp; }
