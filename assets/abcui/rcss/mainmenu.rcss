@@ -341,3 +341,20 @@ p {
 	margin-right: 8dp;
 	margin-bottom: 0dp;
 }
+
+/* Modal confirmation is centered, with a scrim separating it from the
+   underlying navigation. The safe cancel button retains keyboard focus. */
+body#menuconfirm { background-color: #00000088; }
+body#menuconfirm #panel {
+	left: 50%;
+	top: 168dp;
+	margin-left: -186dp;
+	min-height: 128dp;
+	padding: 20dp;
+}
+#confirm-title {
+	font-size: 16dp;
+	color: var(--abc-accent);
+	margin-bottom: 12dp;
+}
+#confirm-body { margin-bottom: 18dp; }
