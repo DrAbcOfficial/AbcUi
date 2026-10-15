@@ -353,6 +353,7 @@ Console_Count = Lineas
 Console_ConfirmLead = Este pegado contiene varios comandos. Ejecutar
 Console_ConfirmYes = Ejecutar
 Console_ConfirmNo = Cancelar
+Console_UnknownCommand = Comando desconocido: %s
 
 # T18 navegador de servidores (lista y detalles; favoritos y conexion con T18b)
 SB_Title = Buscar servidores

@@ -56,7 +56,10 @@ struct ConsoleBufferStats {
 	std::uint64_t RejectedAfterShutdown = 0;  // pushes after shutdown()
 };
 
-// A bounded tail of the engine console. Fixed caps (the frozen T15 record):
+// A bounded tail of the engine console. Two producers feed it: the engine
+// capture (above) and the replacement console's own local lines - the same
+// messages the vanilla console printed into its scrollback (the unknown
+// command answer). Fixed caps (the frozen T15 record):
 //   - kMaxLines complete lines; a newer line evicts the oldest;
 //   - kMaxLineBytes bytes per line; the overflow is discarded (UTF-8-safe
 //     cut) and the line is finalized marked Truncated when its newline

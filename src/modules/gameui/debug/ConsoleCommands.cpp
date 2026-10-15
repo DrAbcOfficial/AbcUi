@@ -4,6 +4,8 @@
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/Input.h>
 #include "modules/gameui/GameUiModule.h"
 #include "DebugCommands.h"
 #include <abc/Console.h>
@@ -63,6 +65,36 @@ void DebugCommands::consoleUiToggleCommand() {
 	}
 	GameUiModule::Instance->onMenuAction("console");
 	consoleUiStatusCommand();
+}
+
+// The page's own submission chain, driven without an injectable keyboard:
+// type the line through the editor seam, then press Enter through the real
+// context key path (the editor is the focused control). Everything after
+// that is production: the page's Enter handler, the submit sink, the T15
+// backend and the module's unknown-verb answer.
+void DebugCommands::consoleUiSubmitCommand() {
+	if (!GameUiModule::Instance || !GameUiModule::Instance->Console
+		|| !GameUiModule::Instance->Console->document()) {
+		abc::ConsoleWarn("[AbcUi] console page not open\n");
+		return;
+	}
+	if (gEngfuncs.Cmd_Argc() < 2) {
+		abc::ConsoleWarn("[AbcUi] usage: abc_ui_console_ui_submit <command...>\n");
+		return;
+	}
+	GameUiModule& self = *GameUiModule::Instance;
+	std::string command;
+	for (int i = 1; i < gEngfuncs.Cmd_Argc(); ++i) {
+		if (i > 1)
+			command += ' ';
+		command += gEngfuncs.Cmd_Argv(i);
+	}
+	self.Console->debugType(command.c_str());
+	if (self.Context) {
+		self.Context->ProcessKeyDown(Rml::Input::KI_RETURN, 0);
+		self.Context->ProcessKeyUp(Rml::Input::KI_RETURN, 0);
+	}
+	abc::ConsolePrint("[AbcUi] console-ui submit issued: \"%s\"\n", command.c_str());
 }
 
 }

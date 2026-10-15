@@ -44,6 +44,7 @@ class ConsoleBackend {
 public:
 	enum class SubmitResult : int {
 		kExecuted = 0,         // handed to the engine command channel once
+		kExecutedUnknownVerb,  // ... and the first verb is unknown to the client catalog
 		kRejectedEmpty,        // nothing but whitespace
 		kRejectedInvalid,      // embedded newline / over the byte bound
 		kUnavailable,          // no seam or the seam reported the hand-off failed
@@ -76,7 +77,10 @@ public:
 	void setSeams(const Seams& seams) { Seams_ = seams; }
 
 	// The one submission entry. Trims surrounding whitespace, validates, then
-	// executes exactly once through the command seam.
+	// executes exactly once through the command seam. The result separates
+	// "the engine took it and the client knows the verb" from "the engine
+	// took it but the client catalog does not know the verb" so the caller
+	// can report the latter (the engine itself stays silent for it).
 	SubmitResult submit(const char* text);
 
 	// Bounded history, oldest first, newest last. Sensitive commands are
@@ -90,8 +94,21 @@ public:
 	// empty prefix lists the catalog head.
 	std::vector<std::string> complete(const char* prefix, std::size_t max) const;
 
+	// True when the line's FIRST VERB resolves to a known cvar or command
+	// (case-insensitive; a leading quoted verb and a ';'/whitespace boundary
+	// follow the engine's own tokenizer, and $-substitutions stay "known").
+	// The engine executes an unknown client command silently - Sven Co-op's
+	// hw.dll carries no unknown-command message - and may forward it to a
+	// server, so the caller must only use this to REPORT, never to block.
+	// Fail-open: with no catalog seam the answer is true (never claim
+	// "unknown" without data). verbOf() returns the same classification's
+	// verb ("" when the line carries structure that is not classifiable).
+	bool knownVerb(const char* line) const;
+	static std::string verbOf(const char* line);
+
 private:
 	static bool sensitiveCommand(const std::string& command);
+	void collectNames(std::vector<std::string>& out) const;
 
 	Seams Seams_;
 	std::deque<std::string> History;

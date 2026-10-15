@@ -53,7 +53,13 @@ using ActionSink = std::function<void(const char* action)>;
 // Command execution sink (the module wires this to the T15 backend submit
 // path). One call per command line; a confirmed multi-line paste calls it
 // once per line, in order.
-using SubmitSink = std::function<void(const std::string& command)>;
+// The submission seam returns the module's answer for the console's own
+// unknown-command line: true = the client runtime catalog does not know the
+// verb AND the answer belongs in this console (Sven Co-op's engine prints
+// nothing for it, and a loaded level's server may still own the name - the
+// module holds that fact). The page only formats and shows the line; engine
+// call ownership stays with the module.
+using SubmitSink = std::function<bool(const std::string& command)>;
 
 class ConsolePage final : public framework::InteractiveDocument {
 public:
@@ -73,7 +79,11 @@ public:
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }
 	void setSubmitSink(SubmitSink sink) { Submit = std::move(sink); }
-	void setBuffer(const services::console::ConsoleBuffer* buffer) { Buffer = buffer; }
+	// Non-const: the console's own local scrollback lines (the unknown-command
+	// answer) ride the same bounded mirror the engine stream fills, exactly
+	// where the vanilla console put its messages (see the two-producer note
+	// in ConsoleBuffer.h).
+	void setBuffer(services::console::ConsoleBuffer* buffer) { Buffer = buffer; }
 	void setBackend(const services::console::ConsoleBackend* backend) { Backend = backend; }
 
 	// Projects the buffer's new lines into the DOM (incremental, bounded).
@@ -147,18 +157,23 @@ private:
 	void openConfirm(const std::string& text, bool fromPaste);
 	void closeConfirm();
 	void executeConfirmed();
+	void answerUnknownCommand(const std::string& command);
 	void walkHistory(int delta);
 
 	WindowListener Listener;
 	KeyListener Keys;
 	ActionSink Sink;
 	SubmitSink Submit;
-	const services::console::ConsoleBuffer* Buffer = nullptr;
+	services::console::ConsoleBuffer* Buffer = nullptr;
 	const services::console::ConsoleBackend* Backend = nullptr;
 
 	// Projection cursor: the last projected buffer sequence and the buffer
 	// generation the DOM view belongs to (a Clear bump reseeds the view).
 	uint64_t ProjectedSequence = 0;
+	// Tail follow across the live frame ordering: an append arms it, the next
+	// render (fresh layout) applies it unless the reader scrolled up.
+	bool FollowPending = false;
+	float FollowFromScrollTop = 0.0f;
 	uint64_t ProjectedGeneration = 0;
 	// The pending multi-line text (confirm pane); empty = pane closed.
 	std::string PendingText;

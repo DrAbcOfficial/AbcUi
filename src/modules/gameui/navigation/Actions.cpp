@@ -48,6 +48,15 @@ void GameUiModule::onMenuAction(const char* action) {
 		finishDispatch();
 		return;
 	}
+	else if (Kind == ActionKind::kConsoleSubmit || Kind == ActionKind::kConsoleConfirmExecute
+		|| Kind == ActionKind::kConsoleConfirmCancel) {
+		// The console page owns these layers: the submission travelled
+		// through the submit sink (T15 backend -> pfnClientCmd) and the
+		// paste confirmation acted on its own DOM/state. They are in the
+		// vocabulary only so the fixed-intent decoder never reports them as
+		// an unknown action - the console output stays free of AbcUi noise.
+		return;
+	}
 	else if (Parsed.Domain == ActionDomain::kConnection) {
 		handleConnectionAction(Kind);
 		return;

@@ -26,6 +26,7 @@ private:
 	static void loadingStatusCommand();
 	static void consoleUiStatusCommand();
 	static void consoleUiToggleCommand();
+	static void consoleUiSubmitCommand();
 	static void menuPageCommand();
 	static void menuModelCommand();
 	static void friendsTestCommand();

@@ -3,6 +3,7 @@
 #include "modules/gameui/GameUiModule.h"
 #include <abc/Console.h>
 #include "framework/FatalExit.h"
+#include "framework/Localization.h"
 #include "services/console/ConsoleBackend.h"
 #include "services/console/ConsoleBuffer.h"
 #include <cstring>
@@ -11,6 +12,7 @@
 #include "modules/gameui/engine/MenuBindings.h"
 namespace gameui {
 using namespace engine;
+
 void GameUiModule::onContextReady(Rml::Context* context) {
 	Context = context;
 	ServerBrowser.startContext();
@@ -42,7 +44,17 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	Console->setSubmitSink([](const std::string& command) {
 		// The T15 submission path: one validated engine command per call
 		// (pfnClientCmd inside the backend; the engine's own chain runs).
-		services::console::consoleBackend().submit(command.c_str());
+		using services::console::ConsoleBackend;
+		const auto result = services::console::consoleBackend().submit(command.c_str());
+		if (result != ConsoleBackend::SubmitResult::kExecutedUnknownVerb)
+			return false;
+		// The engine executes an unknown client command silently (Sven
+		// Co-op's hw.dll carries no unknown-command message), and a loaded
+		// level's server may own the verb and execute it - so the console's
+		// own answer is exactly for the case where the client catalog is the
+		// whole truth: outside a level. The page formats and shows the line;
+		// engine call ownership stays here.
+		return !services::nativeUiBridge().hasLevel();
 	});
 	Settings = std::make_unique<panels::settings::SettingsPage>();
 	Settings->setPages(&UiConfig.pages());

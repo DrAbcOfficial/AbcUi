@@ -198,6 +198,14 @@ void ConsolePage::render() {
 
 	const uint64_t latest = Buffer->latestSequence();
 	if (latest <= ProjectedSequence) {
+		// The pending tail follow (see the append branch): the metrics are
+		// current now, so the one-pass-behind scroll can land exactly at the
+		// bottom - unless the reader scrolled up since it was armed.
+		if (FollowPending) {
+			FollowPending = false;
+			if (history->GetScrollTop() + 1.0f >= FollowFromScrollTop)
+				history->SetScrollTop(history->GetScrollHeight());
+		}
 		updateCountLine();
 		return;  // no new lines
 	}
@@ -218,8 +226,18 @@ void ConsolePage::render() {
 	ProjectedSequence = Buffer->latestSequence();
 	trimDom();
 	if (atBottom) {
+		// The scroll set below lands on the CURRENT layout only when the
+		// context already laid the appended rows out. Live frames render
+		// before Context::Update, so the bounds here are one layout pass
+		// behind: the follow is re-armed and re-applied on the next render
+		// (one frame later, imperceptible) against fresh metrics. Without
+		// that second pass the pane stays exactly one append above the
+		// bottom and then stops following entirely - the live tail froze.
 		history->SetScrollTop(history->GetScrollHeight());
+		FollowPending = true;
+		FollowFromScrollTop = scrollTopBefore;
 	} else {
+		FollowPending = false;
 		// The reader is parked above the bottom: keep the visible content
 		// stable. Trimming the oldest rows shrinks the scroll height; the
 		// scroll top compensates by the same amount.
@@ -424,11 +442,33 @@ void ConsolePage::submitFromEditor() {
 	setControlValue(doc, "console-input", "");
 	HistoryCursor = -1;
 	hideCompletion();
-	if (Submit)
-		Submit(trimmed);
+	if (Submit && Submit(trimmed))
+		answerUnknownCommand(trimmed);
 	const ActionSink Callback = Sink;
 	if (Callback)
 		Callback(kActionSubmit);
+}
+
+// The console's own answer for a command the client runtime catalog does not
+// know (the module already decided it belongs here: the engine is silent for
+// those, and a loaded level's server may own the name). The line rides the
+// same scrollback the player reads - exactly where the vanilla console put
+// its messages - and goes through the same escaping the projection uses.
+void ConsolePage::answerUnknownCommand(const std::string& command) {
+	if (!Buffer)
+		return;
+	const std::string verb = services::console::ConsoleBackend::verbOf(command.c_str());
+	if (verb.empty())
+		return;  // not classifiable: never guess a name
+	std::string line;
+	if (!framework::Localization::translate(line, "Console_UnknownCommand"))
+		line = "Unknown command: %s";
+	const std::string marker = "%s";
+	const auto at = line.find(marker);
+	if (at != std::string::npos)
+		line.replace(at, marker.size(), verb);
+	line += '\n';  // one complete console line
+	Buffer->pushText(line.data(), line.size(), false);
 }
 
 void ConsolePage::openCompletionFor(const std::string& prefix) {

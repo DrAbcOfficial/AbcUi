@@ -19,6 +19,13 @@ constexpr Entry kActions[] = {
 	{"pl-close", {ActionKind::kPlClose, ActionDomain::kPlayerList}},
 	{"console", {ActionKind::kConsole, ActionDomain::kNavigation}},
 	{"console-close", {ActionKind::kConsoleClose, ActionDomain::kNavigation}},
+	// The console page's own layer reports these after it acted (the
+	// submission already travelled through the submit sink); they are part of
+	// the fixed vocabulary so the page's intents are never mistaken for an
+	// unknown action - the console must stay free of AbcUi chatter.
+	{"console-submit", {ActionKind::kConsoleSubmit, ActionDomain::kNavigation}},
+	{"console-confirm-execute", {ActionKind::kConsoleConfirmExecute, ActionDomain::kNavigation}},
+	{"console-confirm-cancel", {ActionKind::kConsoleConfirmCancel, ActionDomain::kNavigation}},
 	{"directconnect", {ActionKind::kDirectConnect, ActionDomain::kConnection}},
 	{"loading-cancel", {ActionKind::kLoadingCancel, ActionDomain::kConnection}},
 	{"error-retry", {ActionKind::kErrorRetry, ActionDomain::kConnection}},

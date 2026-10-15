@@ -31,6 +31,7 @@ void DebugCommands::registerCommands() {
 		abc::ADD_COMMAND("abc_ui_loading_status", loadingStatusCommand);
 		abc::ADD_COMMAND("abc_ui_console_ui_status", consoleUiStatusCommand);
 		abc::ADD_COMMAND("abc_ui_console_ui_toggle", consoleUiToggleCommand);
+		abc::ADD_COMMAND("abc_ui_console_ui_submit", consoleUiSubmitCommand);
 		abc::ADD_COMMAND("abc_ui_server_query", serverQueryCommand);
 		abc::ADD_COMMAND("abc_ui_server_status", serverStatusCommand);
 		abc::ADD_COMMAND("abc_ui_server_cancel", serverCancelCommand);

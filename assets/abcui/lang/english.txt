@@ -364,6 +364,7 @@ Console_Count = Lines
 Console_ConfirmLead = This paste contains multiple commands. Execute
 Console_ConfirmYes = Execute
 Console_ConfirmNo = Cancel
+Console_UnknownCommand = Unknown command: %s
 
 # T18 server browser (list window / details; favorites+connect arrive with T18b)
 SB_Title = Find Servers
