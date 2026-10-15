@@ -598,3 +598,5 @@ Valve_Red = Red
 Valve_Brown = Brown
 Valve_Ltgray = Ltgray
 Valve_Dkgray = Dkgray
+
+CG_MapSearch=Search maps

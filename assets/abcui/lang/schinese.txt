@@ -597,3 +597,5 @@ Valve_Flashlight = 手电筒
 Valve_Weapons_Stay = 武器障碍(不可捡起作为弹药)
 Valve_Footsteps = 脚步声
 Valve_Autocrosshair = 是否启用准星
+
+CG_MapSearch=搜索地图

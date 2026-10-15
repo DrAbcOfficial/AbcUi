@@ -73,6 +73,10 @@ std::vector<services::creategame::ServerOptionValue> CreateGamePage::optionValue
 void CreateGamePage::handleChange(Rml::Event& Event) {
 	auto* Target = Event.GetTargetElement();
 	if (!Target) return;
+	if (Target->GetId() == "cg-map-filter") {
+		filterMaps(Event.GetParameter<Rml::String>("value", ""));
+		return;
+	}
 	const auto Id = Target->GetId() + "-value";
 	if (auto* Value = node(Id.c_str()))
 		Value->SetInnerRML(framework::TextUtil::escapeRml(Event.GetParameter<Rml::String>("value", "")));

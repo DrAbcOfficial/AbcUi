@@ -86,6 +86,7 @@ private:
 
 	void handleClick(Rml::Event& event);
 	void buildOptions();
+	void filterMaps(const std::string& Query);
 	void handleChange(Rml::Event& Event);
 	Rml::Element* node(const char* id) const;
 

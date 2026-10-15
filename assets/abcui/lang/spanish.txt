@@ -418,3 +418,5 @@ PL_Bot = (bot)
 PL_Spectating = (espectador)
 PL_MutedLabel = (silenciado)
 PL_Empty = No hay otros jugadores en la partida.
+
+CG_MapSearch=Buscar mapas

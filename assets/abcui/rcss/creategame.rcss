@@ -8,12 +8,14 @@
 
 #cg-panel {
 	position: absolute;
-	left: 110dp;
+	left: 50%;
+	margin-left: -210dp;
 	top: 40dp;
 	width: 420dp;
 	height: 396dp;
-	background-color: #101418ee;
-	border: 1dp #3a4148;
+	background-color: var(--abc-surface);
+	border: 1dp var(--abc-line);
+	border-top: 2dp var(--abc-accent);
 }
 
 #cg-title {
@@ -25,7 +27,7 @@
 	line-height: 24dp;
 	font-size: 16dp;
 	font-weight: bold;
-	color: #00ff00;
+	color: var(--abc-accent);
 }
 
 .cg-label {
@@ -105,11 +107,17 @@
 	margin-right: 10dp;
 }
 
+#cg-fields .cg-label { color: var(--abc-text-dim); }
+#cg-fields select { width: 350dp; }
+#cg-fields select selectbox { max-height: 144dp; }
+#cg-fields .row-value { display: inline-block; width: 32dp; text-align: right; }
+#cg-apply { border-color: var(--abc-accent-soft); color: var(--abc-accent); }
+
 #cg-fields { position: absolute; left: 16dp; top: 44dp; width: 388dp; height: 270dp; overflow: auto; }
 #cg-fields .cg-label { position: static; display: block; width: 370dp; height: auto; margin: 6dp 0dp; }
 #cg-fields input, #cg-fields select, #cg-map, #cg-players, #cg-name, #cg-password { position: static; display: inline-block; width: 330dp; height: 24dp; font-size: 10dp; margin-bottom: 5dp; }
-#cg-fields input { background-color: #101418; color: #dedede; border: 1dp #536071; tab-index: auto; }
-#cg-fields input:focus { border: 1dp #00ff00; }
+#cg-fields input { background-color: #101418; color: var(--abc-text); border: 1dp #536071; tab-index: auto; }
+#cg-fields input:focus { border: 1dp var(--abc-accent); }
 #cg-lan { width: 90dp; }
 #cg-hint { top: 316dp; height: 20dp; }
 #cg-fields scrollbarvertical { width: 0dp; }

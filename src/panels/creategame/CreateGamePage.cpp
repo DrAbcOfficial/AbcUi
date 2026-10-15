@@ -7,6 +7,7 @@
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 #include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/StringUtilities.h>
 
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
@@ -72,18 +73,9 @@ void CreateGamePage::prepare(const services::creategame::MapCatalog& catalog,
 	for (std::size_t i = 0; i < catalog.size(); ++i)
 		Maps.push_back(catalog.nameAt(i));
 
-	// The map options are rebuilt per opening (the shipped dialog fills its
-	// ComboBox on construction). Add() with no matching selection auto-selects
-	// the first item at the next Update (T13 pin) - the explicit SetSelection
-	// below is the projection, never a change dispatch.
-	if (Rml::ElementFormControlSelect* select =
-			rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(node("cg-map"))) {
-		select->RemoveAll();
-		for (const std::string& map : Maps)
-			select->Add(framework::TextUtil::escapeRml(map), map);
-		if (!Maps.empty())
-			select->SetSelection(0);
-	}
+	if (auto* Filter = rmlui_dynamic_cast<Rml::ElementFormControl*>(node("cg-map-filter")))
+		Filter->SetValue("");
+	filterMaps("");
 
 	if (Rml::ElementFormControl* control =
 			rmlui_dynamic_cast<Rml::ElementFormControl*>(node("cg-players")))
@@ -102,6 +94,31 @@ void CreateGamePage::prepare(const services::creategame::MapCatalog& catalog,
 	showHint(nullptr);
 	if (auto* Control = node("cg-players-value"))
 		Control->SetInnerRML("8");
+}
+
+void CreateGamePage::filterMaps(const std::string& Query) {
+	auto* Select = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(node("cg-map"));
+	if (!Select)
+		return;
+	const auto Previous = Select->GetValue();
+	const auto Needle = Rml::StringUtilities::ToLower(Query);
+	Select->RemoveAll();
+	int Selected = 0;
+	for (const auto& Map : Maps) {
+		if (Rml::StringUtilities::ToLower(Map).find(Needle) == std::string::npos)
+			continue;
+		if (Map == Previous)
+			Selected = Select->GetNumOptions();
+		Select->Add(framework::TextUtil::escapeRml(Map), Map);
+	}
+	Select->SetSelection(Select->GetNumOptions() ? Selected : -1);
+	Select->SetValue(Select->GetNumOptions() ? Select->GetValue() : "");
+	if (auto* Apply = node("cg-apply")) {
+		if (Select->GetNumOptions())
+			Apply->RemoveAttribute("disabled");
+		else
+			Apply->SetAttribute("disabled", "disabled");
+	}
 }
 
 void CreateGamePage::showHint(const char* text) {
