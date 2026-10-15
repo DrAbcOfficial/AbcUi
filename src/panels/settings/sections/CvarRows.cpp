@@ -6,6 +6,7 @@
 #include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 #include <RmlUi/Core/Elements/ElementFormControl.h>
 #include "services/settings/SettingsModel.h"
+#include "framework/ColorUtil.h"
 #include "framework/TextUtil.h"
 #include <abc/Format.h>
 #include <string>
@@ -14,6 +15,21 @@
 #include <algorithm>
 namespace panels::settings {
 using namespace detail;
+namespace {
+// A range widget's parts are non-DOM children (WidgetSlider appends them
+// after the DOM ones), so the thumb is found by tag, not by selector.
+Rml::Element* sliderThumb(Rml::Element* input) {
+	if (!input)
+		return nullptr;
+	for (int Index = input->GetNumChildren(true) - 1; Index >= 0; --Index) {
+		Rml::Element* Child = input->GetChild(Index);
+		if (Child && Child->GetTagName() == "sliderbar")
+			return Child;
+	}
+	return nullptr;
+}
+} // namespace
+
 void SettingsPage::buildRows() {
 	if (!Model || !document())
 		return;
@@ -42,6 +58,10 @@ void SettingsPage::buildRows() {
 			const bool Slider = View.row->Kind == services::settings::SettingKind::kFloat
 				&& View.row->Bounded && View.row->Min < View.row->Max;
 			Markup += "<input class=\"row-input";
+			// Hue rows carry the drag thumb's own colour swatch (the style
+			// sheet swaps their hover/focus feedback onto the thumb border).
+			if (View.row->HueSwatch)
+				Markup += " row-hue";
 			if (Slider)
 				Markup += " row-slider\" type=\"range\" min=\"" + numberText(View.row->Min)
 					+ "\" max=\"" + numberText(View.row->Max) + "\" step=\""
@@ -185,6 +205,24 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 			&& view.row->Bounded;
 		Value->SetProperty("display", ShowsValue ? "inline-block" : "none");
 		Value->SetInnerRML(ShowsValue ? framework::TextUtil::escapeRml(view.draftText) : "");
+	}
+	// Hue rows (topcolor / bottomcolor): the drag thumb shows the colour the
+	// value represents. The engine reads 0..255 as palette-hue degrees
+	// (value * 360/255 - Renderer PaletteHueReplace), so the same mapping
+	// paints the swatch; the write is skipped while the colour is unchanged
+	// (a render per input event must not re-dirty the style tree).
+	if (view.row->HueSwatch && view.row->Kind == services::settings::SettingKind::kFloat) {
+		if (Rml::Element* thumb = sliderThumb(control)) {
+			float Rgb[3];
+			framework::ColorUtil::playerHueColor(view.draftValue, Rgb);
+			char Color[32];
+			const std::string Swatch = framework::ColorUtil::format(Rgb, Color);
+			const auto Shown = HueSwatchShown.find(view.row->Cvar);
+			if (Shown == HueSwatchShown.end() || Shown->second != Swatch) {
+				thumb->SetProperty("background-color", Swatch);
+				HueSwatchShown[view.row->Cvar] = Swatch;
+			}
+		}
 	}
 
 	if (toggle) {

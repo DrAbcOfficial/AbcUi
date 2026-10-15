@@ -27,6 +27,7 @@ SettingDefinition copyRow(const settings::SettingRow& Row) {
 	Result.Bounded = Row.Bounded;
 	Result.HasDefault = Row.HasDefault;
 	Result.ReadOnly = Row.ReadOnly;
+	Result.HueSwatch = Row.HueSwatch;
 	Result.RequireCvar = Row.RequireCvar ? Row.RequireCvar : "";
 	Result.RequireEnabled = Row.RequireEnabled;
 	for (int I = 0; I < Row.OptionCount; ++I)
@@ -156,6 +157,7 @@ void ConfigRepository::buildRows() {
 			Row.RequireCvar = Item.RequireCvar.empty() ? nullptr : Item.RequireCvar.c_str();
 			Row.RequireEnabled = Item.RequireEnabled;
 			Row.HasDefault = Item.HasDefault;
+			Row.HueSwatch = Item.HueSwatch;
 			if (Item.Kind == settings::SettingKind::kCommandToggle) {
 				Row.StateName = Item.Cvar.c_str();
 				Row.OnCommand = Item.Cvar == "in_mlook" ? "+mlook" : "+jlook";

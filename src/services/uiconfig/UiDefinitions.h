@@ -56,6 +56,9 @@ struct SettingDefinition {
 	std::string RequireCvar;
 	bool RequireEnabled = false;
 	bool ReadOnly = false;
+	// The value is a player-palette hue (topcolor / bottomcolor): the page
+	// shows the represented colour on the slider thumb.
+	bool HueSwatch = false;
 	bool Bounded = true;
 	bool HasDefault = true;
 	settings::SettingKind Kind = settings::SettingKind::kBool;

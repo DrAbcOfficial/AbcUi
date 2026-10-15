@@ -25,6 +25,7 @@ SettingsPage::~SettingsPage() {
 void SettingsPage::onDocumentReady() {
 	VideoView.reset();
 	SelectValuesShown.clear();
+	HueSwatchShown.clear();
 	if (Rml::ElementDocument* doc = document()) {
 		// Document-level delegation for both: row text fields commit through
 		// the data-row ancestor lookup, the T12 resolution select through its

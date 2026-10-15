@@ -100,6 +100,11 @@ struct SettingRow {
 	const char* RequireCvar = nullptr;
 	bool RequireEnabled = false;
 	bool HasDefault = true;
+	// The row's value is a player-palette HUE (the engine's topcolor /
+	// bottomcolor): the page paints the slider thumb with the colour of the
+	// current value (framework::ColorUtil::playerHueColor). Only a bounded
+	// float row may declare it (the schema enforces that).
+	bool HueSwatch = false;
 };
 
 // Per-row lifecycle. kClean -> (edit) -> kDirty -> (apply) -> kClean, with

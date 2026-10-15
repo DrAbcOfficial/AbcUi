@@ -1,5 +1,6 @@
 #pragma once
 #include <abc/Math.h>
+#include <cmath>
 #include <cstdio>
 
 // framework::ColorUtil - RGB <-> HSV conversion used by the danger/hue-shift
@@ -48,6 +49,43 @@ inline const char* formatRgba(const float rgb[3], int alpha, char buffer[40]) {
 	sprintf_s(buffer, 40, "rgba(%d, %d, %d, %d)",
 		static_cast<int>(rgb[0]), static_cast<int>(rgb[1]), static_cast<int>(rgb[2]), alpha);
 	return buffer;
+}
+
+// Player colour swatch (the topcolor / bottomcolor rows). The engine and the
+// Renderer treat the 0..255 value as a palette HUE: Renderer's
+// PaletteHueReplace (gl_studio.cpp) computes
+// `targetHue = value * 1.411764705882353` - exactly value * 360/255 - and
+// replaces the player palette's hue band, each entry keeping its own
+// saturation and value. A single swatch can only carry the hue, so it is
+// shown slightly muted (S/V below pure): the chosen hue stays readable on the
+// dark cards without glowing, and it sits closer to the muted tint the
+// palette replacement actually produces.
+constexpr float kPlayerHueDegreesPerStep = 360.0f / 255.0f;
+constexpr float kPlayerHueSaturation = 0.8f;
+constexpr float kPlayerHueValue = 0.9f;
+
+// value (clamped to 0..255) -> the swatch colour as rounded RGB bytes in
+// floats, ready for format(). 0 and 255 are both the full red end of the
+// wheel, matching the engine's own wrap.
+inline void playerHueColor(float value, float rgb[3]) {
+	if (!(value > 0.0f))
+		value = 0.0f;
+	if (value > 255.0f)
+		value = 255.0f;
+	const float hp = value * kPlayerHueDegreesPerStep / 60.0f;
+	const float chroma = kPlayerHueValue * kPlayerHueSaturation;
+	const float second = chroma * (1.0f - std::fabs(std::fmod(hp, 2.0f) - 1.0f));
+	float r = 0.0f, g = 0.0f, b = 0.0f;
+	if (hp < 1.0f) { r = chroma; g = second; }
+	else if (hp < 2.0f) { r = second; g = chroma; }
+	else if (hp < 3.0f) { g = chroma; b = second; }
+	else if (hp < 4.0f) { g = second; b = chroma; }
+	else if (hp < 5.0f) { r = second; b = chroma; }
+	else { r = chroma; b = second; }
+	const float base = kPlayerHueValue - chroma;
+	rgb[0] = std::floor((r + base) * 255.0f + 0.5f);
+	rgb[1] = std::floor((g + base) * 255.0f + 0.5f);
+	rgb[2] = std::floor((b + base) * 255.0f + 0.5f);
 }
 
 }

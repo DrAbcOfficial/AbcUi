@@ -107,7 +107,7 @@ std::vector<MenuEntry> menuEntries(const Value& V, const std::string& Path, std:
 
 SettingDefinition setting(const Value& Item, const std::string& P) {
 	fields(Item, {"cvar", "label", "section", "kind", "min", "max", "step", "default", "options", "source",
-		"requires", "requiresEnabled", "readOnly"}, P);
+		"requires", "requiresEnabled", "readOnly", "hue"}, P);
 	SettingDefinition Row;
 	Row.Cvar = text(Item, "cvar", P);
 	require(identifier(Row.Cvar), P + ".cvar", "invalid cvar identifier");
@@ -119,6 +119,10 @@ SettingDefinition setting(const Value& Item, const std::string& P) {
 		if (Item.HasMember(Key))
 			require(Item[Key].IsBool(), P + "." + Key, "expected boolean");
 	Row.ReadOnly = Item.HasMember("readOnly") && Item["readOnly"].GetBool();
+	if (Item.HasMember("hue")) {
+		require(Item["hue"].IsBool(), P + ".hue", "expected boolean");
+		Row.HueSwatch = Item["hue"].GetBool();
+	}
 	Row.RequireEnabled = Item.HasMember("requiresEnabled") && Item["requiresEnabled"].GetBool();
 	require(!Row.RequireEnabled || !Row.RequireCvar.empty(), P + ".requiresEnabled", "requires a dependency");
 	Row.Label = text(Item, "label", P);
@@ -163,6 +167,11 @@ SettingDefinition setting(const Value& Item, const std::string& P) {
 		if (Row.Kind == K::kBool || Row.Kind == K::kCommandToggle)
 			require(Row.DefaultValue == 0 || Row.DefaultValue == 1, P + ".default", "expected 0 or 1");
 	}
+	// The hue thumb swatch reads the dragged value directly, so it only
+	// exists on the bounded float control the page actually draws a slider
+	// for.
+	require(!Row.HueSwatch || (Row.Kind == K::kFloat && Row.Bounded), P + ".hue",
+		"hue requires a bounded float row");
 	if (Row.Kind == K::kCommandToggle)
 		require(Row.Cvar == "in_mlook" || Row.Cvar == "in_jlook", P + ".cvar", "unregistered command-toggle adapter");
 	if (Item.HasMember("source")) {

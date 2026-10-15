@@ -26,6 +26,13 @@ input.row-slider sliderbar:hover, input.cg-slider sliderbar:hover,
 input.row-slider:focus sliderbar, input.cg-slider:focus sliderbar {
 	background-color: var(--abc-accent);
 }
+/* Hue rows paint the thumb with the colour the value represents (the page
+   sets an inline background), so hover/focus feedback rides the border
+   instead of the fill the sheet would otherwise override. */
+input.row-hue sliderbar { border-color: #9fb0c0; }
+input.row-hue sliderbar:hover, input.row-hue:focus sliderbar {
+	border-color: var(--abc-accent);
+}
 input.row-slider sliderarrowdec, input.row-slider sliderarrowinc,
 input.cg-slider sliderarrowdec, input.cg-slider sliderarrowinc {
 	display: none;

@@ -185,6 +185,10 @@ private:
 	sections::CrosshairPreviewState CrosshairPreview;
 	sections::SpraySection Spray;
 	std::map<std::string, std::vector<std::string>> SelectValuesShown;
+	// The hue colour last painted on one row's drag thumb (cvar -> "rgb(...)"):
+	// the swatch is rewritten only when it changed, so the render that follows
+	// every slider change never re-dirties the style tree on its own.
+	std::map<std::string, std::string> HueSwatchShown;
 	// The mic-volume field of the change commit currently in flight (its
 	// caret/IME state must survive the status refresh, like the row inputs).
 	Rml::Element* VoiceVolumeSkipField = nullptr;
