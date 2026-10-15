@@ -77,4 +77,18 @@ const char* safeFocusForLayer(const char* id) {
 		return "bind-reset-no";
 	return "leave-stay";
 }
+
+// One row per section component that has a widget block in settings.rml.
+// The same names the definition parser accepts; a name without a block here
+// would be a schema/asset mismatch the page test catches.
+const WidgetBlock kWidgetBlocks[] = {
+	{"model-preview", "widget-model-preview", true},
+	{"spray-preview", "widget-spray-preview", true},
+	{"crosshair-preview", "widget-crosshair-preview", true},
+	{"spray-maker", "widget-spray-maker", true},
+	{"bindings", "widget-bindings", false},
+	{"video", "widget-video", false},
+	{"voice", "widget-voice", false},
+};
+const int kWidgetBlockCount = static_cast<int>(sizeof(kWidgetBlocks) / sizeof(kWidgetBlocks[0]));
 }

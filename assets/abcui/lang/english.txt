@@ -277,6 +277,7 @@ Settings_SecondaryColor = Secondary color
 Settings_Spraypaint = Spraypaint image
 Settings_PlayerModelHint = Drag to turn the model
 Settings_SpraypaintColor = Spraypaint color
+Settings_SprayPreviewHint = Preview of the selected image and color
 Settings_AdvCrosshair = HUD: Show crosshair
 Settings_AdvAutoSwitch = HUD: New weapon auto-switch mode
 Settings_AdvShowFps = HUD: Show frame rate (top left corner)

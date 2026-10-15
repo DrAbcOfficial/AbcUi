@@ -76,19 +76,11 @@ void SettingsPage::projectPage() {
 		if (auto* Tab = document()->GetElementById("settings-tab-" + Page.Id))
 			Tab->SetClass("selected", Page.Id == ActivePage);
 	}
-	auto Show = [&](const char* Id, bool Visible) {
-		if (auto* Node = document()->GetElementById(Id))
-			Node->SetProperty("display", Visible ? "block" : "none");
-	};
-	for (const char* Id : {"bind-title", "bind-status", "bindrows", "bind-reset"})
-		Show(Id, hasComponent("bindings"));
-	for (const char* Id : {"video-title", "video-section"})
-		Show(Id, hasComponent("video"));
-	for (const char* Id : {"voice-title", "voice-section"})
-		Show(Id, hasComponent("voice"));
-	// Transitional wiring until the section cards own their widgets: the
-	// page-level preview block serves the model/spray preview components.
-	Show("multiplayer-previews", hasComponent("model-preview") || hasComponent("spray-preview"));
+	projectWidgets();
+	// The key-binding defaults entry lives in the global action bar and is
+	// only offered where the page declares the bind list.
+	if (auto* BindReset = document()->GetElementById("bind-reset"))
+		BindReset->SetProperty("display", hasComponent("bindings") ? "block" : "none");
 	if (auto* Title = document()->GetElementById("title")) {
 		const auto* Page = currentPage();
 		Title->SetInnerRML(framework::TextUtil::escapeRml(
@@ -98,7 +90,37 @@ void SettingsPage::projectPage() {
 		const auto* Page = currentPage();
 		Description->SetInnerRML(Page ? framework::TextUtil::escapeRml(detail::translated(Page->Description.c_str())) : "");
 	}
-	Show("settings-reset", currentPage() && !currentPage()->Cvars.empty());
+	if (auto* Reset = document()->GetElementById("settings-reset"))
+		Reset->SetProperty("display", currentPage() && !currentPage()->Cvars.empty() ? "block" : "none");
+}
+
+void SettingsPage::projectWidgets() {
+	Rml::ElementDocument* Doc = document();
+	Rml::Element* Host = Doc ? Doc->GetElementById("settings-widget-host") : nullptr;
+	if (!Doc || !Host)
+		return;
+	const auto* Page = currentPage();
+	// Each widget block is a singleton: home is the card of the section that
+	// declares its component, otherwise the (hidden) parking host.
+	for (int I = 0; I < detail::kWidgetBlockCount; ++I) {
+		Rml::Element* Block = Doc->GetElementById(detail::kWidgetBlocks[I].Element);
+		if (!Block)
+			continue;
+		Rml::Element* Target = Host;
+		if (Page) {
+			if (const auto* Section = Page->sectionHaving(detail::kWidgetBlocks[I].Component)) {
+				if (Rml::Element* Container = Doc->GetElementById(
+						("settings-card-" + Page->Id + "-" + Section->Id + "-widgets").c_str()))
+					Target = Container;
+			}
+		}
+		Rml::Element* Parent = Block->GetParentNode();
+		if (!Parent || Parent == Target)
+			continue;
+		Rml::ElementPtr Detached = Parent->RemoveChild(Block);
+		if (Detached)
+			Target->AppendChild(std::move(Detached));
+	}
 }
 
 void SettingsPage::resetCurrentPage() {

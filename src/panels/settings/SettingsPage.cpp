@@ -32,6 +32,13 @@ void SettingsPage::onDocumentReady() {
 		// live-caught by the offline page test).
 		addListener(doc, "click", &Listener);
 		addListener(doc, "change", &Listener);
+		// The legacy all-in-one projection (no page definitions - the model
+		// fixtures) has no cards to claim widgets: show the parking host so
+		// the bind list and hardware blocks stay reachable.
+		if (!Pages) {
+			if (Rml::Element* host = doc->GetElementById("settings-widget-host"))
+				host->SetProperty("display", "block");
+		}
 	}
 	buildRows();
 	buildBindRows();

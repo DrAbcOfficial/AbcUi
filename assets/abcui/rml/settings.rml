@@ -6,71 +6,93 @@
 	<link type="text/rcss" href="../rcss/settings.rcss"/>
 	<link type="text/rcss" href="../rcss/range.rcss"/>
 </head>
-<!-- Configuration owns page identities, labels, rows and component placement.
-     This document carries only navigation/content hosts, reusable special
-     controls, the global action bar and confirmation layers. -->
+<!-- The configuration document. JSON owns page identities, labels, the
+     section cards, their widgets and their rows; this document carries only
+     the navigation/content hosts, the movable special widgets, the global
+     action bar and the confirmation layers.
+
+     A page is a list of section cards (one big row per declared section).
+     Each widget block below is a singleton: when the active page declares its
+     component, the page projection moves the block into that section's card
+     (services::uiconfig::SectionDefinition::components); otherwise the block
+     waits in #settings-widget-host, which is hidden in configured runs. -->
 <body id="menusettings">
 	<div id="settings-navigation"></div>
 	<div id="panel">
-		<h1 id="title">#Settings_Title</h1>
+		<div id="settings-head">
+			<div id="settings-brand">Sven Co-op</div>
+			<h1 id="title">#Settings_Title</h1>
+		</div>
 		<div id="settings-status"></div>
 		<p id="settings-description"></p>
+		<!-- Section cards are injected here by SettingsPage::buildRows(). -->
 		<div id="rows"></div>
-		<div id="multiplayer-previews">
-			<!-- The player model preview is a live Studio render (font/HLP
-			     style inspection): drag it with the primary button to turn
-			     the character. -->
-			<div class="preview-box">
-				<p>#Settings_PlayerModel</p>
-				<model id="model-preview" auto-frame="true" frame-margin="1.25" drag-rotate="true"
-					sequence="2" animate="true" angles="0 25 0"
-			controllers="127 127 127 127" blending="127 127"
-					camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
-					ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
-				<div id="model-preview-hint">#Settings_PlayerModelHint</div>
+		<!-- Widget parking: visible only for the legacy all-in-one projection
+		     (no page definitions), hidden for configured runs. -->
+		<div id="settings-widget-host">
+			<div class="settings-widget" id="widget-model-preview">
+				<!-- The player model preview is a live Studio render (font/HLP
+				     style inspection): drag it with the primary button to turn
+				     the character. -->
+				<div class="preview-box">
+					<model id="model-preview" auto-frame="true" frame-margin="1.25" drag-rotate="true"
+						sequence="2" animate="true" angles="0 25 0"
+				controllers="127 127 127 127" blending="127 127"
+						camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
+						ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
+					<div id="model-preview-hint">#Settings_PlayerModelHint</div>
+				</div>
 			</div>
-			<div class="preview-box"><p>#Settings_Spraypaint</p><img id="spray-preview"/></div>
-		</div>
-		<h2 id="bind-title">#Settings_KeysTitle</h2>
-		<div id="bind-status"></div>
-		<div id="bindrows"></div>
-		<h2 id="video-title">#Settings_VideoTitle</h2>
-		<div id="video-section">
-			<div class="row" id="video-row-resolution">
-				<div class="row-label">#Settings_VideoResolution</div>
-				<select class="video-select" id="video-resolution"></select>
+			<div class="settings-widget" id="widget-spray-preview">
+				<div class="preview-box preview-box-square">
+					<img id="spray-preview"/>
+					<div id="spray-preview-hint">#Settings_SprayPreviewHint</div>
+				</div>
 			</div>
-			<div class="row" id="video-row-windowed">
-				<div class="row-label">#Settings_VideoWindowed</div>
-				<button class="row-toggle" id="video-windowed" data-action="video-toggle-windowed"></button>
+			<div class="settings-widget" id="widget-bindings">
+				<div id="bind-status"></div>
+				<div id="bindrows"></div>
 			</div>
-			<div id="video-status"></div>
-			<div id="video-actions">
-				<button id="video-apply" data-action="video-apply" data-label="#Settings_VideoApply">#Settings_VideoApply</button>
+			<div class="settings-widget" id="widget-video">
+				<div id="video-section">
+					<div class="row" id="video-row-resolution">
+						<div class="row-label">#Settings_VideoResolution</div>
+						<select class="video-select" id="video-resolution"></select>
+					</div>
+					<div class="row" id="video-row-windowed">
+						<div class="row-label">#Settings_VideoWindowed</div>
+						<button class="row-toggle" id="video-windowed" data-action="video-toggle-windowed"></button>
+					</div>
+					<div id="video-status"></div>
+					<div id="video-actions">
+						<button id="video-apply" data-action="video-apply" data-label="#Settings_VideoApply">#Settings_VideoApply</button>
+					</div>
+				</div>
 			</div>
-		</div>
-		<!-- T13 voice section: the voice cvar rows (voice_scale /
-		     voice_modenable) ride the #rows table above; these are the
-		     IVoiceTweak hardware rows. The ids are page contracts; the
-		     whole section fail-closes when the engine interface is
-		     missing. -->
-		<h2 id="voice-title">#Settings_VoiceTitle</h2>
-		<div id="voice-section">
-			<div class="row" id="voice-row-volume">
-				<div class="row-label">#Settings_MicVolume</div>
-				<input class="row-input row-slider" type="range" min="0" max="100" step="1" id="voice-mic-volume"/>
-				<span id="voice-mic-value" class="row-value"></span>
+			<div class="settings-widget" id="widget-voice">
+				<!-- T13 voice section: the voice cvar rows (voice_scale /
+				     voice_modenable) ride the section card's rows; these are
+				     the IVoiceTweak hardware rows. The ids are page contracts;
+				     the whole section fail-closes when the engine interface is
+				     missing. -->
+				<div id="voice-section">
+					<div class="row" id="voice-row-volume">
+						<div class="row-label">#Settings_MicVolume</div>
+						<input class="row-input row-slider" type="range" min="0" max="100" step="1" id="voice-mic-volume"/>
+						<span id="voice-mic-value" class="row-value"></span>
+					</div>
+					<div class="row" id="voice-row-boost">
+						<div class="row-label">#Settings_MicBoost</div>
+						<button class="row-toggle" id="voice-mic-boost" data-action="voice-mic-boost"></button>
+					</div>
+					<div class="row" id="voice-row-test">
+						<div class="row-label">#Settings_MicTest</div>
+						<button class="row-toggle" id="voice-mic-test" data-action="voice-test"></button>
+					</div>
+					<div id="voice-status"></div>
+					<div id="voice-meter" aria-label="#Settings_MicLevel"><div id="voice-meter-fill"></div></div>
+				</div>
 			</div>
-			<div class="row" id="voice-row-boost">
-				<div class="row-label">#Settings_MicBoost</div>
-				<button class="row-toggle" id="voice-mic-boost" data-action="voice-mic-boost"></button>
-			</div>
-			<div class="row" id="voice-row-test">
-				<div class="row-label">#Settings_MicTest</div>
-				<button class="row-toggle" id="voice-mic-test" data-action="voice-test"></button>
-			</div>
-			<div id="voice-status"></div>
-			<div id="voice-meter" aria-label="#Settings_MicLevel"><div id="voice-meter-fill"></div></div>
 		</div>
 	</div>
 	<div id="settings-actions">
@@ -84,36 +106,31 @@
 	</div>
 	<!-- Page-internal layers live OUTSIDE the scrollable panel: they
 	     anchor to the document and stay viewport-covering no matter how
-	     far the bind list is scrolled (absolute layers inside the scroll
+	     far the rows are scrolled (absolute layers inside the scroll
 	     container scroll out of the visible area - live-caught). -->
-		<!-- Page-internal layers (not controller overlays): restore defaults
-		     always confirms (cvars and key bindings separately); leaving with
-		     unsaved drafts prompts; a capture landing on a bound key asks
-		     before replacing. Safe default focus sits on the non-destructive
-		     entry. -->
-		<div id="reset-confirm" class="settings-layer">
-			<h1 class="settings-layer-title">#Settings_ResetConfirmTitle</h1>
-			<p id="reset-confirm-text">#Settings_ResetConfirm</p>
-			<button id="reset-yes" data-action="reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
-			<button id="reset-no" data-action="reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
-		</div>
-		<div id="leave-confirm" class="settings-layer">
-			<h1 class="settings-layer-title">#Settings_UnsavedConfirmTitle</h1>
-			<p id="leave-confirm-text">#Settings_UnsavedConfirm</p>
-			<button id="leave-discard" data-action="leave-discard" data-label="#Settings_DiscardReturn">#Settings_DiscardReturn</button>
-			<button id="leave-stay" data-action="leave-stay" data-label="#Settings_Stay" autofocus="autofocus">#Settings_Stay</button>
-		</div>
-		<div id="bind-conflict" class="settings-layer">
-			<h1 class="settings-layer-title">#Settings_BindConflictTitle</h1>
-			<p id="bind-conflict-text"></p>
-			<button id="bind-conflict-yes" data-action="bind-conflict-yes" data-label="#Settings_BindConflictYes">#Settings_BindConflictYes</button>
-			<button id="bind-conflict-no" data-action="bind-conflict-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
-		</div>
-		<div id="bind-reset-confirm" class="settings-layer">
-			<h1 class="settings-layer-title">#Settings_BindResetConfirmTitle</h1>
-			<p id="bind-reset-confirm-text">#Settings_BindResetConfirm</p>
-			<button id="bind-reset-yes" data-action="bind-reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
-			<button id="bind-reset-no" data-action="bind-reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
-		</div>
+	<div id="reset-confirm" class="settings-layer">
+		<h1 class="settings-layer-title">#Settings_ResetConfirmTitle</h1>
+		<p id="reset-confirm-text">#Settings_ResetConfirm</p>
+		<button id="reset-yes" data-action="reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
+		<button id="reset-no" data-action="reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
+	</div>
+	<div id="leave-confirm" class="settings-layer">
+		<h1 class="settings-layer-title">#Settings_UnsavedConfirmTitle</h1>
+		<p id="leave-confirm-text">#Settings_UnsavedConfirm</p>
+		<button id="leave-discard" data-action="leave-discard" data-label="#Settings_DiscardReturn">#Settings_DiscardReturn</button>
+		<button id="leave-stay" data-action="leave-stay" data-label="#Settings_Stay" autofocus="autofocus">#Settings_Stay</button>
+	</div>
+	<div id="bind-conflict" class="settings-layer">
+		<h1 class="settings-layer-title">#Settings_BindConflictTitle</h1>
+		<p id="bind-conflict-text"></p>
+		<button id="bind-conflict-yes" data-action="bind-conflict-yes" data-label="#Settings_BindConflictYes">#Settings_BindConflictYes</button>
+		<button id="bind-conflict-no" data-action="bind-conflict-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
+	</div>
+	<div id="bind-reset-confirm" class="settings-layer">
+		<h1 class="settings-layer-title">#Settings_BindResetConfirmTitle</h1>
+		<p id="bind-reset-confirm-text">#Settings_BindResetConfirm</p>
+		<button id="bind-reset-yes" data-action="bind-reset-yes" data-label="#Settings_ResetYes">#Settings_ResetYes</button>
+		<button id="bind-reset-no" data-action="bind-reset-no" data-label="#Settings_Cancel" autofocus="autofocus">#Settings_Cancel</button>
+	</div>
 </body>
 </rml>

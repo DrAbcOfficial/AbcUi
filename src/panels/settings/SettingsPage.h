@@ -123,6 +123,10 @@ private:
 	void buildRows();
 	void buildNavigation();
 	void projectPage();
+	// Moves each singleton widget block (settings.rml) into the card of the
+	// section that declares its component; unclaimed blocks wait hidden in
+	// the widget host.
+	void projectWidgets();
 	void resetCurrentPage();
 	void releasePreviews();
 	bool hasComponent(const char* Name) const;

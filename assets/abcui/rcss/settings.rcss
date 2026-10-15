@@ -1,53 +1,117 @@
-/* settings.rcss - T10 settings page, T11 key-bind section. Layout in dp
-   only (context density ratio scales); element defaults are explicit
-   because RmlUi ships no user-agent stylesheet. Shared panel/button styling
-   comes from mainmenu.rcss (same #panel frame and button rules). */
+/* settings.rcss - the configuration page, on the shared main-menu theme.
 
-/* The viewport is 480dp tall at the production density. Reserve room for
-   a separate two-row footer. Border-box includes the inherited padding and
-   border; the old content-box height extended underneath the action bar.
-   The panel spans the full width between the page gutters instead of a
-   fixed 374dp: its right edge sits 48dp from the viewport edge, matching
-   the 48dp gutter left of the navigation column. The extra right padding
-   leaves the scrollbar inside the panel with the same 8dp inset it had at
-   the previous width, and keeps row content clear of the bar. */
+   Layout rules (read them before touching a width):
+
+   * The page keeps its two verified halves: the page navigation column on the
+     left and one scrollable panel on the right. The panel is the ONLY scroll
+     container - a nested scroller inside it clipped its whole content on the
+     live build.
+   * The logical screen is 640x480dp at minimum (the context density ratio
+     scales it), so the panel is 452dp wide at the narrowest and every width
+     below is explicit dp. Percentages inside a scroll container collapse on
+     this engine (recorded trap).
+   * A page is a list of section cards. A card that carries a widget (model /
+     spray / crosshair preview, the bind list, the video and voice blocks)
+     floats the widget to the right at 150dp and lays its rows out in the
+     232dp column that remains; a card without widgets uses the full 392dp.
+   * Text below 9dp does not render on this engine (filled black glyphs -
+     live-measured 2026-10-15), so 9dp is the floor for every label, value and
+     button; 8dp survives only on the muted status lines the other pages
+     already use.
+
+   The document links range.rcss AFTER this file, so range-control overrides
+   need the extra `.settings-card` qualifier to win. */
+
+/* ---- page frame ---------------------------------------------------------- */
+
 body#menusettings #panel {
 	box-sizing: border-box;
-	left: 190dp;
-	right: 48dp;
+	left: 156dp;
+	right: 32dp;
 	width: auto;
-	padding-right: 26dp;
+	top: 40dp;
 	height: 356dp;
+	padding-right: 22dp;
 	overflow: auto;
 }
+
+#settings-head {
+	display: block;
+	height: 46dp;
+	margin-bottom: 4dp;
+}
+
+#settings-brand {
+	display: block;
+	font-size: 8dp;
+	font-weight: bold;
+	letter-spacing: 3dp;
+	text-transform: uppercase;
+	color: var(--abc-accent);
+	margin-bottom: 4dp;
+}
+
+/* The shared mainmenu headline, with a tighter line box so the brand line
+   above it cannot collide with tall CJK glyphs. */
+#settings-head #title {
+	line-height: 22dp;
+}
+
+/* #title is the shared mainmenu headline (18dp strong). */
+#settings-status {
+	display: block;
+	font-size: 9dp;
+	color: var(--abc-text-dim);
+	min-height: 14dp;
+	line-height: 14dp;
+}
+
+#settings-description {
+	display: block;
+	font-size: 9dp;
+	color: var(--abc-text-dim);
+	margin: 4dp 0dp 8dp 0dp;
+}
+
+/* ---- page navigation ----------------------------------------------------- */
 
 #settings-navigation {
 	position: absolute;
-	left: 48dp;
+	left: 16dp;
 	top: 40dp;
-	width: 126dp;
+	width: 128dp;
 	height: 356dp;
 	overflow: auto;
-}
-
-#settings-navigation button.selected {
-	background-color: var(--abc-surface-3);
-	border-left: 2dp var(--abc-accent);
-	color: var(--abc-accent);
 }
 
 #settings-navigation button {
 	display: block;
 	box-sizing: border-box;
-	width: 116dp;
-	height: 30dp;
-	line-height: 28dp;
+	width: 122dp;
+	height: 28dp;
+	line-height: 26dp;
 	text-align: left;
-	margin-bottom: 4dp;
+	padding-left: 10dp;
+	margin: 0dp 0dp 3dp 0dp;
+	background-color: #111920cc;
+	border-left: 2dp var(--abc-line);
+	border-top: 1dp var(--abc-line-soft);
+	color: var(--abc-text);
+	font-size: 9dp;
+	letter-spacing: 0.4dp;
+	tab-index: auto;
 }
 
-.settings-cvar-page {
-	display: block;
+#settings-navigation button:hover {
+	background-color: #1b252bf2;
+	color: var(--abc-text-strong);
+}
+
+#settings-navigation button.selected,
+#settings-navigation button:focus {
+	background-color: var(--abc-surface-3);
+	border-left: 2dp var(--abc-accent);
+	color: var(--abc-accent);
 }
 
 /* RmlUi builds its scrollbar elements without any user-agent styles: they
@@ -74,49 +138,102 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	background-color: #55606c;
 }
 
-#settings-status {
-	display: block;
-	font-size: 9dp;
-	color: #8a9199;
-	height: 14dp;
-	line-height: 14dp;
-	margin-bottom: 10dp;
-}
+/* ---- section cards ------------------------------------------------------- */
 
 #rows {
 	display: block;
-	width: 340dp;
+	width: auto;
 }
 
-/* One description-table row per block: label, control, status line. */
+.settings-card {
+	display: block;
+	box-sizing: border-box;
+	background-color: var(--abc-surface-2);
+	border: 1dp var(--abc-line);
+	padding: 10dp;
+	margin-bottom: 10dp;
+}
+
+/* Card headline: the theme's section type (amber, uppercase, letter-spaced)
+   over a hairline that separates it from the card body. */
+.settings-card-title {
+	display: block;
+	font-size: 9dp;
+	font-weight: bold;
+	letter-spacing: 1.6dp;
+	text-transform: uppercase;
+	color: var(--abc-accent);
+	border-bottom: 1dp var(--abc-line-soft);
+	padding-bottom: 5dp;
+	margin-bottom: 8dp;
+}
+
+.settings-card-items {
+	display: block;
+}
+
+/* Preview column: the live model / spray / crosshair boxes stack here.
+   Floated so the item column keeps a fixed width (a block next to a float
+   would have overlapped it) and the card grows with either column. */
+.settings-card.has-preview .settings-card-widgets {
+	float: right;
+	width: 150dp;
+	margin-left: 10dp;
+	margin-bottom: 6dp;
+}
+
+.settings-card.has-preview .settings-card-widgets .settings-widget {
+	margin-bottom: 8dp;
+}
+
+/* Full-width widget blocks (bind list, display modes, microphone hardware)
+   render above the rows; the rows keep the card's full width. */
+.settings-card.has-block .settings-card-widgets {
+	display: block;
+	margin-bottom: 8dp;
+}
+
+.settings-card.has-preview .settings-card-items {
+	width: 232dp;
+}
+
+/* ---- rows ---------------------------------------------------------------- */
+
 .row {
 	display: block;
-	margin-bottom: 10dp;
+	margin-bottom: 9dp;
 }
 
 .row-label {
 	display: block;
-	font-size: 10dp;
-	color: #e8e8e8;
-	margin-bottom: 4dp;
+	font-size: 9dp;
+	color: var(--abc-text);
+	margin-bottom: 3dp;
 }
 
-.row-input {
+.row-input,
+.row-select {
 	display: inline-block;
 	box-sizing: border-box;
-	width: 336dp;
+	width: 372dp;
 	height: 24dp;
 	line-height: 22dp;
 	background-color: var(--abc-inset);
 	color: var(--abc-text);
-	font-size: 10dp;
+	font-size: 9dp;
 	padding: 0dp 6dp;
 	border: 1dp var(--abc-line);
 	tab-index: auto;
 	white-space: nowrap;
 }
 
-.row-input:focus {
+.settings-card.has-preview .row-input,
+.settings-card.has-preview .row-select {
+	width: 220dp;
+}
+
+.row-input:focus,
+.row-select:focus {
 	border: 1dp var(--abc-accent);
 	background-color: #0e1418;
 }
@@ -126,72 +243,96 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	background-color: #e8e8e8;
 }
 
+.settings-card input.row-slider {
+	width: 300dp;
+}
+
+.settings-card.has-preview input.row-slider {
+	width: 164dp;
+}
+
+.settings-card .row-value {
+	width: 46dp;
+	font-size: 9dp;
+	color: var(--abc-text);
+	text-align: right;
+	height: 24dp;
+	line-height: 24dp;
+	vertical-align: top;
+}
+
 .row-toggle {
 	display: inline-block;
 	width: auto;
 	min-width: 64dp;
 	height: 24dp;
-	line-height: 24dp;
+	line-height: 22dp;
 	text-align: center;
-	background-color: #1c2329;
-	color: #e8e8e8;
-	font-size: 10dp;
+	background-color: var(--abc-surface-2);
+	color: var(--abc-text);
+	font-size: 9dp;
 	border: 1dp var(--abc-line);
 	tab-index: auto;
 }
 
 .row-toggle:hover {
-	background-color: #232b32;
+	background-color: var(--abc-surface-3);
 }
 
 .row-toggle:focus {
-	background-color: var(--abc-accent-soft);
+	background-color: var(--abc-accent);
 	border: 1dp var(--abc-accent);
-	color: #ffffff;
+	color: var(--abc-accent-ink);
 }
 
 .row-status {
 	display: block;
 	font-size: 8dp;
-	color: #8a9199;
+	color: var(--abc-text-dim);
 	margin-top: 2dp;
 }
 
-/* Unavailable rows (cvar not registered): greyed, still readable. */.row-missing {
+/* Unavailable rows (cvar not registered): greyed, still readable. */
+.row-missing {
 	color: #6a7178;
 	opacity: 0.6;
 }
 
-/* T11 key-binding section: scrollable action list (47 kb_act entries),
-   one row per action with label, key list and bind/clear buttons. */
-#bind-title {
-	display: block;
-	font-size: 12dp;
-	color: #e8e8e8;
-	margin: 14dp 0dp 6dp 0dp;
+.row-readonly,
+input:disabled {
+	opacity: 0.55;
 }
+
+/* ---- bindings widget ----------------------------------------------------- */
 
 #bind-status {
 	display: block;
-	font-size: 9dp;
-	color: #8a9199;
-	height: 14dp;
-	line-height: 14dp;
-	margin-bottom: 6dp;
+	font-size: 8dp;
+	color: var(--abc-text-dim);
+	min-height: 12dp;
+	line-height: 12dp;
+	margin-bottom: 4dp;
 }
 
-/* One scroll container only (the panel): a nested scroller inside the
-   panel's scroll clipped its entire content on the live build. */
 #bindrows {
 	display: block;
-	width: 336dp;
 }
 
 .bind-header {
 	display: block;
+	background-color: var(--abc-surface-3);
+	padding: 4dp 5dp;
+	margin: 8dp 0dp 6dp 0dp;
+	color: var(--abc-accent);
 	font-size: 9dp;
-	color: #6a7178;
-	margin: 8dp 0dp 4dp 0dp;
+	letter-spacing: 0.8dp;
+	text-transform: uppercase;
+}
+
+.bind-header-columns {
+	display: block;
+	font-size: 8dp;
+	color: var(--abc-text-dim);
 }
 
 .bind-row {
@@ -201,8 +342,8 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 
 .bind-line {
 	display: block;
-	height: 22dp;
-	line-height: 22dp;
+	height: 24dp;
+	line-height: 24dp;
 	white-space: nowrap;
 	overflow: hidden;
 }
@@ -210,8 +351,8 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 .bind-label {
 	display: inline-block;
 	width: 150dp;
-	font-size: 10dp;
-	color: #e8e8e8;
+	font-size: 9dp;
+	color: var(--abc-text);
 	vertical-align: middle;
 	white-space: nowrap;
 	overflow: hidden; /* long labels clip, never bleed into the key column */
@@ -220,78 +361,78 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 .bind-keys {
 	display: inline-block;
 	width: 80dp;
-	font-size: 10dp;
-	color: #7ec97e;
+	font-size: 9dp;
+	color: var(--abc-ok);
 	vertical-align: middle;
 	white-space: nowrap;
 }
 
 .bind-row.bind-capturing .bind-keys {
-	color: #ffe08a;
+	color: var(--abc-warn);
 }
 
 .bind-btn {
 	display: inline-block;
 	width: auto;
 	min-width: 46dp;
-	height: 20dp;
-	line-height: 18dp;
+	height: 22dp;
+	line-height: 20dp;
 	text-align: center;
-	background-color: #1c2329;
-	color: #e8e8e8;
+	background-color: var(--abc-surface-2);
+	color: var(--abc-text);
 	font-size: 9dp;
 	border: 1dp var(--abc-line);
-	margin: 0dp 0dp 0dp 3dp; /* mainmenu button margin-bottom would stack here */
+	margin: 0dp 0dp 0dp 3dp; /* the theme button margin would stack here */
 	vertical-align: middle;
 	tab-index: auto;
 	white-space: nowrap;
 }
 
 .bind-btn:hover {
-	background-color: #232b32;
+	background-color: var(--abc-surface-3);
 }
 
 .bind-btn:focus {
-	background-color: var(--abc-accent-soft);
+	background-color: var(--abc-accent);
 	border: 1dp var(--abc-accent);
-	color: #ffffff;
+	color: var(--abc-accent-ink);
 }
 
 .bind-status {
 	display: block;
 	font-size: 8dp;
-	color: #8a9199;
-	margin-left: 144dp;
+	color: var(--abc-text-dim);
+	margin-left: 150dp;
 }
 
-/* T12 video section. A projection of the video model; when the query
-   interface is missing the block renders disabled (video-unavailable)
-   instead of pretending controls work. */
+/* ---- video widget -------------------------------------------------------- */
+
+/* A projection of the video model; when the query interface is missing the
+   block renders disabled (video-unavailable) instead of pretending controls
+   work. */
 #video-section {
 	display: block;
-	margin-top: 12dp;
 }
 
 #video-section .video-select {
 	display: inline-block;
-	width: 120dp;
+	width: 220dp;
 }
 
 #video-status {
 	display: block;
 	font-size: 8dp;
-	color: #8a9199;
-	margin-left: 144dp;
+	color: var(--abc-text-dim);
 	margin-top: 4dp;
 }
 
 #video-actions {
+	display: block;
 	margin-top: 8dp;
-	margin-left: 144dp;
 }
 
 #video-section.video-unavailable #video-status {
-	color: #d8b45a;
+	color: var(--abc-warn);
 }
 
 #video-apply.video-disabled {
@@ -299,68 +440,96 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	border-color: #3a4047;
 }
 
-/* T13: section headers between the description-table groups (the table is
-   grouped by the original Options pages), and the per-row enum selects. */
-.section-header {
-	display: block;
-	font-size: 11dp;
-	color: #9fd49f;
-	margin-top: 14dp;
-	margin-bottom: 8dp;
-	border-bottom: 1dp #2c333a;
-	padding-bottom: 2dp;
-}
+/* ---- voice widget -------------------------------------------------------- */
 
-.row-select {
-	display: inline-block;
-	box-sizing: border-box;
-	width: 200dp;
-	height: 24dp;
-	line-height: 22dp;
-	background-color: var(--abc-inset);
-	color: var(--abc-text);
-	font-size: 10dp;
-	padding: 0dp 6dp;
-	border: 1dp var(--abc-line);
-	tab-index: auto;
-}
-
-/* T13 voice section: same frame as the video section; the test button and
-   boost share the row-toggle look, the status line carries the live level
-   readout (a plain number - no fake meter animation). */
 #voice-section {
 	display: block;
-	margin-top: 12dp;
-}
-
-#voice-section .row-input {
-	width: 200dp;
 }
 
 #voice-status {
 	display: block;
 	font-size: 8dp;
-	color: #8a9199;
-	margin-left: 144dp;
+	color: var(--abc-text-dim);
 	margin-top: 4dp;
 }
 
 #voice-section.video-unavailable #voice-status {
-	color: #d8b45a;
+	color: var(--abc-warn);
 }
+
+#voice-meter {
+	display: block;
+	width: 150dp;
+	height: 14dp;
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
+	margin: 8dp 0dp;
+}
+
+#voice-meter-fill {
+	display: block;
+	width: 0%;
+	height: 14dp;
+	background-color: var(--abc-ok);
+}
+
+/* ---- preview widgets ----------------------------------------------------- */
+
+.settings-widget {
+	display: block;
+}
+
+.preview-box {
+	display: block;
+	width: 150dp;
+}
+
+.preview-box img {
+	display: block;
+	width: 150dp;
+	height: 150dp;
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
+}
+
+#model-preview {
+	display: block;
+	width: 150dp;
+	height: 170dp;
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
+	cursor: move;
+}
+
+#model-preview-hint,
+#spray-preview-hint {
+	display: block;
+	font-size: 8dp;
+	color: var(--abc-text-dim);
+	margin-top: 3dp;
+}
+
+/* The widget parking space: invisible in configured runs (the projection
+   moves the claimed blocks into their cards), a plain stack for the legacy
+   all-in-one projection that carries no page definitions. */
+#settings-widget-host {
+	display: none;
+}
+
+/* ---- action bar ---------------------------------------------------------- */
 
 /* One flat row: Apply, Return and the page's default-reset entry share the
    bar (the key-binding reset joins them on the keyboard page, where the
    page entry is hidden). A flex line distributes them equally and never
    wraps, so no column can push Return below the viewport. The bar keeps
-   the panel's left anchor and stretches to the same 48dp right gutter,
+   the panel's left anchor and stretches to the same 32dp right gutter,
    and anchors to the bottom gutter so the footer holds its 48dp margin
    when a narrower window raises the logical viewport height. */
 #settings-actions {
 	display: flex;
 	position: absolute;
-	left: 190dp;
-	right: 48dp;
+	left: 156dp;
+	right: 32dp;
 	bottom: 48dp;
 	width: auto;
 	height: 28dp;
@@ -378,33 +547,37 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	white-space: nowrap;
 	overflow: hidden;
 }
-#settings-actions button:first-child { margin-left: 0dp; }
+
+#settings-actions button:first-child {
+	margin-left: 0dp;
+}
 
 /* The defaults entries preview their destructive effect on hover. Focus
    keeps the shared amber treatment (the theme sheet's :focus rule wins on
    hover-click). */
-#settings-reset:hover, #bind-reset:hover {
+#settings-reset:hover,
+#bind-reset:hover {
 	background-color: #3a1c1c;
 	border-color: var(--abc-danger);
 	color: var(--abc-danger);
 }
 
-/* Page-internal confirm layers are document-level overlays (direct children
-   of the body, NOT of the scrollable panel - absolute layers inside the
-   scroll container scroll away with the content). Hidden until the page
-   turns the display property on (the layer member tracks the state - a
-   SetProperty lands at the next layout frame).
+/* ---- page-internal confirm layers ---------------------------------------- */
+
+/* Document-level overlays (direct children of the body, NOT of the
+   scrollable panel - absolute layers inside the scroll container scroll away
+   with the content). Hidden until the page turns the display property on
+   (the layer member tracks the state - a SetProperty lands at the next
+   layout frame).
 
    Every prompt copies the quit confirmation's frame - the #panel surface
    with its hairline border and amber top rule, a 372dp content box, 16dp
-   padding, a 16dp amber headline and a left-aligned body/button column -
-   so the settings prompts read exactly like the one the player sees when
-   quitting. The 50vw columns and the 50vh rows plus the auto margins pin
-   the box to the exact viewport centre whatever its height (viewport
-   units, because a percentage would resolve against the document box the
-   settings panel stretches taller than the window), and the -5dp
-   margin-top lifts the default position above that centre. The layer
-   rides above the action bar (z-index 1). */
+   padding, a 16dp amber headline and a left-aligned body/button column - so
+   the settings prompts read exactly like the one the player sees when
+   quitting. The 50vw columns and the 50vh rows plus the auto margins pin the
+   box to the exact viewport centre whatever its height, and the -5dp
+   margin-top lifts the default position above that centre. The layer rides
+   above the action bar (z-index 1). */
 .settings-layer {
 	box-sizing: border-box;
 	display: none;
@@ -425,7 +598,6 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	padding: 16dp;
 }
 
-/* Every prompt opens with the quit confirmation's amber headline. */
 .settings-layer-title {
 	display: block;
 	font-size: 16dp;
@@ -451,25 +623,3 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 .settings-layer button:first-child {
 	margin-left: 0dp;
 }
-
-.bind-header { background-color: #303d49; padding: 5dp; margin: 10dp 0dp; color: #bce0f4; }
-.bind-header-columns { display: block; font-size: 8dp; color: #a7b8c9; }
-#multiplayer-previews { display: block; }
-.preview-box { display: inline-block; width: 160dp; vertical-align: top; }
-.preview-box img { display: block; width: 150dp; height: 170dp; background-color: #090d12; }
-#model-preview {
-	display: block;
-	width: 150dp;
-	height: 170dp;
-	cursor: move;
-}
-#model-preview-hint {
-	display: block;
-	height: 12dp;
-	line-height: 12dp;
-	font-size: 7dp;
-	color: var(--abc-text-dim);
-}
-#spray-preview { height: 150dp; }
-#voice-meter { display: block; width: 280dp; height: 14dp; background-color: #171c24; border: 1dp #536071; margin: 8dp 0dp; }
-#voice-meter-fill { display: block; width: 0%; height: 14dp; background-color: #68bd66; }

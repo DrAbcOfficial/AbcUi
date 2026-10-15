@@ -22,62 +22,110 @@ void SettingsPage::buildRows() {
 		return;
 	// One skeleton block per description-table row; row DOM ids derive from
 	// the cvar names ([a-z_], safe as ids). Delegated listeners need no
-	// per-element bindings here. Section headers emit whenever the row's
-	// Section token changes (the table is grouped by the original pages).
+	// per-element bindings here. Rows are grouped into the page's declared
+	// section cards; a card's widget blocks are moved in later by
+	// projectWidgets() (the blocks are singletons in settings.rml).
 	std::string Markup;
 	const auto Views = Model->rows();
-	auto BuildPage = [&](const services::uiconfig::SettingsPageDefinition* Page) {
-		if (Page)
-			Markup += "<div class=\"settings-cvar-page\" id=\"settings-rows-" + Page->Id + "\">";
+	auto AppendRow = [&](const services::settings::RowView& View) {
+		Markup += "<div class=\"row\" id=\"row-";
+		Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
+		Markup += "\"><div class=\"row-label\"></div>";
+		if (isToggleKind(View.row->Kind)) {
+			Markup += "<button class=\"row-toggle\" data-action=\"toggle\" data-row=\"";
+		} else if (isSelectKind(View.row->Kind)) {
+			// Options transfer through the widget Add() at render time (the
+			// inline-option transfer is a next-Update delay - T12 pin); the
+			// skeleton only carries the empty select.
+			Markup += "<select class=\"row-select\" data-row=\"";
+		} else {
+			const bool Slider = View.row->Kind == services::settings::SettingKind::kFloat
+				&& View.row->Bounded && View.row->Min < View.row->Max;
+			Markup += "<input class=\"row-input";
+			if (Slider)
+				Markup += " row-slider\" type=\"range\" min=\"" + numberText(View.row->Min)
+					+ "\" max=\"" + numberText(View.row->Max) + "\" step=\""
+					+ numberText(View.row->Step > 0 ? View.row->Step : (View.row->Max - View.row->Min) / 1000)
+					+ "\" value=\"" + numberText(View.draftValue);
+			else
+				Markup += "\" type=\"text";
+			Markup += "\" data-row=\"";
+		}
+		Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
+		Markup += "\"/><span class=\"row-value\"></span><div class=\"row-status\"></div></div>";
+	};
+	auto OpenCard = [&](const std::string& CardId, const std::string& TitleToken,
+						bool HasPreview, bool HasBlock) {
+		Markup += "<div class=\"settings-card";
+		if (HasPreview)
+			Markup += " has-preview";
+		if (HasBlock)
+			Markup += " has-block";
+		Markup += "\" id=\"" + CardId + "\">";
+		if (!TitleToken.empty())
+			Markup += "<div class=\"settings-card-title section-header\">"
+				+ framework::TextUtil::escapeRml(translated(TitleToken.c_str())) + "</div>";
+		Markup += "<div class=\"settings-card-widgets\" id=\"" + CardId + "-widgets\"></div>";
+		Markup += "<div class=\"settings-card-items\">";
+	};
+	auto CloseCard = [&] {
+		Markup += "</div></div>"; // items, card
+	};
+	// Configured page: one card per declared section, in declaration order.
+	auto BuildDeclaredPage = [&](const services::uiconfig::SettingsPageDefinition* Page) {
+		Markup += "<div class=\"settings-cvar-page\" id=\"settings-rows-" + Page->Id + "\">";
+		for (const auto& Section : Page->Sections) {
+			bool HasPreview = false;
+			bool HasBlock = false;
+			for (const auto& Component : Section.Components)
+				for (int I = 0; I < kWidgetBlockCount; ++I)
+					if (Component == kWidgetBlocks[I].Component) {
+						if (kWidgetBlocks[I].Preview)
+							HasPreview = true;
+						else
+							HasBlock = true;
+					}
+			OpenCard("settings-card-" + Page->Id + "-" + Section.Id, Section.Label, HasPreview, HasBlock);
+			for (const auto& View : Views) {
+				if (Section.Id != View.row->Section)
+					continue;
+				if (std::find(Page->Cvars.begin(), Page->Cvars.end(), View.row->Cvar) == Page->Cvars.end())
+					continue;
+				AppendRow(View);
+			}
+			CloseCard();
+		}
+		Markup += "</div>";
+	};
+	// Legacy projection (no page definitions, e.g. the model fixtures): items
+	// group into anonymous cards by their free-form section token.
+	auto BuildLegacy = [&] {
 		std::string LastSection;
+		bool Open = false;
+		int CardIndex = 0;
+		auto OpenLegacyCard = [&](const std::string& Token) {
+			OpenCard("settings-card-legacy-" + std::to_string(CardIndex++), Token, false, false);
+			Open = true;
+		};
 		for (const auto& View : Views) {
-			if (Page && std::find(Page->Cvars.begin(), Page->Cvars.end(), View.row->Cvar) == Page->Cvars.end())
-				continue;
 			if (View.row->Section && View.row->Section != LastSection) {
 				LastSection = View.row->Section;
-				Markup += "<div class=\"section-header\">";
-				// Declared sections carry their own label token; the raw
-				// token stays the legacy label for undeclared groupings.
-				const std::string Label = Page
-					? Page->sectionLabel(View.row->Section) : std::string(View.row->Section);
-				Markup += framework::TextUtil::escapeRml(translated(Label.c_str()));
-				Markup += "</div>";
+				if (Open)
+					CloseCard();
+				OpenLegacyCard(View.row->Section);
+			} else if (!Open) {
+				OpenLegacyCard("");
 			}
-			Markup += "<div class=\"row\" id=\"row-";
-			Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
-			Markup += "\"><div class=\"row-label\"></div>";
-			if (isToggleKind(View.row->Kind)) {
-				Markup += "<button class=\"row-toggle\" data-action=\"toggle\" data-row=\"";
-			} else if (isSelectKind(View.row->Kind)) {
-				// Options transfer through the widget Add() at render time (the
-				// inline-option transfer is a next-Update delay - T12 pin); the
-				// skeleton only carries the empty select.
-				Markup += "<select class=\"row-select\" data-row=\"";
-			} else {
-				const bool Slider = View.row->Kind == services::settings::SettingKind::kFloat
-					&& View.row->Bounded && View.row->Min < View.row->Max;
-				Markup += "<input class=\"row-input";
-				if (Slider)
-					Markup += " row-slider\" type=\"range\" min=\"" + numberText(View.row->Min)
-						+ "\" max=\"" + numberText(View.row->Max) + "\" step=\""
-						+ numberText(View.row->Step > 0 ? View.row->Step : (View.row->Max - View.row->Min) / 1000)
-						+ "\" value=\"" + numberText(View.draftValue);
-				else
-					Markup += "\" type=\"text";
-				Markup += "\" data-row=\"";
-			}
-			Markup += framework::TextUtil::escapeRmlAttribute(View.row->Cvar);
-			Markup += "\"/>";
-			Markup += "<span class=\"row-value\"></span><div class=\"row-status\"></div></div>";
+			AppendRow(View);
 		}
-		if (Page)
-			Markup += "</div>";
+		if (Open)
+			CloseCard();
 	};
 	if (Pages) {
 		for (const auto& Page : *Pages)
-			BuildPage(&Page);
+			BuildDeclaredPage(&Page);
 	} else {
-		BuildPage(nullptr);
+		BuildLegacy();
 	}
 	Rows->SetInnerRML(Markup);
 }
@@ -117,9 +165,15 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 	}
 	if (Rml::ElementFormControl* form = rmlui_dynamic_cast<Rml::ElementFormControl*>(control))
 		form->SetDisabled(!Editable);
-	if (auto* Value = rowNode->QuerySelector(".row-value"))
-		Value->SetInnerRML(view.row->Kind == services::settings::SettingKind::kFloat && view.row->Bounded
-			? framework::TextUtil::escapeRml(view.draftText) : "");
+	if (auto* Value = rowNode->QuerySelector(".row-value")) {
+		// Only the bounded float rows carry a readout; an empty inline block
+		// would wrap onto its own line inside the narrow card column and push
+		// the status line away from its control.
+		const bool ShowsValue = view.row->Kind == services::settings::SettingKind::kFloat
+			&& view.row->Bounded;
+		Value->SetProperty("display", ShowsValue ? "inline-block" : "none");
+		Value->SetInnerRML(ShowsValue ? framework::TextUtil::escapeRml(view.draftText) : "");
+	}
 
 	if (toggle) {
 		const bool on = view.state == services::settings::RowState::kInvalid

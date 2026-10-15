@@ -39,4 +39,19 @@ bool isToggleKind(services::settings::SettingKind kind);
 bool isSelectKind(services::settings::SettingKind kind);
 bool toggleDraftOn(const services::settings::RowView& view);
 const char* safeFocusForLayer(const char* id);
+
+// The section components that own one singleton widget block in
+// settings.rml: component name -> block element id. Each claimed block is
+// moved into the card of the section that declares it; an unclaimed block
+// waits hidden in the widget host. user-script is a page behaviour and has
+// no block. `Preview` selects the placement: a preview is a narrow box in the
+// card's right column (the rows keep a 232dp column beside it), anything else
+// is a full-width block above the rows.
+struct WidgetBlock {
+	const char* Component;
+	const char* Element;
+	bool Preview;
+};
+extern const WidgetBlock kWidgetBlocks[];
+extern const int kWidgetBlockCount;
 }
