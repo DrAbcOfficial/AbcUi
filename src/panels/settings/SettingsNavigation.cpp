@@ -22,8 +22,10 @@ const services::uiconfig::SettingsPageDefinition* SettingsPage::currentPage() co
 bool SettingsPage::hasComponent(const char* Name) const {
 	// Unconfigured test fixtures retain the legacy all-in-one projection;
 	// production always supplies Pages, including an empty failed catalog.
+	// Page-level behaviours (user-script) and the section widgets share this
+	// one query: a widget exists whenever the active page declares it.
 	const auto* Page = currentPage();
-	return !Pages || (Page && Page->hasComponent(Name));
+	return !Pages || (Page && (Page->hasComponent(Name) || Page->sectionHaving(Name)));
 }
 
 void SettingsPage::buildNavigation() {
@@ -84,7 +86,9 @@ void SettingsPage::projectPage() {
 		Show(Id, hasComponent("video"));
 	for (const char* Id : {"voice-title", "voice-section"})
 		Show(Id, hasComponent("voice"));
-	Show("multiplayer-previews", hasComponent("previews"));
+	// Transitional wiring until the section cards own their widgets: the
+	// page-level preview block serves the model/spray preview components.
+	Show("multiplayer-previews", hasComponent("model-preview") || hasComponent("spray-preview"));
 	if (auto* Title = document()->GetElementById("title")) {
 		const auto* Page = currentPage();
 		Title->SetInnerRML(framework::TextUtil::escapeRml(

@@ -631,3 +631,26 @@ Settings_MenuVideo=背景视频路径
 Settings_MenuMusic=菜单音乐路径
 Settings_MenuVolume=音乐音量
 Settings_MenuBlur=背景模糊
+
+# Section headlines (page -> sections -> widgets layout)
+Settings_SecPlayer=玩家
+Settings_SecSpray=喷漆
+Settings_SecCrosshair=准星
+Settings_SecSubtitles=字幕
+Settings_SecHudNotify=提示
+Settings_SecHudStatus=状态
+Settings_SecHudIndicator=指示器
+Settings_SecHudScoreboard=计分板
+Settings_SecMovement=移动
+Settings_SecEffects=特效
+Settings_SecViewModel=视图模型
+Settings_SecAbout=关于
+Settings_SecVisuals=画面效果
+Settings_SecLighting=光照
+Settings_SecGameplay=玩法
+Settings_SecInterface=界面
+Settings_SecPerformance=性能
+Settings_SecSound=声音
+Settings_SecViolence=暴力内容
+Settings_SecSystem=系统
+Settings_SecScripted=更多设置

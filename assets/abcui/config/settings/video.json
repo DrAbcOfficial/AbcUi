@@ -3,36 +3,43 @@
   "id": "video",
   "label": "#Settings_SecVideo",
   "order": 40,
-  "components": [
-    "video"
+  "components": [],
+  "sections": [
+    {
+      "id": "display",
+      "label": "#Settings_SecVideo",
+      "components": [
+        "video"
+      ]
+    }
   ],
   "items": [
     {
       "cvar": "gl_vsync",
       "label": "#Settings_VSync",
-      "section": "#Settings_SecVideo",
+      "section": "display",
       "kind": "bool",
       "default": 1.0
     },
     {
       "cvar": "brightness",
       "label": "#Settings_Brightness",
-      "section": "#Settings_SecVideo",
+      "section": "display",
       "kind": "float",
-      "default": 1.0,
       "min": 0.0,
       "max": 2.0,
-      "step": 0.05
+      "step": 0.05,
+      "default": 1.0
     },
     {
       "cvar": "gamma",
       "label": "#Settings_Gamma",
-      "section": "#Settings_SecVideo",
+      "section": "display",
       "kind": "float",
-      "default": 2.5,
       "min": 1.8,
       "max": 3.0,
-      "step": 0.05
+      "step": 0.05,
+      "default": 2.5
     }
   ]
 }

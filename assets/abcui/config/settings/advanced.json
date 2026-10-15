@@ -6,23 +6,61 @@
   "components": [
     "user-script"
   ],
+  "sections": [
+    {
+      "id": "gameplay",
+      "label": "#Settings_SecGameplay",
+      "components": []
+    },
+    {
+      "id": "interface",
+      "label": "#Settings_SecInterface",
+      "components": []
+    },
+    {
+      "id": "performance",
+      "label": "#Settings_SecPerformance",
+      "components": []
+    },
+    {
+      "id": "sound",
+      "label": "#Settings_SecSound",
+      "components": []
+    },
+    {
+      "id": "violence",
+      "label": "#Settings_SecViolence",
+      "components": []
+    },
+    {
+      "id": "system",
+      "label": "#Settings_SecSystem",
+      "components": []
+    },
+    {
+      "id": "scripted",
+      "label": "#Settings_SecScripted",
+      "components": []
+    }
+  ],
+  "scriptSection": "scripted",
   "items": [
     {
       "cvar": "crosshair",
       "label": "#Settings_AdvCrosshair",
-      "section": "#Settings_SecAdvanced",
+      "section": "gameplay",
       "kind": "bool",
       "default": 1.0
     },
     {
       "cvar": "hud_weaponautoswitch",
       "label": "#Settings_AdvAutoSwitch",
-      "section": "#Settings_SecAdvanced",
+      "section": "gameplay",
       "kind": "enum",
-      "default": 1.0,
       "min": 0.0,
       "max": 2.0,
       "step": 1.0,
+      "default": 1.0,
       "options": [
         {
           "value": 0.0,
@@ -41,74 +79,74 @@
     {
       "cvar": "cl_showfps",
       "label": "#Settings_AdvShowFps",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "hud_saytext",
       "label": "#Settings_AdvSayText",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "bool",
       "default": 1.0
     },
     {
       "cvar": "hud_saytext_time",
       "label": "#Settings_AdvSayTextTime",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "float",
-      "default": 5.0,
       "min": 0.0,
       "max": 15.0,
-      "step": 1.0
+      "step": 1.0,
+      "default": 5.0
     },
     {
       "cvar": "hud_saytext_lines",
       "label": "#Settings_AdvSayTextLines",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "float",
-      "default": 6.0,
       "min": 0.0,
       "max": 20.0,
-      "step": 1.0
+      "step": 1.0,
+      "default": 6.0
     },
     {
       "cvar": "hud_saytext_block_muted",
       "label": "#Settings_AdvSayTextBlock",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "cl_hidextra",
       "label": "#Settings_AdvHideExtras",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "cl_hideadmin",
       "label": "#Settings_AdvHideAdmin",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "r_borderless",
       "label": "#Settings_AdvBorderless",
-      "section": "#Settings_SecAdvanced",
+      "section": "performance",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "hpk_maxsize",
       "label": "#Settings_AdvHpkMaxsize",
-      "section": "#Settings_SecAdvanced",
+      "section": "performance",
       "kind": "enum",
-      "default": 4.0,
       "min": -1.0,
       "max": 16.0,
       "step": 1.0,
+      "default": 4.0,
       "options": [
         {
           "value": -1.0,
@@ -131,32 +169,32 @@
     {
       "cvar": "mp_decals",
       "label": "#Settings_AdvDecals",
-      "section": "#Settings_SecAdvanced",
+      "section": "performance",
       "kind": "float",
-      "default": 4096.0,
       "min": 1.0,
       "max": 4096.0,
-      "step": 1.0
+      "step": 1.0,
+      "default": 4096.0
     },
     {
       "cvar": "cl_particles_max",
       "label": "#Settings_AdvParticles",
-      "section": "#Settings_SecAdvanced",
+      "section": "performance",
       "kind": "float",
-      "default": 800.0,
       "min": 0.0,
       "max": 4096.0,
-      "step": 1.0
+      "step": 1.0,
+      "default": 800.0
     },
     {
       "cvar": "cl_bob",
       "label": "#Settings_AdvBob",
-      "section": "#Settings_SecAdvanced",
+      "section": "gameplay",
       "kind": "enum",
-      "default": 0.025,
       "min": 0.0,
       "max": 0.025,
       "step": 0.005,
+      "default": 0.025,
       "options": [
         {
           "value": 0.0,
@@ -175,12 +213,12 @@
     {
       "cvar": "cl_rollangle",
       "label": "#Settings_AdvRollAngle",
-      "section": "#Settings_SecAdvanced",
+      "section": "gameplay",
       "kind": "enum",
-      "default": 2.0,
       "min": -5.0,
       "max": 5.0,
       "step": 0.5,
+      "default": 2.0,
       "options": [
         {
           "value": 0.0,
@@ -207,54 +245,54 @@
     {
       "cvar": "s_mute_unfocused",
       "label": "#Settings_AdvMuteUnfocused",
-      "section": "#Settings_SecAdvanced",
+      "section": "sound",
       "kind": "bool",
       "default": 1.0
     },
     {
       "cvar": "s_force_dsound",
       "label": "#Settings_AdvForceDSound",
-      "section": "#Settings_SecAdvanced",
+      "section": "sound",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "violence_ablood",
       "label": "#Settings_AdvAlienBlood",
-      "section": "#Settings_SecAdvanced",
+      "section": "violence",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "violence_agibs",
       "label": "#Settings_AdvAlienGibs",
-      "section": "#Settings_SecAdvanced",
+      "section": "violence",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "violence_hblood",
       "label": "#Settings_AdvHumanBlood",
-      "section": "#Settings_SecAdvanced",
+      "section": "violence",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "violence_hgibs",
       "label": "#Settings_AdvHumanGibs",
-      "section": "#Settings_SecAdvanced",
+      "section": "violence",
       "kind": "bool",
       "default": 0.0
     },
     {
       "cvar": "cl_discord",
       "label": "#Settings_AdvDiscord",
-      "section": "#Settings_SecAdvanced",
+      "section": "system",
       "kind": "enum",
-      "default": 2.0,
       "min": 0.0,
       "max": 2.0,
       "step": 1.0,
+      "default": 2.0,
       "options": [
         {
           "value": 0.0,
@@ -273,19 +311,19 @@
     {
       "cvar": "con_mono",
       "label": "#Settings_AdvMonoConsole",
-      "section": "#Settings_SecAdvanced",
+      "section": "interface",
       "kind": "bool",
       "default": 1.0
     },
     {
       "cvar": "developer",
       "label": "#Settings_AdvDeveloper",
-      "section": "#Settings_SecAdvanced",
+      "section": "system",
       "kind": "enum",
-      "default": 0.0,
       "min": 0.0,
       "max": 4.0,
       "step": 1.0,
+      "default": 0.0,
       "options": [
         {
           "value": 0.0,
@@ -312,6 +350,7 @@
     {
       "cvar": "abc_ui_browser_hide_unresponsive",
       "label": "#Settings_HideUnresponsive",
+      "section": "system",
       "kind": "bool",
       "default": 1
     }

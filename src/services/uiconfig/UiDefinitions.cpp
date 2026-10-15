@@ -188,10 +188,66 @@ SettingDefinition setting(const Value& Item, const std::string& P) {
 	require(Row.Kind != K::kStringEnum || !Row.Source.empty(), P + ".source", "string-enum requires option provider");
 	return Row;
 }
+
+std::string componentName(const Value& V, const std::string& Path, bool PageLevel) {
+	require(V.IsString(), Path, "expected component name");
+	std::string Name(V.GetString(), V.GetStringLength());
+	// Page-level components are whole-page behaviours; everything visual
+	// belongs to the section that shows it (page -> sections -> widgets).
+	const std::set<std::string> PageComponents = {"user-script"};
+	const std::set<std::string> SectionComponents = {"bindings", "video", "voice",
+		"model-preview", "crosshair-preview", "spray-preview", "spray-maker"};
+	const auto& Allowed = PageLevel ? PageComponents : SectionComponents;
+	require(Allowed.count(Name) != 0, Path, PageLevel
+		? "unknown page component (visual components belong to a section)"
+		: "unknown section component");
+	return Name;
+}
+
+SectionDefinition section(const Value& Item, const std::string& P) {
+	fields(Item, {"id", "label", "components"}, P);
+	SectionDefinition Result;
+	Result.Id = text(Item, "id", P);
+	require(identifier(Result.Id), P + ".id", "invalid section identifier");
+	Result.Label = text(Item, "label", P);
+	if (Item.HasMember("components")) {
+		array(Item["components"], P + ".components", 8);
+		for (const auto& C : Item["components"].GetArray()) {
+			std::string Name = componentName(C, P + ".components", false);
+			require(std::find(Result.Components.begin(), Result.Components.end(), Name)
+				== Result.Components.end(), P + ".components", "duplicate component");
+			Result.Components.push_back(std::move(Name));
+		}
+	}
+	return Result;
+}
 } // namespace
+
+bool SectionDefinition::hasComponent(const char* Name) const {
+	return std::find(Components.begin(), Components.end(), Name) != Components.end();
+}
 
 bool SettingsPageDefinition::hasComponent(const char* Name) const {
 	return std::find(Components.begin(), Components.end(), Name) != Components.end();
+}
+
+const SectionDefinition* SettingsPageDefinition::sectionHaving(const char* Name) const {
+	for (const auto& Entry : Sections)
+		if (Entry.hasComponent(Name))
+			return &Entry;
+	return nullptr;
+}
+
+const SectionDefinition* SettingsPageDefinition::section(const std::string& Id) const {
+	for (const auto& Entry : Sections)
+		if (Entry.Id == Id)
+			return &Entry;
+	return nullptr;
+}
+
+std::string SettingsPageDefinition::sectionLabel(const std::string& Id) const {
+	const SectionDefinition* Declared = section(Id);
+	return Declared ? Declared->Label : Id;
 }
 
 bool DefinitionParser::parseMenu(const std::string& Text, MenuDefinition& Output, ConfigError& Error) {
@@ -223,7 +279,8 @@ bool DefinitionParser::parseMenu(const std::string& Text, MenuDefinition& Output
 bool DefinitionParser::parsePage(const std::string& Text, SettingsPageDefinition& Output, ConfigError& Error) {
 	try {
 		auto Doc = document(Text);
-		fields(Doc, {"version", "id", "label", "description", "order", "components", "items"}, "$");
+		fields(Doc, {"version", "id", "label", "description", "order", "components", "sections",
+			"scriptSection", "items"}, "$");
 		SettingsPageDefinition Result;
 		Result.Id = text(Doc, "id", "$");
 		require(identifier(Result.Id), "$.id", "invalid page identifier");
@@ -237,20 +294,45 @@ bool DefinitionParser::parsePage(const std::string& Text, SettingsPageDefinition
 			const auto& Components = Doc["components"];
 			array(Components, "$.components", 5);
 			for (const auto& C : Components.GetArray()) {
-				require(C.IsString(), "$.components", "expected component name");
-				std::string Name(C.GetString(), C.GetStringLength());
-				require(Name == "bindings" || Name == "video" || Name == "voice" || Name == "user-script" || Name == "previews",
-					"$.components", "unknown component");
+				std::string Name = componentName(C, "$.components", true);
 				require(!Result.hasComponent(Name.c_str()), "$.components", "duplicate component");
 				Result.Components.push_back(std::move(Name));
 			}
 		}
+		if (Doc.HasMember("sections")) {
+			const auto& Sections = Doc["sections"];
+			array(Sections, "$.sections", 64);
+			require(Sections.Size() > 0, "$.sections", "sections must not be empty");
+			std::set<std::string> Ids;
+			for (unsigned I = 0; I < Sections.Size(); ++I) {
+				auto Entry = section(Sections[I], "$.sections[" + std::to_string(I) + "]");
+				require(Ids.insert(Entry.Id).second,
+					"$.sections[" + std::to_string(I) + "].id", "duplicate section id");
+				Result.Sections.push_back(std::move(Entry));
+			}
+		}
+		if (Doc.HasMember("scriptSection")) {
+			Result.ScriptSection = text(Doc, "scriptSection", "$");
+			require(identifier(Result.ScriptSection) && Result.section(Result.ScriptSection) != nullptr,
+				"$.scriptSection", "scriptSection must name a declared section");
+		}
+		require(!Result.hasComponent("user-script") || !Result.ScriptSection.empty(),
+			"$.scriptSection", "a user-script page must declare its script target section");
 		const auto& Items = member(Doc, "items", "$");
 		array(Items, "$.items", 512);
 		std::set<std::string> Cvars;
 		for (unsigned I = 0; I < Items.Size(); ++I) {
 			auto Row = setting(Items[I], "$.items[" + std::to_string(I) + "]");
 			require(Cvars.insert(Row.Cvar).second, "$.items[" + std::to_string(I) + "].cvar", "duplicate cvar");
+			// With declared sections the item's `section` is an id: every
+			// item must land in one, and it must be a declared one. Without
+			// declarations the old free-form grouping label is preserved.
+			if (!Result.Sections.empty() && Row.Section.empty())
+				require(false, "$.items[" + std::to_string(I) + "].section",
+					"item must declare a section (the page declares sections)");
+			if (!Result.Sections.empty())
+				require(Result.section(Row.Section) != nullptr,
+					"$.items[" + std::to_string(I) + "].section", "unknown section id");
 			Result.Items.push_back(std::move(Row));
 		}
 		Output = std::move(Result);

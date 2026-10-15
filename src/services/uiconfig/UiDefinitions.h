@@ -31,6 +31,20 @@ struct OptionDefinition {
 	std::string Label;
 };
 
+// One declared section of a settings page: the big row the page projects as a
+// card. Items attach to it through their `section` id; `components` name the
+// special widgets rendered inside the card (model preview, crosshair preview,
+// spray preview / maker, the bind list and the video/voice hardware blocks).
+// Components are business models the plugin already implements - the schema
+// only decides where they appear.
+struct SectionDefinition {
+	std::string Id;
+	std::string Label;
+	std::vector<std::string> Components;
+
+	bool hasComponent(const char* Name) const;
+};
+
 // Own every string; materialize the legacy transaction model's pointer view
 // only after loading/sorting has finished. Definitions outlive that view.
 struct SettingDefinition {
@@ -59,10 +73,22 @@ struct SettingsPageDefinition {
 	std::string Description;
 	int Order = 0;
 	std::vector<std::string> Components;
+	std::vector<SectionDefinition> Sections;
+	// Section that appended user.scr rows land in (the page's declared
+	// script target); empty when the page does not merge script rows.
+	std::string ScriptSection;
 	std::vector<SettingDefinition> Items;
 	std::vector<std::string> Cvars;
 
 	bool hasComponent(const char* Name) const;
+	// Section carrying a component (the widget's home card), or null.
+	const SectionDefinition* sectionHaving(const char* Name) const;
+	// Section by id, or null for an undeclared/legacy grouping token.
+	const SectionDefinition* section(const std::string& Id) const;
+	// Display label for an item's `section` token: the declared section's
+	// label, else the raw token (legacy label grouping). By value: the raw
+	// fallback is the caller's token, never storage this page owns.
+	std::string sectionLabel(const std::string& Id) const;
 };
 
 // Pure parsing/validation: no filesystem, engine, UI, or logging side effects.

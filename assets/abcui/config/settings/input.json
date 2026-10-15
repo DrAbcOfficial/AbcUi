@@ -3,8 +3,15 @@
   "id": "keyboard",
   "label": "#Settings_PageKeyboard",
   "order": 20,
-  "components": [
-    "bindings"
+  "components": [],
+  "sections": [
+    {
+      "id": "bindings",
+      "label": "#Settings_KeysTitle",
+      "components": [
+        "bindings"
+      ]
+    }
   ],
   "items": []
 }

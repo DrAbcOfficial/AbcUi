@@ -632,3 +632,26 @@ Settings_MenuVideo=Background video path
 Settings_MenuMusic=Menu music path
 Settings_MenuVolume=Music volume
 Settings_MenuBlur=Background blur
+
+# Section headlines (page -> sections -> widgets layout)
+Settings_SecPlayer=Player
+Settings_SecSpray=Spraypaint
+Settings_SecCrosshair=Crosshair
+Settings_SecSubtitles=Captions
+Settings_SecHudNotify=Notifications
+Settings_SecHudStatus=Status HUD
+Settings_SecHudIndicator=Indicators
+Settings_SecHudScoreboard=Scoreboard
+Settings_SecMovement=Movement
+Settings_SecEffects=Effects
+Settings_SecViewModel=View model
+Settings_SecAbout=About
+Settings_SecVisuals=Visual effects
+Settings_SecLighting=Lighting
+Settings_SecGameplay=Gameplay
+Settings_SecInterface=Interface
+Settings_SecPerformance=Performance
+Settings_SecSound=Sound
+Settings_SecViolence=Violence
+Settings_SecSystem=System
+Settings_SecScripted=More settings

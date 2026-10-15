@@ -100,8 +100,13 @@ void ConfigRepository::load(const std::filesystem::path& Root,
 					[&](const auto& Item) { return Item.Cvar == Row.Cvar; });
 				if (Existing != Page.Items.end())
 					*Existing = copyRow(Row);
-				else
-					Page.Items.push_back(copyRow(Row));
+				else {
+					// Appended script rows land in the page's declared
+					// script section, never in an undeclared group.
+					SettingDefinition Appended = copyRow(Row);
+					Appended.Section = Page.ScriptSection;
+					Page.Items.push_back(std::move(Appended));
+				}
 			}
 		}
 		std::string Conflict;
@@ -112,7 +117,12 @@ void ConfigRepository::load(const std::filesystem::path& Root,
 			if (Cvars.count(Row.Cvar) || !Local.insert(Row.Cvar).second)
 				Conflict = "duplicate cvar: " + Row.Cvar;
 		}
-		for (const auto& Component : Page.Components) {
+		// One component, one home: page-level behaviours plus every section
+		// widget share one namespace across the whole catalog.
+		std::set<std::string> PageComponents(Page.Components.begin(), Page.Components.end());
+		for (const auto& Section : Page.Sections)
+			PageComponents.insert(Section.Components.begin(), Section.Components.end());
+		for (const auto& Component : PageComponents) {
 			if (Components.count(Component))
 				Conflict = "component already assigned: " + Component;
 		}
@@ -122,7 +132,7 @@ void ConfigRepository::load(const std::filesystem::path& Root,
 		}
 		PageIds.insert(Page.Id);
 		Cvars.insert(Local.begin(), Local.end());
-		Components.insert(Page.Components.begin(), Page.Components.end());
+		Components.insert(PageComponents.begin(), PageComponents.end());
 		Pages.push_back(std::move(Page));
 	}
 	std::sort(Pages.begin(), Pages.end(), [](const auto& A, const auto& B) {

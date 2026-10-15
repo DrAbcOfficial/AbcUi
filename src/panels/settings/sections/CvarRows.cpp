@@ -36,7 +36,11 @@ void SettingsPage::buildRows() {
 			if (View.row->Section && View.row->Section != LastSection) {
 				LastSection = View.row->Section;
 				Markup += "<div class=\"section-header\">";
-				Markup += framework::TextUtil::escapeRml(translated(View.row->Section));
+				// Declared sections carry their own label token; the raw
+				// token stays the legacy label for undeclared groupings.
+				const std::string Label = Page
+					? Page->sectionLabel(View.row->Section) : std::string(View.row->Section);
+				Markup += framework::TextUtil::escapeRml(translated(Label.c_str()));
 				Markup += "</div>";
 			}
 			Markup += "<div class=\"row\" id=\"row-";
