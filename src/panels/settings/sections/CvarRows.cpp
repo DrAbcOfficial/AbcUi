@@ -28,6 +28,16 @@ Rml::Element* sliderThumb(Rml::Element* input) {
 	}
 	return nullptr;
 }
+
+// The dropdown label for a file-backed choice: the file name without its
+// directory or extension (the value keeps the full relative path).
+std::string fileStem(const std::string& value) {
+	const size_t slash = value.find_last_of("/\\");
+	const size_t begin = slash == std::string::npos ? 0 : slash + 1;
+	const size_t dot = value.find_last_of('.');
+	const size_t end = dot != std::string::npos && dot > begin ? dot : value.size();
+	return value.substr(begin, end - begin);
+}
 } // namespace
 
 void SettingsPage::buildRows() {
@@ -281,8 +291,11 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 			// something honest. The fixed token table (cl_logocolor) and
 			// the scanned set (model / cl_logofile) follow.
 			const auto StringLabel = [&](const std::string& Value) {
-				return view.row->StateName && std::string(view.row->StateName) == "logocolor"
-					? translated(("#Valve_" + logoColorName(Value)).c_str()) : Value;
+				if (view.row->StateName && std::string(view.row->StateName) == "logocolor")
+					return std::string(translated(("#Valve_" + logoColorName(Value)).c_str()));
+				if (view.row->FileChoices)
+					return fileStem(Value);
+				return Value;
 			};
 			if (shownText.empty())
 				addOption("", translated("#Settings_Unset"));
@@ -291,8 +304,14 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 			for (int i = 0; i < view.row->OptionCount; ++i)
 				addOption(view.row->Options[i].Label, StringLabel(view.row->Options[i].Label));
 			if (view.options) {
-				for (const auto& option : *view.options)
-					addOption(option, option);
+				const std::vector<std::string>* labels = view.optionLabels
+					&& view.optionLabels->size() == view.options->size() ? view.optionLabels : nullptr;
+				for (size_t i = 0; i < view.options->size(); ++i) {
+					const std::string& option = (*view.options)[i];
+					const std::string label = labels && !(*labels)[i].empty()
+						? (*labels)[i] : StringLabel(option);
+					addOption(option, label);
+				}
 			}
 		}
 		if (selectControl) {

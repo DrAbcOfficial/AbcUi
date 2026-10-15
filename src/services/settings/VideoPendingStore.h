@@ -4,7 +4,7 @@
 // unconfirmed-switch record (VideoModeModel.h protocol).
 //
 // The record is OUR schema (new contract, not an engine key): a small JSON
-// document at "<mod>/abcui/video_pending.json", written through abc::Config's
+// document at "<mod>/abc/abcui/video_pending.json", written through abc::Config's
 // atomic sibling replacement (abc::JsonSave -> WriteJsonFile; never truncates
 // the previous file). A cleared record is persisted with Pending=0 instead of
 // deleting the file - the read path treats any non-positive Pending as "no

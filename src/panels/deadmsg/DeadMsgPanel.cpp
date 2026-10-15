@@ -46,7 +46,7 @@ constexpr float kFadeSeconds = 0.5f; // old RunAnimationCommand duration
 } // namespace
 
 DeadMsgPanel::DeadMsgPanel()
-	: HudPanel("deadmsg", "abcui/rml/deadmsg.rml") {}
+	: HudPanel("deadmsg", "abc/abcui/rml/deadmsg.rml") {}
 
 void DeadMsgPanel::onDocumentReady() {
 	subscribe(textfeed::KillFeed, [this](const char* victim, const char* attacker, const char* inflictor) {

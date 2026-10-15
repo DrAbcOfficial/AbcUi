@@ -366,12 +366,12 @@ void probeCommand() {
 			service.Requested, service.Effective, service.Rounds, service.Width, service.Height,
 			service.VideoOpen ? 1 : 0, service.VideoSeconds);
 	}
-	// Menu score (UI overhaul WS4): the track the module keeps playing.
+	// Menu score (UI overhaul WS4): the track the module hands to the engine's
+	// mp3 player (looping and loudness are the engine's own; see MenuMusic).
 	{
 		const auto& music = menumusic::menuMusic();
-		abc::ConsolePrint("[AbcUi] probe: music src='%s' on=%d playing=%d pos=%.1f/%.1f vol=%.2f\n",
-			music.source().c_str(), music.enabled() ? 1 : 0, music.playing() ? 1 : 0,
-			music.position(), music.duration(), music.volume());
+		abc::ConsolePrint("[AbcUi] probe: music src='%s' on=%d playing=%d\n",
+			music.source().c_str(), music.enabled() ? 1 : 0, music.playing() ? 1 : 0);
 	}
 	// Friends board (UI overhaul WS4): provider reach, the row set and each
 	// row's joinability.
@@ -400,7 +400,7 @@ void probeCommand() {
 	const char* rml =
 		"<rml>"
 		"<head>"
-		"<link type=\"text/rcss\" href=\"abcui/rcss/base.rcss\"/>"
+		"<link type=\"text/rcss\" href=\"abc/abcui/rcss/base.rcss\"/>"
 		"<style>"
 		"	body { margin: 0dp; width: 640dp; height: 640dp;"
 		"		background-color: #101418e0; }"

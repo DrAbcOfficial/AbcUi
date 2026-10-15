@@ -58,7 +58,7 @@ constexpr const char* kRotorIds[4] = {
 } // namespace
 
 IndicatorPanel::IndicatorPanel()
-	: HudPanel("indicator", "abcui/rml/indicator.rml") {}
+	: HudPanel("indicator", "abc/abcui/rml/indicator.rml") {}
 
 void IndicatorPanel::onDocumentReady() {
 	subscribe(netmsg::Damage, [this](const netmsg::DamageData& data) {

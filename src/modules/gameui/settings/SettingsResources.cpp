@@ -1,10 +1,12 @@
 // Mod resource loading extracted from GameUiModule.cpp (UTF-8).
 #include "modules/gameui/settings/SettingsResources.h"
 #include <abc/Paths.h>
+#include <abc/Console.h>
 #include <abc/Plugin.h>
 #include "rmlui/VGUI2ExtensionImport.h"
 #include "services/settings/KeyBindModel.h"
 #include <io.h>
+#include <filesystem>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
@@ -66,6 +68,61 @@ std::vector<std::string> scanMounted(const char* Directory, bool Directories) {
 }
 std::vector<std::string> scanModDirectories(const char* Directory) { return scanMounted(Directory, true); }
 std::vector<std::string> scanModFileBasenames(const char* Directory) { return scanMounted(Directory, false); }
+
+namespace {
+
+bool extensionMatches(const std::string& name, const char* const* Extensions, int Count) {
+	const size_t dot = name.find_last_of('.');
+	if (dot == std::string::npos)
+		return false;
+	std::string ext = name.substr(dot);
+	std::transform(ext.begin(), ext.end(), ext.begin(),
+		[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+	for (int i = 0; i < Count; ++i) {
+		std::string wanted = Extensions[i] ? Extensions[i] : "";
+		std::transform(wanted.begin(), wanted.end(), wanted.begin(),
+			[](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+		if (!wanted.empty() && ext == wanted)
+			return true;
+	}
+	return false;
+}
+
+} // namespace
+
+std::vector<services::settings::StringChoice> scanModMediaFiles(const char* relativeDir,
+	const char* const* extensions, int extensionCount, const char* valuePrefix) {
+	std::vector<services::settings::StringChoice> choices;
+	if (!relativeDir || !*relativeDir || !valuePrefix)
+		return choices;
+	std::error_code error;
+	const std::filesystem::path root = abc::ModPath(relativeDir);
+	std::filesystem::directory_iterator itor(root, error);
+	if (error)
+		return choices;
+	const std::string prefix = valuePrefix;
+	for (const auto& entry : itor) {
+		std::error_code typeError;
+		if (!entry.is_regular_file(typeError) || typeError)
+			continue;
+		const std::string name = entry.path().filename().string();
+		if (!extensionMatches(name, extensions, extensionCount))
+			continue;
+		services::settings::StringChoice choice;
+		const size_t dot = name.find_last_of('.');
+		choice.Label = dot == std::string::npos ? name : name.substr(0, dot);
+		choice.Value = prefix + name;
+		choices.push_back(std::move(choice));
+	}
+	std::sort(choices.begin(), choices.end(),
+		[](const services::settings::StringChoice& A, const services::settings::StringChoice& B) { return A.Value < B.Value; });
+	choices.erase(std::unique(choices.begin(), choices.end(),
+		[](const services::settings::StringChoice& A, const services::settings::StringChoice& B) { return A.Value == B.Value; }),
+		choices.end());
+	if (choices.size() > 512)
+		choices.resize(512);
+	return choices;
+}
 
 bool writeModFile(const char* relativePath, const std::vector<unsigned char>& bytes, std::string& error) {
 	error.clear();

@@ -43,7 +43,7 @@ bool loadDefaultAvatar() {
 	if (!vgui2ext::available())
 		return false;
 	framework::ImageLoader::DecodedImage image;
-	if (!framework::ImageLoader::loadFromFile(abc::ModPath("abcui/img/default_avatar.png").c_str(), image))
+	if (!framework::ImageLoader::loadFromFile(abc::ModPath("abc/abcui/img/default_avatar.png").c_str(), image))
 		return false;
 	DefaultAvatarTexture = vgui2ext::createTexture();
 	if (!DefaultAvatarTexture)

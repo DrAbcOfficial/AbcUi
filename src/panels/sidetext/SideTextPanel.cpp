@@ -45,7 +45,7 @@ void replaceAll(std::string& subject, const char* key, const std::string& value)
 } // namespace
 
 SideTextPanel::SideTextPanel()
-	: HudPanel("sidetext", "abcui/rml/sidetext.rml") {}
+	: HudPanel("sidetext", "abc/abcui/rml/sidetext.rml") {}
 
 void SideTextPanel::onDocumentReady() {
 	// The template is the document's initial text (old template_text res

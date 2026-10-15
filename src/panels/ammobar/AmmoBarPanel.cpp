@@ -22,7 +22,7 @@ constexpr int kUziAkimboFlag = 32;
 } // namespace
 
 AmmoBarPanel::AmmoBarPanel()
-	: HudPanel("ammobar", "abcui/rml/ammobar.rml") {}
+	: HudPanel("ammobar", "abc/abcui/rml/ammobar.rml") {}
 
 void AmmoBarPanel::onDocumentReady() {
 	subscribe(netmsg::CurWeapon, [this](int state, int id, int, int) {

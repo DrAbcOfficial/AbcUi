@@ -269,17 +269,16 @@ if(ABC_GAME_DIR)
     # the launcher's PATH addition resolves it for both plugins.
     install(FILES "${ABCUI_MILE_FFMPEG_SDK}/Redist/x86/Mile.FFmpeg.dll"
         DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/dlls/Mile.FFmpeg")
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abcui")
-        install(DIRECTORY assets/abcui DESTINATION "${ABC_GAME_DIR}/svencoop"
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui")
+        # Plugin resources live under <mod>/abc/<plugin> (the abc group dir):
+        # AbcUi owns abc/abcui, sibling to AbcEssential's abc/abcessential.
+        install(DIRECTORY assets/abc/abcui DESTINATION "${ABC_GAME_DIR}/svencoop/abc"
             PATTERN ".gitkeep" EXCLUDE)
     endif()
-    # Menu score: the engine resolves play-by-name under <search path>/sound/,
-    # so the shipped track lands in the mod's sound tree (its own directory:
-    # nothing else in the plugin writes there).
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/music/opfor.wav")
-        install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/assets/music/opfor.wav"
-            DESTINATION "${ABC_GAME_DIR}/svencoop/sound/abcui/menu")
-    endif()
+    # The menu score ships inside abc/abcui/scence/audio (installed with the
+    # tree above). The engine resolves a sound name only under sound/, so the
+    # plugin mirrors the listed tracks there at startup; see MenuMusic and
+    # settings::mirrorModFilesToSoundTree.
     add_custom_target(deploy
         DEPENDS AbcUi FreeImage
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"

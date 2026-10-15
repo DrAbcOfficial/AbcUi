@@ -81,7 +81,7 @@ bool inFront(const float origin[3], const vec3_t forward) {
 } // namespace
 
 PopNumPanel::PopNumPanel()
-	: HudPanel("popnum", "abcui/rml/popnum.rml") {}
+	: HudPanel("popnum", "abc/abcui/rml/popnum.rml") {}
 
 void PopNumPanel::onDocumentReady() {
 	subscribe(netmsg::PopNum, [this](const netmsg::PopNumData& data) {

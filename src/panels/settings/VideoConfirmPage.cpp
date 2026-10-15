@@ -34,7 +34,7 @@ std::string translated(const char* token) {
 }
 
 VideoConfirmPage::VideoConfirmPage()
-	: InteractiveDocument("videoconfirm", "abcui/rml/videoconfirm.rml", true), Listener(this) {}
+	: InteractiveDocument("videoconfirm", "abc/abcui/rml/videoconfirm.rml", true), Listener(this) {}
 
 VideoConfirmPage::~VideoConfirmPage() {
 	close();

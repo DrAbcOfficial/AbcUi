@@ -140,7 +140,7 @@ void rainbowShift(int counter, unsigned char& r, unsigned char& g, unsigned char
 } // namespace
 
 WeaponChoosePanel::WeaponChoosePanel()
-	: HudPanel("weaponchoose", "abcui/rml/weaponchoose.rml") {
+	: HudPanel("weaponchoose", "abc/abcui/rml/weaponchoose.rml") {
 	weaponchoose::PanelInstance = this;
 }
 

@@ -59,6 +59,10 @@ struct SettingDefinition {
 	// The value is a player-palette hue (topcolor / bottomcolor): the page
 	// shows the represented colour on the slider thumb.
 	bool HueSwatch = false;
+	// The string-enum scan yields FILE paths (menu video / music): the page
+	// labels the dropdown with the file stem and the write validation accepts
+	// a relative path.
+	bool FileChoices = false;
 	bool Bounded = true;
 	bool HasDefault = true;
 	settings::SettingKind Kind = settings::SettingKind::kBool;

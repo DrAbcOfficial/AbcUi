@@ -44,7 +44,7 @@ void GameUiModule::onInit() {
 	// interface lazily (Steam may not be up yet at HUD_Init) and is a
 	// process-lifetime singleton; the model owns the async lifecycle.
 	ServerBrowser.setProvider(services::serverbrowser::steamQueryProvider());
-	const auto BlacklistPath = abc::ModPath("abcui/server_blacklist.json");
+	const auto BlacklistPath = abc::ModPath("abc/abcui/server_blacklist.json");
 	std::string BlacklistError;
 	const bool BlacklistLoaded = services::serverbrowser::BlacklistFileStore::load(BlacklistPath, Blacklist, BlacklistError);
 	if (!BlacklistLoaded) abc::ConsoleWarn("[AbcUi] %s: %s\n", BlacklistPath.c_str(), BlacklistError.c_str());
@@ -66,20 +66,19 @@ void GameUiModule::onInit() {
 	abc::CREATE_CVAR("abc_ui_browser_hide_unresponsive", "1", abc::FCVAR_VALUE, nullptr);
 	// Menu score (WS4): the shipped track plus its level; the music service
 	// reads the source once per presentation change and the volume live.
-	abc::CREATE_CVAR("abc_ui_menu_music", "abcui/menu/opfor.wav", abc::FCVAR_VALUE, nullptr);
-	abc::CREATE_CVAR("abc_ui_menu_music_volume", "0.45", abc::FCVAR_VALUE, nullptr);
+	abc::CREATE_CVAR("abc_ui_menu_music", "abc/abcui/scence/audio/opfor.mp3", abc::FCVAR_VALUE, nullptr);
 	// The character card's model source override; empty follows the player's
 	// own `model` cvar (gameui::engine::playerCardFacts).
 	abc::CREATE_CVAR("abc_ui_menu_model_path", "", abc::FCVAR_VALUE, nullptr);
 	std::string ServerScript = readModFile("settings.scr");
-	if (ServerScript.empty()) ServerScript = readModFile("abcui/config/server_options.scr");
+	if (ServerScript.empty()) ServerScript = readModFile("abc/abcui/config/server_options.scr");
 	CreateGame.setOptions(services::creategame::parseServerOptions(ServerScript));
 	if (CreateGame.options().empty()) {
 		abc::ConsoleWarn("[AbcUi] settings.scr unavailable or malformed; using shipped server option definitions\n");
-		CreateGame.setOptions(services::creategame::parseServerOptions(readModFile("abcui/config/server_options.scr")));
+		CreateGame.setOptions(services::creategame::parseServerOptions(readModFile("abc/abcui/config/server_options.scr")));
 	}
 	const auto Advanced = loadAdvancedScript();
-	UiConfig.load(abc::ModPath("abcui/config"), Advanced.Rows);
+	UiConfig.load(abc::ModPath("abc/abcui/config"), Advanced.Rows);
 	for (const auto& Error : UiConfig.errors())
 		abc::ConsoleWarn("[AbcUi] %s: %s: %s\n", Error.File.c_str(), Error.Field.c_str(), Error.Message.c_str());
 	SettingsModel.setTable(UiConfig.rows().data(), static_cast<int>(UiConfig.rows().size()));
@@ -95,6 +94,22 @@ void GameUiModule::onInit() {
 			SettingsModel.setStringOptions(Row.Cvar, scanModDirectories("models/player"));
 		else if (Source == "logos")
 			SettingsModel.setStringOptions(Row.Cvar, scanModFileBasenames("logos"));
+		else if (Source == "scence/video") {
+			// Menu background videos: the player drops files into the plugin
+			// tree; the dropdown lists them by stem and the cvar stores the
+			// path the backdrop decoder opens.
+			static const char* const VideoExtensions[] = {".mp4", ".webm", ".ivf", ".avi", ".mkv"};
+			SettingsModel.setStringChoices(Row.Cvar, scanModMediaFiles("abc/abcui/scence/video",
+				VideoExtensions, static_cast<int>(std::size(VideoExtensions)), "abc/abcui/scence/video/"));
+		}
+		else if (Source == "scence/audio") {
+			// Menu music: the engine's mp3 player resolves the path relative
+			// to the mod dir (the legacy plugin played media/*.mp3 the same
+			// way), so the scanned folder is the whole story.
+			static const char* const AudioExtensions[] = {".mp3"};
+			SettingsModel.setStringChoices(Row.Cvar, scanModMediaFiles("abc/abcui/scence/audio",
+				AudioExtensions, static_cast<int>(std::size(AudioExtensions)), "abc/abcui/scence/audio/"));
+		}
 	}
 	// T11 bind sources live in the mod dir (engine-owned data, not abcui
 	// assets): the action list, the factory defaults and the label table.

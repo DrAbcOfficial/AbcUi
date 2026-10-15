@@ -70,7 +70,7 @@ struct VideoMode {
 	}
 };
 
-// The persisted unconfirmed-switch record ("abcui/video_pending.json" in
+// The persisted unconfirmed-switch record ("abc/abcui/video_pending.json" in
 // production via abc::Config's atomic writer). Plain POD - the store adapter
 // owns the JSON schema; the model owns the semantics.
 struct VideoPendingRecord {

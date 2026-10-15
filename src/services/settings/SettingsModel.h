@@ -74,6 +74,16 @@ struct SettingEnumOption {
 	const char* Label;
 };
 
+// One string-enum choice with its own display label: the value is what the
+// cvar receives (a scanned file's path), the label is what the dropdown
+// shows (the file name without its extension). Rows backed by a scan install
+// these through setStringChoices; rows whose label equals their value keep
+// using setStringOptions.
+struct StringChoice {
+	std::string Value;
+	std::string Label;
+};
+
 // Borrowed description view. The JSON repository (or UserScrTable for direct
 // script consumers) owns all strings and options and must outlive the model.
 struct SettingRow {
@@ -105,6 +115,10 @@ struct SettingRow {
 	// current value (framework::ColorUtil::playerHueColor). Only a bounded
 	// float row may declare it (the schema enforces that).
 	bool HueSwatch = false;
+	// The scanned options are FILE paths (menu video / music): the page labels
+	// them with the file stem, and the write validation accepts a relative
+	// path (no traversal) instead of the bare enum-token charset.
+	bool FileChoices = false;
 };
 
 // Per-row lifecycle. kClean -> (edit) -> kDirty -> (apply) -> kClean, with
@@ -145,6 +159,9 @@ struct RowView {
 	RowState state = RowState::kClean;
 	bool missing = false;    // cvar not registered: row unavailable
 	const std::vector<std::string>* options = nullptr; // kStringEnum scan
+	// Parallel to options: the dropdown label per option (file rows show the
+	// stem). Entries may be empty - the page then falls back to its own rules.
+	const std::vector<std::string>* optionLabels = nullptr;
 };
 
 class SettingsModel {
@@ -183,6 +200,9 @@ public:
 	// value stay acceptable even when not in the list (a downloaded model
 	// must not be force-changed by opening the page).
 	void setStringOptions(const char* cvar, std::vector<std::string> options);
+	// The labelled form (file scans): values are stored, labels are shown.
+	// Both vectors are sorted together by value.
+	void setStringChoices(const char* cvar, std::vector<StringChoice> choices);
 
 	// Re-reads engine truth. Untouched rows adopt the new value silently;
 	// rows with a pending user edit keep the draft and flip to kConflict
@@ -264,6 +284,7 @@ private:
 		std::string draftText;
 		float draftValue = 0.0f;
 		std::vector<std::string> options; // kStringEnum scan options
+		std::vector<std::string> optionLabels; // parallel display labels
 		int queuedTicks = 0;
 		// Pre-snapshot placeholder: the first snapshot() runs the kClean
 		// adoption and lands every registered row on the engine truth.
@@ -296,6 +317,13 @@ constexpr size_t kNameMaxBytes = 63;
 // two snapshot beats without a matching state read mean the command did not
 // take (reported as kApplyFailed instead of spinning forever).
 constexpr int kQueuedTicksLimit = 2;
+
+// The file-choice text rule (menu video / music): a mod-relative path with
+// forward slashes, no traversal, no drive/absolute forms and nothing that
+// could split or escape an engine command. The settings model validates file
+// rows with it and the menu music validates the cvar's track text with the
+// same rule before it becomes part of an "mp3 loop <track>" command.
+bool fileChoiceValueValid(const char* text);
 
 }
 }

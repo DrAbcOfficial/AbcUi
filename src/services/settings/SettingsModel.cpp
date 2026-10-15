@@ -101,6 +101,31 @@ std::string stripComment(const std::string& line) {
 
 }
 
+// File-choice rows (menu video / music scans): the value is a relative path
+// into the plugin's resource tree, so the bare enum-token charset cannot
+// apply - but the path stays inside the mod: forward slashes only, no
+// traversal, no drive/absolute forms, no quotes or separators that could
+// escape an engine command (defence in depth; the set itself comes from our
+// own scan). The menu music validates the cvar's track text with the same
+// rule before it is spliced into an "mp3 loop <track>" command.
+bool fileChoiceValueValid(const char* text) {
+	if (!text || !*text)
+		return false;
+	for (const char* p = text; *p; ++p) {
+		const unsigned char c = static_cast<unsigned char>(*p);
+		if (c < 0x20 || c == 0x7f)
+			return false;
+		if (std::strchr("\"'`\\|<>*?[]:", *p))
+			return false;
+	}
+	const std::string value(text);
+	if (value.front() == '/' || value.back() == '/')
+		return false;
+	if (value.find("..") != std::string::npos)
+		return false;  // no traversal, not even inside a name chain
+	return true;
+}
+
 SettingsModel::SettingsModel(const SettingRow* rows, int count) {
 	setTable(rows, count);
 }
@@ -116,14 +141,31 @@ void SettingsModel::setTable(const SettingRow* rows, int count) {
 }
 
 void SettingsModel::setStringOptions(const char* cvar, std::vector<std::string> options) {
+	std::vector<StringChoice> choices;
+	choices.reserve(options.size());
+	for (auto& value : options)
+		choices.push_back({std::move(value), std::string()});
+	setStringChoices(cvar, std::move(choices));
+}
+
+void SettingsModel::setStringChoices(const char* cvar, std::vector<StringChoice> choices) {
 	RowRuntime* entry = runtime(cvar);
 	if (!entry || entry->row->Kind != SettingKind::kStringEnum)
 		return;
-	// Sorted for the page's select and for binary_search; values already
-	// equal to the engine value stay acceptable even when not in the list
+	// Sorted by value for the page's select and for binary_search; the labels
+	// ride along so the two vectors stay parallel. Values already equal to
+	// the engine value stay acceptable even when not in the list
 	// (setDraftString keeps that door open).
-	std::sort(options.begin(), options.end());
-	entry->options = std::move(options);
+	std::sort(choices.begin(), choices.end(),
+		[](const StringChoice& A, const StringChoice& B) { return A.Value < B.Value; });
+	entry->options.clear();
+	entry->optionLabels.clear();
+	entry->options.reserve(choices.size());
+	entry->optionLabels.reserve(choices.size());
+	for (auto& choice : choices) {
+		entry->options.push_back(std::move(choice.Value));
+		entry->optionLabels.push_back(std::move(choice.Label));
+	}
 }
 
 SettingsModel::RowRuntime* SettingsModel::runtime(const char* cvar) {
@@ -374,7 +416,9 @@ bool SettingsModel::validateString(const RowRuntime& entry, const char* text) co
 		// option sets come from our own scans, and the token must be one of
 		// the scanned or fixed options - or exactly the live engine value
 		// (a downloaded model must not be force-changed by opening the page).
-		if (!optionTokenValid(text))
+		// File rows carry a relative path instead of a bare token, with the
+		// path-shaped charset above.
+		if (entry.row->FileChoices ? !fileChoiceValueValid(text) : !optionTokenValid(text))
 			return false;
 		bool known = std::binary_search(entry.options.begin(), entry.options.end(), std::string(text));
 		for (int i = 0; !known && i < entry.row->OptionCount; ++i)
@@ -534,6 +578,7 @@ std::vector<RowView> SettingsModel::rows() const {
 		view.state = entry.state;
 		view.missing = entry.missing;
 		view.options = &entry.options;
+		view.optionLabels = &entry.optionLabels;
 		views.push_back(std::move(view));
 	}
 	return views;
@@ -553,6 +598,7 @@ const RowView* SettingsModel::find(const char* cvar) const {
 	view.state = entry->state;
 	view.missing = entry->missing;
 	view.options = &entry->options;
+	view.optionLabels = &entry->optionLabels;
 	return &view;
 }
 

@@ -8,7 +8,7 @@ namespace services {
 namespace settings {
 
 namespace {
-constexpr const char* kRecordPath = "abcui/video_pending.json";
+constexpr const char* kRecordPath = "abc/abcui/video_pending.json";
 }
 
 bool VideoPendingStore::save(const VideoPendingRecord& record) {

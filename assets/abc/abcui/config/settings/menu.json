@@ -16,25 +16,17 @@
       "cvar": "abc_ui_menu_video",
       "label": "#Settings_MenuVideo",
       "section": "menu",
-      "kind": "text",
-      "default": "abcenchance/scence/movie/trainstation.mp4"
+      "kind": "string-enum",
+      "source": "scence/video",
+      "default": "abc/abcui/scence/video/trainstation.mp4"
     },
     {
       "cvar": "abc_ui_menu_music",
       "label": "#Settings_MenuMusic",
       "section": "menu",
-      "kind": "text",
-      "default": "abcui/menu/opfor.wav"
-    },
-    {
-      "cvar": "abc_ui_menu_music_volume",
-      "label": "#Settings_MenuVolume",
-      "section": "menu",
-      "kind": "float",
-      "min": 0,
-      "max": 1,
-      "step": 0.01,
-      "default": 0.45
+      "kind": "string-enum",
+      "source": "scence/audio",
+      "default": "abc/abcui/scence/audio/opfor.mp3"
     },
     {
       "cvar": "abc_ui_menu_model_path",

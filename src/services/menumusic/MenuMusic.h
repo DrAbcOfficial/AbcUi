@@ -2,15 +2,15 @@
 
 // services::menumusic::MenuMusic - the menu's background music.
 //
-// The engine plays one-shot UI sounds (pfnPlaySoundByName); there is no loop
-// channel for a menu track, so the loop is driven here: the track's duration
-// is measured from its own WAV header (no per-track configuration), and the
-// service re-issues the play a fraction of a second before the tail so the
-// loop has no gap. Playback stops the moment no replacement page is on
-// screen, so the music never bleeds into gameplay.
+// Playback is the ENGINE's own mp3 player, driven exactly the way the legacy
+// ABCEnchance plugin drove it: `mp3 loop <track> ui` starts the loop and
+// `mp3 stop` ends it. The engine owns looping and loudness (the audio page's
+// mp3volume row is the engine's music volume), so this service only tracks
+// the on/off state: the track starts while a replacement page is on screen
+// and stops the moment it goes away - never bleeding into gameplay.
 //
-// Deliberately narrow: it knows one mod-relative sound path, a volume and on/off;
-// the owner (the module) supplies the frame delta and the "menu is up" fact.
+// Deliberately narrow: it knows one mod-relative track path and the "menu is
+// up" fact (the owner supplies it once per frame).
 
 #include <string>
 
@@ -18,41 +18,34 @@ namespace menumusic {
 
 class MenuMusic {
 public:
-	// Mod-relative sound path as the engine sound system spells it
-	// ("abcui/menu/opfor.wav" -> <mod>/sound/abcui/menu/opfor.wav). Empty
-	// disables playback entirely.
-	void setSource(const std::string& soundPath);
+	// Mod-relative track path as the engine's mp3 player spells it
+	// ("abc/abcui/scence/audio/opfor.mp3" - the shape the legacy plugin's
+	// "media/gamestartup.mp3" used). Empty disables playback entirely; a value
+	// that is not a safe relative path is refused (the cvar is user-editable
+	// and its text becomes part of an engine command line).
+	void setSource(const std::string& trackPath);
 	const std::string& source() const;
-	void setVolume(float volume); // 0..1
-	float volume() const;
 	void setEnabled(bool enabled);
 	bool enabled() const;
 
-	// Per-frame: starts/repeats/stops the track to match `menuVisible`.
-	// `frameTime` is the HUD frame delta in seconds.
-	void update(double frameTime, bool menuVisible);
+	// Per-frame: starts/stops the track to match `menuVisible`.
+	void update(bool menuVisible);
 
 	// Stops playback now (shutdown / level start).
 	void stop();
 
-	// Measured length of the current source in seconds; <= 0 when the header
-	// could not be read (the service then plays once and stays silent).
-	double duration() const;
-	// Diagnostics: whether the track is currently playing and how far into it
-	// the loop is.
+	// Diagnostics: whether the service has the track running (the engine owns
+	// the actual playback and its loop).
 	bool playing() const;
-	double position() const;
 
 private:
 	bool startTrack();
 
 	std::string Source;
-	float Level = 0.5f;
 	bool On = true;
 	bool Playing = false;
-	bool HeaderRead = false;
-	double Duration = 0.0;
-	double Elapsed = 0.0;
+	// A refused (unsafe) source warns once, not every frame.
+	bool Refused = false;
 };
 
 MenuMusic& menuMusic();

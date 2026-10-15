@@ -219,7 +219,7 @@ const char* tabActionOf(QueryKind kind) {
 }  // namespace
 
 ServerBrowserPage::ServerBrowserPage()
-	: InteractiveDocument("menuserverbrowser", "abcui/rml/serverbrowser.rml", true), Listener(this) {}
+	: InteractiveDocument("menuserverbrowser", "abc/abcui/rml/serverbrowser.rml", true), Listener(this) {}
 
 ServerBrowserPage::~ServerBrowserPage() {
 	close();

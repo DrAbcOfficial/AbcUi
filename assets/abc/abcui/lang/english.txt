@@ -645,8 +645,8 @@ Valve_Dkgray = Dkgray
 CG_MapSearch=Search maps
 
 Settings_Menu=Menu
-Settings_MenuVideo=Background video path
-Settings_MenuMusic=Menu music path
+Settings_MenuVideo=Background video
+Settings_MenuMusic=Menu music
 Settings_MenuVolume=Music volume
 Settings_MenuBlur=Background blur
 Settings_MenuModel=Menu player model (path)

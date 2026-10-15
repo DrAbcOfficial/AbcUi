@@ -24,7 +24,7 @@ namespace framework {
 namespace Theme {
 
 // Shared sheet every panel document links (fonts, colours, hud vars).
-constexpr const char* kBaseSheetPath = "abcui/rcss/base.rcss";
+constexpr const char* kBaseSheetPath = "abc/abcui/rcss/base.rcss";
 
 // Context-level density ratio (screenH/480). Call from rmlui init and on
 // every dimension change (HUD_VidInit chain).

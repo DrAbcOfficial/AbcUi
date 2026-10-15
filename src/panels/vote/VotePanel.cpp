@@ -55,7 +55,7 @@ std::string defaultCaption(const char* token, const char* fallback) {
 } // namespace
 
 VotePanel::VotePanel()
-	: HudPanel("vote", "abcui/rml/vote.rml") {
+	: HudPanel("vote", "abc/abcui/rml/vote.rml") {
 	vote::PanelInstance = this;
 }
 

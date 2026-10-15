@@ -170,7 +170,7 @@ void loadWeaponSprites(Weapon& weapon, const char* customSpr) {
 	const client_sprite_t* list = gEngfuncs.pfnSPR_GetList(listPath.data(), &count);
 	if (!list) {
 		count = 0;
-		list = gEngfuncs.pfnSPR_GetList(const_cast<char*>("abcui/spr/weapon_error.txt"), &count);
+		list = gEngfuncs.pfnSPR_GetList(const_cast<char*>("abc/abcui/spr/weapon_error.txt"), &count);
 		if (!list)
 			return;
 	}

@@ -115,7 +115,7 @@ void AbcSystemInterface::ActivateKeyboard(Rml::Vector2f caretPosition, float lin
 // OnDeactivate; there is no platform state worth resetting here.
 void AbcSystemInterface::DeactivateKeyboard() {}
 
-Rml::FileHandle AbcFileInterface::Open(const Rml::String& path) {	// RML/RCSS/image sources are mod-relative ("abcui/..."); the process CWD
+Rml::FileHandle AbcFileInterface::Open(const Rml::String& path) {	// RML/RCSS/image sources are mod-relative ("abc/abcui/..."); the process CWD
 	// is the game root, so resolve through abc::Paths (plan 08 §4.11).
 	const std::string resolved = abc::ModPath(path.c_str());
 	FILE* file = nullptr;

@@ -13,7 +13,7 @@
 namespace panels {
 
 ItemStackPanel::ItemStackPanel()
-	: HudPanel("itemstack", "abcui/rml/itemstack.rml") {
+	: HudPanel("itemstack", "abc/abcui/rml/itemstack.rml") {
 	// Old ItemStackPanel.res.
 	StackParams.keepTime = 5.0f;
 	StackParams.fadeIn = 0.1f;

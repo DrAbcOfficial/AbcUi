@@ -177,7 +177,12 @@ SettingDefinition setting(const Value& Item, const std::string& P) {
 	if (Item.HasMember("source")) {
 		Row.Source = text(Item, "source", P);
 		require(Row.Kind == K::kStringEnum && (Row.Source == "models/player"
-			|| Row.Source == "logos" || Row.Source == "logocolor"), P + ".source", "unknown string option provider");
+			|| Row.Source == "logos" || Row.Source == "logocolor"
+			|| Row.Source == "scence/video" || Row.Source == "scence/audio"),
+			P + ".source", "unknown string option provider");
+		// File providers scan a directory for media files; their choices are
+		// paths labelled by file stem (see SettingDefinition::FileChoices).
+		Row.FileChoices = Row.Source == "scence/video" || Row.Source == "scence/audio";
 	}
 	if (Item.HasMember("options")) {
 		const auto& Options = Item["options"];

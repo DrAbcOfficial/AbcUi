@@ -46,8 +46,8 @@ static std::vector<std::unique_ptr<HudPanel>> createPanels() {
 		list.push_back(std::make_unique<panels::ItemStackPanel>());
 		list.push_back(std::make_unique<panels::WeaponStackPanel>());
 		list.push_back(std::make_unique<panels::DeadMsgPanel>());
-		list.push_back(std::make_unique<panels::NoticePanel>("notice", "abcui/rml/notice.rml", textfeed::kPrintNotify));
-		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abcui/rml/notice_center.rml", textfeed::kPrintCenter));
+		list.push_back(std::make_unique<panels::NoticePanel>("notice", "abc/abcui/rml/notice.rml", textfeed::kPrintNotify));
+		list.push_back(std::make_unique<panels::NoticePanel>("notice-center", "abc/abcui/rml/notice_center.rml", textfeed::kPrintCenter));
 		list.push_back(std::make_unique<panels::SideTextPanel>());
 		list.push_back(std::make_unique<panels::TextMenuPanel>());
 		// Batch B (feedback panels, plan 05 §6).

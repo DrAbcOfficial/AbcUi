@@ -43,14 +43,14 @@ void Localization::load() {
 
 	// Sven Co-op reports "schinese"; keep a translation-free alias chain so a
 	// missing language file degrades to english instead of an empty UI.
-	std::string path = abc::ModPath("abcui/lang/");
+	std::string path = abc::ModPath("abc/abcui/lang/");
 	path += language;
 	path += ".txt";
-	parseTableFile(abc::ModPath("abcui/lang/english.txt"));
+	parseTableFile(abc::ModPath("abc/abcui/lang/english.txt"));
 	if (strcmp(language, "english") != 0) parseTableFile(path);
 	if (Table.empty() && strcmp(language, "english") != 0) {
 		abc::ConsoleWarn("[AbcUi] no localization for \"%s\", falling back to english\n", language);
-		parseTableFile(abc::ModPath("abcui/lang/english.txt"));
+		parseTableFile(abc::ModPath("abc/abcui/lang/english.txt"));
 	}
 }
 

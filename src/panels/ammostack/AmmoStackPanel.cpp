@@ -14,7 +14,7 @@
 namespace panels {
 
 AmmoStackPanel::AmmoStackPanel()
-	: HudPanel("ammostack", "abcui/rml/ammostack.rml") {
+	: HudPanel("ammostack", "abc/abcui/rml/ammostack.rml") {
 	// Old AmmoStackPanel.res.
 	StackParams.keepTime = 5.0f;
 	StackParams.fadeIn = 0.1f;

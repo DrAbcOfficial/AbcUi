@@ -79,7 +79,7 @@ bool ListWarned = false;
 
 // Old ITEM_LIST_PATH ("abcenchance/ItemHighLightList.txt"): migrated to the
 // abcui asset root (plan 01 §itemhighlight migration note).
-constexpr const char* kItemListPath = "abcui/ItemHighLightList.txt";
+constexpr const char* kItemListPath = "abc/abcui/ItemHighLightList.txt";
 
 // Old CItemHighLightPanel::LoadItemList: whitespace-token stream of 6-field
 // records (model path, localization token, R, G, B, A). D-19: a trailing
@@ -209,7 +209,7 @@ std::string displayName(const Item& item) {
 } // namespace
 
 ItemHighlightPanel::ItemHighlightPanel()
-	: HudPanel("itemhighlight", "abcui/rml/itemhighlight.rml") {}
+	: HudPanel("itemhighlight", "abc/abcui/rml/itemhighlight.rml") {}
 
 void ItemHighlightPanel::onDocumentReady() {}
 

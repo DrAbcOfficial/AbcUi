@@ -12,14 +12,15 @@ void GameUiModule::onFrame(double FrameTime) {
     LastFrameTime = FrameTime;
     // Menu score: plays only while a replacement page is on screen, so the
     // track never bleeds into gameplay (the bridge knows the presented fact).
+    // Playback itself is the engine's mp3 player (MenuMusic drives
+    // "mp3 loop <track> ui" / "mp3 stop"); its volume is the audio page's
+    // mp3volume row (the engine's own music volume).
     auto& music = menumusic::menuMusic();
     if (cvar_t* source = abc::CVAR_GET_POINTER("abc_ui_menu_music")) {
         if (source->string)
             music.setSource(source->string);
     }
-    if (cvar_t* level = abc::CVAR_GET_POINTER("abc_ui_menu_music_volume"))
-        music.setVolume(level->value);
-    music.update(FrameTime, services::nativeUiBridge().pageShown());
+    music.update(services::nativeUiBridge().pageShown());
     // Friends board: the throttle lives in the model, the projection is
     // change-gated on its generation (a steady list writes no DOM).
     if (Shell && Context && Shell->isVisible()) {

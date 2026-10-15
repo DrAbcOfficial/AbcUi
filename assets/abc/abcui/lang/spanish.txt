@@ -455,8 +455,8 @@ PL_Empty = No hay otros jugadores en la partida.
 CG_MapSearch=Buscar mapas
 
 Settings_Menu=Menú
-Settings_MenuVideo=Ruta del vídeo de fondo
-Settings_MenuMusic=Ruta de música del menú
+Settings_MenuVideo=Vídeo de fondo
+Settings_MenuMusic=Música del menú
 Settings_MenuVolume=Volumen de música
 Settings_MenuBlur=Desenfoque del fondo
 Settings_MenuModel=Modelo del jugador del menú (ruta)

@@ -36,7 +36,7 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	Shell->setFriendJoinSink([this](uint64_t steamId, const char* address) {
 		onFriendJoin(steamId, address);
 	});
-	SubStub = std::make_unique<panels::menushared::MenuStubPage>("menusub", "abcui/rml/menustub.rml");
+	SubStub = std::make_unique<panels::menushared::MenuStubPage>("menusub", "abc/abcui/rml/menustub.rml");
 	// T16: the replacement console (was the menuconsole stub).
 	Console = std::make_unique<panels::console::ConsolePage>();
 	Console->setBuffer(&services::console::consoleBuffer());

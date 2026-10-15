@@ -244,7 +244,7 @@ public:
 };
 
 ScoreboardPanel::ScoreboardPanel()
-	: HudPanel("scoreboard", "abcui/rml/scoreboard.rml") {
+	: HudPanel("scoreboard", "abc/abcui/rml/scoreboard.rml") {
 	scoreboard::PanelInstance = this;
 }
 

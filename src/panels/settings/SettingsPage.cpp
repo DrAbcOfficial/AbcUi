@@ -15,7 +15,7 @@
 namespace panels::settings {
 using namespace detail;
 SettingsPage::SettingsPage()
-	: InteractiveDocument("menusettings", "abcui/rml/settings.rml", true), Listener(this) {}
+	: InteractiveDocument("menusettings", "abc/abcui/rml/settings.rml", true), Listener(this) {}
 
 SettingsPage::~SettingsPage() {
 	releasePreviews();

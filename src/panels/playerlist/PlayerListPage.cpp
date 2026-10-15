@@ -37,7 +37,7 @@ std::string resolve(const char* token) {
 } // namespace
 
 PlayerListPage::PlayerListPage()
-	: InteractiveDocument("menuplayerlist", "abcui/rml/playerlist.rml", true), Listener(this) {
+	: InteractiveDocument("menuplayerlist", "abc/abcui/rml/playerlist.rml", true), Listener(this) {
 	Self = this;
 }
 

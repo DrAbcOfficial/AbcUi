@@ -39,10 +39,10 @@ video#small { width:300px; height:180px; }
 div { display:block; }
 .row { display:flex; align-items:flex-start; }
 </style></head><body id="video-test">
-<div>Video element: abcenchance/scence/movie/trainstation.mp4 (loop, cover)</div>
+<div>Video element: abc/abcui/scence/video/trainstation.mp4 (loop, cover)</div>
 <div class="row">
-<video id="main" src="abcenchance/scence/movie/trainstation.mp4" fit="cover" loop="true"/>
-<video id="small" src="abcenchance/scence/movie/viewport.mp4" fit="contain" loop="true"/>
+<video id="main" src="abc/abcui/scence/video/trainstation.mp4" fit="cover" loop="true"/>
+<video id="small" src="abc/abcui/scence/video/viewport.mp4" fit="contain" loop="true"/>
 </div>
 <div>abc_ui_video_test hide | status | set id attribute value | src id path</div>
 </body></rml>)");

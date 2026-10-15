@@ -158,6 +158,7 @@ void ConfigRepository::buildRows() {
 			Row.RequireEnabled = Item.RequireEnabled;
 			Row.HasDefault = Item.HasDefault;
 			Row.HueSwatch = Item.HueSwatch;
+			Row.FileChoices = Item.FileChoices;
 			if (Item.Kind == settings::SettingKind::kCommandToggle) {
 				Row.StateName = Item.Cvar.c_str();
 				Row.OnCommand = Item.Cvar == "in_mlook" ? "+mlook" : "+jlook";
