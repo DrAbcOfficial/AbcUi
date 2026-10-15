@@ -5,13 +5,20 @@
 
 /* The viewport is 480dp tall at the production density. Reserve room for
    a separate two-row footer. Border-box includes the inherited padding and
-   border; the old content-box height extended underneath the action bar. */
+   border; the old content-box height extended underneath the action bar.
+   The panel spans the full width between the page gutters instead of a
+   fixed 374dp: its right edge sits 48dp from the viewport edge, matching
+   the 48dp gutter left of the navigation column. The extra right padding
+   leaves the scrollbar inside the panel with the same 8dp inset it had at
+   the previous width, and keeps row content clear of the bar. */
 body#menusettings #panel {
 	box-sizing: border-box;
-	width: 374dp;
+	left: 190dp;
+	right: 48dp;
+	width: auto;
+	padding-right: 26dp;
 	height: 356dp;
 	overflow: auto;
-	left: 190dp;
 }
 
 #settings-navigation {
@@ -344,13 +351,18 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 
 /* Explicit columns prevent auto-sized inline buttons from overflowing or
    wrapping Return below the viewport. Apply/Return are always on the first
-   row, destructive default-reset entries on the second. Bottom = 468dp. */
+   row, destructive default-reset entries on the second. Bottom = 468dp.
+   The bar keeps the panel's left anchor and stretches to the same 48dp
+   right gutter, so the "Return" and bind reset columns sit under the
+   panel's right border; their fixed 179dp width keeps the two columns
+   from overlapping once the bar is wider than the buttons. */
 #settings-actions {
 	display: block;
 	position: absolute;
 	left: 190dp;
+	right: 48dp;
 	top: 404dp;
-	width: 374dp;
+	width: auto;
 	height: 64dp;
 	z-index: 1;
 }
@@ -374,17 +386,26 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
    of the body, NOT of the scrollable panel - absolute layers inside the
    scroll container scroll away with the content). Hidden until the page
    turns the display property on (the layer member tracks the state - a
-   SetProperty lands at the next layout frame). */
+   SetProperty lands at the next layout frame).
+
+   They sit at the top of the page, horizontally centered in the viewport
+   (the same 50% / negative-half-width recipe as the shared confirm panel,
+   which also keeps the box centered once the settings panel stretches),
+   and keep the shared dialog frame's width so the prompt reads as part of
+   the panel it interrupts. The layer rides above the action bar
+   (z-index 1) like any modal. */
 .settings-layer {
 	display: none;
 	position: absolute;
 	z-index: 2;
-	left: 48dp;
+	left: 50%;
+	margin-left: -203dp; /* half of the 372dp box + 16dp padding + border */
 	top: 40dp;
 	width: 372dp;
 	min-height: 200dp;
 	background-color: #101418f8;
 	border: 1dp var(--abc-line);
+	border-top: 2dp var(--abc-accent);
 	padding: 16dp;
 }
 
