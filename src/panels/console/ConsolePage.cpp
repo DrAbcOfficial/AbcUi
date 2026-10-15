@@ -8,6 +8,7 @@
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/SystemInterface.h>
+#include <RmlUi/Core/StringUtilities.h>
 
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
@@ -64,6 +65,21 @@ std::string controlValue(Rml::ElementDocument* doc, const char* id) {
 
 bool containsNewline(const std::string& text) {
 	return text.find('\n') != std::string::npos || text.find('\r') != std::string::npos;
+}
+
+// Parks the editor's caret at the end of its text. The widget's selection
+// API takes CHARACTER offsets and has no "end" sentinel (SetSelectionRange
+// with a negative offset resolves to the first character), so the real
+// character count is the value that means "behind the text" - the state
+// typing leaves and the state a history recall must restore.
+void parkCaretAtEnd(Rml::Element* editor) {
+	auto* input = rmlui_dynamic_cast<Rml::ElementFormControlInput*>(editor);
+	if (!input)
+		return;
+	const Rml::String value = input->GetValue();
+	const int end = static_cast<int>(
+		Rml::StringUtilities::LengthUTF8(Rml::StringView(value.data(), value.data() + value.size())));
+	input->SetSelectionRange(end, end);
 }
 
 // Splits a confirmed multi-line text into executable command lines: CR is
@@ -555,7 +571,13 @@ void ConsolePage::hideCompletion() {
 
 #ifndef NDEBUG
 void ConsolePage::debugType(const char* text) {
-	setControlValue(documentOrNull(), "console-input", text ? text : "");
+	Rml::ElementDocument* doc = documentOrNull();
+	setControlValue(doc, "console-input", text ? text : "");
+	// The debug seam stands in for real typing, and typing leaves the caret
+	// behind the inserted text: park it at the end so caret-moving keys
+	// (LEFT/RIGHT) have the same starting point they would after real input.
+	if (doc)
+		parkCaretAtEnd(doc->GetElementById("console-input"));
 	refreshSuggestions();
 }
 #endif
@@ -632,6 +654,7 @@ void ConsolePage::walkHistory(int delta) {
 			// Back to the live draft.
 			HistoryCursor = -1;
 			setControlValue(doc, "console-input", HistoryDraft);
+			parkCaretAtEnd(doc->GetElementById("console-input"));
 			return;
 		}
 		--HistoryCursor;
@@ -640,10 +663,7 @@ void ConsolePage::walkHistory(int delta) {
 	setControlValue(doc, "console-input", history[static_cast<std::size_t>(index)]);
 	// Caret to the end so typing appends (the widget's selection rides the
 	// parent element's selection API, not the form-control base).
-	if (Rml::Element* editor = doc->GetElementById("console-input")) {
-		if (auto* input = rmlui_dynamic_cast<Rml::ElementFormControlInput*>(editor))
-			input->SetSelectionRange(-1, -1);
-	}
+	parkCaretAtEnd(doc->GetElementById("console-input"));
 }
 
 void ConsolePage::WindowListener::ProcessEvent(Rml::Event& event) {

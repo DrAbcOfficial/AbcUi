@@ -241,35 +241,6 @@ struct SdlMenuWheelEvent {
 	unsigned Direction;
 };
 
-// SDL2 keycode -> engine keynum (keydefs.h). The printable ASCII range is
-// identity on both sides (lowercased keys); everything the UI consumes
-// beyond that is table-mapped.
-int sdlMenuKeynum(int keycode) {
-	switch (keycode) {
-	case 8:   return K_BACKSPACE;  // SDL DELETE vs engine BACKSPACE live at
-	                               // 127 on both sides but crossed: SDL
-	                               // backspace is 8, engine 127, SDL delete
-	                               // 127, engine K_DEL 148
-	case 127: return K_DEL;
-	case 273: return K_UPARROW;
-	case 274: return K_DOWNARROW;
-	case 275: return K_RIGHTARROW;
-	case 276: return K_LEFTARROW;
-	case 266: return K_PGUP;
-	case 267: return K_PGDN;
-	case 278: return K_HOME;
-	case 279: return K_END;
-	case 303: case 304: return K_SHIFT;
-	case 306: case 307: return K_CTRL;
-	case 308: case 309: return K_ALT;
-	case 0x400000AC: return K_ENTER;  // SDLK_KP_ENTER
-	default:
-		if (keycode >= 1073741882 && keycode <= 1073741893)
-			return K_F1 + (keycode - 1073741882);  // F1..F12
-		return keycode;  // printable ASCII identity (tab/enter/space included)
-	}
-}
-
 }
 
 void onSurfaceMenuKey(const void* sdlEvent) {
@@ -300,7 +271,13 @@ void onSurfaceMenuKey(const void* sdlEvent) {
 	// latch); a second feed would make every press toggle twice.
 	if (key->Key == kSdlMenuKeyEscape)
 		return;
-	routeKey(key->Down ? 1 : 0, sdlMenuKeynum(key->Key), false);
+	// The SDL keycode -> engine keynum translation (rmlui::KeyMap): printable
+	// ASCII is identity, the rest rides the stable SDL scancode table. An
+	// unmapped key (-1) is swallowed here, never fed as a bogus keynum.
+	const int keynum = mapSdlKeycode(key->Key);
+	if (keynum < 0)
+		return;
+	routeKey(key->Down ? 1 : 0, keynum, false);
 }
 
 void InputBridge::update(Rml::Context* context) {

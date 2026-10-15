@@ -6,6 +6,7 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Input.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include "modules/gameui/GameUiModule.h"
 #include "DebugCommands.h"
 #include <abc/Console.h>
@@ -40,9 +41,21 @@ void DebugCommands::consoleUiStatusCommand() {
 			abc::ConsolePrint(" %s", matches[i].c_str());
 		abc::ConsolePrint("\n");
 		if (Rml::ElementDocument* document = self.Console ? self.Console->document() : nullptr) {
-			Rml::Element* value = document->GetElementById("console-input");
-			abc::ConsolePrint("[AbcUi] console-ui: editor value='%s'\n",
-				value ? value->GetAttribute<Rml::String>("value", "").c_str() : "<none>");
+			// The acceptance readback: the editor value plus its caret
+			// [start,end]. Typed text parks the caret at the end; a
+			// caret-moving key (LEFT/RIGHT) must move it, and Backspace then
+			// edits at that spot - effects a keyboard-injection harness can
+			// assert without a text-input stream.
+			int caretStart = -1;
+			int caretEnd = -1;
+			Rml::String editorValue = "<none>";
+			if (auto* input = rmlui_dynamic_cast<Rml::ElementFormControlInput*>(
+					document->GetElementById("console-input"))) {
+				editorValue = input->GetValue();
+				input->GetSelection(&caretStart, &caretEnd, nullptr);
+			}
+			abc::ConsolePrint("[AbcUi] console-ui: editor value='%s' caret=[%d,%d]\n",
+				editorValue.c_str(), caretStart, caretEnd);
 		}
 		if (gEngfuncs.Cmd_Argc() >= 2 && self.Console)
 			self.Console->debugType(gEngfuncs.Cmd_Argv(1));
