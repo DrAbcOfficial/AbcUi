@@ -81,8 +81,7 @@ void GameUiModule::applyCreateGame() {
 	PendingCreateGame = request;
 	PendingCreateGameValid = true;
 	// A user-initiated local start begins a fresh auto-retry chain.
-	AutoRetryCount = 0;
-	AutoRetryDelay = -1.0;
+	AutoRetry.reset();
 	Controller.dispatch(gameui::menu::makeCreateGameRequest(request.Map.c_str()));
 	finishDispatch();
 }

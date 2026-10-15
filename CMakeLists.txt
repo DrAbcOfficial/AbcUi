@@ -159,6 +159,7 @@ add_library(AbcUi MODULE
     src/services/playerlist/MuteBackend.cpp
     src/services/playerlist/ClientMuteApi.cpp
     src/services/loading/LoadingModel.cpp
+    src/services/loading/AutoRetryGate.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/KeyBindModel.cpp
     src/services/settings/VideoModeModel.cpp

@@ -5,16 +5,6 @@
 namespace gameui {
 using namespace navigation;
 
-namespace {
-// The 自动重试 toggle's run policy: keep re-entering the SAME typed retry
-// path, at most this many consecutive auto-retries per failure chain, one
-// attempt every delay seconds. A chain ends on a confirmed join, a cancel,
-// a manual retry, the toggle going off, or the budget running out; the
-// honest error overlay stays up in every one of those cases.
-constexpr int kAutoRetryMax = 3;
-constexpr double kAutoRetryDelay = 5.0;
-}
-
 // The retry body shared by the overlay's 重试 intent and the auto-retry
 // beat: a NEW attempt generation for the same kept target, never a reuse of
 // the dead one. T19: a failed LOCAL attempt replays its kept request through
@@ -35,42 +25,24 @@ bool GameUiModule::retryServerAttempt() {
 }
 
 // The per-frame auto-retry beat (pumpBackgroundWork). The browser page owns
-// the toggle's truth; the timer runs on real frame time and fires only while
-// the connection-error overlay is actually up.
+// the toggle's truth; AutoRetryGate owns the bounded, paced policy and fires
+// only while the connection-error overlay is actually up.
 void GameUiModule::tickAutoRetry() {
 	const bool enabled = Browser && Browser->autoRetryJoin();
+	if (!enabled) {
+		AutoRetry.reset();  // the player switched it off: the chain ends
+		return;
+	}
 	const bool failed = Controller.isMenuActive()
 		&& Controller.state().overlays.contains(MenuOverlay::kConnectionError);
-	if (!enabled || !failed) {
-		// Not trying: the next chain starts from a clean budget. (A fired
-		// retry leaves this state too - the budget therefore only resets
-		// on the terminal outcomes handled by the callers.)
-		if (!failed) {
-			AutoRetryCount = 0;
-			AutoRetryDelay = -1.0;
-		}
+	if (!failed)
+		return;  // nothing to retry; the budget survives the next attempt
+	if (!AutoRetry.tick(LastFrameTime, true, true))
 		return;
-	}
-	if (AutoRetryCount >= kAutoRetryMax) {
-		if (AutoRetryDelay >= 0.0) {
-			abc::ConsoleWarn("[AbcUi] auto retry budget exhausted (%d attempts)\n", AutoRetryCount);
-			AutoRetryDelay = -1.0;
-		}
-		return;
-	}
-	if (AutoRetryDelay < 0.0) {
-		AutoRetryDelay = kAutoRetryDelay;  // arm the next attempt
-		abc::ConsolePrint("[AbcUi] auto retry armed: %d/%d in %.0fs\n",
-			AutoRetryCount + 1, kAutoRetryMax, kAutoRetryDelay);
-		return;
-	}
-	AutoRetryDelay -= LastFrameTime;
-	if (AutoRetryDelay > 0.0)
-		return;
-	AutoRetryDelay = -1.0;
-	++AutoRetryCount;
-	abc::ConsolePrint("[AbcUi] auto retry %d/%d\n", AutoRetryCount, kAutoRetryMax);
-	retryServerAttempt();
+	abc::ConsolePrint("[AbcUi] auto retry %d/%d\n", AutoRetry.attempts(),
+		services::loading::AutoRetryGate::kMaxAttempts);
+	if (!retryServerAttempt())
+		abc::ConsoleWarn("[AbcUi] auto retry had nothing to replay\n");
 }
 
 void GameUiModule::handleConnectionAction(ActionKind Kind) {
@@ -84,19 +56,18 @@ void GameUiModule::handleConnectionAction(ActionKind Kind) {
 		const uint32_t live = LoadingModelState.generation();
 		if (live != 0 && !LoadingModelState.requestCancel(live))
 			return;  // already latched
+		AutoRetry.reset();  // the player ended the chain
 		Controller.dispatch(MenuEvent{EventKind::kConnectCancel});
 	}
 	else if (Kind == ActionKind::kErrorRetry) {
 		// A manual retry starts a fresh auto-retry chain.
-		AutoRetryCount = 0;
-		AutoRetryDelay = -1.0;
+		AutoRetry.reset();
 		if (!retryServerAttempt())
 			return;  // nothing to retry: the overlay stays honest
 		return;
 	}
 	else if (Kind == ActionKind::kErrorReturn) {
-		AutoRetryCount = 0;
-		AutoRetryDelay = -1.0;
+		AutoRetry.reset();
 		Controller.dispatch(MenuEvent{EventKind::kBack});
 	}
 	else if (Kind == ActionKind::kDirectConnectConnect) {
@@ -110,8 +81,7 @@ void GameUiModule::handleConnectionAction(ActionKind Kind) {
 			return;  // stay put: nothing reaches the engine unvalidated
 		}
 		// A user-initiated attempt starts a fresh auto-retry chain.
-		AutoRetryCount = 0;
-		AutoRetryDelay = -1.0;
+		AutoRetry.reset();
 		Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
 	}
 	else if (Kind == ActionKind::kDirectConnectCancel)

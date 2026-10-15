@@ -102,8 +102,7 @@ void GameUiModule::drainLoadingFeed() {
 				// store exactly here).
 				recordPendingHistory();
 				// A confirmed join ends any auto-retry chain.
-				AutoRetryCount = 0;
-				AutoRetryDelay = -1.0;
+				AutoRetry.reset();
 				if (CurrentAttemptIsLocal && PendingCreateGameValid) {
 					for (const auto& Name : CreateGame.settleOptions(PendingCreateGame))
 						abc::ConsoleWarn("[AbcUi] local server option did not apply: %s\n", Name.c_str());
