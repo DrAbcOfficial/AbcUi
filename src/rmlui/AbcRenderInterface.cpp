@@ -73,27 +73,6 @@ void FlipRows(unsigned char* pixels, int width, int height) {
 	}
 }
 
-int UploadNewTexture(const unsigned char* rgba, int width, int height) {
-	const int id = vgui2ext::createTexture();
-	if (id == 0) {
-		static bool Warned = false;
-		if (!Warned) {
-			abc::ConsoleWarn("[AbcUi] texture upload unavailable (VGUI2Extension surface missing)\n");
-			Warned = true;
-		}
-		return 0;
-	}
-	if constexpr (kFlipTextureUpload) {
-		std::vector<unsigned char> flipped(rgba, rgba + static_cast<size_t>(width) * height * 4);
-		FlipRows(flipped.data(), width, height);
-		vgui2ext::uploadTexture(id, flipped.data(), width, height);
-	}
-	else {
-		vgui2ext::uploadTexture(id, rgba, width, height);
-	}
-	return id;
-}
-
 } // namespace
 
 AbcRenderInterface::~AbcRenderInterface() {
@@ -353,7 +332,7 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i& dimensions, co
 		abc::g_pFileSystem->Close(File);
 		framework::ImageLoader::DecodedImage Image;
 		if (!framework::decodePreview(Request, Bytes, Image)) return 0;
-		const int Texture = UploadNewTexture(Image.Pixels.data(), Image.Width, Image.Height);
+		const int Texture = uploadSurfaceTexture(Image.Pixels.data(), Image.Width, Image.Height);
 		if (!Texture) return 0;
 		dimensions = {Image.Width, Image.Height};
 		return retainTexture(Texture, true);
@@ -433,7 +412,7 @@ Rml::TextureHandle AbcRenderInterface::loadFileTexture(Rml::Vector2i& dimensions
 	if (!framework::ImageLoader::loadFromFile(abc::ModPath(source.c_str()).c_str(), image))
 		return 0;
 
-	const int textureId = UploadNewTexture(image.Pixels.data(), image.Width, image.Height);
+	const int textureId = uploadSurfaceTexture(image.Pixels.data(), image.Width, image.Height);
 	if (textureId == 0)
 		return 0;
 	dimensions = Rml::Vector2i(image.Width, image.Height);
@@ -450,10 +429,40 @@ Rml::TextureHandle AbcRenderInterface::GenerateTexture(Rml::Span<const Rml::byte
 	std::vector<unsigned char> pixels(source.begin(), source.end());
 	UnpremultiplyInPlace(pixels.data(), static_cast<size_t>(dimensions.x) * dimensions.y);
 
-	const int textureId = UploadNewTexture(pixels.data(), dimensions.x, dimensions.y);
+	const int textureId = uploadSurfaceTexture(pixels.data(), dimensions.x, dimensions.y);
 	if (textureId == 0)
 		return 0;
 	return retainTexture(textureId, true);
+}
+
+int AbcRenderInterface::uploadSurfaceTexture(const unsigned char* rgba, int width, int height) {
+	// The upload goes through the VGUI2 surface's own texture path, which is
+	// not re-entrant with the renderer's batched 2D pass: an upload issued
+	// between queued 2D draws leaves the freshly uploaded texture sampling as
+	// opaque black (live-caught 2026-10-16: the create-game page's map list
+	// introduced new glyphs, RmlUi regenerated the font atlases in the middle
+	// of the frame and every glyph of the page painted as a black rectangle).
+	// Closing the pass first hands the renderer a clean batch; the next draw
+	// re-installs Set2D/Set2DEx (the usual pair discipline).
+	endFrame();
+	const int id = vgui2ext::createTexture();
+	if (id == 0) {
+		static bool Warned = false;
+		if (!Warned) {
+			abc::ConsoleWarn("[AbcUi] texture upload unavailable (VGUI2Extension surface missing)\n");
+			Warned = true;
+		}
+		return 0;
+	}
+	if constexpr (kFlipTextureUpload) {
+		std::vector<unsigned char> flipped(rgba, rgba + static_cast<size_t>(width) * height * 4);
+		FlipRows(flipped.data(), width, height);
+		vgui2ext::uploadTexture(id, flipped.data(), width, height);
+	}
+	else {
+		vgui2ext::uploadTexture(id, rgba, width, height);
+	}
+	return id;
 }
 
 Rml::TextureHandle AbcRenderInterface::retainTexture(int id, bool owned, Rml::String external) {

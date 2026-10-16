@@ -131,6 +131,10 @@ private:
 	// through framework::ImageLoader (FreeImage); this wrapper uploads the
 	// result to the VGUI2 surface texture channel.
 	Rml::TextureHandle loadFileTexture(Rml::Vector2i& dimensions, const Rml::String& source);
+	// Uploads pixels through the VGUI2 surface texture channel, ending any
+	// active 2D pass first (the surface upload is not re-entrant with the
+	// renderer's batched pass - see the .cpp note). 0 = upload unavailable.
+	int uploadSurfaceTexture(const unsigned char* rgba, int width, int height);
 
 	// External live textures (see registerExternalTexture) plus the handles
 	// this interface created itself through the VGUI surface channel: only
