@@ -79,7 +79,9 @@ ElementBackdrop::~ElementBackdrop() {
 void ElementBackdrop::OnAttributeChange(const Rml::ElementAttributes& Changed) {
 	Element::OnAttributeChange(Changed);
 	menubackdrop::Mode mode = menubackdrop::Mode::kAuto;
-	int rounds = 2;
+	// -1 mirrors "no explicit blur attribute": the cvar then owns the value
+	// (and keeps owning it while the user drags the settings slider).
+	int rounds = -1;
 	float dim = 0.35f;
 	bool hasMode = false;
 	bool hasBlur = false;
@@ -97,7 +99,7 @@ void ElementBackdrop::OnAttributeChange(const Rml::ElementAttributes& Changed) {
 				abc::ConsoleWarn("[AbcUi backdrop] unknown mode '%s' on #%s\n", text.c_str(), GetId().c_str());
 		} else if (Name == "blur") {
 			hasBlur = true;
-			const int value = std::clamp(atoi(text.c_str()), 1, 4);
+			const int value = std::clamp(atoi(text.c_str()), 0, 4);
 			rounds = value;
 		} else if (Name == "dim") {
 			dim = std::clamp(static_cast<float>(atof(text.c_str())), 0.0f, 1.0f);
@@ -126,8 +128,11 @@ bool ElementBackdrop::sync() {
 		}
 	}
 	if (cvar_t* cvarRounds = abc::CVAR_GET_POINTER("abc_ui_menu_backdrop_blur")) {
-		if (cvarRounds->value > 0.0f && Rounds < 0)
-			menubackdrop::menuBackdrop().setBlurRounds(static_cast<int>(cvarRounds->value));
+		const int rounds = std::clamp(static_cast<int>(cvarRounds->value), 0, 4);
+		if (Rounds < 0 && AppliedCvarRounds != rounds) {
+			AppliedCvarRounds = rounds;
+			menubackdrop::menuBackdrop().setBlurRounds(rounds);
+		}
 	}
 	// Size from the context, not the parent: the backdrop must cover the window
 	// whatever the document's own box turned out to be.

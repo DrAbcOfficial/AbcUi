@@ -39,7 +39,7 @@
       "label": "#Settings_MenuBlur",
       "section": "menu",
       "kind": "float",
-      "min": 1,
+      "min": 0,
       "max": 4,
       "step": 1,
       "default": 2

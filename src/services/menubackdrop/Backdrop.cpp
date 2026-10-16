@@ -13,6 +13,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <vector>
 
 #include "../../rmlui/AbcRenderInterface.h"
 #include "../../rmlui/RmlUiModule.h"
@@ -58,6 +60,10 @@ struct Backdrop::State {
 	bool VideoAttempted = false;
 	bool VideoFailed = false;
 	std::string VideoError;
+	// Row-flip scratch for the decoded frame: the capture path samples its
+	// source like the engine's own FBOs (row 0 at the bottom of the image),
+	// while the decoder produces top-down rows for the Rml path.
+	std::vector<unsigned char> FlippedPixels;
 
 	unsigned int Generation = 0;
 	std::string Uri;
@@ -107,7 +113,7 @@ void Backdrop::setVideoSource(const std::string& source) {
 
 const std::string& Backdrop::videoSource() const { return Data->VideoSource; }
 
-void Backdrop::setBlurRounds(int rounds) { Data->Rounds = std::clamp(rounds, 1, kMaxRounds); }
+void Backdrop::setBlurRounds(int rounds) { Data->Rounds = std::clamp(rounds, 0, kMaxRounds); }
 int Backdrop::blurRounds() const { return Data->Rounds; }
 
 void Backdrop::invalidateTargets() {
@@ -170,8 +176,20 @@ void Backdrop::pumpVideo(double frameTime, bool Enabled) {
 		return;
 	}
 	const video::FrameView& frame = state.Media.frame();
-	if (frame.Pixels)
-		state.Frame.upload(frame.Pixels, frame.Width, frame.Height);
+	if (frame.Pixels) {
+		// The capture DrawTexturedQuad samples v=0 at the bottom edge of the
+		// destination (the engine's FBO texture convention the live path
+		// relies on), while the decoder hands us top-down rows for Rml's
+		// (0,0)=top-left convention. Flip the rows for this consumer only,
+		// so the blurred movie reaches the screen the right way up.
+		const std::size_t stride = static_cast<std::size_t>(frame.Width) * 4;
+		state.FlippedPixels.resize(stride * frame.Height);
+		for (int row = 0; row < frame.Height; row++) {
+			std::memcpy(state.FlippedPixels.data() + static_cast<std::size_t>(row) * stride,
+				frame.Pixels + static_cast<std::size_t>(frame.Height - 1 - row) * stride, stride);
+		}
+		state.Frame.upload(state.FlippedPixels.data(), frame.Width, frame.Height);
+	}
 }
 
 bool Backdrop::render() {
@@ -260,7 +278,9 @@ bool Backdrop::render() {
 	renderer->PopFrameBuffer();
 
 	// Gaussian rounds: horizontal then vertical, ping-ponging between the two
-	// blur targets (the Renderer's own bloom chain shape).
+	// blur targets (the Renderer's own bloom chain shape). Zero rounds keep
+	// the raw capture: `from` stays the Down target, which is what the
+	// published texture then points at.
 	FBO_Container_t* from = &state.Down;
 	for (int round = 0; round < state.Rounds; round++) {
 		renderer->BlurPass(from, &state.Ping, 1.0f, false);

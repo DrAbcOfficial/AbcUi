@@ -11,7 +11,7 @@
 //
 // Attributes:
 //   mode  auto|live|video|solid  (default auto: live in a level, video outside)
-//   blur  1..4 gaussian rounds   (default 2)
+//   blur  0..4 gaussian rounds   (default 2; 0 = no blur, the raw capture)
 //   dim   0..1 darkening opacity (default 0.35; the content panels sit on top)
 
 #include <RmlUi/Core/Element.h>
@@ -55,7 +55,13 @@ protected:
 private:
 	Rml::Element* Image = nullptr;
 	Rml::Element* Dimmer = nullptr;
+	// The document's explicit `blur` attribute; -1 = none, so the
+	// abc_ui_menu_backdrop_blur cvar owns the value (and keeps owning it when
+	// the user changes it in the settings).
 	int Rounds = -1;
+	// Last cvar value pushed to the shared backdrop, so a steady cvar costs
+	// one compare and a user edit takes effect without a restart.
+	int AppliedCvarRounds = -1;
 	float Dim = -1.0f;
 	float AppliedDim = -1.0f;
 	// Last video path pushed from the abc_ui_menu_video cvar: a user edit takes
