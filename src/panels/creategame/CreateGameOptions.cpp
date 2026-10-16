@@ -39,7 +39,8 @@ void CreateGamePage::buildOptions() {
 			if (Slider)
 				Markup += " min=\"" + number(Option.Min) + "\" max=\"" + number(Option.Max)
 					+ "\" step=\"1\"";
-			Markup += "/><span class=\"row-value\" id=\"" + Id + "-value\">" + number(Option.Default) + "</span>";
+			Markup += "/><span class=\"row-value cg-opt-value\" id=\"" + Id + "-value\">"
+				+ number(Option.Default) + "</span>";
 		}
 		Markup += "</div>";
 	}

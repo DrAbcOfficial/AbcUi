@@ -134,7 +134,7 @@
 
 #cg-map-filter {
 	position: absolute;
-	left: 106dp;
+	left: 94dp;
 	right: 0dp;
 	width: auto;
 	top: 1dp;
@@ -219,20 +219,26 @@
 	overflow-y: auto;
 }
 
-/* One labeled row: the label column holds the shared 96dp so the fields of
-   every row (typed, toggle and the injected option rows) line up. */
+/* One labeled row: the label column holds the shared 88dp so the fields of
+   every row (typed, toggle and the injected option rows) line up, and every
+   control width below is budgeted against the form body's scrollable width
+   (268dp worst case: 300dp module - borders - insets - the 10dp scrollbar).
+   A row must never wrap: the row height is fixed, so a wrapped control
+   overflows it and lands on the row below (the live-caught label/field
+   misalignment), hence the explicit budget AND nowrap. */
 .cg-row {
 	display: block;
 	box-sizing: border-box;
 	width: 100%;
 	height: 28dp;
 	margin-bottom: 4dp;
+	white-space: nowrap;
 }
 
 .cg-row-label {
 	display: inline-block;
 	box-sizing: border-box;
-	width: 96dp;
+	width: 88dp;
 	height: 28dp;
 	line-height: 28dp;
 	vertical-align: top;
@@ -263,13 +269,30 @@
 	border: 1dp var(--abc-accent);
 }
 
+/* 26dp wells and 24dp sliders sit 1dp/2dp below the row top so their text
+   centres line up with the label's (28dp line box). */
 #cg-name, #cg-password {
-	width: 180dp;
+	width: 164dp;
+	margin-top: 1dp;
+}
+
+/* Injected text option rows share the row with their value span, so the well
+   is narrower than the typed rows' (88 + 132 + 40 = 260dp). */
+.cg-opt-field {
+	width: 132dp;
+	margin-top: 1dp;
 }
 
 /* The players row: narrowed slider + its live value. */
 #cg-players {
-	width: 130dp;
+	width: 118dp;
+	margin-top: 2dp;
+}
+
+/* Slider values share the fixed column so the slider+value budget holds on
+   every row (typed players and the injected numeric options). */
+#cg-players-value, .cg-opt-value {
+	width: 40dp;
 	margin-top: 2dp;
 }
 
@@ -283,7 +306,7 @@
 }
 
 /* Injected numeric option rows: one level of separation from the typed rows,
-   same 96dp label column so every control stays in one line. */
+   same 88dp label column so every control stays in one line. */
 #cg-options {
 	display: block;
 	width: 100%;
@@ -298,12 +321,12 @@
 	width: 130dp;
 	height: 26dp;
 	font-size: 9dp;
-	margin: 0dp;
+	margin: 1dp 0dp 0dp 0dp;
 	vertical-align: top;
 }
 
 .cg-opt-slider {
-	width: 130dp;
+	width: 118dp;
 	margin-top: 2dp;
 }
 
