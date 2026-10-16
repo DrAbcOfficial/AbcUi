@@ -21,7 +21,7 @@ bool number(std::string_view Text, T& Output, T Min, T Max) {
 }
 
 template <class T, size_t N>
-bool vector(std::string_view Text, T* Output, T Min, T Max) {
+bool vector(std::string_view Text, std::array<T, N>& Output, T Min, T Max) {
 	std::istringstream Stream{std::string(Text)};
 	std::array<T, N> Values{};
 	std::string Token;
@@ -30,7 +30,7 @@ bool vector(std::string_view Text, T* Output, T Min, T Max) {
 			return false;
 	if (Stream >> Token)
 		return false;
-	std::copy(Values.begin(), Values.end(), Output);
+	Output = Values;
 	return true;
 }
 }
@@ -85,19 +85,19 @@ bool Options::set(std::string_view Name, std::string_view Value) {
 	if (Name == "shade") return number(Value, View.Shade, 0, 255);
 	if (Name == "light-color") return vector<float, 3>(Value, View.LightColor, 0, 1);
 	if (Name == "light-direction") {
-		float Direction[3];
+		std::array<float, 3> Direction{};
 		if (!vector<float, 3>(Value, Direction, -1, 1) ||
 			(Direction[0] == 0 && Direction[1] == 0 && Direction[2] == 0))
 			return false;
-		std::copy(std::begin(Direction), std::end(Direction), View.LightDirection);
+		View.LightDirection = Direction;
 		return true;
 	}
 	if (Name == "background") return vector<float, 4>(Value, View.Background, 0, 1);
-	if (Name == "origin") return vector<float, 3>(Value, Origin.data(), -16384, 16384);
-	if (Name == "angles") return vector<float, 3>(Value, Angles.data(), -360, 360);
-	if (Name == "rendercolor") return vector<int, 3>(Value, RenderColor.data(), 0, 255);
-	if (Name == "controllers") return vector<int, 4>(Value, Controllers.data(), 0, 255);
-	if (Name == "blending") return vector<int, 2>(Value, Blending.data(), 0, 255);
+	if (Name == "origin") return vector<float, 3>(Value, Origin, -16384, 16384);
+	if (Name == "angles") return vector<float, 3>(Value, Angles, -360, 360);
+	if (Name == "rendercolor") return vector<int, 3>(Value, RenderColor, 0, 255);
+	if (Name == "controllers") return vector<int, 4>(Value, Controllers, 0, 255);
+	if (Name == "blending") return vector<int, 2>(Value, Blending, 0, 255);
 	if (Name == "mouth") return number(Value, Mouth, 0, 255);
 	if (Name == "colormap") return number(Value, ColorMap, 0, 65535);
 	if (Name == "rendermode") {

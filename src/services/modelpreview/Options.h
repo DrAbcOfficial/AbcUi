@@ -2,7 +2,6 @@
 
 // New implementation. Engine-independent <model> attribute validation.
 // Target consumes the validated options; ElementModel supplies string values.
-#include <IModelPreviewRenderer.h>
 #include <array>
 #include <functional>
 #include <string>
@@ -34,8 +33,25 @@ using ModelExists = std::function<bool(const std::string&)>;
 std::string resolveCardModelPath(std::string_view Spelling, std::string_view PlayerModel,
 	const ModelExists& Exists);
 
+// The card's camera, light and background in the Renderer's entity_view_t
+// units: the Renderer only provides the isolated view scope, so the preview
+// owns what the view shows and how it is lit.
+struct PreviewView {
+	std::array<float, 3> Origin{120, 0, 0};
+	std::array<float, 3> Angles{0, 180, 0};
+	float VerticalFov = 40;
+	float NearPlane = 1;
+	float FarPlane = 4096;
+	int Ambient = 96;
+	int Shade = 96;
+	std::array<float, 3> LightColor{1, 1, 1};
+	std::array<float, 3> LightDirection{-1, 0, -1};
+	std::array<float, 4> Background{0, 0, 0, 0};
+	bool Lighting = true;
+};
+
 struct Options {
-	ModelPreviewView View;
+	PreviewView View;
 	std::string Source;
 	std::array<float, 3> Origin{};
 	std::array<float, 3> Angles{};
