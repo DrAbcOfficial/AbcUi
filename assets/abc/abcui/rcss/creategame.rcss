@@ -1,130 +1,360 @@
-/* creategame.rcss - T19 create-local-game page. All units dp (the context
-   density ratio scales; the logical screen is 640x480dp, Theme::applyScale).
-   Every region is ABSOLUTELY positioned with explicit dp width/height - the
-   T16 console / T18 browser recipe: an in-flow auto-width block collapsed to
-   a zero-width client box on the live context. The panel is 400dp wide so it
-   fits the logical screen with margins; the map select is a real form control
-   (keyboard reachable, T13 pin). */
+/* creategame.rcss - the create-local-game page (2026-10-16 full-page
+   rebuild), on the shared main-menu theme.
+
+   The page keeps the frame of the settings / find-servers pages: an identity
+   head at the top-left, two modules filling the middle (the map picker on
+   the left, the server settings on the right), then the hint line and the
+   right-aligned action bar along the bottom. All units are dp on the
+   640x480dp logical screen; the context density ratio (Theme::applyScale)
+   scales them, so vertical anchors hold at every window height and only the
+   horizontal stretch follows the aspect ratio.
+
+   Geometry rules (read before touching a width):
+   * 9dp is the body text floor (below it this engine paints filled glyphs on
+     the menu pages - live-measured 2026-10-15); 8dp survives on the brand
+     line and the section captions, exactly like the other pages.
+   * The form module is a fixed 300dp column at the right gutter; the map
+     module stretches between the left gutter and it (right: 332dp keeps the
+     16dp gutter at every logical width).
+   * #cg-map-list and #cg-form-body are scroll containers; their rows carry
+     explicit dp heights and the module-level children use left/right insets
+     (the recorded traps: an unsized body collapses every right anchor, and a
+     percentage inside a scroll container is not reliable).
+   * The map rows are the picker: each row reports the fixed "cg-map-pick"
+     intent with a data-index into the #cg-map select, which stays the value
+     store (one option per filtered map) but out of the paint. Rows are
+     tab-reachable and the document's Enter/Space default action clicks them,
+	   so the picker works without a pointer; the arrow keys walk the rows
+	   (nav) after the search field hands focus down (nav-down). */
+
+/* ---- page frame ----------------------------------------------------------- */
 
 #cg-panel {
 	position: absolute;
-	left: 50%;
-	margin-left: -210dp;
-	top: 40dp;
-	width: 420dp;
-	height: 396dp;
-	background-color: var(--abc-surface);
-	border: 1dp var(--abc-line);
-	border-top: 2dp var(--abc-accent);
+	left: 0dp;
+	top: 0dp;
+	width: 100%;
+	height: 100%;
 }
 
-#cg-title {
+#cg-head {
 	position: absolute;
 	left: 16dp;
 	top: 10dp;
-	width: 380dp;
-	height: 24dp;
-	line-height: 24dp;
-	font-size: 16dp;
+	width: 320dp;
+	height: 34dp;
+}
+
+#cg-brand {
+	display: block;
+	font-size: 8dp;
 	font-weight: bold;
+	letter-spacing: 3dp;
+	text-transform: uppercase;
+	color: var(--abc-accent);
+	margin-bottom: 2dp;
+}
+
+#cg-title {
+	display: block;
+	font-size: 15dp;
+	font-weight: bold;
+	letter-spacing: 0.5dp;
+	color: var(--abc-text-strong);
+}
+
+/* ---- shared module chrome ------------------------------------------------- */
+
+#cg-map-module, #cg-form-module {
+	position: absolute;
+	box-sizing: border-box;
+	top: 46dp;
+	height: 368dp;
+	background-color: var(--abc-surface);
+	border: 1dp var(--abc-line);
+}
+
+#cg-map-module {
+	left: 16dp;
+	right: 332dp;
+	width: auto;
+}
+
+#cg-form-module {
+	right: 16dp;
+	width: 300dp;
+}
+
+#cg-map-bar, #cg-form-bar {
+	position: absolute;
+	left: 0dp;
+	right: 0dp;
+	width: auto;
+	top: 0dp;
+	height: 22dp;
+	background-color: var(--abc-surface-2);
+	border-bottom: 1dp var(--abc-line);
+}
+
+#cg-map-caption, #cg-form-caption {
+	position: absolute;
+	left: 8dp;
+	top: 0dp;
+	height: 22dp;
+	line-height: 22dp;
+	margin-bottom: 0dp;
+}
+
+#cg-map-count {
+	position: absolute;
+	right: 8dp;
+	top: 0dp;
+	height: 22dp;
+	line-height: 22dp;
+	font-size: 9dp;
 	color: var(--abc-accent);
 }
 
-.cg-label {
+/* ---- module 1: the map picker --------------------------------------------- */
+
+#cg-map-search {
 	position: absolute;
-	left: 16dp;
-	width: 90dp;
-	height: 20dp;
-	line-height: 20dp;
-	font-size: 9dp;
-	color: #c8c8c8;
+	left: 10dp;
+	right: 10dp;
+	width: auto;
+	top: 30dp;
+	height: 28dp;
 }
 
-#cg-map-label { top: 46dp; }
-#cg-players-label { top: 82dp; }
-#cg-name-label { top: 118dp; }
-#cg-password-label { top: 154dp; }
+#cg-map-search .cg-row-label {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+}
 
+#cg-map-filter {
+	position: absolute;
+	left: 106dp;
+	right: 0dp;
+	width: auto;
+	top: 1dp;
+	height: 26dp;
+}
+
+#cg-map-list {
+	position: absolute;
+	left: 10dp;
+	right: 10dp;
+	width: auto;
+	top: 64dp;
+	bottom: 10dp;
+	height: auto;
+	overflow: auto;
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line-soft);
+}
+
+.cg-map-row {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 24dp;
+	line-height: 23dp;
+	padding-left: 8dp;
+	border-left: 2dp #00000000;
+	border-bottom: 1dp var(--abc-line-soft);
+	color: var(--abc-text);
+	font-size: 9dp;
+	tab-index: auto;
+	nav: vertical;
+}
+
+.cg-map-row:nth-child(even) {
+	background-color: #0f151a;
+}
+
+.cg-map-row:hover {
+	background-color: var(--abc-surface-3);
+}
+
+.cg-map-row:focus {
+	border-left: 2dp var(--abc-accent);
+}
+
+.cg-map-row.cg-map-row-active {
+	background-color: #1d2830;
+	border-left: 2dp var(--abc-accent);
+	color: var(--abc-text-strong);
+}
+
+.cg-map-row-name {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 23dp;
+	line-height: 23dp;
+	vertical-align: top;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+/* The select is the list's value store, not a painted control: the page
+   fills it from the catalog (options carry the map token) and reads the
+   selection back through selectedMap(). */
 #cg-map {
-	position: absolute;
-	left: 110dp;
-	top: 44dp;
-	width: 292dp;
-	height: 24dp;
-	font-size: 9dp;
+	display: none;
 }
 
+/* ---- module 2: the server settings ---------------------------------------- */
+
+#cg-form-body {
+	position: absolute;
+	left: 10dp;
+	right: 10dp;
+	width: auto;
+	top: 30dp;
+	bottom: 10dp;
+	height: auto;
+	overflow-y: auto;
+}
+
+/* One labeled row: the label column holds the shared 96dp so the fields of
+   every row (typed, toggle and the injected option rows) line up. */
+.cg-row {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 28dp;
+	margin-bottom: 4dp;
+}
+
+.cg-row-label {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 96dp;
+	height: 28dp;
+	line-height: 28dp;
+	vertical-align: top;
+	font-size: 9dp;
+	color: var(--abc-text);
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+/* Text wells (the search field, the typed rows and the injected option
+   fields). Kept off bare `input` selectors so range.rcss keeps owning
+   input.cg-slider. */
+#cg-map-filter, #cg-name, #cg-password, .cg-opt-field {
+	display: inline-block;
+	box-sizing: border-box;
+	height: 26dp;
+	padding: 0dp 4dp;
+	vertical-align: top;
+	font-size: 9dp;
+	line-height: 24dp;
+	background-color: var(--abc-inset);
+	color: var(--abc-text);
+	border: 1dp var(--abc-line);
+	tab-index: auto;
+}
+
+#cg-map-filter:focus, #cg-name:focus, #cg-password:focus, .cg-opt-field:focus {
+	border: 1dp var(--abc-accent);
+}
+
+#cg-name, #cg-password {
+	width: 180dp;
+}
+
+/* The players row: narrowed slider + its live value. */
 #cg-players {
-	position: absolute;
-	left: 110dp;
-	top: 80dp;
-	width: 80dp;
-	height: 24dp;
+	width: 130dp;
+	margin-top: 2dp;
+}
+
+/* The LAN toggle is a plain button (the row label names it). */
+#cg-lan {
+	width: 74dp;
+	height: 26dp;
+	line-height: 24dp;
+	margin: 1dp 0dp 0dp 0dp;
 	font-size: 9dp;
 }
 
-#cg-name {
-	position: absolute;
-	left: 110dp;
-	top: 116dp;
-	width: 292dp;
-	height: 24dp;
-	font-size: 9dp;
+/* Injected numeric option rows: one level of separation from the typed rows,
+   same 96dp label column so every control stays in one line. */
+#cg-options {
+	display: block;
+	width: 100%;
+	border-top: 1dp var(--abc-line-soft);
+	margin-top: 8dp;
+	padding-top: 8dp;
 }
 
-#cg-password {
-	position: absolute;
-	left: 110dp;
-	top: 152dp;
-	width: 292dp;
-	height: 24dp;
+.cg-opt-select {
+	display: inline-block;
+	box-sizing: border-box;
+	width: 130dp;
+	height: 26dp;
 	font-size: 9dp;
+	margin: 0dp;
+	vertical-align: top;
 }
+
+.cg-opt-slider {
+	width: 130dp;
+	margin-top: 2dp;
+}
+
+/* ---- hint line and action bar --------------------------------------------- */
 
 #cg-hint {
 	position: absolute;
 	left: 16dp;
-	top: 190dp;
-	width: 388dp;
-	height: 40dp;
+	right: 16dp;
+	width: auto;
+	top: 418dp;
+	height: 16dp;
+	line-height: 16dp;
 	font-size: 9dp;
 	color: #ff8866;
+	display: none;
 }
 
 #cg-actions {
 	position: absolute;
-	left: 16dp;
-	top: 336dp;
-	width: 388dp;
-	height: 32dp;
+	right: 16dp;
+	width: 400dp;
+	top: 438dp;
+	height: 28dp;
+	text-align: right;
 }
 
 #cg-actions button {
 	display: inline-block;
-	width: 150dp;
+	min-width: 0dp;
 	height: 28dp;
-	line-height: 28dp;
-	margin-right: 10dp;
+	line-height: 26dp;
+	margin: 0dp 0dp 0dp 6dp;
+	padding-left: 14dp;
+	padding-right: 14dp;
+	font-size: 9dp;
 }
 
-#cg-fields .cg-label { color: var(--abc-text-dim); }
-#cg-fields select { width: 350dp; }
-#cg-fields select selectbox { max-height: 144dp; }
-#cg-fields .row-value { display: inline-block; width: 32dp; text-align: right; }
-#cg-apply { border-color: var(--abc-accent-soft); color: var(--abc-accent); }
-
-#cg-fields { position: absolute; left: 16dp; top: 44dp; width: 388dp; height: 270dp; overflow: auto; }
-#cg-fields .cg-label { position: static; display: block; width: 370dp; height: 16dp; line-height: 16dp; margin: 3dp 0dp; }
-#cg-fields input, #cg-fields select, #cg-map, #cg-players, #cg-name, #cg-password { position: static; display: inline-block; box-sizing: border-box; width: 330dp; height: 24dp; font-size: 10dp; margin-bottom: 2dp; }
-#cg-fields input { background-color: #101418; color: var(--abc-text); border: 1dp #536071; tab-index: auto; }
-#cg-fields input:focus { border: 1dp var(--abc-accent); }
-#cg-lan { width: 90dp; }
-#cg-hint { top: 316dp; height: 20dp; }
-#cg-fields scrollbarvertical { width: 0dp; }
-#cg-fields scrollbarvertical sliderbar { width: 10dp; min-height: 24dp; margin-left: -10dp; background-color: #536071; }
-#cg-fields input.cg-slider {
-	width: 296dp;
-	background-color: transparent;
-	border-width: 0dp;
+/* The start action is the page's primary: amber spine, like the browser's
+   join button. */
+#cg-apply {
+	border: 1dp var(--abc-accent-soft);
+	color: var(--abc-accent);
 }
-#cg-apply:focus { color: var(--abc-accent-ink); }
+
+#cg-apply:focus {
+	color: var(--abc-accent-ink);
+}
+
+#cg-apply:disabled {
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
+	color: var(--abc-text-dim);
+}

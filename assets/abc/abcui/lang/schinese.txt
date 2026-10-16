@@ -449,6 +449,7 @@ SB_FavoriteFailed = 收藏更改被拒绝。
 
 # T19 create local game
 CG_Title = 创建游戏
+CG_Settings = 服务器设置
 CG_Map = 地图
 CG_Players = 人数
 CG_Name = 服务器名称

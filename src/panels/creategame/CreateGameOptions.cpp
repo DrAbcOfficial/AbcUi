@@ -25,14 +25,16 @@ void CreateGamePage::buildOptions() {
 	if (!Model || !node("cg-options")) return;
 	std::string Markup;
 	for (const auto& Option : Model->options()) {
-		Markup += "<div class=\"cg-option\"><p class=\"cg-label\">"
-			+ framework::TextUtil::escapeRml(label(Option.Label)) + "</p>";
+		// One row per option on the page's 96dp label grid (the typed rows
+		// above use the same column), so every control lines up.
+		Markup += "<div class=\"cg-row\"><div class=\"cg-row-label\">"
+			+ framework::TextUtil::escapeRml(label(Option.Label)) + "</div>";
 		const std::string Id = "cg-option-" + Option.Name;
 		if (Option.Toggle || !Option.Choices.empty())
-			Markup += "<select id=\"" + Id + "\"></select>";
+			Markup += "<select class=\"cg-opt-select\" id=\"" + Id + "\"></select>";
 		else {
 			const bool Slider = Option.Bounded && Option.Min < Option.Max;
-			Markup += "<input id=\"" + Id + "\" class=\"" + (Slider ? "cg-slider" : "cg-field")
+			Markup += "<input id=\"" + Id + "\" class=\"" + (Slider ? "cg-slider cg-opt-slider" : "cg-opt-field")
 				+ "\" type=\"" + (Slider ? "range" : "text") + "\" value=\"" + number(Option.Default) + "\"";
 			if (Slider)
 				Markup += " min=\"" + number(Option.Min) + "\" max=\"" + number(Option.Max)
@@ -41,7 +43,11 @@ void CreateGamePage::buildOptions() {
 		}
 		Markup += "</div>";
 	}
-	node("cg-options")->SetInnerRML(Markup);
+	Rml::Element* Host = node("cg-options");
+	Host->SetInnerRML(Markup);
+	// An empty option set must not leave the block's divider hanging over
+	// nothing (the shipped script always fills it, a stripped install may not).
+	Host->SetProperty("display", Markup.empty() ? "none" : "block");
 	for (const auto& Option : Model->options()) {
 		auto* Select = rmlui_dynamic_cast<Rml::ElementFormControlSelect*>(node(("cg-option-" + Option.Name).c_str()));
 		if (!Select) continue;

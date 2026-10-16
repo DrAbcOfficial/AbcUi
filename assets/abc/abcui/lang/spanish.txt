@@ -426,6 +426,7 @@ SB_FavoriteFailed = El cambio de favoritos fue rechazado.
 
 # T19 create local game
 CG_Title = Crear partida
+CG_Settings = Ajustes del servidor
 CG_Map = Mapa
 CG_Players = Jugadores
 CG_Name = Nombre del servidor

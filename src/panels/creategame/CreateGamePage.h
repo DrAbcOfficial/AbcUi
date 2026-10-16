@@ -11,11 +11,13 @@
 // kCreateGameRequested attempt.
 //
 // Contract points (T19 steps 2/4):
-//   - The map control offers exactly the catalog entries (the engine
+//   - The map picker offers exactly the catalog entries (the engine
 //     filesystem enumeration); a selection cannot produce a name outside the
 //     set, and any field text is validated by the model before the intent is
 //     reported - a refused request produces a page-local hint and ZERO engine
-//     calls.
+//     calls. The visible picker is the #cg-map-list row list; every filtered
+//     map also becomes one option of the #cg-map select, which is the page's
+//     value store (selectedMap() reads it, row picks write it).
 //   - Apply is latched after the first report: one double-click window cannot
 //     start two servers (the backend's per-generation latch is the second
 //     guard behind it). prepare() re-arms the latch for a fresh open.
@@ -87,6 +89,9 @@ private:
 	void handleClick(Rml::Event& event);
 	void buildOptions();
 	void filterMaps(const std::string& Query);
+	// Marks the row of the select's current option and keeps it in view
+	// (the picker's selection truth is the select).
+	void highlightSelectedMap();
 	void handleChange(Rml::Event& Event);
 	Rml::Element* node(const char* id) const;
 
