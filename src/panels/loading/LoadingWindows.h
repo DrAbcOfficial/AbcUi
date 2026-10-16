@@ -33,6 +33,7 @@
 #include <string>
 
 namespace Rml {
+class Element;
 class Event;
 }
 
@@ -134,6 +135,12 @@ public:
 	// The typed password (empty when the field is missing). Not logged.
 	std::string value() const;
 
+	// The password field element - the dialog's keyboard target. The
+	// per-frame focus guard keeps it focused while the overlay is up (a
+	// click on a dialog button would otherwise strand the focus there and
+	// characters typed afterwards would be dropped). Null before load.
+	Rml::Element* editor() const;
+
 	void refocusDefault();
 
 protected:
@@ -167,6 +174,10 @@ public:
 
 	// The typed address (empty when the field is missing).
 	std::string value() const;
+
+	// The address field element - the dialog's keyboard target (see
+	// PasswordOverlay::editor). Null before load.
+	Rml::Element* editor() const;
 
 	// Inline feedback for a refused entry (escaped; empty clears the line).
 	void showHint(const char* text);

@@ -250,6 +250,10 @@ std::string PasswordOverlay::value() const {
 	return {};
 }
 
+Rml::Element* PasswordOverlay::editor() const {
+	return document() ? document()->GetElementById("password-field") : nullptr;
+}
+
 void PasswordOverlay::handle(Rml::Event& event) {
 	Rml::Element* entry = actionNode(event.GetTargetElement());
 	if (!entry)
@@ -300,6 +304,10 @@ std::string DirectConnectOverlay::value() const {
 		document()->GetElementById("directconnect-field")))
 		return field->GetValue();
 	return {};
+}
+
+Rml::Element* DirectConnectOverlay::editor() const {
+	return document() ? document()->GetElementById("directconnect-field") : nullptr;
 }
 
 void DirectConnectOverlay::showHint(const char* text) {

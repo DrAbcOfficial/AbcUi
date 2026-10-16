@@ -40,7 +40,22 @@ void GameUiModule::pumpVisibleWork() {
 	if (Rml::Debugger::IsVisible())
 		return;  // a developer using the F12 tools keeps their focus
 	Rml::Element* focus = Context->GetFocusElement();
-	if (focus) {
+	const auto& state = Controller.state();
+	// T14 input dialogs own the keyboard while they are the top-most layer:
+	// only the dialog's text editor is a legitimate focus holder there. A
+	// click on 连接/取消 focuses the button (RmlUi's mousedown default); the
+	// text input handler demands a focused editor, so every character typed
+	// afterwards is dropped and the next Connect click would submit an
+	// empty field - the live "password retyped, the connection never
+	// continues" defect. Falling through re-focuses the editor instead.
+	Rml::Element* inputEditor = nullptr;
+	if (!VideoConfirmPresented) {
+		if (state.overlays.topIs(MenuOverlay::kPassword) && Password)
+			inputEditor = Password->editor();
+		else if (state.overlays.topIs(MenuOverlay::kDirectConnect) && DirectConnect)
+			inputEditor = DirectConnect->editor();
+	}
+	if (focus && (!inputEditor || focus == inputEditor)) {
 		Rml::ElementDocument* owner = focus->GetOwnerDocument();
 		// Only a VISIBLE menu document holds legitimate focus - a hidden
 		// one (stub/overlay just dismissed) is exactly the stale state
@@ -60,7 +75,6 @@ void GameUiModule::pumpVisibleWork() {
 				|| owner == (DirectConnect ? DirectConnect->document() : nullptr)))
 			return;
 	}
-	const auto& state = Controller.state();
 	// T12: the display-mode confirmation outranks every other surface -
 	// it holds the safe default focus while it is up.
 	if (VideoConfirmPresented && VideoConfirm) {

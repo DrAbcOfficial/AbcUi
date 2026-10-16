@@ -10,8 +10,10 @@ using namespace engine;
 
 void GameUiModule::onFrame(double FrameTime) {
     LastFrameTime = FrameTime;
-    // Menu score: plays only while a replacement page is on screen, so the
-    // track never bleeds into gameplay (the bridge knows the presented fact).
+    // Menu score: plays only while a replacement page is on screen with no
+    // level loaded, so the track never bleeds into gameplay (the bridge
+    // knows both facts; entering the world ends the track and the in-world
+    // ESC menu - a replacement page too - must not bring it back).
     // Playback itself is the engine's mp3 player (MenuMusic drives
     // "mp3 loop <track> ui" / "mp3 stop"); its volume is the audio page's
     // mp3volume row (the engine's own music volume).
@@ -20,7 +22,8 @@ void GameUiModule::onFrame(double FrameTime) {
         if (source->string)
             music.setSource(source->string);
     }
-    music.update(services::nativeUiBridge().pageShown());
+    const auto& bridge = services::nativeUiBridge();
+    music.update(bridge.pageShown() && !bridge.hasLevel());
     // Friends board: the throttle lives in the model, the projection is
     // change-gated on its generation (a steady list writes no DOM).
     if (Shell && Context && Shell->isVisible()) {
