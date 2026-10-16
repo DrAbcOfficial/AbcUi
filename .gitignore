@@ -6,3 +6,6 @@ out/
 __pycache__/
 *.pyc
 CMakeUserPresets.json
+# The offline verification suite is session-local (see AGENTS.md): the
+# shipped build and release never reference it.
+tests/
