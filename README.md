@@ -39,9 +39,10 @@ cmake --build --preset win32-release --target dist
 ```
 
 Produces `AbcUi-<version>.zip` under `build/<preset>/dist/` (plugin DLL,
-gamedata under `svencoop/metahook/gamedata/abc/`, `abc/abcui` assets, README).
-The archive contains `svencoop/` at its root: extract it directly into the Sven
-Co-op root, with no extra version folder to copy.
+`abc/abcui` assets, README). The shared gamedata catalog is provided by the
+aggregate `ABCEnchance-<tag>.zip` / `AbcCore-<version>.zip`, not by this module
+package. The archive contains `svencoop/` at its root: extract it directly into
+the Sven Co-op root, with no extra version folder to copy.
 
 ## Data-driven menu
 

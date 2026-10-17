@@ -260,22 +260,6 @@ add_custom_target(check-rendercommon-sync
     VERBATIM)
 add_dependencies(AbcUi check-rendercommon-sync)
 
-include("${ABC_CORE_DIR}/cmake/AbcGameData.cmake")
-abc_add_gamedata(AbcUi "${CMAKE_CURRENT_SOURCE_DIR}/scripts/manifests/abcui.json")
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-add_custom_target(AbcUiLayoutGameData
-    COMMAND "${Python3_EXECUTABLE}"
-        "${ABC_CORE_DIR}/cmake/gamedata/validate-gamedata.py"
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
-    COMMENT "Validating binary-specific AbcUi native layouts"
-    VERBATIM)
-add_dependencies(AbcUi AbcUiLayoutGameData)
-if(ABC_GAME_DIR)
-    set(ABC_UI_LAYOUT_DEST "${ABC_GAME_DIR}/svencoop/metahook/gamedata/abc/abcui-layout")
-else()
-    set(ABC_UI_LAYOUT_DEST "svencoop/metahook/gamedata/abc/abcui-layout")
-endif()
-install(DIRECTORY assets/gamedata/abcui-layout/ DESTINATION "${ABC_UI_LAYOUT_DEST}")
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).
@@ -317,8 +301,6 @@ endif()
 # AbcUi-<version>.zip with the game root at the archive root, so it can be
 # extracted directly into the Sven Co-op directory:
 #   svencoop/metahook/plugins/AbcUi.dll
-#   svencoop/metahook/gamedata/abc/abcui/** (generated symbols)
-#   svencoop/metahook/gamedata/abc/abcui-layout/** (native layouts)
 #   svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
@@ -341,12 +323,6 @@ add_custom_target(dist
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:AbcUi>"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/abc/abcui"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui-layout"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui"
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui"
     COMMAND "${CMAKE_COMMAND}" -E rm -f "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/.gitkeep"
@@ -356,5 +332,5 @@ add_custom_target(dist
         "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"
         --format=zip -- svencoop README.md
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
-    DEPENDS AbcUi AbcUiGameData
+    DEPENDS AbcUi
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")
