@@ -1,6 +1,6 @@
 # AbcUi
 
-HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is linked statically from the aggregate ABCEnchance checkout; AbcUi no longer vendors AbcCore as a submodule. AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
+HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is consumed dynamically through `AbcCore.dll`; AbcUi no longer vendors AbcCore as a submodule. AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
 
 ## Build
 
@@ -94,6 +94,10 @@ Renderer.dll
 AbcEssential.dll
 AbcUi.dll
 ```
+
+`AbcCore.dll` is a dependency, not a plugin: place it at
+`svencoop/metahook/dlls/AbcCore/AbcCore.dll`. The Windows loader resolves it
+when `AbcUi.dll`/`AbcEssential.dll` load.
 
 ## Submodules
 
