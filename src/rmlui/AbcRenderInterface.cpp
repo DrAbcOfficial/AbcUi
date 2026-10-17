@@ -11,7 +11,6 @@
 #include <cstring>
 
 #include <abc/Console.h>
-#include <abc/Paths.h>
 
 #include "../data/Avatars.h"
 #include "../data/SpriteResource.h"
@@ -409,7 +408,7 @@ Rml::TextureHandle AbcRenderInterface::loadFileTexture(Rml::Vector2i& dimensions
 	// through the shared FreeImage loader - format is detected from the file
 	// content, so RML sources stay extension-agnostic.
 	framework::ImageLoader::DecodedImage image;
-	if (!framework::ImageLoader::loadFromFile(abc::ModPath(source.c_str()).c_str(), image))
+	if (!framework::ImageLoader::loadFromFile(source.c_str(), image))
 		return 0;
 
 	const int textureId = uploadSurfaceTexture(image.Pixels.data(), image.Width, image.Height);
