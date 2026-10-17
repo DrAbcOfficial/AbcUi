@@ -320,14 +320,15 @@ endif()
 
 # --- Packaging ---------------------------------------------------------------
 # `cmake --build <build-dir> --config Release --target dist` produces
-# AbcUi-<version>.zip, laid out to unpack into the Sven Co-op root:
-#   AbcUi-<version>/svencoop/metahook/plugins/AbcUi.dll
-#   AbcUi-<version>/svencoop/metahook/dlls/FreeImage/FreeImage.dll
-#   AbcUi-<version>/svencoop/metahook/dlls/Mile.FFmpeg/Mile.FFmpeg.dll
-#   AbcUi-<version>/svencoop/metahook/gamedata/abcui/** (generated symbols)
-#   AbcUi-<version>/svencoop/metahook/gamedata/abcui-layout/** (native layouts)
-#   AbcUi-<version>/svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
-#   AbcUi-<version>/README.md
+# AbcUi-<version>.zip with the game root at the archive root, so it can be
+# extracted directly into the Sven Co-op directory:
+#   svencoop/metahook/plugins/AbcUi.dll
+#   svencoop/metahook/dlls/FreeImage/FreeImage.dll
+#   svencoop/metahook/dlls/Mile.FFmpeg/Mile.FFmpeg.dll
+#   svencoop/metahook/gamedata/abcui/** (generated symbols)
+#   svencoop/metahook/gamedata/abcui-layout/** (native layouts)
+#   svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
+#   README.md
 # The target is named `dist` because `package` is reserved by the CPack
 # configuration that thirdparty/FreeImage pulls in.
 file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins.cpp" ABC_UI_VERSION_LINE
@@ -364,8 +365,10 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui"
     COMMAND "${CMAKE_COMMAND}" -E rm -f "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/.gitkeep"
     COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
-    COMMAND "${CMAKE_COMMAND}" -E tar cfv "AbcUi-${ABC_UI_VERSION}.zip" --format=zip
-        "AbcUi-${ABC_UI_VERSION}"
+    COMMAND "${CMAKE_COMMAND}" -E chdir "${ABC_UI_STAGE_DIR}"
+        "${CMAKE_COMMAND}" -E tar cfv
+        "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"
+        --format=zip -- svencoop README.md
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
     DEPENDS AbcUi AbcUiGameData FreeImage
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")

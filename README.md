@@ -37,7 +37,10 @@ cmake --build --preset win32-release --target deploy
 cmake --build --preset win32-release --target dist
 ```
 
-Produces `AbcUi-<version>.zip` under `build/<preset>/dist/`, laid out to unpack into the Sven Co-op root (plugin DLL, FreeImage / Mile.FFmpeg runtimes, gamedata, `abc/abcui` assets, README).
+Produces `AbcUi-<version>.zip` under `build/<preset>/dist/` (plugin DLL,
+FreeImage / Mile.FFmpeg runtimes, gamedata, `abc/abcui` assets, README). The
+archive contains `svencoop/` at its root: extract it directly into the Sven
+Co-op root, with no extra version folder to copy.
 
 ## Data-driven menu
 
