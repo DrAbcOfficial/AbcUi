@@ -478,7 +478,15 @@ void AbcRenderInterface::ReleaseTexture(Rml::TextureHandle texture) {
 	AdditiveTextures.erase(texture);
 	const auto record = Textures.find(texture);
 	if (record == Textures.end()) return;
-	if (record->second.Owned) vgui2ext::deleteTextureById(record->second.Id);
+	if (record->second.Owned) {
+		// A font-atlas rebuild releases the previous generation while the
+		// current Rml pass may already have queued text draws against it.
+		// Deleting the VGUI texture before flushing that batch leaves those
+		// draws sampling a destroyed id (all affected glyphs become black
+		// rectangles until the next pass rebuilds its geometry).
+		endFrame();
+		vgui2ext::deleteTextureById(record->second.Id);
+	}
 	Textures.erase(record);
 }
 
