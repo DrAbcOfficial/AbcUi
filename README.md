@@ -29,7 +29,8 @@ cmake --build --preset win32-release --target deploy
 ```
 
 - UI assets go to `<game>/svencoop/abc/abcui/`, split by surface: GameUI documents, page styles, config and menu media live under `gameui/`; HUD documents, sprites and page art live under `hud/`; the cross-surface stylesheets (`rcss/base.rcss`, `rcss/theme.rcss`), language tables and shared art stay at the `abcui/` root.
-- `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`; `FreeImage.dll` goes to `<game>/svencoop/metahook/dlls/FreeImage/`.
+- `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`.
+- `FreeImage.dll` and `Mile.FFmpeg.dll` are published by MetaHookSV/Renderer and are intentionally not installed or packaged by AbcUi.
 
 ## Packaging
 

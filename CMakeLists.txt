@@ -25,7 +25,8 @@ endif()
 
 # Mile.FFmpeg binary SDK (video decode). Headers only in the build: the
 # distance to Mile.FFmpeg.dll is GetProcAddress, exactly like Renderer's
-# startup video; the DLL is deployed beside the one Renderer ships.
+# startup video. MetaHookSV/Renderer owns the runtime DLL; AbcUi only uses the
+# headers and never packages the DLL.
 abcui_prepare_mile_ffmpeg(ABCUI_MILE_FFMPEG_SDK)
 
 set(METAHOOK_INCLUDE_DIR "${ABC_CORE_DIR}/thirdparty/MetaHook/include")
@@ -58,11 +59,10 @@ add_subdirectory(thirdparty/RmlUi EXCLUDE_FROM_ALL)
 
 # --- FreeImage (R-5) ---------------------------------------------------------
 # FreeImage_clone's CMake hardcodes a SHARED library, so the static tier of
-# D-06 is not reachable; the R-5 fallback applies: link the import lib and
-# deploy the DLL next to the one Renderer already ships. MetaHook's launcher
-# appends every metahook/dlls/* subdirectory to PATH, so the loader resolves
-# FreeImage.dll from metahook/dlls/FreeImage at runtime (same mechanism
-# Renderer.dll depends on). CRT is /MT inside the clone (self-contained DLL).
+# D-06 is not reachable; link its import lib. MetaHookSV/Renderer owns the
+# runtime FreeImage.dll; AbcUi must not publish a second copy. MetaHook's
+# launcher appends every metahook/dlls/* subdirectory to PATH, so the loader
+# resolves the Renderer-provided DLL at runtime.
 add_subdirectory(thirdparty/FreeImage EXCLUDE_FROM_ALL)
 
 add_library(abc_ui_config STATIC
@@ -295,14 +295,6 @@ if(ABC_GAME_DIR)
     install(TARGETS AbcUi
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins")
-    # FreeImage.dll lives with Renderer's copy (metahook/dlls/FreeImage); the
-    # launcher puts that directory on PATH for import resolution.
-    install(FILES "$<TARGET_FILE:FreeImage>"
-        DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/dlls/FreeImage")
-    # Video decode runtime: same drop point convention as Renderer's copy so
-    # the launcher's PATH addition resolves it for both plugins.
-    install(FILES "${ABCUI_MILE_FFMPEG_SDK}/Redist/x86/Mile.FFmpeg.dll"
-        DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/dlls/Mile.FFmpeg")
     if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui")
         # Plugin resources live under <mod>/abc/<plugin> (the abc group dir):
         # AbcUi owns abc/abcui, sibling to AbcEssential's abc/abcessential.
@@ -313,9 +305,9 @@ if(ABC_GAME_DIR)
     # the tree above). MenuMusic drives the engine's mp3 player with the
     # mod-relative path selected by abc_ui_menu_music.
     add_custom_target(deploy
-        DEPENDS AbcUi FreeImage
+        DEPENDS AbcUi
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
-        COMMENT "Deploying AbcUi.dll, FreeImage.dll and assets to ${ABC_GAME_DIR}")
+        COMMENT "Deploying AbcUi.dll and assets to ${ABC_GAME_DIR}")
 endif()
 
 # --- Packaging ---------------------------------------------------------------
@@ -323,8 +315,6 @@ endif()
 # AbcUi-<version>.zip with the game root at the archive root, so it can be
 # extracted directly into the Sven Co-op directory:
 #   svencoop/metahook/plugins/AbcUi.dll
-#   svencoop/metahook/dlls/FreeImage/FreeImage.dll
-#   svencoop/metahook/dlls/Mile.FFmpeg/Mile.FFmpeg.dll
 #   svencoop/metahook/gamedata/abc/abcui/** (generated symbols)
 #   svencoop/metahook/gamedata/abc/abcui-layout/** (native layouts)
 #   svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
@@ -345,15 +335,9 @@ add_custom_target(dist
     COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ABC_UI_STAGE_DIR}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/FreeImage"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/Mile.FFmpeg"
         "${ABC_UI_STAGE_DIR}/svencoop/abc"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:AbcUi>"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
-    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:FreeImage>"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/FreeImage/"
-    COMMAND "${CMAKE_COMMAND}" -E copy "${ABCUI_MILE_FFMPEG_SDK}/Redist/x86/Mile.FFmpeg.dll"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/Mile.FFmpeg/"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/abc/abcui"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui"
@@ -370,5 +354,5 @@ add_custom_target(dist
         "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"
         --format=zip -- svencoop README.md
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
-    DEPENDS AbcUi AbcUiGameData FreeImage
+    DEPENDS AbcUi AbcUiGameData
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")
