@@ -47,6 +47,7 @@ enum class MenuPage {
 	kServers,
 	kCreateGame,
 	kPlayerList,
+	kVoteMenu,
 	kLoading,
 };
 

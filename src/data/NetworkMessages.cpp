@@ -41,6 +41,7 @@ abc::CallbackList<void(int)> TimeEnd;
 abc::CallbackList<void(int, const char*)> Motd;
 abc::CallbackList<void(const VoteMenuData&)> VoteMenu;
 abc::CallbackList<void()> EndVote;
+abc::CallbackList<void(const MapListData&)> MapList;
 abc::CallbackList<void()> ClExtrasInfo;
 #pragma endregion
 
@@ -80,6 +81,7 @@ pfnUserMsgHook original_TimeEnd = nullptr;
 pfnUserMsgHook original_MOTD = nullptr;
 pfnUserMsgHook original_VoteMenu = nullptr;
 pfnUserMsgHook original_EndVote = nullptr;
+pfnUserMsgHook original_MapList = nullptr;
 pfnUserMsgHook original_ClExtrasInfo = nullptr;
 
 int __MsgFunc_AmmoX(const char* pszName, int iSize, void* pbuf) {
@@ -387,6 +389,36 @@ int __MsgFunc_EndVote(const char* pszName, int iSize, void* pbuf) {
 	return original_EndVote(pszName, iSize, pbuf);
 }
 
+int __MsgFunc_MapList(const char* pszName, int iSize, void* pbuf) {
+	abc::MsgReader msg(pbuf, iSize);
+	MapListData data;
+	data.clearAll = msg.readByte();
+	if (!msg.ok())
+		return original_MapList(pszName, iSize, pbuf);
+	if (data.clearAll == 0) {
+		data.allCount = msg.readShort();
+		if (!msg.ok())
+			return original_MapList(pszName, iSize, pbuf);
+	} else {
+		data.start = msg.readShort();
+		data.end = msg.readShort();
+		if (!msg.ok() || data.start < 0 || data.end < data.start)
+			return original_MapList(pszName, iSize, pbuf);
+		const int count = data.end - data.start;
+		// Bound the allocation against both the protocol's practical
+		// capacity and the bytes actually left in the message.
+		if (count > 4096 || count > msg.remaining())
+			return original_MapList(pszName, iSize, pbuf);
+		data.maps.reserve(static_cast<std::size_t>(count));
+		for (int i = 0; i < count; i++)
+			data.maps.push_back(msg.readString());
+		if (!msg.ok())
+			return original_MapList(pszName, iSize, pbuf);
+	}
+	MapList(data);
+	return original_MapList(pszName, iSize, pbuf);
+}
+
 int __MsgFunc_ClExtrasInfo(const char* pszName, int iSize, void* pbuf) {
 	// Old comment: the payload is an obfuscated blob the HUD never parsed -
 	// the event only marks "extra player data changed" (donor flags etc.),
@@ -470,6 +502,7 @@ void init() {
 	original_MOTD = HOOK_MESSAGE(MOTD);
 	original_VoteMenu = HOOK_MESSAGE(VoteMenu);
 	original_EndVote = HOOK_MESSAGE(EndVote);
+	original_MapList = HOOK_MESSAGE(MapList);
 	original_ClExtrasInfo = HOOK_MESSAGE(ClExtrasInfo);
 }
 

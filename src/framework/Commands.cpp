@@ -27,14 +27,14 @@ void registerAll() {
 	if (registered)
 		return;
 	registered = true;
-	// Old command.cpp RegisterCommandEvents list minus votemenu (the
-	// GameUI vote dialog is D-16-deferred; the wire VoteMenu message drives
-	// the panel instead).
+	// Old command.cpp RegisterCommandEvents list. `votemenu` now feeds the
+	// AbcUi game-menu vote page; the wire VoteMenu message still drives the
+	// separate yes/no HUD panel.
 	constexpr const char* kHooked[] = {
 		"slot1", "slot2", "slot3", "slot4", "slot5",
 		"slot6", "slot7", "slot8", "slot9", "slot10",
 		"missionbriefing", "invnext", "invprev",
-		"+showscores", "-showscores", "+attack",
+		"+showscores", "-showscores", "votemenu", "+attack",
 	};
 	auto& list = entries();
 	list.reserve(std::size(kHooked));

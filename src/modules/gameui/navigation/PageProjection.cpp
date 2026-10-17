@@ -73,6 +73,9 @@ void GameUiModule::syncMenuPresentation() {
 			// re-reads while presented).
 			presentPlayerListPage();
 			break;
+		case MenuPage::kVoteMenu:
+			presentVoteMenuPage();
+			break;
 		case MenuPage::kLoading:
 			// Fresh projection on every sync: the attempt's values moved
 			// since the last frame (the frame drain re-renders too). T19:
@@ -141,6 +144,12 @@ void GameUiModule::syncMenuPresentation() {
 		if (PlayerListPage_) {
 			PlayerListPage_->hide();
 			PlayerListPresented = false;
+		}
+	}
+	if (state.pages.empty() || state.pages.top() != MenuPage::kVoteMenu) {
+		if (VoteMenuPage_) {
+			VoteMenuPage_->hide();
+			VoteMenuPresented = false;
 		}
 	}
 

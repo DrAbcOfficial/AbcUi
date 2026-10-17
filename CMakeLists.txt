@@ -140,6 +140,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/serverbrowser/ServerBrowserFlow.cpp
     src/modules/gameui/creategame/CreateGameFlow.cpp
     src/modules/gameui/playerlist/PlayerListFlow.cpp
+    src/modules/gameui/votemenu/VoteMenuFlow.cpp
     src/modules/gameui/connection/LoadingFlow.cpp
     src/modules/gameui/connection/ConnectionActions.cpp
     src/modules/gameui/debug/DebugCommands.cpp
@@ -171,6 +172,7 @@ add_library(AbcUi MODULE
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
     src/services/playerlist/ClientMuteApi.cpp
+    src/services/votemenu/VoteMenuModel.cpp
     src/services/loading/LoadingModel.cpp
     src/services/loading/AutoRetryGate.cpp
     src/services/settings/SettingsModel.cpp
@@ -206,6 +208,7 @@ add_library(AbcUi MODULE
     src/panels/creategame/CreateGamePage.cpp
     src/panels/creategame/CreateGameOptions.cpp
     src/panels/playerlist/PlayerListPage.cpp
+    src/panels/votemenu/VoteMenuPage.cpp
     src/panels/settings/SettingsUi.cpp
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp

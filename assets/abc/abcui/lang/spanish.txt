@@ -10,6 +10,32 @@ Vote_DefaultMessage = Se inició una votación
 Vote_DefaultYes = Sí
 Vote_DefaultNo = No
 
+# Menú de creación de votaciones
+VoteMenu_Title = Menú de votación
+VoteMenu_Subtitle = Iniciar una votación del servidor
+VoteMenu_Ban = Banear
+VoteMenu_Kick = Expulsar
+VoteMenu_Kill = Matar
+VoteMenu_Map = Cambiar mapa
+VoteMenu_Filter = Filtrar
+VoteMenu_FilterPlayerHint = Filtrar jugadores por nombre
+VoteMenu_FilterMapHint = Filtrar mapas por nombre
+VoteMenu_Player = Jugador
+VoteMenu_SteamName = Nombre de Steam
+VoteMenu_Results = Resultados
+VoteMenu_Selected = Seleccionado
+VoteMenu_NoneSelected = Ningún elemento seleccionado
+VoteMenu_Start = Iniciar votación
+VoteMenu_StartBan = Votar para banear
+VoteMenu_StartKick = Votar para expulsar
+VoteMenu_StartKill = Votar para matar
+VoteMenu_StartMap = Votar para cambiar mapa
+VoteMenu_Cancel = Cancelar
+VoteMenu_NoPlayers = No hay jugadores disponibles para votar.
+VoteMenu_NoMaps = El servidor no ha enviado una lista de mapas.
+VoteMenu_NoSelection = Selecciona un elemento primero.
+VoteMenu_InvalidEntry = Este elemento no se puede enviar de forma segura.
+
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = intoxicación
 DMGTiles_Acid = erosión ácida
@@ -150,6 +176,7 @@ MainMenu_Quit = Salir
 MainMenu_Resume = Reanudar partida
 MainMenu_Disconnect = Desconectar
 MainMenu_PlayerList = Lista de jugadores
+MainMenu_Vote = Menú de votación
 MainMenu_QuitConfirmTitle = Salir del juego
 MainMenu_QuitConfirmBody = ¿Seguro que quieres salir de Sven Co-op?
 MainMenu_QuitYes = Salir

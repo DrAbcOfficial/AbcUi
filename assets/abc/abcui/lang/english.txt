@@ -10,6 +10,32 @@ Vote_DefaultMessage = A vote was cast
 Vote_DefaultYes = Yes
 Vote_DefaultNo = No
 
+# Vote creation menu (game menu)
+VoteMenu_Title = Vote Menu
+VoteMenu_Subtitle = Start a server vote
+VoteMenu_Ban = Ban
+VoteMenu_Kick = Kick
+VoteMenu_Kill = Kill
+VoteMenu_Map = Change Map
+VoteMenu_Filter = Filter
+VoteMenu_FilterPlayerHint = Filter players by name
+VoteMenu_FilterMapHint = Filter maps by name
+VoteMenu_Player = Player
+VoteMenu_SteamName = Steam Name
+VoteMenu_Results = Results
+VoteMenu_Selected = Selected
+VoteMenu_NoneSelected = No entry selected
+VoteMenu_Start = Start Vote
+VoteMenu_StartBan = Vote to Ban
+VoteMenu_StartKick = Vote to Kick
+VoteMenu_StartKill = Vote to Kill
+VoteMenu_StartMap = Vote to Change Map
+VoteMenu_Cancel = Cancel
+VoteMenu_NoPlayers = No players are available to vote on.
+VoteMenu_NoMaps = The server has not sent a map list.
+VoteMenu_NoSelection = Select an entry first.
+VoteMenu_InvalidEntry = This entry cannot be sent safely.
+
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = Poison
 DMGTiles_Acid = Acid
@@ -148,6 +174,7 @@ MainMenu_Quit = Quit
 MainMenu_Resume = Resume Game
 MainMenu_Disconnect = Disconnect
 MainMenu_PlayerList = Player List
+MainMenu_Vote = Vote Menu
 MainMenu_QuitConfirmTitle = Quit game
 MainMenu_QuitConfirmBody = Really quit Sven Co-op?
 MainMenu_QuitYes = Quit

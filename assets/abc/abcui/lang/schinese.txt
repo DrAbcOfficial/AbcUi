@@ -10,6 +10,32 @@ Vote_DefaultMessage = 发起了一个投票
 Vote_DefaultYes = 是
 Vote_DefaultNo = 否
 
+# 投票创建菜单（游戏菜单）
+VoteMenu_Title = 投票菜单
+VoteMenu_Subtitle = 发起服务器投票
+VoteMenu_Ban = 封禁
+VoteMenu_Kick = 踢出
+VoteMenu_Kill = 处死
+VoteMenu_Map = 换图
+VoteMenu_Filter = 筛选
+VoteMenu_FilterPlayerHint = 按玩家名称筛选
+VoteMenu_FilterMapHint = 按地图名称筛选
+VoteMenu_Player = 玩家
+VoteMenu_SteamName = Steam 名称
+VoteMenu_Results = 结果
+VoteMenu_Selected = 已选择
+VoteMenu_NoneSelected = 尚未选择条目
+VoteMenu_Start = 发起投票
+VoteMenu_StartBan = 投票封禁
+VoteMenu_StartKick = 投票踢出
+VoteMenu_StartKill = 投票处死
+VoteMenu_StartMap = 投票换图
+VoteMenu_Cancel = 取消
+VoteMenu_NoPlayers = 当前没有可投票的玩家。
+VoteMenu_NoMaps = 服务器尚未发送地图列表。
+VoteMenu_NoSelection = 请先选择一个条目。
+VoteMenu_InvalidEntry = 该条目无法安全发送。
+
 # Damage tiles (DmgTiles panel)
 DMGTiles_Poison = 中毒
 DMGTiles_Acid = 酸蚀
@@ -150,6 +176,7 @@ MainMenu_Quit = 退出
 MainMenu_Resume = 恢复游戏
 MainMenu_Disconnect = 断开连接
 MainMenu_PlayerList = 玩家列表
+MainMenu_Vote = 投票菜单
 MainMenu_QuitConfirmTitle = 退出游戏
 MainMenu_QuitConfirmBody = 确定要退出 Sven Co-op 吗？
 MainMenu_QuitYes = 退出

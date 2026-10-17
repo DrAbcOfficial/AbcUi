@@ -80,6 +80,8 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	PlayerListPage_->setSelectionSink([this](const services::playerlist::SelectionKey& Key) {
 		selectPlayerRow(Key);
 	});
+	VoteMenuPage_ = std::make_unique<panels::votemenu::VoteMenuPage>();
+	VoteMenuPage_->setModel(&VoteMenu);
 	VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
 	VideoConfirm->setVideoModel(&VideoModel);
 	ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
@@ -96,6 +98,7 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 	wire(Browser);
 	wire(CreateGamePage_);
 	wire(PlayerListPage_);
+	wire(VoteMenuPage_);
 	wire(VideoConfirm);
 	wire(ConfirmQuit);
 	wire(Loading);
@@ -123,6 +126,10 @@ void GameUiModule::onContextReady(Rml::Context* context) {
 		presentMenu();
 	if (consolePending)
 		services::nativeUiBridge().requestConsoleOpen(services::NativeUiOrigin::kOwnUi);
+	if (VoteMenuRequested) {
+		VoteMenuRequested = false;
+		openVoteMenuPage();
+	}
 }
 
 
@@ -149,7 +156,7 @@ void GameUiModule::serviceEmergencyPages() {
 		return;
 	framework::InteractiveDocument* pages[] = {
 		Shell.get(), SubStub.get(), Console.get(), Settings.get(), Browser.get(),
-		CreateGamePage_.get(), PlayerListPage_.get(), VideoConfirm.get(),
+		CreateGamePage_.get(), PlayerListPage_.get(), VoteMenuPage_.get(), VideoConfirm.get(),
 		ConfirmQuit.get(), Loading.get(), ConnError.get(), Password.get(),
 		DirectConnect.get(),
 	};
@@ -184,6 +191,7 @@ void GameUiModule::serviceEmergencyPages() {
 	ServerBrowser.Presented = false;
 	CreateGamePresented = false;
 	PlayerListPresented = false;
+	VoteMenuPresented = false;
 	syncMenuPresentation();
 }
 

@@ -11,6 +11,7 @@
 // the old hooks did (return-1 semantics).
 
 #include <string>
+#include <vector>
 
 #include <abc/Events.h>
 
@@ -84,6 +85,18 @@ struct VoteMenuData {
 	std::string no;
 };
 
+// MapList: the server's vote-map catalog. clearAll == 0 starts a new list and
+// carries the advertised total; a chunk carries [start,end) and one map token
+// per entry. The old ABCEnchance hook appended chunks and kept the first
+// clear as the new generation - the vote menu model preserves that contract.
+struct MapListData {
+	int clearAll = 0;
+	int allCount = 0;
+	int start = 0;
+	int end = 0;
+	std::vector<std::string> maps;
+};
+
 extern abc::CallbackList<void(int, bool)> Spectator; // (entindex, spectating)
 extern abc::CallbackList<void(const char*)> ServerName;
 extern abc::CallbackList<void(const char*)> NextMap;
@@ -91,6 +104,7 @@ extern abc::CallbackList<void(int)> TimeEnd; // seconds
 extern abc::CallbackList<void(int, const char*)> Motd; // (code, text chunk)
 extern abc::CallbackList<void(const VoteMenuData&)> VoteMenu;
 extern abc::CallbackList<void()> EndVote;
+extern abc::CallbackList<void(const MapListData&)> MapList;
 extern abc::CallbackList<void()> ClExtrasInfo;
 
 // HUD_Init: installs the HookUserMsg chain. Idempotent.

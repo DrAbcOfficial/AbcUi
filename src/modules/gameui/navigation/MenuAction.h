@@ -9,6 +9,7 @@ enum class ActionDomain {
 	kServers,
 	kConnection,
 	kVideo,
+	kVoteMenu,
 };
 enum class ActionKind {
 	kUnknown,
@@ -25,6 +26,9 @@ enum class ActionKind {
 	kPlayerList,
 	kPlMute,
 	kPlClose,
+	kOpenVoteMenu,
+	kVoteMenuSubmit,
+	kVoteMenuCancel,
 	kConsole,
 	kConsoleClose,
 	kConsoleSubmit,

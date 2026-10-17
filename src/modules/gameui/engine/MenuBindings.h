@@ -3,10 +3,12 @@
 #include "services/EngineUiBackend.h"
 #include "services/creategame/CreateGameModel.h"
 #include "services/playerlist/PlayerListModel.h"
+#include "services/votemenu/VoteMenuModel.h"
 namespace gameui::engine {
 services::EngineUiBackend& menuBackend();
 services::creategame::CreateGameModel::Seams createGameSeams();
 services::playerlist::PlayerListModel::Seams playerListSeams();
+services::votemenu::VoteMenuModel::Seams voteMenuSeams();
 
 // The character card's facts, read from the engine (the model/name cvars the
 // player edits in Settings > Multiplayer). Empty strings when unregistered.

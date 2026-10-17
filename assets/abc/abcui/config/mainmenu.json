@@ -41,6 +41,12 @@
       "condition": "multiplayer"
     },
     {
+      "id": "pause-votemenu",
+      "label": "#MainMenu_Vote",
+      "action": "votemenu",
+      "condition": "multiplayer"
+    },
+    {
       "id": "pause-settings",
       "label": "#MainMenu_Settings",
       "action": "settings"

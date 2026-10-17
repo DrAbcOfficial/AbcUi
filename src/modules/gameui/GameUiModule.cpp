@@ -6,6 +6,8 @@
 #include <abc/Paths.h>
 #include <abc/CvarCmd.h>
 #include "services/serverbrowser/BlacklistFileStore.h"
+#include "framework/Commands.h"
+#include "data/NetworkMessages.h"
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
@@ -27,6 +29,9 @@ GameUiModule::GameUiModule()
 	// T20: the player-list model's roster/mute seams (playerres + the
 	// shipped GameClientExports001 probe).
 	PlayerList.setSeams(playerListSeams());
+	// Vote creation menu: the live player roster comes from the same
+	// playerres mirror; maps arrive through the MapList user message.
+	VoteMenu.setSeams(voteMenuSeams());
 	// WS4: the friends board's Steam provider (bound lazily; without Steam the
 	// board degrades to the local row plus an availability note).
 	services::friends::friendsModel().setProvider(services::friends::steamFriendsProvider());
@@ -126,6 +131,27 @@ void GameUiModule::onInit() {
 	// just one disk directory. Unreadable/missing -> empty catalog (the
 	// page then refuses every request fail-closed with CG_ErrorUnavailable).
 	loadMapCatalog();
+	// The old ABCEnchance hook swallowed the client-side "votemenu" command
+	// and opened its own dialog. AbcUi now owns that command and page.
+	if (!VoteMenuCommandBound) {
+		if (abc::CChainedCommand* command = commands::get("votemenu")) {
+			command->Event().append([this]() {
+				openVoteMenuPage();
+				return false; // always keep the legacy GameUI dialog closed
+			});
+			VoteMenuCommandBound = true;
+		} else {
+			abc::ConsoleWarn("[AbcUi] votemenu command unavailable; pause entry still opens the vote page\n");
+		}
+	}
+	if (!VoteMenuMapListBound) {
+		netmsg::MapList.append([this](const netmsg::MapListData& data) {
+			VoteMenu.applyMapList(data.clearAll, data.allCount, data.start, data.end, data.maps);
+			if (VoteMenuPresented && VoteMenuPage_)
+				VoteMenuPage_->render();
+		});
+		VoteMenuMapListBound = true;
+	}
 #ifndef NDEBUG
 	DebugCommands::registerCommands();
 #endif
@@ -151,6 +177,7 @@ void GameUiModule::onShutdown() {
 	Browser.reset();
 	CreateGamePage_.reset();
 	PlayerListPage_.reset();
+	VoteMenuPage_.reset();
 	VideoConfirm.reset();
 	ConfirmQuit.reset();
 	Loading.reset();
@@ -169,6 +196,8 @@ void GameUiModule::onShutdown() {
 	DirectConnectPresented = false;
 	CreateGamePresented = false;
 	PlayerListPresented = false;
+	VoteMenuPresented = false;
+	VoteMenuRequested = false;
 	LastStubPage = MenuPage::kMain;
 }
 

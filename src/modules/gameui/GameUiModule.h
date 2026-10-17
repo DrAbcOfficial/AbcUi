@@ -16,6 +16,7 @@
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
+#include "../../panels/votemenu/VoteMenuPage.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
 #include "../../services/creategame/CreateGameModel.h"
@@ -30,6 +31,7 @@
 #include "../../services/settings/SettingsModel.h"
 #include "../../services/settings/VideoModeModel.h"
 #include "../../services/settings/VoiceModel.h"
+#include "../../services/votemenu/VoteMenuModel.h"
 #include "navigation/MenuController.h"
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
@@ -50,6 +52,7 @@ public:
 	void onInit() override;
 	void onFrame(double frameTime) override;
 	void onContextReady(Rml::Context* context) override;
+	void onVidInit() override;
 	void onShutdown() override;
 private:
 	friend class DebugCommands;
@@ -81,6 +84,8 @@ private:
 	void presentPlayerListPage();
 	void selectPlayerRow(const services::playerlist::SelectionKey& Key);
 	void togglePlayerMute();
+	void openVoteMenuPage();
+	void presentVoteMenuPage();
 	void beginServerQuery(services::serverbrowser::QueryKind kind);
 	void connectSelectedServer();
 	void toggleSelectedFavorite();
@@ -98,6 +103,7 @@ private:
 	void tickAutoRetry();
 	void handleCreateGameAction(navigation::ActionKind Kind);
 	void handlePlayerListAction(navigation::ActionKind Kind);
+	void handleVoteMenuAction(navigation::ActionKind Kind);
 	void handleConnectionAction(navigation::ActionKind Kind);
 	void handleVideoAction(navigation::ActionKind Kind);
 	void handleServerAction(navigation::ActionKind Kind);
@@ -156,11 +162,16 @@ private:
 	const char* PendingLaunchFailure = nullptr;
 	bool CreateGamePresented = false;
 	services::playerlist::PlayerListModel PlayerList;
+	services::votemenu::VoteMenuModel VoteMenu;
 	uint32_t FriendsProjected = 0;
 	// Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
 	// stalled pump is distinguishable from a stalled refresh.
 	double LastFrameTime = 0.0;
 	bool PlayerListPresented = false;
+	bool VoteMenuPresented = false;
+	bool VoteMenuRequested = false;
+	bool VoteMenuCommandBound = false;
+	bool VoteMenuMapListBound = false;
 	services::serverbrowser::FavoriteKey PendingHistory;
 	bool PendingHistoryValid = false;
 	// 自动重试 (the browser's toggle): a failed join attempt re-enters the
@@ -174,6 +185,7 @@ private:
 	std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
 	std::unique_ptr<panels::creategame::CreateGamePage> CreateGamePage_;  // T19 page
 	std::unique_ptr<panels::playerlist::PlayerListPage> PlayerListPage_;  // T20 page
+	std::unique_ptr<panels::votemenu::VoteMenuPage> VoteMenuPage_;
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	std::unique_ptr<panels::loading::LoadingPage> Loading;

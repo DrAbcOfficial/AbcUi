@@ -17,6 +17,9 @@ constexpr Entry kActions[] = {
 	{"playerlist", {ActionKind::kPlayerList, ActionDomain::kNavigation}},
 	{"pl-mute", {ActionKind::kPlMute, ActionDomain::kPlayerList}},
 	{"pl-close", {ActionKind::kPlClose, ActionDomain::kPlayerList}},
+	{"votemenu", {ActionKind::kOpenVoteMenu, ActionDomain::kVoteMenu}},
+	{"vm-submit", {ActionKind::kVoteMenuSubmit, ActionDomain::kVoteMenu}},
+	{"vm-cancel", {ActionKind::kVoteMenuCancel, ActionDomain::kVoteMenu}},
 	{"console", {ActionKind::kConsole, ActionDomain::kNavigation}},
 	{"console-close", {ActionKind::kConsoleClose, ActionDomain::kNavigation}},
 	// The console page's own layer reports these after it acted (the

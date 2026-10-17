@@ -93,7 +93,7 @@ std::vector<MenuEntry> menuEntries(const Value& V, const std::string& Path, std:
 		require(identifier(Entry.Id) && Ids.insert(Entry.Id).second, P + ".id", "invalid or duplicate id");
 		// Only home-menu intents, never dialog confirmations or commands.
 		const std::set<std::string> Actions = {"resume", "disconnect", "quit", "settings",
-			"servers", "creategame", "playerlist", "console", "directconnect"};
+			"servers", "creategame", "playerlist", "votemenu", "console", "directconnect"};
 		require(Actions.count(Entry.Action) != 0, P + ".action", "unregistered home-menu action");
 		if (Item.HasMember("condition"))
 			Entry.Condition = text(Item, "condition", P);

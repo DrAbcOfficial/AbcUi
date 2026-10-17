@@ -109,4 +109,30 @@ services::playerlist::PlayerListModel::Seams playerListSeams() {
 	};
 	return seams;
 }
+
+services::votemenu::VoteMenuModel::Seams voteMenuSeams() {
+	services::votemenu::VoteMenuModel::Seams seams;
+	seams.roster = [](services::votemenu::PlayerCandidate* out, int max) {
+		// The dialog's rows are the same live player resource the scoreboard
+		// and player list use. Re-read the engine mirror before the snapshot
+		// so a roster change is visible on the same click that opens/refreshes
+		// the vote page.
+		playerres::updateAll();
+		int count = 0;
+		for (int i = 1; i <= playerres::kMaxPlayers && count < max; ++i) {
+			const playerres::PlayerInfo* info = playerres::getPlayerInfo(i);
+			if (!info || !info->isValid())
+				continue;
+			services::votemenu::PlayerCandidate& entry = out[count++];
+			entry = services::votemenu::PlayerCandidate{};
+			entry.slot = i;
+			entry.name = info->name;
+			entry.realName = info->realName;
+			entry.steamId64 = info->steamId64;
+			entry.local = info->isThisPlayer();
+		}
+		return count;
+	};
+	return seams;
+}
 }
