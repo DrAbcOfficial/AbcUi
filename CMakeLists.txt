@@ -269,9 +269,9 @@ add_custom_target(AbcUiLayoutGameData
     VERBATIM)
 add_dependencies(AbcUi AbcUiLayoutGameData)
 if(ABC_GAME_DIR)
-    set(ABC_UI_LAYOUT_DEST "${ABC_GAME_DIR}/svencoop/metahook/gamedata/abcui-layout")
+    set(ABC_UI_LAYOUT_DEST "${ABC_GAME_DIR}/svencoop/metahook/gamedata/abc/abcui-layout")
 else()
-    set(ABC_UI_LAYOUT_DEST "svencoop/metahook/gamedata/abcui-layout")
+    set(ABC_UI_LAYOUT_DEST "svencoop/metahook/gamedata/abc/abcui-layout")
 endif()
 install(DIRECTORY assets/gamedata/abcui-layout/ DESTINATION "${ABC_UI_LAYOUT_DEST}")
 # Include layout mirrors Renderer's renderer_settings interface set: the
@@ -325,8 +325,8 @@ endif()
 #   svencoop/metahook/plugins/AbcUi.dll
 #   svencoop/metahook/dlls/FreeImage/FreeImage.dll
 #   svencoop/metahook/dlls/Mile.FFmpeg/Mile.FFmpeg.dll
-#   svencoop/metahook/gamedata/abcui/** (generated symbols)
-#   svencoop/metahook/gamedata/abcui-layout/** (native layouts)
+#   svencoop/metahook/gamedata/abc/abcui/** (generated symbols)
+#   svencoop/metahook/gamedata/abc/abcui-layout/** (native layouts)
 #   svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
@@ -355,11 +355,11 @@ add_custom_target(dist
     COMMAND "${CMAKE_COMMAND}" -E copy "${ABCUI_MILE_FFMPEG_SDK}/Redist/x86/Mile.FFmpeg.dll"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/dlls/Mile.FFmpeg/"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/abcui"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abcui"
+        "${CMAKE_BINARY_DIR}/assets/svencoop/metahook/gamedata/abc/abcui"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
-        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abcui-layout"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui-layout"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui"
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui"
