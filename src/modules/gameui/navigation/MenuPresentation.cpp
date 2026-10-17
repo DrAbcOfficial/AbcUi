@@ -67,6 +67,8 @@ void GameUiModule::dismissMenu() {
 	// A running capture session ends with it (draft-free, clamp off).
 	endKeyCapture();
 	BindModel.cancelCapture();
+	CommandMenuRequested = false;
+	CommandMenuRaisedMenu = false;
 	// T13b: menu focus loss ends the mic test with it (the device
 	// session must never outlive the surface that owns it).
 	VoiceModel.stopTest();
@@ -122,6 +124,10 @@ void GameUiModule::hideAllMenuDocuments() {
 	if (VoteMenuPage_) {
 		VoteMenuPage_->hide();
 		VoteMenuPresented = false;
+	}
+	if (CommandMenuPage_) {
+		CommandMenuPage_->hide();
+		CommandMenuPresented = false;
 	}
 	if (ConfirmQuit)
 		ConfirmQuit->hide();

@@ -76,6 +76,9 @@ void GameUiModule::syncMenuPresentation() {
 		case MenuPage::kVoteMenu:
 			presentVoteMenuPage();
 			break;
+		case MenuPage::kCommandMenu:
+			presentCommandMenuPage();
+			break;
 		case MenuPage::kLoading:
 			// Fresh projection on every sync: the attempt's values moved
 			// since the last frame (the frame drain re-renders too). T19:
@@ -151,6 +154,13 @@ void GameUiModule::syncMenuPresentation() {
 			VoteMenuPage_->hide();
 			VoteMenuPresented = false;
 		}
+	}
+	if (state.pages.empty() || state.pages.top() != MenuPage::kCommandMenu) {
+		if (CommandMenuPage_) {
+			CommandMenuPage_->hide();
+			CommandMenuPresented = false;
+		}
+		CommandMenuRaisedMenu = false;
 	}
 
 	// Overlay layer, top-most last (each show pulls to the context

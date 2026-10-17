@@ -61,6 +61,7 @@ add_subdirectory(thirdparty/FreeImage EXCLUDE_FROM_ALL)
 add_library(abc_ui_config STATIC
     src/services/uiconfig/UiDefinitions.cpp
     src/services/uiconfig/ConfigRepository.cpp
+    src/services/commandmenu/CommandMenuModel.cpp
     src/services/serverbrowser/ServerBlacklist.cpp
     src/services/serverbrowser/BlacklistFileStore.cpp)
 target_include_directories(abc_ui_config PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -141,6 +142,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/creategame/CreateGameFlow.cpp
     src/modules/gameui/playerlist/PlayerListFlow.cpp
     src/modules/gameui/votemenu/VoteMenuFlow.cpp
+    src/modules/gameui/commandmenu/CommandMenuFlow.cpp
     src/modules/gameui/connection/LoadingFlow.cpp
     src/modules/gameui/connection/ConnectionActions.cpp
     src/modules/gameui/debug/DebugCommands.cpp
@@ -209,6 +211,7 @@ add_library(AbcUi MODULE
     src/panels/creategame/CreateGameOptions.cpp
     src/panels/playerlist/PlayerListPage.cpp
     src/panels/votemenu/VoteMenuPage.cpp
+    src/panels/commandmenu/CommandMenuPage.cpp
     src/panels/settings/SettingsUi.cpp
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp

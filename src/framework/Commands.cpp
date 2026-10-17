@@ -29,12 +29,14 @@ void registerAll() {
 	registered = true;
 	// Old command.cpp RegisterCommandEvents list. `votemenu` now feeds the
 	// AbcUi game-menu vote page; the wire VoteMenu message still drives the
-	// separate yes/no HUD panel.
+	// separate yes/no HUD panel. `+commandmenu`/`-commandmenu` feed the Rml
+	// command page and keep the native VGUI command menu fully suppressed.
 	constexpr const char* kHooked[] = {
 		"slot1", "slot2", "slot3", "slot4", "slot5",
 		"slot6", "slot7", "slot8", "slot9", "slot10",
 		"missionbriefing", "invnext", "invprev",
 		"+showscores", "-showscores", "votemenu", "+attack",
+		"+commandmenu", "-commandmenu",
 	};
 	auto& list = entries();
 	list.reserve(std::size(kHooked));

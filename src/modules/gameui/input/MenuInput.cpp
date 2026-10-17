@@ -59,6 +59,10 @@ bool GameUiModule::claimsWheel() { return true; }
 void GameUiModule::onClaimedKeyDown(int keynum) {
 	// Exactly once per physical press (the router suppresses auto-repeat
 	// here); the release pairs the just-fed ESC down inside the router.
+	if (CommandMenuPage_ && CommandMenuPage_->isVisible()
+		&& Controller.state().overlays.empty()
+		&& handleCommandMenuKey(keynum))
+		return;
 	if (keynum == '`' || keynum == '~') {
 		// T16 console hotkey (the ` / toggleconsole key): while the menu
 		// owns the keyboard the engine never sees this edge, so the

@@ -30,6 +30,7 @@ void verifyInstalled() {
 		{"abc/abcui/rcss/theme.rcss", "shared menu theme"},
 		{"abc/abcui/lang/english.txt", "localization"},
 		{"abc/abcui/gameui/config/mainmenu.json", "menu definition"},
+		{"abc/abcui/gameui/config/commandmenu.json", "command menu definition"},
 		{"abc/abcui/gameui/scence/video/trainstation.mp4", "menu backdrop video"},
 		{"abc/abcui/gameui/scence/audio/opfor.mp3", "menu music"},
 		{"abc/abcui/hud/rml/health.rml", "health document"},
@@ -69,6 +70,9 @@ void verifyInstalled() {
 		// T12 video confirmation dialog.
 		{"abc/abcui/gameui/rml/videoconfirm.rml", "video confirm document"},
 		{"abc/abcui/gameui/rcss/videoconfirm.rcss", "video confirm stylesheet"},
+		// In-game Rml command menu (+commandmenu replacement).
+		{"abc/abcui/gameui/rml/commandmenu.rml", "command menu document"},
+		{"abc/abcui/gameui/rcss/commandmenu.rcss", "command menu stylesheet"},
 	};
 	for (const auto& check : checks) {
 		if (!fileExists(check.Path))

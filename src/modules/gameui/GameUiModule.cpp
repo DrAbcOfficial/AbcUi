@@ -11,9 +11,36 @@
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
+#include <fstream>
+#include <sstream>
 namespace gameui {
 using namespace engine;
 using namespace settings;
+namespace {
+
+bool loadCommandMenuDefinition(services::commandmenu::Definition& definition,
+	std::string& error) {
+	const std::string path = abc::ModPath("abc/abcui/gameui/config/commandmenu.json");
+	std::ifstream stream(path, std::ios::binary);
+	if (!stream) {
+		error = "cannot open file";
+		return false;
+	}
+	std::ostringstream text;
+	text << stream.rdbuf();
+	std::string contents = text.str();
+	if (contents.compare(0, 3, "\xef\xbb\xbf") == 0)
+		contents.erase(0, 3);
+	services::commandmenu::ParseError parseError;
+	if (!services::commandmenu::DefinitionParser::parse(contents, definition, parseError)) {
+		error = parseError.Field + ": " + parseError.Message;
+		return false;
+	}
+	return true;
+}
+
+} // namespace
+
 GameUiModule::GameUiModule()
 	: Controller(&menuBackend()), CaptureOwner(this) {
 	SettingsModel.setSeams(settingsSeams());
@@ -86,6 +113,12 @@ void GameUiModule::onInit() {
 	UiConfig.load(abc::ModPath("abc/abcui/gameui/config"), Advanced.Rows);
 	for (const auto& Error : UiConfig.errors())
 		abc::ConsoleWarn("[AbcUi] %s: %s: %s\n", Error.File.c_str(), Error.Field.c_str(), Error.Message.c_str());
+	services::commandmenu::Definition CommandDefinition;
+	std::string CommandDefinitionError;
+	if (loadCommandMenuDefinition(CommandDefinition, CommandDefinitionError))
+		CommandMenu.setDefinition(std::move(CommandDefinition));
+	else
+		abc::ConsoleWarn("[AbcUi] commandmenu.json: %s\n", CommandDefinitionError.c_str());
 	SettingsModel.setTable(UiConfig.rows().data(), static_cast<int>(UiConfig.rows().size()));
 	// The multiplayer enumerations: directories (models/player) and the
 	// spray basenames (logos) - the same scans the shipped list fills
@@ -152,6 +185,22 @@ void GameUiModule::onInit() {
 		});
 		VoteMenuMapListBound = true;
 	}
+	if (!CommandMenuCommandBound) {
+		abc::CChainedCommand* open = commands::get("+commandmenu");
+		abc::CChainedCommand* release = commands::get("-commandmenu");
+		if (open && release) {
+			open->Event().append([this]() {
+				toggleCommandMenuPage();
+				return false; // the native command menu never opens
+			});
+			release->Event().append([]() {
+				return false; // +commandmenu owns the whole toggle session
+			});
+			CommandMenuCommandBound = true;
+		} else {
+			abc::ConsoleWarn("[AbcUi] commandmenu commands unavailable; the Rml command menu cannot open\n");
+		}
+	}
 #ifndef NDEBUG
 	DebugCommands::registerCommands();
 #endif
@@ -178,6 +227,7 @@ void GameUiModule::onShutdown() {
 	CreateGamePage_.reset();
 	PlayerListPage_.reset();
 	VoteMenuPage_.reset();
+	CommandMenuPage_.reset();
 	VideoConfirm.reset();
 	ConfirmQuit.reset();
 	Loading.reset();
@@ -198,6 +248,9 @@ void GameUiModule::onShutdown() {
 	PlayerListPresented = false;
 	VoteMenuPresented = false;
 	VoteMenuRequested = false;
+	CommandMenuPresented = false;
+	CommandMenuRequested = false;
+	CommandMenuRaisedMenu = false;
 	LastStubPage = MenuPage::kMain;
 }
 

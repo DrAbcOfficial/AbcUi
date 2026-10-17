@@ -17,8 +17,10 @@
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
 #include "../../panels/votemenu/VoteMenuPage.h"
+#include "../../panels/commandmenu/CommandMenuPage.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
+#include "../../services/commandmenu/CommandMenuModel.h"
 #include "../../services/creategame/CreateGameModel.h"
 #include "../../services/loading/LoadingModel.h"
 #include "../../services/loading/AutoRetryGate.h"
@@ -86,6 +88,12 @@ private:
 	void togglePlayerMute();
 	void openVoteMenuPage();
 	void presentVoteMenuPage();
+	void toggleCommandMenuPage();
+	void openCommandMenuPage();
+	void presentCommandMenuPage();
+	void closeCommandMenuPage();
+	void handleCommandMenuCommand(const std::string& command);
+	bool handleCommandMenuKey(int keynum);
 	void beginServerQuery(services::serverbrowser::QueryKind kind);
 	void connectSelectedServer();
 	void toggleSelectedFavorite();
@@ -163,6 +171,7 @@ private:
 	bool CreateGamePresented = false;
 	services::playerlist::PlayerListModel PlayerList;
 	services::votemenu::VoteMenuModel VoteMenu;
+	services::commandmenu::Model CommandMenu;
 	uint32_t FriendsProjected = 0;
 	// Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
 	// stalled pump is distinguishable from a stalled refresh.
@@ -172,6 +181,10 @@ private:
 	bool VoteMenuRequested = false;
 	bool VoteMenuCommandBound = false;
 	bool VoteMenuMapListBound = false;
+	bool CommandMenuPresented = false;
+	bool CommandMenuRequested = false;
+	bool CommandMenuRaisedMenu = false;
+	bool CommandMenuCommandBound = false;
 	services::serverbrowser::FavoriteKey PendingHistory;
 	bool PendingHistoryValid = false;
 	// 自动重试 (the browser's toggle): a failed join attempt re-enters the
@@ -186,6 +199,7 @@ private:
 	std::unique_ptr<panels::creategame::CreateGamePage> CreateGamePage_;  // T19 page
 	std::unique_ptr<panels::playerlist::PlayerListPage> PlayerListPage_;  // T20 page
 	std::unique_ptr<panels::votemenu::VoteMenuPage> VoteMenuPage_;
+	std::unique_ptr<panels::commandmenu::CommandMenuPage> CommandMenuPage_;
 	std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
 	std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
 	std::unique_ptr<panels::loading::LoadingPage> Loading;

@@ -39,10 +39,39 @@ Produces `AbcUi-<version>.zip` under `build/<preset>/dist/`, laid out to unpack 
 
 The main menu and settings categories are driven by JSON in `assets/abc/abcui/gameui/config/` (installed to `<mod>/abc/abcui/gameui/config/`): adding a file under `settings/` extends the pages and ordinary settings, loaded automatically at startup; labels may be literal text or `#token` lookups in `abcui/lang/*.txt`. Limits: 1 MiB per page, 64 JSON files, 512 items per page.
 
+The in-game `+commandmenu` binding is also data-driven by
+`gameui/config/commandmenu.json`; the legacy `commandmenu.txt` is not read.
+Each entry has a `label` and either a `command` leaf or nested `items`; array
+order supplies the one-based number shown in the left gutter. Numeric keys
+activate entries directly, mouse/arrow/Enter navigation is supported, and an
+optional `maps` array limits an entry to named BSPs (case-insensitive, without
+the path or `.bsp`). Commands use the engine's normal client-command path, so
+existing client cvars and server verbs keep working. `+commandmenu` opens or
+closes the translucent RmlUi page and `-commandmenu` is consumed; command
+entries and Esc dismiss the page. Literal labels are looked up in the active
+language table, so the shipped English labels have complete Simplified
+Chinese and Spanish translations; explicit `#token` labels also work.
+The page uses compact fixed-width columns, keeps only the needed one to three
+columns on screen and caps column height so it does not cover the play area.
+Limits: 1 MiB per file, 100 items per menu and 40 nested levels.
+
+```json
+{
+  "version": 1,
+  "title": "#CommandMenu_Title",
+  "items": [
+    { "label": "Mission Briefing", "command": "missionbriefing" },
+    { "label": "Player Model", "items": [
+      { "label": "Gordon", "command": "model gordon" }
+    ] }
+  ]
+}
+```
+
 ## Feature overview
 
 - HUD panels: Health / Flashlight / AmmoBar / AmmoStack / ItemStack / WeaponStack / Notice / DeadMsg / SideText / TextMenu / DamageTiles / PopNum / Indicator / player board / scoreboard / vote / MOTD / weapon choose / item highlight / Radar and more; data layer with NetworkMessages / WeaponResource / SpriteResource (GoldSrc .spr decode + hud.txt) / HudState / TextFeed; the original HUD is suppressed by sig-scan on the HUD_Redraw chain.
-- Menu: main menu, settings (general/input/mouse/video/audio/voice/captions/multiplayer/advanced), server browser, create game, player list, vote creation (ban/kick/kill/map with the server's map list), connect/loading/error pages, console, direct-connect/password dialogs, quit confirmation; text input goes through the IME-aware input bridge. The pause menu's **Vote Menu** row and the original `votemenu` command both open the RmlUi page, replacing the legacy GameUI vote dialog.
+- Menu: main menu, settings (general/input/mouse/video/audio/voice/captions/multiplayer/advanced), server browser, create game, player list, vote creation (ban/kick/kill/map with the server's map list), connect/loading/error pages, console, direct-connect/password dialogs, quit confirmation, and the nested in-game command menu; text input goes through the IME-aware input bridge. The pause menu's **Vote Menu** row and the original `votemenu` command both open the RmlUi page, replacing the legacy GameUI vote dialog. The original `+commandmenu` VGUI window is replaced by a translucent, left-anchored RmlUi menu that leaves the game view visible.
 - Menu backdrop: `abc_ui_menu_video` picks the looping movie behind the no-map menu (blurred by `abc_ui_menu_backdrop_blur` gaussian rounds, 0..4, default 2; 0 shows the unblurred capture); in a level the pause menu blurs the live frame instead.
 - Retained cvars: `hud_danger_health`, `hud_danger_armor`, `hud_deathnotice(+_time/_count)`, `hud_sideinfo`; in-game diagnostics: `abc_ui_debugger` (RmlUi debugger) and `abc_ui_probe` (font/panel/element state dump).
 - Avatars and real names come from the dynamically bound game steam_api.dll (Bridge/Native backend abstraction, no steam_api.lib import dependency); fonts are loaded from the system font directory through `Rml::LoadFontFace`.

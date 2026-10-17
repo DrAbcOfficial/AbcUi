@@ -18,4 +18,7 @@ struct PlayerCardFacts {
 	std::string ModelPath;   // resolvable Studio path for the <model> element
 };
 PlayerCardFacts playerCardFacts();
+// Current engine level name; empty when no world is loaded. The command-menu
+// model normalizes the path and extension for optional per-map entries.
+std::string currentMapName();
 }

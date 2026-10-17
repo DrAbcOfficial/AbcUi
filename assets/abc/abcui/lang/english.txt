@@ -701,3 +701,7 @@ Settings_SecSound=Sound
 Settings_SecViolence=Violence
 Settings_SecSystem=System
 Settings_SecScripted=More settings
+
+# In-game command menu
+CommandMenu_Title=Command Menu
+CommandMenu_Empty=No commands available for this map.

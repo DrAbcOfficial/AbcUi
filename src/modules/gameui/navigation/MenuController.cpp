@@ -15,6 +15,7 @@ bool isSubPage(MenuPage page) {
 	case MenuPage::kCreateGame:
 	case MenuPage::kPlayerList:
 	case MenuPage::kVoteMenu:
+	case MenuPage::kCommandMenu:
 		return true;
 	default:
 		return false;  // kMain/kPause/kLoading are transition-managed only

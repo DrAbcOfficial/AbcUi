@@ -38,6 +38,11 @@ PlayerCardFacts playerCardFacts() {
 	return Facts;
 }
 
+std::string currentMapName() {
+	const char* level = gEngfuncs.pfnGetLevelName();
+	return level ? std::string(level) : std::string();
+}
+
 services::EngineUiBackend& menuBackend() {
 	static services::EngineUiBackend backend = [] {
 		services::EngineUiBackend created;

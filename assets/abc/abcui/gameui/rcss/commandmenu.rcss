@@ -1,0 +1,168 @@
+/* commandmenu.rcss - the in-game command menu.
+
+   The page keeps the old column layout in a compact form: a column is only
+   as tall as its entries (up to a scroll cap), and the shell width follows
+   the number of visible columns. No full-window scrim or backdrop is drawn. */
+
+body#menucommandmenu {
+	background-color: transparent;
+}
+
+#cm-shell {
+	position: absolute;
+	left: 2%;
+	top: 18%;
+	width: 176dp;
+	height: auto;
+	display: flex;
+	flex-direction: column;
+}
+
+#cm-shell.cm-cols-2 {
+	width: 356dp;
+}
+
+#cm-shell.cm-cols-3 {
+	width: 536dp;
+}
+
+#cm-head {
+	display: block;
+	flex: 0 0 15dp;
+	height: 15dp;
+	line-height: 15dp;
+	padding-left: 2dp;
+	border-bottom: 1dp #ffffff14;
+}
+
+#cm-title {
+	display: block;
+	height: 15dp;
+	line-height: 15dp;
+	font-size: 7.5dp;
+	font-weight: bold;
+	letter-spacing: 1.8dp;
+	text-transform: uppercase;
+	color: var(--abc-accent);
+}
+
+#cm-columns {
+	display: flex;
+	flex: 0 0 auto;
+	width: 100%;
+	align-items: flex-start;
+	margin-top: 3dp;
+}
+
+.cm-column {
+	display: block;
+	box-sizing: border-box;
+	flex: 0 0 176dp;
+	width: 176dp;
+	min-width: 0dp;
+	height: auto;
+	max-height: 280dp;
+	margin-right: 4dp;
+	overflow-y: auto;
+	background-color: #070b0ea8;
+	border: 1dp #525d6666;
+	border-top: 1dp var(--abc-accent-soft);
+}
+
+.cm-column:last-child {
+	margin-right: 0dp;
+}
+
+.cm-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	box-sizing: border-box;
+	width: 100%;
+	height: 20dp;
+	line-height: 19dp;
+	padding-left: 1dp;
+	border-bottom: 1dp #ffffff12;
+	color: var(--abc-text);
+	font-size: 8dp;
+	white-space: nowrap;
+	tab-index: auto;
+}
+
+.cm-row:hover {
+	background-color: #1b252bd0;
+	color: var(--abc-text-strong);
+}
+
+.cm-row.cm-selected,
+.cm-row:focus {
+	padding-left: 0dp;
+	background-color: #26333bd9;
+	border-left: 2dp var(--abc-accent);
+	color: var(--abc-text-strong);
+}
+
+.cm-key {
+	display: block;
+	box-sizing: border-box;
+	flex: 0 0 20dp;
+	width: 20dp;
+	height: 19dp;
+	line-height: 19dp;
+	padding-left: 7dp;
+	color: var(--abc-accent);
+	font-weight: bold;
+}
+
+.cm-label {
+	display: block;
+	box-sizing: border-box;
+	flex: 1 1 auto;
+	min-width: 0dp;
+	height: 19dp;
+	line-height: 19dp;
+	padding-left: 1dp;
+	overflow: hidden;
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+.cm-arrow {
+	display: block;
+	box-sizing: border-box;
+	flex: 0 0 12dp;
+	width: 12dp;
+	height: 19dp;
+	line-height: 19dp;
+	padding-right: 6dp;
+	text-align: right;
+	color: var(--abc-accent-soft);
+}
+
+.cm-empty {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 56dp;
+	line-height: 56dp;
+	padding-left: 10dp;
+	font-size: 8dp;
+	color: var(--abc-text-dim);
+}
+
+.cm-column scrollbarvertical {
+	z-index: 100;
+	width: 0dp;
+}
+
+.cm-column scrollbarvertical sliderbar {
+	margin-left: -8dp;
+	width: 8dp;
+	min-height: 22dp;
+	background-color: var(--abc-line);
+}
+
+.cm-column scrollbarvertical sliderbar:hover,
+.cm-column scrollbarvertical sliderbar:active {
+	background-color: var(--abc-accent-soft);
+}

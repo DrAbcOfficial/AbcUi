@@ -16,6 +16,13 @@ void GameUiModule::onVidInit() {
 	VoteMenuRequested = false;
 	if (VoteMenuPage_)
 		VoteMenuPage_->hide();
+	// The command menu is also world-scoped: a map change closes it and
+	// clears the one-shot request latch before the next session.
+	CommandMenuRequested = false;
+	CommandMenuRaisedMenu = false;
+	if (CommandMenuPage_)
+		CommandMenuPage_->hide();
+	CommandMenuPresented = false;
 }
 
 void GameUiModule::openVoteMenuPage() {
