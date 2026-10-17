@@ -5,7 +5,14 @@ project(AbcUi LANGUAGES CXX)
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/AbcCommon.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/cmake/MileFFmpeg.cmake")
 
-set(ABC_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/AbcCore")
+# AbcCore is owned by the aggregate ABCEnchance repository. Standalone builds
+# can use a sibling checkout or pass -DABC_CORE_DIR=<path>.
+set(ABC_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../AbcCore" CACHE PATH
+    "Path to the shared AbcCore source tree")
+if(NOT EXISTS "${ABC_CORE_DIR}/CMakeLists.txt")
+    message(FATAL_ERROR
+        "AbcCore not found at '${ABC_CORE_DIR}'. Clone DrAbcOfficial/AbcCore as a sibling of AbcUi or pass -DABC_CORE_DIR=<path>.")
+endif()
 add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
 
 # Renderer public interfaces are a direct AbcUi dependency. AbcCore deliberately

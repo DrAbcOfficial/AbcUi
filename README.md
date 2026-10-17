@@ -1,6 +1,6 @@
 # AbcUi
 
-HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is linked statically as a submodule; AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
+HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is linked statically from the aggregate ABCEnchance checkout; AbcUi no longer vendors AbcCore as a submodule. AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
 
 ## Build
 
@@ -8,11 +8,15 @@ Windows + MSVC + CMake >= 4.2, Win32 x86 only:
 
 ```bash
 git clone --recursive https://github.com/DrAbcOfficial/AbcUi.git
+git clone --recursive https://github.com/DrAbcOfficial/AbcCore.git ../AbcCore
 cmake --preset win32-release
 cmake --build --preset win32-release
 ```
 
-If the submodules were not fetched by `--recursive`, run `git submodule update --init --recursive` once at the repository root.
+The default `ABC_CORE_DIR` is the sibling `../AbcCore` checkout. If AbcCore is
+elsewhere, pass `-DABC_CORE_DIR=<path>` when configuring. If AbcUi's own
+submodules were not fetched by `--recursive`, run
+`git submodule update --init --recursive` once at the repository root.
 
 The pinned Renderer commit is currently published in the `DrAbcOfficial/Renderer` fork; when `MetaHookSv/Renderer` does not yet contain it, use the URL rewrite configured in `.github/workflows/build.yml` before fetching submodules.
 
@@ -91,13 +95,20 @@ AbcUi.dll
 
 | Path | Upstream | Pin |
 |---|---|---|
-| `thirdparty/AbcCore` | https://github.com/DrAbcOfficial/AbcCore | `d6240cb` (Renderer-free) |
 | `thirdparty/Renderer` | https://github.com/MetaHookSv/Renderer | `ee7c1bd601f3cecd03fa0496db2cf0c4a919a452` (public interfaces and `gl_common.h` sync) |
 | `thirdparty/RmlUi` | https://github.com/mikke89/RmlUi | tag `6.3` (`ba95ffe8bfb6370efb2cdcca927eaad4710c5413`) |
 | `thirdparty/freetype` | https://github.com/freetype/freetype | tag `VER-2-13-3` (`42608f77f20749dd6ddc9e0536788eaad70ea4b5`) |
 | `thirdparty/FreeImage` | https://github.com/hzqst/FreeImage_clone | `007c9e4c5d4198a1646b6c5274fd855be9cca7ef` |
 | `thirdparty/VGUI2Extension` | https://github.com/MetaHookSv/VGUI2Extension | `01f9ad225aef5815eb1c02539667a9872cc2a511` (headers only) |
 | `thirdparty/SteamSDK` | https://github.com/MetaHookSv/SteamSDK | `3c1abaf6277f9f99fd16ef40557d6852820b848f` |
+
+## Shared dependency
+
+AbcCore is managed by the aggregate
+[ABCEnchance](https://github.com/DrAbcOfficial/ABCEnchance) repository. Set
+`ABC_CORE_DIR` to its source tree when building AbcUi standalone; the default is
+`../AbcCore`. The aggregate build passes its root `AbcCore/` checkout
+explicitly.
 
 ## License
 

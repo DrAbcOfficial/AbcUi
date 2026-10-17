@@ -33,10 +33,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7.0.1
         with:
-          # AbcCore is a private submodule until the repositories are
-          # published; while private, provide a fine-grained token with
-          # contents:read on the DrAbcOfficial repositories as the
-          # SUBMODULE_TOKEN secret. Public repositories need no token.
+          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+          submodules: recursive
+
+      # AbcCore is owned by the aggregate ABCEnchance repository; standalone
+      # CI checks out the central repository and passes its path to CMake.
+      - name: Checkout AbcCore
+        uses: actions/checkout@v7.0.1
+        with:
+          repository: DrAbcOfficial/AbcCore
+          path: .abc/AbcCore
           token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
           submodules: recursive
 
@@ -62,7 +68,7 @@ jobs:
         # with the bundled Visual Studio 2022 generator instead.
         run: |
           cmake --version
-          cmake -S . -B build/ci -G "Visual Studio 17 2022" -A Win32
+          cmake -S . -B build/ci -G "Visual Studio 17 2022" -A Win32 -DABC_CORE_DIR="$env:GITHUB_WORKSPACE/.abc/AbcCore"
 
       - name: Build (${{ matrix.config }})
         run: cmake --build build/ci --config ${{ matrix.config }} --parallel
