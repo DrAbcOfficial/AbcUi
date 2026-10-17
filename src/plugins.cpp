@@ -9,9 +9,9 @@
 
 #include <abc/Console.h>
 #include <abc/Plugin.h>
-#include <abc/Render.h>
 
 #include "hooks.h"
+#include "render/Render.h"
 #include "rmlui/RmlUiModule.h"
 #include "rmlui/SteamAPI.h"
 #include "rmlui/VGUI2ExtensionImport.h"

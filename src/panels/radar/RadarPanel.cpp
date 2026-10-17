@@ -17,9 +17,9 @@
 #include <abc/CvarCmd.h>
 #include <abc/Math.h>
 #include <abc/Paths.h>
-#include <abc/Render.h>
-#include <abc/RenderCommon.h>
 
+#include "../../render/Render.h"
+#include "../../render/RenderCommon.h"
 #include "../../data/Avatars.h"
 #include "../../data/HudState.h"
 #include "../../data/PlayerResource.h"

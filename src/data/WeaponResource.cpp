@@ -17,10 +17,10 @@
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
-#include <abc/Render.h>
 
 #include "HudState.h"
 #include "NetworkMessages.h"
+#include "render/Render.h"
 #include "SpriteResource.h"
 
 namespace weaponres {

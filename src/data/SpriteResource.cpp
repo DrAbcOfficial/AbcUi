@@ -18,8 +18,8 @@
 
 #include <abc/Console.h>
 #include <abc/Paths.h>
-#include <abc/Render.h>
 
+#include "render/Render.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
 
 namespace sprites {

@@ -10,7 +10,6 @@
 #include <abc/CvarCmd.h>
 #include <abc/Console.h>
 #include <abc/Plugin.h>
-#include <abc/Render.h>
 
 #include <keydefs.h>
 
@@ -20,6 +19,7 @@
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
 #include "../modules/Module.h"
+#include "../render/Render.h"
 #include "../data/Avatars.h"
 #include "../data/HudState.h"
 #include "../data/WeaponResource.h"

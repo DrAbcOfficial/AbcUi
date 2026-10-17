@@ -8,6 +8,14 @@ include("${CMAKE_CURRENT_LIST_DIR}/cmake/MileFFmpeg.cmake")
 set(ABC_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/AbcCore")
 add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
 
+# Renderer public interfaces are a direct AbcUi dependency. AbcCore deliberately
+# stays renderer-free so non-UI consumers do not inherit the Renderer checkout.
+set(ABCUI_RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Renderer")
+set(ABCUI_RENDERER_INCLUDE_DIR "${ABCUI_RENDERER_DIR}/include")
+if(NOT EXISTS "${ABCUI_RENDERER_INCLUDE_DIR}/Interface/IMetaRenderer.h")
+    message(FATAL_ERROR "AbcUi requires thirdparty/Renderer; initialize the submodule with git submodule update --init --recursive")
+endif()
+
 # Mile.FFmpeg binary SDK (video decode). Headers only in the build: the
 # distance to Mile.FFmpeg.dll is GetProcAddress, exactly like Renderer's
 # startup video; the DLL is deployed beside the one Renderer ships.
@@ -62,6 +70,7 @@ target_compile_features(abc_ui_config PUBLIC cxx_std_20)
 add_library(AbcUi MODULE
     src/plugins.cpp
     src/hooks.cpp
+    src/render/Render.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp
     src/rmlui/backdrop/ElementBackdrop.cpp
@@ -226,12 +235,22 @@ target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_W
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32 abc_ui_config)
 
+# Renderer's gl_common constants are the source of truth for the render vertex
+# layouts. Fail the build when AbcUi's copied table drifts from the pin.
+add_custom_target(check-rendercommon-sync
+    COMMAND "${CMAKE_COMMAND}"
+        "-DABCUI_REPO_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_LIST_DIR}/cmake/CheckRenderCommonSync.cmake"
+    COMMENT "Checking src/render/RenderCommon.h sync against thirdparty/Renderer"
+    VERBATIM)
+add_dependencies(AbcUi check-rendercommon-sync)
+
 include("${ABC_CORE_DIR}/cmake/AbcGameData.cmake")
 abc_add_gamedata(AbcUi "${CMAKE_CURRENT_SOURCE_DIR}/scripts/manifests/abcui.json")
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 add_custom_target(AbcUiLayoutGameData
     COMMAND "${Python3_EXECUTABLE}"
-        "${ABC_CORE_DIR}/thirdparty/Renderer/scripts/validate-gamedata.py"
+        "${ABC_CORE_DIR}/cmake/gamedata/validate-gamedata.py"
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
     COMMENT "Validating binary-specific AbcUi native layouts"
     VERBATIM)
@@ -251,6 +270,8 @@ target_include_directories(AbcUi PRIVATE
     "${VGUI2EXTENSION_INCLUDE_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface/VGUI"
+    "${ABCUI_RENDERER_INCLUDE_DIR}"
+    "${ABCUI_RENDERER_INCLUDE_DIR}/Interface"
     "${METAHOOK_INCLUDE_DIR}/Interface"
     "${METAHOOK_INCLUDE_DIR}/Interface/VGUI"
     "${METAHOOK_INCLUDE_DIR}/VGUI"

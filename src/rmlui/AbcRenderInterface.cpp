@@ -12,12 +12,12 @@
 
 #include <abc/Console.h>
 #include <abc/Paths.h>
-#include <abc/Render.h>
-#include <abc/RenderCommon.h>
 
 #include "../data/Avatars.h"
 #include "../data/SpriteResource.h"
 #include "../framework/ImageLoader.h"
+#include "render/Render.h"
+#include "render/RenderCommon.h"
 #include "VGUI2ExtensionImport.h"
 
 namespace rmlui {

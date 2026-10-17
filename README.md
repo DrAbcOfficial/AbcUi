@@ -1,6 +1,6 @@
 # AbcUi
 
-HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is linked statically as a submodule.
+HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is linked statically as a submodule; AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
 
 ## Build
 
@@ -12,7 +12,9 @@ cmake --preset win32-release
 cmake --build --preset win32-release
 ```
 
-If the nested submodules were not fetched by `--recursive`, run `git submodule update --init --recursive` inside `thirdparty/AbcCore` once.
+If the submodules were not fetched by `--recursive`, run `git submodule update --init --recursive` once at the repository root.
+
+The pinned Renderer commit is currently published in the `DrAbcOfficial/Renderer` fork; when `MetaHookSv/Renderer` does not yet contain it, use the URL rewrite configured in `.github/workflows/build.yml` before fetching submodules.
 
 ## Deploy
 
@@ -60,7 +62,8 @@ AbcUi.dll
 
 | Path | Upstream | Pin |
 |---|---|---|
-| `thirdparty/AbcCore` | https://github.com/DrAbcOfficial/AbcCore | `ca3b25f221a2173f24ee1a40521223d622cb63d2` |
+| `thirdparty/AbcCore` | https://github.com/DrAbcOfficial/AbcCore | `d6240cb` (Renderer-free) |
+| `thirdparty/Renderer` | https://github.com/MetaHookSv/Renderer | `ee7c1bd601f3cecd03fa0496db2cf0c4a919a452` (public interfaces and `gl_common.h` sync) |
 | `thirdparty/RmlUi` | https://github.com/mikke89/RmlUi | tag `6.3` (`ba95ffe8bfb6370efb2cdcca927eaad4710c5413`) |
 | `thirdparty/freetype` | https://github.com/freetype/freetype | tag `VER-2-13-3` (`42608f77f20749dd6ddc9e0536788eaad70ea4b5`) |
 | `thirdparty/FreeImage` | https://github.com/hzqst/FreeImage_clone | `007c9e4c5d4198a1646b6c5274fd855be9cca7ef` |

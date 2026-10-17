@@ -100,7 +100,7 @@ public:
 
 private:
 	// Renderer-native baked vertex shapes, mirroring texturedrectvertex_t /
-	// filledrectvertex_t from abc/RenderCommon.h byte for byte (float[2]/
+	// filledrectvertex_t from render/RenderCommon.h byte for byte (float[2]/
 	// float[4] members = vec2_t/vec4_t). Kept local so the engine headers
 	// stay on the .cpp side of the seam; the static_asserts there pin the
 	// layout, so a Renderer-side drift cannot pass silently (R-14 lesson).

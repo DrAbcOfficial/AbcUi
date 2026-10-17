@@ -10,9 +10,9 @@
 #include <studio.h>
 #include <IEntityViewRenderer.h>
 #include <abc/Console.h>
-#include <abc/Render.h>
-#include <abc/RenderCommon.h>
 #include <abc/Plugin.h>
+#include "../../render/Render.h"
+#include "../../render/RenderCommon.h"
 #include "../../rmlui/AbcRenderInterface.h"
 #include "../../rmlui/RmlUiModule.h"
 

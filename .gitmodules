@@ -1,6 +1,9 @@
 [submodule "thirdparty/AbcCore"]
 	path = thirdparty/AbcCore
 	url = https://github.com/DrAbcOfficial/AbcCore.git
+[submodule "thirdparty/Renderer"]
+	path = thirdparty/Renderer
+	url = https://github.com/MetaHookSv/Renderer
 [submodule "thirdparty/RmlUi"]
 	path = thirdparty/RmlUi
 	url = https://github.com/mikke89/RmlUi

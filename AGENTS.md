@@ -9,6 +9,7 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
 - The README is the single public document; UI, config-format or cvar behaviour changes must update it in the same commit.
 - Submodule pins may only point at commits that are already public upstream; confirm the commit is pushed before bumping a pin.
 - Rendering goes exclusively through IMetaRenderer: no direct OpenGL calls and no VGUI2 drawing dependencies.
+- AbcCore must stay renderer-free. AbcUi owns `thirdparty/Renderer` and the renderer-facing bridge in `src/render/`; do not move either back into AbcCore.
 
 ## Build
 
