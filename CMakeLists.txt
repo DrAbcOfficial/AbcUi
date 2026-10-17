@@ -213,6 +213,7 @@ add_library(AbcUi MODULE
     src/panels/menushared/MenuShellWindows.cpp
     src/panels/loading/LoadingWindows.cpp
     src/panels/console/ConsolePage.cpp
+    src/panels/console/ConsoleSelection.cpp
     src/panels/serverbrowser/ServerBrowserPage.cpp
     src/panels/serverbrowser/ServerBrowserControls.cpp
     src/panels/creategame/CreateGamePage.cpp
