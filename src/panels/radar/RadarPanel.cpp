@@ -93,8 +93,8 @@ void loadMaskTextures() {
 		vgui2ext::uploadTexture(id, image.Pixels.data(), image.Width, image.Height);
 		return id;
 	};
-	MaskSquare = upload("abc/abcui/img/radar/radar_mask.png");
-	MaskRound = upload("abc/abcui/img/radar/radar_roundmask.png");
+	MaskSquare = upload("abc/abcui/hud/img/radar/radar_mask.png");
+	MaskRound = upload("abc/abcui/hud/img/radar/radar_roundmask.png");
 }
 
 void createFbo() {
@@ -319,7 +319,7 @@ int debugFboTexture() {
 // Panel methods (radar namespace helpers above are TU-local via the unnamed
 // namespace; the panel drives them through the exported seams).
 RadarPanel::RadarPanel()
-	: HudPanel("radar", "abc/abcui/rml/radar.rml") {
+	: HudPanel("radar", "abc/abcui/hud/rml/radar.rml") {
 	radar::PanelInstance = this;
 }
 

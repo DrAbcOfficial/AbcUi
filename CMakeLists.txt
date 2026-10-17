@@ -299,10 +299,9 @@ if(ABC_GAME_DIR)
         install(DIRECTORY assets/abc/abcui DESTINATION "${ABC_GAME_DIR}/svencoop/abc"
             PATTERN ".gitkeep" EXCLUDE)
     endif()
-    # The menu score ships inside abc/abcui/scence/audio (installed with the
-    # tree above). The engine resolves a sound name only under sound/, so the
-    # plugin mirrors the listed tracks there at startup; see MenuMusic and
-    # settings::mirrorModFilesToSoundTree.
+    # The menu score ships inside abc/abcui/gameui/scence/audio (installed with
+    # the tree above). MenuMusic drives the engine's mp3 player with the
+    # mod-relative path selected by abc_ui_menu_music.
     add_custom_target(deploy
         DEPENDS AbcUi FreeImage
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
@@ -317,7 +316,7 @@ endif()
 #   AbcUi-<version>/svencoop/metahook/dlls/Mile.FFmpeg/Mile.FFmpeg.dll
 #   AbcUi-<version>/svencoop/metahook/gamedata/abcui/** (generated symbols)
 #   AbcUi-<version>/svencoop/metahook/gamedata/abcui-layout/** (native layouts)
-#   AbcUi-<version>/svencoop/abc/abcui/** (rml/rcss/images/lang/config/scence)
+#   AbcUi-<version>/svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
 #   AbcUi-<version>/README.md
 # The target is named `dist` because `package` is reserved by the CPack
 # configuration that thirdparty/FreeImage pulls in.

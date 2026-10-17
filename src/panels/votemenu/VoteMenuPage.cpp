@@ -72,7 +72,7 @@ const char* emptyToken(services::votemenu::Kind kind) {
 } // namespace
 
 VoteMenuPage::VoteMenuPage()
-	: InteractiveDocument("menuvotemenu", "abc/abcui/rml/votemenu.rml", true),
+	: InteractiveDocument("menuvotemenu", "abc/abcui/gameui/rml/votemenu.rml", true),
 	  Listener(this) {}
 
 VoteMenuPage::~VoteMenuPage() {

@@ -1,0 +1,15 @@
+<rml>
+<head>
+	<link type="text/rcss" href="../../rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/effect.rcss"/>
+</head>
+<body id="effect">
+	<!-- Old CEffectPanel (fullscreen): two ImageSprPanel water splashes
+	     (kRenderTransAdd, framerate 10, sprframe:// URIs driven from onData),
+	     the underwater tint and the danger vignette (efx_darkround.png). -->
+	<img id="left-water" src="sprframe://abc/abcui/hud/spr/face_rainleft.spr|0"/>
+	<img id="right-water" src="sprframe://abc/abcui/hud/spr/face_rainright.spr|0"/>
+	<img id="under-water" src="../img/efx_darkround.png"/>
+	<img id="danger" src="../img/efx_darkround.png"/>
+</body>
+</rml>

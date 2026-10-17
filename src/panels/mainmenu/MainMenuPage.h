@@ -53,7 +53,7 @@ public:
 		kPause,  // in-game home (resume/disconnect/playerlist/settings/quit)
 	};
 
-	explicit MainMenuPage(const char* documentPath = "abc/abcui/rml/mainmenu.rml");
+	explicit MainMenuPage(const char* documentPath = "abc/abcui/gameui/rml/mainmenu.rml");
 	~MainMenuPage() override;
 
 	void setActionSink(ActionSink sink) { Sink = std::move(sink); }

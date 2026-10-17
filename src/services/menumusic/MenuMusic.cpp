@@ -6,6 +6,7 @@
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
 
+#include "../../framework/AssetPaths.h"
 #include "services/settings/SettingsModel.h"
 
 #include <string>
@@ -13,10 +14,11 @@
 namespace menumusic {
 
 void MenuMusic::setSource(const std::string& trackPath) {
-	if (Source == trackPath)
+	const std::string resolved = framework::assets::remapLegacyMenuMedia(trackPath);
+	if (Source == resolved)
 		return;
 	stop();
-	Source = trackPath;
+	Source = resolved;
 	Refused = false;
 }
 

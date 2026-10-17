@@ -1,7 +1,10 @@
 #pragma once
 
 // framework::Assets - abc/abcui/ asset install checks + shared path prefixes.
-// Plan 05 §1: assets live in <mod>/svencoop/abc/abcui/ (rml/rcss/img/lang).
+// Plan 05 §1: assets live in <mod>/svencoop/abc/abcui/. GameUI documents
+// and their page-specific art/config live under gameui/, HUD documents and
+// their page-specific art/sprites live under hud/, and the cross-surface
+// stylesheets, language tables and shared art stay at the abcui root.
 // File reads themselves go through AbcFileInterface (mod-dir resolution), so
 // this module only owns existence checks and the canonical prefix constants.
 

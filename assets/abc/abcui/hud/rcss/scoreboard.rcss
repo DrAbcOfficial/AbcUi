@@ -1,0 +1,262 @@
+/* scoreboard.rcss - ScorePanel layout, from the old abcenchance/res/
+   ScorePanel.res (552-wide table, min_height 300, bgcolor_override
+   0 0 0 64; column widths avatar 24, donor 18, name 164, steamid 92,
+   health/armor/frags/deaths 47 each, ping 80; SchemeBase:
+   ThisPlayerBgColor = LightOrange, KillerBgColor = 255 0 0 128).
+
+   The redesign is deliberately restrained: the original black translucent
+   surface, Verdana type, row colours and table content stay. A padded card
+   with the TextMenu 5dp radius, a two-line header rhythm and aligned
+   numeric columns make the same design read cleanly at both 4:3 and 16:9. */
+
+#scoreboard {
+	position: absolute;
+	left: 0;
+	top: 0;
+	/* full-screen pass-through: the centered #box anchors its percentages
+	   against this body (a 0-size body made left:50% resolve to 0 - P6
+	   audit round, probe abs=(-621,...) evidence) */
+	width: 100%;
+	height: 100%;
+	overflow: visible;
+}
+
+/* #box is the positioning anchor and the context-menu containing block;
+   #panel carries the TextMenu-style rounded surface. */
+#box {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -286dp;
+	width: 572dp;
+	/* vertical center rides the controller (content height varies) */
+}
+
+#panel {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	padding: 10dp;
+	background-color: #00000040;
+	border-radius: 5dp;
+}
+
+/* Two quiet header lines: server identity and capacity on top, the map /
+   next-map / remaining-time facts below. The rule matches the table's
+   section bars without adding another surface. */
+#header {
+	position: relative;
+	box-sizing: border-box;
+	width: 100%;
+	height: 32dp;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 11dp;
+	color: #dedede;
+	border-bottom: 1dp rgba(255, 255, 255, 24);
+}
+
+#server-name {
+	position: absolute;
+	left: 0dp;
+	top: 2dp;
+	width: 430dp;
+	height: 12dp;
+	line-height: 12dp;
+	font-weight: bold;
+	color: #ffffff;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#map-name {
+	position: absolute;
+	left: 0dp;
+	top: 17dp;
+	width: 220dp;
+	height: 11dp;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#next-map {
+	position: absolute;
+	left: 230dp;
+	top: 17dp;
+	width: 240dp;
+	height: 11dp;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+#player-count {
+	position: absolute;
+	right: 0dp;
+	top: 2dp;
+	width: 100dp;
+	height: 12dp;
+	line-height: 12dp;
+	text-align: right;
+	color: #ffffff;
+	white-space: nowrap;
+}
+
+#time-end {
+	position: absolute;
+	right: 0dp;
+	top: 17dp;
+	width: 70dp;
+	height: 11dp;
+	text-align: right;
+	white-space: nowrap;
+}
+
+/* The scroll wrapper keeps the 32-player table reachable (old
+   SetVerticalScrollbar + compact size modes degrade into plain scrolling
+   here - the row metrics stay the normal tier). */
+#table-scroll {
+	position: relative;
+	width: 100%;
+	max-height: 420dp;
+	overflow-y: auto;
+}
+
+#table {
+	position: relative;
+	width: 100%;
+	min-height: 300dp;
+	display: table;
+	font-family: Verdana;
+	font-size: 8dp;
+	color: #ffffff;
+}
+
+#table .row {
+	display: table-row;
+}
+
+#table .cell {
+	display: table-cell;
+	box-sizing: border-box;
+	overflow: hidden;
+	vertical-align: middle;
+	padding-left: 6dp;
+	padding-right: 6dp;
+}
+
+#table .row img {
+	width: 24dp;
+	height: 24dp;
+}
+
+#table .c-avatar,
+#table .c-donor {
+	padding-left: 0dp;
+	padding-right: 0dp;
+	text-align: center;
+}
+
+#table .c-avatar {
+	line-height: 0dp;
+	vertical-align: middle;
+}
+
+/* A fixed frame keeps the Steam avatar and the admin/serverowner badge on
+   the same square, centered in the row whatever the compact row height is. */
+#table .avatar-frame {
+	position: relative;
+	display: inline-block;
+	vertical-align: middle;
+	overflow: hidden;
+	background-color: rgba(0, 0, 0, 64);
+}
+
+#table .row .avatar-frame img {
+	position: absolute;
+	left: 0dp;
+	top: 0dp;
+	width: 100%;
+	height: 100%;
+}
+
+/* Column widths sum to the 552dp table content width. The name column
+   absorbs the SteamID width when that column is off (old
+   GetNameColumnWidth); rebuildTable applies the no-steamid class. */
+#table .c-avatar { width: 28dp; }
+#table .c-donor { width: 18dp; }
+#table .c-donor img { width: 18dp; height: 18dp; }
+#table .c-name { width: 160dp; }
+#table .c-steamid { width: 92dp; }
+#table .c-health { width: 44dp; }
+#table .c-armor { width: 44dp; }
+#table .c-frags { width: 44dp; }
+#table .c-deaths { width: 44dp; }
+#table .c-ping { width: 78dp; }
+#table.no-steamid .c-name { width: 252dp; }
+
+#table .c-name,
+#table .c-steamid {
+	white-space: nowrap;
+	text-overflow: ellipsis;
+}
+
+#table .c-health,
+#table .c-armor,
+#table .c-frags,
+#table .c-deaths,
+#table .c-ping {
+	padding-left: 2dp;
+	padding-right: 2dp;
+	text-align: center;
+}
+
+#table .header .cell {
+	height: 18dp;
+	line-height: 18dp;
+	background-color: rgba(0, 0, 0, 96);
+	color: #dedede;
+	font-weight: bold;
+}
+
+#table .header .c-name { text-align: left; }
+
+#table .section .cell {
+	height: 20dp;
+	line-height: 20dp;
+	color: #dedede;
+	background-color: rgba(0, 0, 0, 128);
+}
+
+#table .thisplayer {
+	background-color: rgba(255, 155, 40, 80);
+}
+
+/* Right-click menu: the same 5dp TextMenu radius, kept inside the scoreboard
+   box origin so the controller's pointer clamping stays valid. */
+#menu {
+	position: absolute;
+	box-sizing: border-box;
+	width: 180dp;
+	display: none;
+	padding: 2dp 0dp;
+	background-color: rgba(20, 20, 20, 240);
+	border-radius: 5dp;
+	overflow: hidden;
+	z-index: 10;
+	font-family: Verdana;
+	font-size: 8dp;
+	line-height: 16dp;
+	color: #ffffff;
+}
+
+#menu .item {
+	padding-left: 8dp;
+	padding-right: 8dp;
+}
+
+#menu .item:hover {
+	background-color: rgba(0, 112, 188, 200);
+}

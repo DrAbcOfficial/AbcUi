@@ -17,7 +17,7 @@ constexpr const char* kWeaponIdAttribute = "weaponid";
 } // namespace
 
 WeaponStackPanel::WeaponStackPanel()
-	: HudPanel("weaponstack", "abc/abcui/rml/weaponstack.rml") {
+	: HudPanel("weaponstack", "abc/abcui/hud/rml/weaponstack.rml") {
 	// Old WeaponStackPanel.res.
 	StackParams.keepTime = 5.0f;
 	StackParams.fadeIn = 0.1f;

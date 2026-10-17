@@ -110,7 +110,7 @@ void applyPart(Rml::Element* element, CrosshairPanel::AppliedPart& applied,
 } // namespace
 
 CrosshairPanel::CrosshairPanel()
-	: HudPanel("crosshair", "abc/abcui/rml/crosshair.rml") {}
+	: HudPanel("crosshair", "abc/abcui/hud/rml/crosshair.rml") {}
 
 void CrosshairPanel::onDocumentReady() {
 	subscribe(netmsg::CurWeapon, [this](int state, int id, int, int) {

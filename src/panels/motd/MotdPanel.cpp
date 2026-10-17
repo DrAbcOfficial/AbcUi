@@ -119,7 +119,7 @@ std::string htmlToText(std::string html) {
 }
 
 MotdPanel::MotdPanel()
-	: HudPanel("motd", "abc/abcui/rml/motd.rml") {
+	: HudPanel("motd", "abc/abcui/hud/rml/motd.rml") {
 	motd::PanelInstance = this;
 }
 

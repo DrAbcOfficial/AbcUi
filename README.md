@@ -24,7 +24,7 @@ Set the `ABC_GAME_DIR` environment variable to the game root before configuring 
 cmake --build --preset win32-release --target deploy
 ```
 
-- UI assets (RML/RCSS/images/language tables/config) go to `<game>/svencoop/abc/abcui/`; the menu videos and music live under `abc/abcui/scence/video|audio`, and the plugin mirrors the audio tracks into the engine sound tree `svencoop/sound/abc/abcui/scence/audio/` at startup.
+- UI assets go to `<game>/svencoop/abc/abcui/`, split by surface: GameUI documents, page styles, config and menu media live under `gameui/`; HUD documents, sprites and page art live under `hud/`; the cross-surface stylesheets (`rcss/base.rcss`, `rcss/theme.rcss`), language tables and shared art stay at the `abcui/` root.
 - `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`; `FreeImage.dll` goes to `<game>/svencoop/metahook/dlls/FreeImage/`.
 
 ## Packaging
@@ -37,7 +37,7 @@ Produces `AbcUi-<version>.zip` under `build/<preset>/dist/`, laid out to unpack 
 
 ## Data-driven menu
 
-The main menu and settings categories are driven by JSON in `assets/abc/abcui/config/` (installed to `<mod>/abc/abcui/config/`): adding a file under `settings/` extends the pages and ordinary settings, loaded automatically at startup; labels may be literal text or `#token` lookups in `abcui/lang/*.txt`. Limits: 1 MiB per page, 64 JSON files, 512 items per page.
+The main menu and settings categories are driven by JSON in `assets/abc/abcui/gameui/config/` (installed to `<mod>/abc/abcui/gameui/config/`): adding a file under `settings/` extends the pages and ordinary settings, loaded automatically at startup; labels may be literal text or `#token` lookups in `abcui/lang/*.txt`. Limits: 1 MiB per page, 64 JSON files, 512 items per page.
 
 ## Feature overview
 

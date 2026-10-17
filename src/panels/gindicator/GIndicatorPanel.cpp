@@ -94,7 +94,7 @@ void onAddEntity(cl_entity_t* ent, const char* modelname) {
 } // namespace gindicator
 
 GIndicatorPanel::GIndicatorPanel()
-	: HudPanel("gindicator", "abc/abcui/rml/gindicator.rml") {}
+	: HudPanel("gindicator", "abc/abcui/hud/rml/gindicator.rml") {}
 
 void GIndicatorPanel::onDocumentReady() {}
 

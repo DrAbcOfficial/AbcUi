@@ -244,7 +244,7 @@ public:
 };
 
 ScoreboardPanel::ScoreboardPanel()
-	: HudPanel("scoreboard", "abc/abcui/rml/scoreboard.rml") {
+	: HudPanel("scoreboard", "abc/abcui/hud/rml/scoreboard.rml") {
 	scoreboard::PanelInstance = this;
 }
 
@@ -496,6 +496,9 @@ void ScoreboardPanel::rebuildTable() {
 	const bool showSteamId = scoreboard::ShowSteamId && scoreboard::ShowSteamId->value > 0;
 	const bool showLoss = scoreboard::ShowLoss && scoreboard::ShowLoss->value > 0;
 	const bool showRealName = scoreboard::ShowRealName && scoreboard::ShowRealName->value > 0;
+	// The name column takes the SteamID width when that column is hidden,
+	// keeping the table's 552dp rhythm (old GetNameColumnWidth).
+	table->SetClass("no-steamid", !showSteamId);
 
 	auto headerRow = [&](bool withLabels) {
 		rml += "<div class='row header'>";
@@ -573,13 +576,14 @@ void ScoreboardPanel::rebuildTable() {
 		}
 		// The ?gen suffix cache-busts Rml's per-source texture database once
 		// the RGBA landed (avatars bumps the generation on upload).
-		appendFmt(rml, "<div class='cell c-avatar'><img src='avatar://%llu?gen=%d'/>",
+		appendFmt(rml, "<div class='cell c-avatar'><div class='avatar-frame'>"
+			"<img class='avatar' src='avatar://%llu?gen=%d'/>",
 			static_cast<unsigned long long>(info.steamId64), avatars::generation(info.steamId64));
 		if (info.admin == playerres::Admin::Operator)
 			rml += "<img class='admin' src='../img/admin_icon32.png'/>";
 		else if (info.admin == playerres::Admin::ServerOwner)
 			rml += "<img class='admin' src='../img/serverowner_icon32.png'/>";
-		rml += "</div>";
+		rml += "</div></div>";
 	};
 
 	for (teamres::TeamId team : order) {
@@ -690,9 +694,28 @@ void ScoreboardPanel::rebuildTable() {
 
 	table->SetInnerRML(rml);
 	const float rowHeight = AppliedRowHeight > 0 ? AppliedRowHeight : 28.0f;
+	const float avatarSize = std::max(1.0f,std::min(28.0f*framework::Theme::scale(),rowHeight-2.0f));
+	const float donorSize = std::max(1.0f,std::min(18.0f*framework::Theme::scale(),rowHeight-2.0f));
+	Rml::ElementList frames; table->GetElementsByClassName(frames,"avatar-frame");
+	for(auto* frame:frames) {
+		frame->SetProperty("width",std::to_string(avatarSize)+"px");
+		frame->SetProperty("height",std::to_string(avatarSize)+"px");
+	}
 	Rml::ElementList images; table->GetElementsByTagName(images,"img");
-	const float icon = std::max(1.0f,std::min(24.0f*framework::Theme::scale(),rowHeight-2.0f));
-	for(auto* image:images) { image->SetProperty("width",std::to_string(icon)+"px"); image->SetProperty("height",std::to_string(icon)+"px"); }
+	for(auto* image:images) {
+		const bool donor = image->GetParentNode() && image->GetParentNode()->IsClassSet("c-donor");
+		const bool avatar = image->GetParentNode() && image->GetParentNode()->IsClassSet("avatar-frame");
+		if (avatar) {
+			// The frame owns the size; both the Steam avatar and the admin
+			// badge fill it exactly.
+			image->SetProperty("width","100%");
+			image->SetProperty("height","100%");
+			continue;
+		}
+		const float size = donor ? donorSize : avatarSize;
+		image->SetProperty("width",std::to_string(size)+"px");
+		image->SetProperty("height",std::to_string(size)+"px");
+	}
 	table->SetProperty("line-height",std::to_string(rowHeight)+"px");
 }
 
@@ -740,7 +763,7 @@ void ScoreboardPanel::openContextMenu(int clientIndex, const Rml::Vector2f& posi
 	Rml::Vector2f at = position;
 	if (Rml::Context* context = rmlui::context()) {
 		at.x = std::clamp(at.x, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().x) - 180.0f * framework::Theme::scale()));
-		at.y = std::clamp(at.y, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().y) - 96.0f * framework::Theme::scale()));
+		at.y = std::clamp(at.y, 0.0f, std::max(0.0f, static_cast<float>(context->GetDimensions().y) - 100.0f * framework::Theme::scale()));
 	}
 	if (Rml::Element* box = element("box")) {
 		const Rml::Vector2f origin = box->GetAbsoluteOffset();
@@ -834,7 +857,7 @@ void ScoreboardPanel::onData(double frameTime) {
 	const auto spacing = [](cvar_t* cvar,float fallback) { return cvar && std::isfinite(cvar->value) && cvar->value>0 ? std::clamp(cvar->value,8.0f,128.0f) : fallback; };
 	const float normal = spacing(scoreboard::SpacingNormal,28.0f*density);
 	const float compactDefault = screenHeight<600 ? 18.0f : screenHeight<720 ? 22.0f : screenHeight<800 ? 24.0f : screenHeight<1024 ? 26.0f : 28.0f;
-	const bool compact = mode==2 || (mode==0 && (playerCount+2)*normal > 430.0f*density);
+	const bool compact = mode==2 || (mode==0 && (playerCount+2)*normal > 420.0f*density);
 	const float height = compact ? spacing(scoreboard::SpacingCompact,compactDefault) : normal;
 	if(height!=AppliedRowHeight) { AppliedRowHeight=height; DataVersion++; }
 	updateHeader();

@@ -141,7 +141,7 @@ std::string colorizeMenuRml(const std::string& text) {
 } // namespace
 
 TextMenuPanel::TextMenuPanel()
-	: HudPanel("textmenu", "abc/abcui/rml/textmenu.rml") {}
+	: HudPanel("textmenu", "abc/abcui/hud/rml/textmenu.rml") {}
 
 TextMenuPanel::~TextMenuPanel() { commands::setTextMenuOpen(false); }
 

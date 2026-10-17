@@ -25,7 +25,7 @@ constexpr float kPowerWrapWidth = 23.0f;
 } // namespace
 
 FlashlightPanel::FlashlightPanel()
-	: HudPanel("flashlight", "abc/abcui/rml/flashlight.rml") {}
+	: HudPanel("flashlight", "abc/abcui/hud/rml/flashlight.rml") {}
 
 void FlashlightPanel::onDocumentReady() {
 	setFlashLight(hudstate::messages().FlashOn,hudstate::messages().FlashBattery);

@@ -115,7 +115,7 @@ std::vector<std::string> splitCommandLines(const std::string& text) {
 }
 
 ConsolePage::ConsolePage()
-	: InteractiveDocument("menuconsole", "abc/abcui/rml/console.rml"), Listener(this), Keys(this) {}
+	: InteractiveDocument("menuconsole", "abc/abcui/gameui/rml/console.rml"), Listener(this), Keys(this) {}
 
 ConsolePage::~ConsolePage() {
 	close();

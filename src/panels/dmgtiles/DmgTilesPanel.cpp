@@ -31,7 +31,7 @@ constexpr const char* kLabelIds[10] = {
 } // namespace
 
 DmgTilesPanel::DmgTilesPanel()
-	: HudPanel("dmgtiles", "abc/abcui/rml/dmgtiles.rml") {}
+	: HudPanel("dmgtiles", "abc/abcui/hud/rml/dmgtiles.rml") {}
 
 void DmgTilesPanel::onDocumentReady() {
 	subscribe(netmsg::Damage, [this](const netmsg::DamageData& data) {

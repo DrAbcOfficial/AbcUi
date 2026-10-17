@@ -40,7 +40,7 @@ constexpr float kBarWidth = 56.0f;
 } // namespace
 
 HealthPanel::HealthPanel()
-	: HudPanel("health", "abc/abcui/rml/health.rml") {}
+	: HudPanel("health", "abc/abcui/hud/rml/health.rml") {}
 
 void HealthPanel::onDocumentReady() {
 	setHealth(hudstate::messages().Health);

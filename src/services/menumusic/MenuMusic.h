@@ -19,7 +19,7 @@ namespace menumusic {
 class MenuMusic {
 public:
 	// Mod-relative track path as the engine's mp3 player spells it
-	// ("abc/abcui/scence/audio/opfor.mp3" - the shape the legacy plugin's
+	// ("abc/abcui/gameui/scence/audio/opfor.mp3" - the shape the legacy plugin's
 	// "media/gamestartup.mp3" used). Empty disables playback entirely; a value
 	// that is not a safe relative path is refused (the cvar is user-editable
 	// and its text becomes part of an engine command line).

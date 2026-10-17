@@ -86,7 +86,7 @@ void setBarWidth(Rml::Element* bar, float ratio) {
 } // namespace
 
 PlayerBoardPanel::PlayerBoardPanel()
-	: HudPanel("playerboard", "abc/abcui/rml/playerboard.rml") {}
+	: HudPanel("playerboard", "abc/abcui/hud/rml/playerboard.rml") {}
 
 void PlayerBoardPanel::onDocumentReady() {}
 

@@ -43,14 +43,14 @@ constexpr float kWaterFramerate = 10.0f;
 // Old WATERLEVEL enum (clientdata waterlevel values).
 constexpr int kWaterLevelHead = 3;
 
-// Mod-relative splash files (installed under abc/abcui/spr/, see the assets).
-constexpr const char* kLeftWaterSpr = "abc/abcui/spr/face_rainleft.spr";
-constexpr const char* kRightWaterSpr = "abc/abcui/spr/face_rainright.spr";
+// Mod-relative splash files (installed under abc/abcui/hud/spr/, see the assets).
+constexpr const char* kLeftWaterSpr = "abc/abcui/hud/spr/face_rainleft.spr";
+constexpr const char* kRightWaterSpr = "abc/abcui/hud/spr/face_rainright.spr";
 
 } // namespace
 
 EffectPanel::EffectPanel()
-	: HudPanel("effect", "abc/abcui/rml/effect.rml") {}
+	: HudPanel("effect", "abc/abcui/hud/rml/effect.rml") {}
 
 void EffectPanel::onDocumentReady() {
 	subscribe(netmsg::Health, [this](int health) {

@@ -80,7 +80,7 @@ std::string percentText(float fraction) {
 } // namespace
 
 LoadingPage::LoadingPage()
-	: InteractiveDocument("menuloading", "abc/abcui/rml/loading.rml", true), Listener(this) {}
+	: InteractiveDocument("menuloading", "abc/abcui/gameui/rml/loading.rml", true), Listener(this) {}
 
 LoadingPage::~LoadingPage() {
 	close();
@@ -170,7 +170,7 @@ void LoadingPage::refocusDefault() {
 }
 
 ConnectionErrorOverlay::ConnectionErrorOverlay()
-	: InteractiveDocument("menuconnerror", "abc/abcui/rml/connerror.rml"), Listener(this) {}
+	: InteractiveDocument("menuconnerror", "abc/abcui/gameui/rml/connerror.rml"), Listener(this) {}
 
 ConnectionErrorOverlay::~ConnectionErrorOverlay() {
 	close();
@@ -211,7 +211,7 @@ void ConnectionErrorOverlay::refocusDefault() {
 }
 
 PasswordOverlay::PasswordOverlay()
-	: InteractiveDocument("menupassword", "abc/abcui/rml/password.rml"), Listener(this) {}
+	: InteractiveDocument("menupassword", "abc/abcui/gameui/rml/password.rml"), Listener(this) {}
 
 PasswordOverlay::~PasswordOverlay() {
 	close();
@@ -276,7 +276,7 @@ void PasswordOverlay::refocusDefault() {
 }
 
 DirectConnectOverlay::DirectConnectOverlay()
-	: InteractiveDocument("menudirectconnect", "abc/abcui/rml/directconnect.rml"), Listener(this) {}
+	: InteractiveDocument("menudirectconnect", "abc/abcui/gameui/rml/directconnect.rml"), Listener(this) {}
 
 DirectConnectOverlay::~DirectConnectOverlay() {
 	close();
