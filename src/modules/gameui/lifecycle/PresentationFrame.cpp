@@ -10,7 +10,7 @@ void GameUiModule::pumpVisibleWork() {
   // T11 bind verification beat: pfnClientCmd lands in the engine
   // command buffer, which flushes between frames. kQueued rows resolve
   // on the first tick after Apply; a change re-projects the page once.
-  if (SettingsPresented && Settings && BindModel.hasQueued()) {
+  if (SettingsView->presented() && Settings && BindModel.hasQueued()) {
     if (BindModel.verify())
       Settings->render();
   }
@@ -18,7 +18,7 @@ void GameUiModule::pumpVisibleWork() {
   // (+mlook/-mlook settle against IsKeyDown) and the mic-test meter
   // (the level readout is the GetSpeakingVolume truth, one render per
   // frame while the session is up - not an animation).
-  if (SettingsPresented && Settings &&
+  if (SettingsView->presented() && Settings &&
       (SettingsModel.hasQueued() || VoiceModel.testing())) {
     if (SettingsModel.hasQueued())
       SettingsModel.snapshot();

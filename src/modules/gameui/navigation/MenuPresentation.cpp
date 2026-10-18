@@ -131,7 +131,7 @@ void GameUiModule::hideAllMenuDocuments() {
   // stay up until confirmed/reverted (a dismissal cannot silently
   // abandon a mode the user has not confirmed). dismissMenu() calls
   // this, so keep it visibly module-owned.
-  SettingsPresented = false;
+  SettingsView->setPresented(false);
 }
 
 void GameUiModule::focusLog(const char *phase) {

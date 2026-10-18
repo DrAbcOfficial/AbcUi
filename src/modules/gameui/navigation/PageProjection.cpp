@@ -59,7 +59,7 @@ void GameUiModule::syncMenuPresentation() {
       break;
     }
     case MenuPage::kSettings:
-      presentSettingsPage();
+      SettingsView->present();
       break;
     case MenuPage::kServers:
       // T18: the real browser replaced the T09 stub. tick() runs on
@@ -127,9 +127,7 @@ void GameUiModule::syncMenuPresentation() {
     LoadingVisible = false;
   }
   if (state.pages.empty() || state.pages.top() != MenuPage::kSettings) {
-    if (Settings)
-      Settings->hide();
-    SettingsPresented = false;
+    SettingsView->hide();
     // T13b: the mic test is a page-scoped device session - leaving
     // the settings page stops it (the original's PageHide guarantee,
     // extended to the controller-driven leave path).

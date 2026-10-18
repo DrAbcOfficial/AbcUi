@@ -63,7 +63,9 @@ GameUiModule::GameUiModule()
       Create(std::make_unique<CreateGameFlow>(MakeCreateGameHost(),
                                               createGameSeams())),
       Server(std::make_unique<ServerBrowserFlow>(
-          MakeServerBrowserHost(), ServerBrowser, Blacklist)) {
+          MakeServerBrowserHost(), ServerBrowser, Blacklist)),
+      SettingsView(std::make_unique<SettingsFlow>(SettingsModel, BindModel,
+                                                  VideoModel, VoiceModel)) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -440,6 +442,7 @@ void GameUiModule::onShutdown() {
   Shell.reset();
   SubStub.reset();
   Console.reset();
+  SettingsView->shutdown();
   Settings.reset();
   Server->shutdown();
   Browser.reset();
@@ -460,7 +463,6 @@ void GameUiModule::onShutdown() {
   DirectConnect.reset();
   Context = nullptr;
   MenuPresented = false;
-  SettingsPresented = false;
   ConsolePresented = false;
   LoadingVisible = false;
   ErrorPresented = false;

@@ -39,6 +39,7 @@
 #include "playerlist/PlayerListFlow.h"
 #include "settings/SprayMaker.h"
 #include "serverbrowser/ServerBrowserFlow.h"
+#include "settings/SettingsFlow.h"
 #include "settings/VideoFlow.h"
 #include "votemenu/VoteMenuFlow.h"
 #include <memory>
@@ -79,7 +80,6 @@ private:
   void dismissMenu();
   void reconcilePhase();
   void syncMenuPresentation();
-  void presentSettingsPage();
   void showStubPage(panels::menushared::MenuStubPage *stub, MenuPage page,
                     bool console);
   void onMenuAction(const char *action);
@@ -177,6 +177,7 @@ private:
   std::unique_ptr<CommandMenuFlow> Command;
   std::unique_ptr<CreateGameFlow> Create;
   std::unique_ptr<ServerBrowserFlow> Server;
+  std::unique_ptr<SettingsFlow> SettingsView;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;
@@ -186,7 +187,6 @@ private:
   KeyCaptureOwner CaptureOwner;
   framework::uiinput::Token CaptureToken;
   bool MenuPresented = false;
-  bool SettingsPresented = false;
   bool ConsolePresented = false;
   bool LoadingVisible = false;
   bool ErrorPresented = false;

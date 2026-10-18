@@ -80,7 +80,7 @@ void DebugCommands::videoStageCommand() {
                     services::settings::VideoModeModel::describe(
                         self.VideoModel.stagedTarget())
                         .c_str());
-  if (self.Settings && self.SettingsPresented)
+  if (self.Settings && self.SettingsView->presented())
     self.Settings->render();
 }
 
