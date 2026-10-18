@@ -88,9 +88,8 @@ void FlashlightPanel::setFlashBattery(int battery) {
 	hsv[0] *= ratio;
 	float rgb[3];
 	framework::ColorUtil::hsvToRgb(hsv, rgb);
-	char buffer[40];
 	if (Rml::Element* bar = element("power-bar"))
-		bar->SetProperty("image-color", framework::ColorUtil::formatRgba(rgb, kIconAlpha, buffer));
+		bar->SetProperty("image-color", framework::ColorUtil::formatRgba(rgb, kIconAlpha));
 
 	char text[32];
 	sprintf_s(text, "%d%%", battery);

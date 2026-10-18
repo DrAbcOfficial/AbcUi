@@ -142,8 +142,7 @@ void HealthPanel::applyDanger(const char* labelId, const char* barId, const char
 		rgb[1] = kGreen[1];
 		rgb[2] = kGreen[2];
 	}
-	char buffer[32];
-	const Rml::String color = framework::ColorUtil::format(rgb, buffer);
+	const Rml::String color = framework::ColorUtil::format(rgb);
 	if (Rml::Element* label = element(labelId))
 		label->SetProperty("color", color);
 	if (Rml::Element* bar = element(barId))

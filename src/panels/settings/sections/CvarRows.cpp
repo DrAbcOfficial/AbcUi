@@ -225,8 +225,7 @@ void SettingsPage::renderRow(const services::settings::RowView& view, bool skipI
 		if (Rml::Element* thumb = sliderThumb(control)) {
 			float Rgb[3];
 			framework::ColorUtil::playerHueColor(view.draftValue, Rgb);
-			char Color[32];
-			const std::string Swatch = framework::ColorUtil::format(Rgb, Color);
+			const std::string Swatch = framework::ColorUtil::format(Rgb);
 			const auto Shown = HueSwatchShown.find(view.row->Cvar);
 			if (Shown == HueSwatchShown.end() || Shown->second != Swatch) {
 				thumb->SetProperty("background-color", Swatch);
