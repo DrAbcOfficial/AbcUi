@@ -333,7 +333,11 @@ int debugFboTexture() {
 
 // Panel methods (radar namespace helpers above are TU-local via the unnamed
 // namespace; the panel drives them through the exported seams).
-RadarPanel::RadarPanel() : HudPanel("radar", "abc/abcui/hud/rml/radar.rml") {}
+// z-index -1: the radar plate occupies the top-left corner that the weapon
+// chooser's slot row also uses; parking the radar under every default HUD
+// document keeps the chooser (and the scoreboard) readable.
+RadarPanel::RadarPanel()
+    : HudPanel("radar", "abc/abcui/hud/rml/radar.rml", -1) {}
 
 RadarPanel::~RadarPanel() {
   radar::stopProducer();

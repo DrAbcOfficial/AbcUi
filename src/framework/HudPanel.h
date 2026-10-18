@@ -29,7 +29,10 @@ namespace framework {
 
 class HudPanel {
 public:
-  HudPanel(const char *name, const char *documentPath);
+  // zIndex orders the panel's document against the other HUD documents
+  // (RmlUi paints the context root's positioned children by z-index, then by
+  // document order; 0 = default, negative = under every default document).
+  HudPanel(const char *name, const char *documentPath, int zIndex = 0);
   virtual ~HudPanel();
 
   // Non-copyable: panels are registered once and owned by PanelManager.
@@ -89,6 +92,7 @@ protected:
 
   const std::string Name;
   const std::string DocumentPath;
+  const int ZIndex;
   Rml::ElementDocument *Document = nullptr;
 
 private:

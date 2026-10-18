@@ -10,8 +10,8 @@
 
 namespace framework {
 
-HudPanel::HudPanel(const char *name, const char *documentPath)
-    : Name(name), DocumentPath(documentPath) {}
+HudPanel::HudPanel(const char *name, const char *documentPath, int zIndex)
+    : Name(name), DocumentPath(documentPath), ZIndex(zIndex) {}
 
 HudPanel::~HudPanel() {
   for (auto &cleanup : Cleanups)
@@ -32,6 +32,9 @@ bool HudPanel::loadDocument(Rml::Context *context) {
   // Passive HUD documents must not intercept scoreboard/MOTD hit testing.
   if (Name != "scoreboard" && Name != "motd")
     Document->SetProperty("pointer-events", "none");
+  // Cross-document paint order (the radar parks itself under the readouts).
+  if (ZIndex != 0)
+    Document->SetProperty("z-index", std::to_string(ZIndex));
   // Start hidden; panels opt into visibility via show() (data-driven).
   Document->Hide();
   onDocumentReady();
