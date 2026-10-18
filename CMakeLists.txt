@@ -122,6 +122,7 @@ add_library(AbcUi MODULE
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
     src/framework/ResourceFile.cpp
+    src/framework/ShellActions.cpp
     src/framework/Commands.cpp
     src/framework/FatalExit.cpp
     src/framework/TextEncoding.cpp
