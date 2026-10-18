@@ -19,11 +19,11 @@
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
 #include "../render/Render.h"
-#include "../data/Avatars.h"
+#include "texture/Avatars.h"
 #include "../data/HudState.h"
 #include "../data/WeaponResource.h"
 #include "../data/PlayerResource.h"
-#include "../data/SpriteResource.h"
+#include "texture/SpriteResource.h"
 
 #include "AbcRenderInterface.h"
 #include "backdrop/ElementBackdrop.h"

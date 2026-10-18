@@ -9,7 +9,7 @@
 #include <string>
 
 #include "../../data/NetworkMessages.h"
-#include "../../data/SpriteResource.h"
+#include "../../rmlui/texture/SpriteResource.h"
 #include "../../data/WeaponResource.h"
 
 namespace panels {

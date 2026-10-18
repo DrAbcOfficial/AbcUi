@@ -21,7 +21,6 @@
 #include "HudState.h"
 #include "NetworkMessages.h"
 #include "framework/ScreenMetrics.h"
-#include "SpriteResource.h"
 
 namespace weaponres {
 

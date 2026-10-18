@@ -15,7 +15,7 @@
 
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
-#include "../../data/SpriteResource.h"
+#include "../../rmlui/texture/SpriteResource.h"
 
 // Windows.h min/max macros fight std::min/std::max (old repo precedent).
 #undef max

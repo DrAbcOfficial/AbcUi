@@ -16,10 +16,10 @@
 
 #include "../../../data/HudState.h"
 #include "../../../framework/PanelManager.h"
-#include "../../../data/Avatars.h"
+#include "../../../rmlui/texture/Avatars.h"
 #include "../../../data/NetworkMessages.h"
 #include "../../../data/PlayerResource.h"
-#include "../../../data/SpriteResource.h"
+#include "../../../rmlui/texture/SpriteResource.h"
 #include "../../../data/WeaponResource.h"
 #include "../../../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../../../panels/radar/RadarPanel.h"

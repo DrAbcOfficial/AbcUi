@@ -43,7 +43,7 @@
 #undef max
 #undef min
 
-#include "../../data/Avatars.h"
+#include "../../rmlui/texture/Avatars.h"
 #include "../../data/NetworkMessages.h"
 #include "../../data/PlayerResource.h"
 #include "../../data/TeamResource.h"

@@ -21,7 +21,7 @@
 
 #include "../../render/Render.h"
 #include "../../render/RenderCommon.h"
-#include "../../data/Avatars.h"
+#include "../../rmlui/texture/Avatars.h"
 #include "../../data/HudState.h"
 #include "../../data/PlayerResource.h"
 #include "../../framework/ImageLoader.h"

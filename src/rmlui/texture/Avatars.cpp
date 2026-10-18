@@ -5,11 +5,11 @@
 
 #include <unordered_map>
 
-#include "../framework/ImageLoader.h"
-#include "../framework/ResourceLimits.h"
-#include "../hooks.h"
-#include "../services/steam/SteamAPI.h"
-#include "../framework/TextureSink.h"
+#include "../../framework/ImageLoader.h"
+#include "../../framework/ResourceLimits.h"
+#include "../../hooks.h"
+#include "../../services/steam/SteamAPI.h"
+#include "../../framework/TextureSink.h"
 
 namespace avatars {
 

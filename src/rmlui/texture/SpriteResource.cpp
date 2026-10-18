@@ -5,8 +5,8 @@
 
 #include "SpriteResource.h"
 #include "SpriteUri.h"
-#include "../framework/ResourceLimits.h"
-#include "../framework/ResourceFile.h"
+#include "../../framework/ResourceLimits.h"
+#include "../../framework/ResourceFile.h"
 #include <unordered_set>
 
 #include <wrect.h>
@@ -20,7 +20,7 @@
 #include <abc/Paths.h>
 
 #include "framework/ScreenMetrics.h"
-#include "../framework/TextureSink.h"
+#include "../../framework/TextureSink.h"
 
 namespace sprites {
 

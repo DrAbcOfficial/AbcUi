@@ -12,8 +12,8 @@
 
 #include <abc/Console.h>
 
-#include "../data/Avatars.h"
-#include "../data/SpriteResource.h"
+#include "texture/Avatars.h"
+#include "texture/SpriteResource.h"
 #include "../framework/ImageLoader.h"
 #include "render/Render.h"
 #include "render/RenderCommon.h"

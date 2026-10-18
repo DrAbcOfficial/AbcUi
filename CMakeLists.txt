@@ -133,13 +133,13 @@ add_library(AbcUi MODULE
     src/framework/InteractiveDocument.cpp
     src/framework/UiInputRouter.cpp
     src/framework/Localization.cpp
-    src/data/Avatars.cpp
+    src/rmlui/texture/Avatars.cpp
     src/data/HudState.cpp
     src/data/NetworkMessages.cpp
     src/data/PlayerResource.cpp
     src/data/PlayerTrace.cpp
-    src/data/SpriteResource.cpp
-    src/data/SpriteUri.cpp
+    src/rmlui/texture/SpriteResource.cpp
+    src/rmlui/texture/SpriteUri.cpp
     src/data/TextFeed.cpp
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
