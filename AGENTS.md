@@ -60,5 +60,8 @@ cmake --build --preset win32-debug    # Release: win32-release
 - Naming follows the LLVM style; interface structure is orchestrated through the GameUI composition root, and page assets live under `assets/abc/abcui/` (rml/rcss/lang/config).
 - RmlUi 6.3 RCSS constraints: `font-family` accepts a single family name (CJK falls back through the fallback face), and transition easing names use the `linear-in` family.
 - Main-menu and settings page structure is driven by `assets/abc/abcui/config/*.json`; new pages are added through JSON rather than hard-coded.
+- `using namespace` is confined to `.cpp` implementation files for the small
+  `engine`/`navigation`/`settings`/`detail` namespaces; never add one to a
+  header or use it to reach an unrelated subsystem.
 - Commit messages use `type(scope): summary` (feat / fix / refactor / docs / build / chore) with motivation and verification in the body.
 - Before handing off: no local paths or credentials; README matches actual behaviour; Debug and Release both build.
