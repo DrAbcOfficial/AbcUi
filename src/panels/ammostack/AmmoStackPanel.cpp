@@ -11,6 +11,7 @@
 #include "../../data/NetworkMessages.h"
 #include "../../rmlui/texture/SpriteResource.h"
 #include "../../data/WeaponResource.h"
+#include "../../framework/GlyphText.h"
 
 namespace panels {
 
@@ -38,10 +39,17 @@ void AmmoStackPanel::onDocumentReady() {
     // ("bdsc_custom/..."). The markup is composed as std::string, so the
     // full sprite path cannot overflow a fixed buffer (the old 160-byte
     // buffer hit the sprintf_s invalid-parameter handler on long paths).
+    // Count: ink-only additive glyphs (no black backing), the same readout
+    // ink as the score and the flashlight percentage; a value outside the
+    // glyph set falls back to plain type.
+    const std::string countText = std::to_string(count);
+    const std::string countInk =
+        framework::glyphs::inkMarkup(countText, framework::glyphs::kAccentTint);
     const std::string item =
         std::format("<img class=\"icon\" src=\"spricon://{}/{},{},{},{}\"/>"
                     "<div class=\"count font-default\">{}</div>",
-                    atlas, rect.left, rect.top, rect.right, rect.bottom, count);
+                    atlas, rect.left, rect.top, rect.right, rect.bottom,
+                    countInk.empty() ? countText : countInk);
     appendItem("item", item.c_str());
   });
 }
