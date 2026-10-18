@@ -51,6 +51,14 @@ cmake --build --preset win32-debug    # Release: win32-release
 
 ## Conventions
 
+- Public headers may expose their contract types (AIGCJson for `Config`,
+  eventpp for `Events`, SteamSDK for `SteamId`, HLSDK for `Render` /
+  `WeaponResource`, RmlUi for `AbcRenderInterface` / `ServerBlacklist`). New
+  headers forward-declare or PIMPL anything outside the contract and include
+  the standard headers they use directly.
+- C-style casts remain in the ABCEnchance-derived code; new code uses
+  `static_cast` / `const_cast` / `reinterpret_cast`.
+
 - Naming: new code uses lowerCamel functions/variables, UpperCamel types and
   k-prefixed constants. ABCEnchance-derived identifiers in AbcCore's public
   API (UpperCamel functions, `C`-prefixed types, `m_` members) and the
