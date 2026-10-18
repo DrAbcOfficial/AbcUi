@@ -570,7 +570,7 @@ void feedbackCommand() {
   }
   vec3_t angles{}, forward{};
   gEngfuncs.GetViewAngles(angles);
-  abc::CMathlib::AngleVectors(angles, forward, nullptr, nullptr);
+  abc::math::AngleVectors(angles, forward, nullptr, nullptr);
 
   netmsg::DamageData damage;
   damage.armor = 25;
