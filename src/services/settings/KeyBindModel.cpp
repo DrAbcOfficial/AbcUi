@@ -451,14 +451,11 @@ std::vector<std::string> KeyBindModel::pendingCommands() const {
 	std::vector<std::string> commands;
 	// Desired state per key: at most one action's draft claims a key.
 	std::map<int, std::string> desired;
-	std::set<int> seen;
 	for (const auto& row : Rows_) {
 		if (!row.action || row.action->Header)
 			continue;
-		for (int keynum : row.draftKeys) {
+		for (int keynum : row.draftKeys)
 			desired[keynum] = row.action->Command;
-			seen.insert(keynum);
-		}
 	}
 	// Bind keys that moved into an action (one command per key - a key
 	// moving between actions is exactly one bind, never bind+unbind).
