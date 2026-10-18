@@ -12,6 +12,28 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
 - Rendering goes exclusively through IMetaRenderer: no direct OpenGL calls and no VGUI2 drawing dependencies.
 - AbcCore must stay renderer-free. AbcUi owns `thirdparty/Renderer` and the renderer-facing bridge in `src/render/`; do not move either back into AbcCore.
 
+## Known structural exceptions
+
+These are deliberate, audited exceptions rather than unfinished cleanups:
+
+- The connection/loading state machine (attempt kind, password prompts, error
+  and direct-connect overlays) stays in `GameUiModule`. Its page, controller
+  and loading-feed ordering is one interleaved state machine; each attempted
+  split needed more host callbacks than the extracted flow removed, so the
+  remaining boundary is documented instead of duplicated.
+- Parse-boundary exceptions: `ValidationError` is private to the JSON
+  validators (`CommandMenuModel`, `UiDefinitions`) and is caught by the same
+  translation unit's public parse API. No exception crosses a plugin or
+  service seam; rapidjson's own throws stay behind the same boundary. New code
+  must use `std::optional`/error out-parameters, not add throw sites.
+- RTTI is confined to RmlUi's `rmlui_dynamic_cast`/widget casts and the Debug
+  probe tooling; first-party production code does not add `dynamic_cast`.
+- `src/render/RenderCommon.h` is vendor-synced and excluded from
+  `.clang-format`; `src/rmlui/TextInput.h` deliberately `#undef Assert` after
+  `windows.h` to keep RmlUi's `Rml::Assert` declaration visible.
+- `tests/` is session scaffolding per the hard rule above; the release has no
+  committed test target. Unit-test additions require a separate policy change.
+
 ## Build
 
 Win32 x86 only:
