@@ -429,7 +429,7 @@ void RadarPanel::onData(double frameTime) {
     const float northSize = 5.0f * density; // old Northground 5 design units
     const float len = plateSize - northSize;
     const float rotate =
-        abc::math::Q_DEG2RAD(local->curstate.angles[abc::math::Q_YAW]);
+        abc::math::DegToRad(local->curstate.angles[abc::math::kYaw]);
     const float hh =
         roundPlate ? (len / 2.0f)
                    : static_cast<float>(
@@ -459,7 +459,7 @@ void RadarPanel::onData(double frameTime) {
   const float worldHalf = radar::kOrthoBase / zoom;
   const float radarScale = plateSize / (2.0f * worldHalf);
   const float localYaw =
-      abc::math::Q_DEG2RAD(-local->curstate.angles[abc::math::Q_YAW]);
+      abc::math::DegToRad(-local->curstate.angles[abc::math::kYaw]);
   const float cosYaw = cosf(localYaw);
   const float sinYaw = sinf(localYaw);
 

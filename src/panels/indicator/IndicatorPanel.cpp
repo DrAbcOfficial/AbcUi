@@ -147,8 +147,8 @@ void IndicatorPanel::onData(double frameTime) {
         slot.hitFrom[2] - local->curstate.origin[2],
     };
     abc::math::VectorAngles(rel, rel);
-    rel[abc::math::Q_YAW] -= local->curstate.angles[abc::math::Q_YAW];
-    float degAngle = fmodf(rel[abc::math::Q_YAW], 360.0f);
+    rel[abc::math::kYaw] -= local->curstate.angles[abc::math::kYaw];
+    float degAngle = fmodf(rel[abc::math::kYaw], 360.0f);
     if (degAngle < 0.0f)
       degAngle += 360.0f;
     if (style == kStyleGoldSrc) {
