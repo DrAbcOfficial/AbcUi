@@ -15,17 +15,17 @@ namespace panels {
 
 class AmmoBarPanel : public framework::HudPanel {
 public:
-	AmmoBarPanel();
+  AmmoBarPanel();
 
 protected:
-	void onDocumentReady() override;
-	void reset() override;
+  void onDocumentReady() override;
+  void reset() override;
 
 private:
-	void updateVisibility();
-	void applyHideToken();
-	void refreshAmmo();
-	const weaponres::Weapon* HandledWeapon = nullptr;
+  void updateVisibility();
+  void applyHideToken();
+  void refreshAmmo();
+  const weaponres::Weapon *HandledWeapon = nullptr;
 };
 
-}
+} // namespace panels

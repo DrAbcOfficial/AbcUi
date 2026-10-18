@@ -14,6 +14,7 @@ namespace sprites {
 // the atlas (the length of the scheme prefix). Fills atlasFile and rect in
 // left/top/right/bottom order. False when no slash is followed by four
 // comma-separated integers or the atlas is empty.
-bool splitCropUri(const std::string& uri, std::size_t bodyStart, std::string& atlasFile, int rect[4]);
+bool splitCropUri(const std::string &uri, std::size_t bodyStart,
+                  std::string &atlasFile, int rect[4]);
 
-}
+} // namespace sprites

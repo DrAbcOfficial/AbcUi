@@ -22,24 +22,24 @@ namespace health {
 void registerCvars();
 // Old gCVars.pDangerHealth - shared with the Effect panel's danger vignette
 // (one engine cvar, two readers in the old code as well).
-extern cvar_s* DangerHealth;
-}
+extern cvar_s *DangerHealth;
+} // namespace health
 
 class HealthPanel : public framework::HudPanel {
 public:
-	HealthPanel();
+  HealthPanel();
 
 protected:
-	void onDocumentReady() override;
-	void reset() override;
+  void onDocumentReady() override;
+  void reset() override;
 
 private:
-	void updateVisibility();
-	void setHealth(int health);
-	void setArmor(int armor);
-	void applyDanger(const char* labelId, const char* barId, const char* iconId,
-		int value, float dangerValue);
-	void setLongJump(bool longJump);
+  void updateVisibility();
+  void setHealth(int health);
+  void setArmor(int armor);
+  void applyDanger(const char *labelId, const char *barId, const char *iconId,
+                   int value, float dangerValue);
+  void setLongJump(bool longJump);
 };
 
-}
+} // namespace panels

@@ -31,102 +31,119 @@ namespace steamapi {
 
 namespace {
 
-ISteamUser* User = nullptr;
-ISteamFriends* Friends = nullptr;
-ISteamUtils* Utils = nullptr;
+ISteamUser *User = nullptr;
+ISteamFriends *Friends = nullptr;
+ISteamUtils *Utils = nullptr;
 
 struct AvatarCacheEntry {
-	int handle = 0; // steam image handle the buffer was decoded from
-	std::vector<unsigned char> rgba;
-	int width = 0;
-	int height = 0;
-	bool noAvatar = false; // steam answered "this user has no avatar" - stop polling
+  int handle = 0; // steam image handle the buffer was decoded from
+  std::vector<unsigned char> rgba;
+  int width = 0;
+  int height = 0;
+  bool noAvatar =
+      false; // steam answered "this user has no avatar" - stop polling
 };
 std::unordered_map<SteamId64, AvatarCacheEntry> AvatarCache;
 
 bool connectInterfaces() {
-	User = static_cast<ISteamUser*>(services::steam::findUserInterface(STEAMUSER_INTERFACE_VERSION));
-	Friends = static_cast<ISteamFriends*>(services::steam::findUserInterface(STEAMFRIENDS_INTERFACE_VERSION));
-	Utils = static_cast<ISteamUtils*>(services::steam::findUserInterface(STEAMUTILS_INTERFACE_VERSION));
-	return User && Friends && Utils;
+  User = static_cast<ISteamUser *>(
+      services::steam::findUserInterface(STEAMUSER_INTERFACE_VERSION));
+  Friends = static_cast<ISteamFriends *>(
+      services::steam::findUserInterface(STEAMFRIENDS_INTERFACE_VERSION));
+  Utils = static_cast<ISteamUtils *>(
+      services::steam::findUserInterface(STEAMUTILS_INTERFACE_VERSION));
+  return User && Friends && Utils;
 }
 
+} // namespace
+
+SteamApiBackend *nativeBackend() {
+  static struct Backend final : SteamApiBackend {
+    bool connect() override {
+
+      return connectInterfaces();
+    }
+
+    void disconnect() override {
+      AvatarCache.clear();
+      User = nullptr;
+      Friends = nullptr;
+      Utils = nullptr;
+    }
+
+    steamapi::Backend kind() override {
+      return steamapi::Backend::NativeApi;
+    }
+
+    SteamId64 localSteamId() override {
+      if (!User)
+        return 0;
+      return User->GetSteamID().ConvertToUint64();
+    }
+
+    std::string personaName(SteamId64 id) override {
+      if (!Friends || !id)
+        return {};
+      if (Friends->RequestUserInformation(CSteamID(id), true))
+        return {};
+      const char *name = Friends->GetFriendPersonaName(CSteamID(id));
+      if (name &&
+          (strcmp(name, "[unknown]") == 0 || strcmp(name, "unknown") == 0))
+        return {};
+      return name ? std::string(name) : std::string();
+    }
+
+    bool avatar(SteamId64 id, AvatarRgba &out) override {
+      if (!Friends || !Utils || !id)
+        return false;
+      if (Friends->RequestUserInformation(CSteamID(id), false))
+        return false;
+      if (!AvatarCache.count(id) && AvatarCache.size() >= 256)
+        return false;
+      AvatarCacheEntry &entry = AvatarCache[id];
+      if (entry.noAvatar)
+        return false;
+
+      const int handle = Friends->GetSmallFriendAvatar(CSteamID(id));
+      // Old LoadAvatarImage: > 0 decodes, == 0 means "user has no
+      // avatar" (stop trying), < 0 means steam is still fetching.
+      if (handle == 0) {
+        entry.noAvatar = true;
+        return false;
+      }
+      if (handle < 0) {
+        // Nudge the download (old CAvatarImage
+        // RequestUserInformation - non-friends need it for the
+        // persona/avatar to arrive at all) and let the caller retry.
+        Friends->RequestUserInformation(CSteamID(id), false);
+        return false; // steam still downloading (old k_eAvatarPending path)
+      }
+
+      if (entry.handle == handle && !entry.rgba.empty()) {
+        out.rgba = entry.rgba.data();
+        out.width = entry.width;
+        out.height = entry.height;
+        return true;
+      }
+
+      uint32_t width = 0, height = 0;
+      if (!Utils->GetImageSize(handle, &width, &height) || !width || !height ||
+          width > 512 || height > 512)
+        return false;
+      entry.rgba.resize(static_cast<size_t>(width) * height * 4);
+      if (!Utils->GetImageRGBA(handle, entry.rgba.data(),
+                               static_cast<int>(entry.rgba.size())))
+        return false;
+      entry.handle = handle;
+      entry.width = static_cast<int>(width);
+      entry.height = static_cast<int>(height);
+      out.rgba = entry.rgba.data();
+      out.width = entry.width;
+      out.height = entry.height;
+      return true;
+    }
+  } instance;
+  return &instance;
 }
 
-SteamApiBackend* nativeBackend() {
-	static struct Backend final : SteamApiBackend {
-		bool connect() override {
-
-			return connectInterfaces();
-		}
-
-		void disconnect() override { AvatarCache.clear(); User=nullptr; Friends=nullptr; Utils=nullptr; }
-
-		steamapi::Backend kind() override { return steamapi::Backend::NativeApi; }
-
-		SteamId64 localSteamId() override {
-			if (!User)
-				return 0;
-			return User->GetSteamID().ConvertToUint64();
-		}
-
-		std::string personaName(SteamId64 id) override {
-			if (!Friends || !id)
-				return {};
-			if (Friends->RequestUserInformation(CSteamID(id), true)) return {};
-			const char* name = Friends->GetFriendPersonaName(CSteamID(id));
-			if (name && (strcmp(name,"[unknown]")==0 || strcmp(name,"unknown")==0)) return {};
-			return name ? std::string(name) : std::string();
-		}
-
-		bool avatar(SteamId64 id, AvatarRgba& out) override {
-			if (!Friends || !Utils || !id)
-				return false;
-			if (Friends->RequestUserInformation(CSteamID(id), false)) return false;
-			if (!AvatarCache.count(id) && AvatarCache.size() >= 256) return false;
-			AvatarCacheEntry& entry = AvatarCache[id];
-			if (entry.noAvatar)
-				return false;
-
-			const int handle = Friends->GetSmallFriendAvatar(CSteamID(id));
-			// Old LoadAvatarImage: > 0 decodes, == 0 means "user has no
-			// avatar" (stop trying), < 0 means steam is still fetching.
-			if (handle == 0) {
-				entry.noAvatar = true;
-				return false;
-			}
-			if (handle < 0) {
-				// Nudge the download (old CAvatarImage
-				// RequestUserInformation - non-friends need it for the
-				// persona/avatar to arrive at all) and let the caller retry.
-				Friends->RequestUserInformation(CSteamID(id), false);
-				return false; // steam still downloading (old k_eAvatarPending path)
-			}
-
-			if (entry.handle == handle && !entry.rgba.empty()) {
-				out.rgba = entry.rgba.data();
-				out.width = entry.width;
-				out.height = entry.height;
-				return true;
-			}
-
-			uint32_t width = 0, height = 0;
-			if (!Utils->GetImageSize(handle, &width, &height) || !width || !height || width > 512 || height > 512)
-				return false;
-			entry.rgba.resize(static_cast<size_t>(width) * height * 4);
-			if (!Utils->GetImageRGBA(handle, entry.rgba.data(),
-				static_cast<int>(entry.rgba.size())))
-				return false;
-			entry.handle = handle;
-			entry.width = static_cast<int>(width);
-			entry.height = static_cast<int>(height);
-			out.rgba = entry.rgba.data();
-			out.width = entry.width;
-			out.height = entry.height;
-			return true;
-		}
-	} instance;
-	return &instance;
-}
-
-}
+} // namespace steamapi

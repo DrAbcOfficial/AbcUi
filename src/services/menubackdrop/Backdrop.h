@@ -26,69 +26,70 @@
 namespace menubackdrop {
 
 enum class Mode : int {
-	kAuto = 0, // policy: live blur in a level, background video outside one
-	kLive,     // always blur what the engine just rendered
-	kVideo,    // always blur the background movie
-	kSolid,    // flat colour (no source available; still covers the window)
+  kAuto = 0, // policy: live blur in a level, background video outside one
+  kLive,     // always blur what the engine just rendered
+  kVideo,    // always blur the background movie
+  kSolid,    // flat colour (no source available; still covers the window)
 };
 
 class Backdrop {
 public:
-	Backdrop();
-	~Backdrop();
-	Backdrop(const Backdrop&) = delete;
-	Backdrop& operator=(const Backdrop&) = delete;
+  Backdrop();
+  ~Backdrop();
+  Backdrop(const Backdrop &) = delete;
+  Backdrop &operator=(const Backdrop &) = delete;
 
-	// Requested mode (documents can pick a specific one; kAuto is the default).
-	void setMode(Mode mode);
-	Mode requestedMode() const;
-	// Mode actually in use after resolution (diagnostics / element styling).
-	Mode effectiveMode() const;
+  // Requested mode (documents can pick a specific one; kAuto is the default).
+  void setMode(Mode mode);
+  Mode requestedMode() const;
+  // Mode actually in use after resolution (diagnostics / element styling).
+  Mode effectiveMode() const;
 
-	// Background movie, mod-relative. Empty disables video mode.
-	void setVideoSource(const std::string& source);
-	const std::string& videoSource() const;
+  // Background movie, mod-relative. Empty disables video mode.
+  void setVideoSource(const std::string &source);
+  const std::string &videoSource() const;
 
-	// Blur rounds (1..4); each round is one horizontal + one vertical pass.
-	void setBlurRounds(int rounds);
-	int blurRounds() const;
+  // Blur rounds (1..4); each round is one horizontal + one vertical pass.
+  void setBlurRounds(int rounds);
+  int blurRounds() const;
 
-	// HUD beat: decodes the background movie (video mode only).
-	void pumpVideo(double frameTime, bool Enabled = true);
-	// Render-end beat, before the Rml pass: captures the source, runs the blur
-	// chain and publishes the result. Returns true when the published texture
-	// changed (a new URI or a first-time registration).
-	bool render();
+  // HUD beat: decodes the background movie (video mode only).
+  void pumpVideo(double frameTime, bool Enabled = true);
+  // Render-end beat, before the Rml pass: captures the source, runs the blur
+  // chain and publishes the result. Returns true when the published texture
+  // changed (a new URI or a first-time registration).
+  bool render();
 
-	// The registered image URI for the current blurred frame; empty until the
-	// first successful render.
-	const std::string& uri() const;
+  // The registered image URI for the current blurred frame; empty until the
+  // first successful render.
+  const std::string &uri() const;
 
-	// Drops the FBO chain (vid restart / engine frame-buffer regeneration).
-	void invalidateTargets();
-	// Full reset (shutdown).
-	void shutdown();
+  // Drops the FBO chain (vid restart / engine frame-buffer regeneration).
+  void invalidateTargets();
+  // Full reset (shutdown).
+  void shutdown();
 
-	struct Diagnostics {
-		int Requested = 0;
-		int Effective = 0;
-		int Rounds = 0;
-		int Width = 0;
-		int Height = 0;
-		bool VideoOpen = false;
-		double VideoSeconds = 0.0;
-	};
-	Diagnostics diagnostics() const;
+  struct Diagnostics {
+    int Requested = 0;
+    int Effective = 0;
+    int Rounds = 0;
+    int Width = 0;
+    int Height = 0;
+    bool VideoOpen = false;
+    double VideoSeconds = 0.0;
+  };
+  Diagnostics diagnostics() const;
 
 private:
-	struct State;
-	std::unique_ptr<State> Data;
+  struct State;
+  std::unique_ptr<State> Data;
 };
 
 // Process-scoped instance (the backdrop is one image shared by all documents).
-Backdrop& menuBackdrop();
+Backdrop &menuBackdrop();
 
 // Default background movie (shipped with the AbcEnchance assets).
-constexpr const char* kDefaultVideoSource = "abc/abcui/gameui/scence/video/trainstation.mp4";
+constexpr const char *kDefaultVideoSource =
+    "abc/abcui/gameui/scence/video/trainstation.mp4";
 
 } // namespace menubackdrop

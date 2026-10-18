@@ -17,4 +17,4 @@ namespace rmlui {
 void registerProbeCommand();
 void closeProbeDocument();
 
-}
+} // namespace rmlui

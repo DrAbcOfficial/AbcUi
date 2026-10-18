@@ -15,45 +15,45 @@
 namespace panels {
 
 AmmoStackPanel::AmmoStackPanel()
-	: HudPanel("ammostack", "abc/abcui/hud/rml/ammostack.rml") {
-	// Old AmmoStackPanel.res.
-	StackParams.keepTime = 5.0f;
-	StackParams.fadeIn = 0.1f;
-	StackParams.fadeOut = 0.3f;
-	StackParams.maxItems = 200 / 20; // tall 200 / item_tall 20
+    : HudPanel("ammostack", "abc/abcui/hud/rml/ammostack.rml") {
+  // Old AmmoStackPanel.res.
+  StackParams.keepTime = 5.0f;
+  StackParams.fadeIn = 0.1f;
+  StackParams.fadeOut = 0.3f;
+  StackParams.maxItems = 200 / 20; // tall 200 / item_tall 20
 }
 
 void AmmoStackPanel::onDocumentReady() {
-	// The container draws nothing while empty; keep the document shown.
-	show();
-	initStack(Document, "stack");
+  // The container draws nothing while empty; keep the document shown.
+  show();
+  initStack(Document, "stack");
 
-	subscribe(netmsg::AmmoPickup, [this](int index, int count) {
-		// Old AddAmmoPickup: icon from any weapon carrying the ammo type.
-		std::string atlas;
-		wrect_t rect{};
-		if (!weaponres::ammoIcon(index, atlas, rect))
-			return;
-		// Server-provided atlases live under subdirectories
-		// ("bdsc_custom/..."). The markup is composed as std::string, so the
-		// full sprite path cannot overflow a fixed buffer (the old 160-byte
-		// buffer hit the sprintf_s invalid-parameter handler on long paths).
-		const std::string item = std::format(
-			"<img class=\"icon\" src=\"spricon://{}/{},{},{},{}\"/>"
-			"<div class=\"count font-default\">{}</div>",
-			atlas, rect.left, rect.top, rect.right, rect.bottom, count);
-		appendItem("item", item.c_str());
-	});
+  subscribe(netmsg::AmmoPickup, [this](int index, int count) {
+    // Old AddAmmoPickup: icon from any weapon carrying the ammo type.
+    std::string atlas;
+    wrect_t rect{};
+    if (!weaponres::ammoIcon(index, atlas, rect))
+      return;
+    // Server-provided atlases live under subdirectories
+    // ("bdsc_custom/..."). The markup is composed as std::string, so the
+    // full sprite path cannot overflow a fixed buffer (the old 160-byte
+    // buffer hit the sprintf_s invalid-parameter handler on long paths).
+    const std::string item =
+        std::format("<img class=\"icon\" src=\"spricon://{}/{},{},{},{}\"/>"
+                    "<div class=\"count font-default\">{}</div>",
+                    atlas, rect.left, rect.top, rect.right, rect.bottom, count);
+    appendItem("item", item.c_str());
+  });
 }
 
 void AmmoStackPanel::onData(double frameTime) {
-	tickItems(frameTime);
+  tickItems(frameTime);
 }
 
 void AmmoStackPanel::reset() {
-	// Old CBaseStackPanel::Reset: drop all items (and re-show, the container
-	// is transparent so an empty stack costs nothing).
-	clearItems();
+  // Old CBaseStackPanel::Reset: drop all items (and re-show, the container
+  // is transparent so an empty stack costs nothing).
+  clearItems();
 }
 
-}
+} // namespace panels

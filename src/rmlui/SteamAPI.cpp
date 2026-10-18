@@ -8,59 +8,60 @@ namespace steamapi {
 
 namespace {
 
-SteamApiBackend* Active = nullptr;
+SteamApiBackend *Active = nullptr;
 
 }
 
 void ensure();
 
 void init() {
-	if (Active)
-		return;
-	// Bridge first (the D-07 direction); its connect() only succeeds while
-	// it carries the full consumer coverage, so the native backend serves
-	// today and the bridge takes over when upstream catches up.
-	for (SteamApiBackend* candidate : {bridgeBackend(), nativeBackend()}) {
-		if (candidate->connect()) {
-			Active = candidate;
-			return;
-		}
-	}
+  if (Active)
+    return;
+  // Bridge first (the D-07 direction); its connect() only succeeds while
+  // it carries the full consumer coverage, so the native backend serves
+  // today and the bridge takes over when upstream catches up.
+  for (SteamApiBackend *candidate : {bridgeBackend(), nativeBackend()}) {
+    if (candidate->connect()) {
+      Active = candidate;
+      return;
+    }
+  }
 }
 
 void ensure() {
-	// Lazy retry: the LoadClient probe can legitimately fail (steam_api.dll
-	// not yet loaded / SteamAPI_Init pending); the first avatar or persona
-	// consumer re-probes instead of degrading for the whole session.
-	init();
+  // Lazy retry: the LoadClient probe can legitimately fail (steam_api.dll
+  // not yet loaded / SteamAPI_Init pending); the first avatar or persona
+  // consumer re-probes instead of degrading for the whole session.
+  init();
 }
 
 void shutdown() {
-	if (Active) Active->disconnect();
-	Active = nullptr;
+  if (Active)
+    Active->disconnect();
+  Active = nullptr;
 }
 
 Backend backend() {
-	return Active ? Active->kind() : Backend::None;
+  return Active ? Active->kind() : Backend::None;
 }
 
 bool available() {
-	return Active != nullptr;
+  return Active != nullptr;
 }
 
 SteamId64 localSteamId() {
-	ensure();
-	return Active ? Active->localSteamId() : 0;
+  ensure();
+  return Active ? Active->localSteamId() : 0;
 }
 
 std::string personaName(SteamId64 id) {
-	ensure();
-	return Active ? Active->personaName(id) : std::string();
+  ensure();
+  return Active ? Active->personaName(id) : std::string();
 }
 
-bool avatar(SteamId64 id, AvatarRgba& out) {
-	ensure();
-	return Active ? Active->avatar(id, out) : false;
+bool avatar(SteamId64 id, AvatarRgba &out) {
+  ensure();
+  return Active ? Active->avatar(id, out) : false;
 }
 
-}
+} // namespace steamapi

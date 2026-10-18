@@ -11,17 +11,17 @@ namespace panels {
 
 class FlashlightPanel : public framework::HudPanel {
 public:
-	FlashlightPanel();
+  FlashlightPanel();
 
 protected:
-	void onDocumentReady() override;
-	void reset() override;
+  void onDocumentReady() override;
+  void reset() override;
 
 private:
-	void updateVisibility();
-	void applyHideToken();
-	void setFlashLight(bool on, int battery);
-	void setFlashBattery(int battery);
+  void updateVisibility();
+  void applyHideToken();
+  void setFlashLight(bool on, int battery);
+  void setFlashBattery(int battery);
 };
 
-}
+} // namespace panels

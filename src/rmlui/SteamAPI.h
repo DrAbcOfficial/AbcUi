@@ -27,9 +27,9 @@ namespace steamapi {
 using SteamId64 = std::uint64_t;
 
 enum class Backend {
-	None,       // no usable provider
-	NativeApi,  // the game's steam_api.dll (ISteamUser/Friends/Utils)
-	Bridge,     // MetaHookSv SteamAPIBridge.dll (C ABI)
+  None,      // no usable provider
+  NativeApi, // the game's steam_api.dll (ISteamUser/Friends/Utils)
+  Bridge,    // MetaHookSv SteamAPIBridge.dll (C ABI)
 };
 
 // LoadClient time probe: binds whichever backend wins. Safe to re-call.
@@ -49,10 +49,10 @@ std::string personaName(SteamId64 id);
 // (the old CAvatarImage poll-with-throttle shape). The buffer is owned by
 // the layer and valid until shutdown().
 struct AvatarRgba {
-	const unsigned char* rgba = nullptr;
-	int width = 0;
-	int height = 0;
+  const unsigned char *rgba = nullptr;
+  int width = 0;
+  int height = 0;
 };
-bool avatar(SteamId64 id, AvatarRgba& out);
+bool avatar(SteamId64 id, AvatarRgba &out);
 
-}
+} // namespace steamapi

@@ -53,30 +53,31 @@ void vidInit();
 void shutdown();
 
 // hud.txt lookup: fills the atlas file ("640hud7.spr") and sprite rect.
-bool findHudSprite(const char* name, std::string& atlasFile, wrect_t& rect);
+bool findHudSprite(const char *name, std::string &atlasFile, wrect_t &rect);
 
 // Decodes <sprites/atlasFile> (lazily, once) and returns a texture cropped
 // to <rect>. 0 when the atlas or the texture channel is unavailable. The
 // straightAlpha flag keys the cache: the same crop under both blend flavors
 // must not share a texture id (the additive mark rides the id).
-int croppedTexture(const std::string& atlasFile, const wrect_t& rect, bool straightAlpha = false);
+int croppedTexture(const std::string &atlasFile, const wrect_t &rect,
+                   bool straightAlpha = false);
 
 // URI front-end for AbcRenderInterface::LoadTexture. Accepts "spr://name",
 // "spricon://atlas/l,t,r,b", "spralpha://atlas/l,t,r,b" and
 // "sprframe://path|frame". Returns the texture id and fills width/height with
 // the crop/frame size; 0 on unknown URIs.
-int textureForUri(const std::string& uri, int& width, int& height);
+int textureForUri(const std::string &uri, int &width, int &height);
 
 // Number of frames in a standalone .spr file (0 when it cannot be read) - the
 // Effect panel drives its animation loop with it.
-int standaloneFrameCount(const std::string& relativePath);
+int standaloneFrameCount(const std::string &relativePath);
 
 #ifndef NDEBUG
 // Debug probes (abc_ui_sprprobe): trace each resolution stage of one atlas /
 // URI through the engine filesystem so a silent texture failure localizes to
 // read / decode / crop / upload in one run.
-void debugDumpAtlas(const std::string& atlasFile);
-int debugResolveUri(const std::string& uri);
+void debugDumpAtlas(const std::string &atlasFile);
+int debugResolveUri(const std::string &uri);
 #endif
 
-}
+} // namespace sprites
