@@ -21,9 +21,11 @@
 	/* Old FlashLightOn/Off animation sequences: the newly shown icon fades
 	   in over 0.1s. */
 	transition: opacity 0.1s linear-in;
-	/* White lamp glyph tinted by the HUD accent; the off art carries its own
-	   lower alpha. */
+	/* White lamp glyph tinted by the HUD accent; the readout brightness rides
+	   --abc-hud-flashlight-opacity (0.75 lit / 0.53 off, set by the panel) and
+	   the off art also carries its own lower alpha. */
 	image-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-flashlight-opacity);
 }
 #on-image { visibility: hidden; }
 
@@ -43,6 +45,16 @@
 	height: 12dp;
 }
 
+#power-wrap {
+	opacity: var(--abc-hud-flashlight-opacity);
+}
+
+/* The percentage is additive glyph ink (framework::glyphs): the ink and the
+   text fallback both follow the readout brightness. */
+#flashlight #message .glyph-ink {
+	opacity: var(--abc-hud-flashlight-opacity);
+}
+
 #message {
 	position: absolute;
 	left: 0dp;
@@ -55,5 +67,5 @@
 	line-height: 12dp;
 	/* Old FlashLight.TextFgColor = scheme Default. */
 	color: var(--abc-hud-accent);
-	opacity: var(--abc-hud-value-opacity);
+	opacity: var(--abc-hud-flashlight-opacity);
 }

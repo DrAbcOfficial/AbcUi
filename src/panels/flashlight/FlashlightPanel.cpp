@@ -11,6 +11,7 @@
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
 #include "../../framework/ColorUtil.h"
+#include "../../framework/GlyphText.h"
 
 namespace panels {
 
@@ -71,7 +72,16 @@ void FlashlightPanel::setFlashLight(bool on, int battery) {
     onImage->SetProperty("visibility", on ? "visible" : "hidden");
   if (Rml::Element *offImage = element("off-image"))
     offImage->SetProperty("visibility", on ? "hidden" : "visible");
+  applyBrightness(on);
   setFlashBattery(battery);
+}
+
+void FlashlightPanel::applyBrightness(bool on) {
+  // One token drives the whole readout (percentage ink, text fallback, lamp
+  // art and gauge); the panel only swaps its value per state.
+  if (Document)
+    Document->SetProperty("--abc-hud-flashlight-opacity",
+                          on ? "0.75" : "0.53");
 }
 
 void FlashlightPanel::setFlashBattery(int battery) {
@@ -93,8 +103,13 @@ void FlashlightPanel::setFlashBattery(int battery) {
                      framework::ColorUtil::formatRgba(rgb, kIconAlpha));
 
   const std::string text = std::format("{}%", battery);
-  if (Rml::Element *message = element("message"))
-    message->SetInnerRML(text);
+  if (Rml::Element *message = element("message")) {
+    // Additive glyph ink (framework::glyphs), text fallback when a character
+    // has no glyph.
+    const std::string ink =
+        framework::glyphs::markup(text, framework::glyphs::kAccentTint);
+    message->SetInnerRML(ink.empty() ? text : ink);
+  }
 }
 
 } // namespace panels

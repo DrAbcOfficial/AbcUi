@@ -35,6 +35,8 @@ const char *glyphFile(char c) {
   case 'x':
   case 'X':
     return "x";
+  case '%':
+    return "percent";
   default:
     return nullptr;
   }

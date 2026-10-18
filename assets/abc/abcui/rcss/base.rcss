@@ -52,6 +52,10 @@ body {
 	--abc-hud-value-opacity: 0.88;
 	--abc-hud-icon-opacity: 0.53;
 	--abc-hud-meter-opacity: 0.75;
+	/* Flashlight readout brightness: FlashlightPanel overrides this on the
+	   document (0.75 lit / 0.53 off) and the whole readout - glyph ink, text
+	   fallback and lamp art - follows it. */
+	--abc-hud-flashlight-opacity: 0.75;
 }
 
 /* Additive HUD ink (framework::glyphs): one glyph is a two-layer stack - a

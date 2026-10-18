@@ -22,6 +22,8 @@ private:
   void applyHideToken();
   void setFlashLight(bool on, int battery);
   void setFlashBattery(int battery);
+  // Lit / off readout brightness (--abc-hud-flashlight-opacity).
+  void applyBrightness(bool on);
 };
 
 } // namespace panels
