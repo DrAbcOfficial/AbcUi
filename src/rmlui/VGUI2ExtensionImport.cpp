@@ -403,13 +403,13 @@ void init() {
     return;
   }
   Extension =
-      (decltype(Extension))factory(VGUI2_EXTENSION_INTERFACE_VERSION, NULL);
+      (decltype(Extension))factory(VGUI2_EXTENSION_INTERFACE_VERSION, nullptr);
   if (!Extension) {
     abc::SysError("[AbcUi] Could not get interface \"%s\" from VGUI2Extension",
                   VGUI2_EXTENSION_INTERFACE_VERSION);
     return;
   }
-  Surface2 = (decltype(Surface2))factory(VGUI_SURFACE2_INTERFACE_VERSION, NULL);
+  Surface2 = (decltype(Surface2))factory(VGUI_SURFACE2_INTERFACE_VERSION, nullptr);
   if (!Surface2) {
     abc::SysError("[AbcUi] Could not get interface \"%s\" from VGUI2Extension",
                   VGUI_SURFACE2_INTERFACE_VERSION);
@@ -417,7 +417,7 @@ void init() {
   }
   // The key-name table lives in the engine (old VGUI2 BaseUI binding).
   GameUIFuncs = (decltype(GameUIFuncs))g_pMetaHookAPI->GetEngineFactory()(
-      VENGINE_GAMEUIFUNCS_VERSION, NULL);
+      VENGINE_GAMEUIFUNCS_VERSION, nullptr);
 
   // R-4 batch C upgrade: WndProc callbacks drive the Rml mouse (clicks and
   // motion) - the async-key poll cannot see injected or message-level input.
@@ -631,7 +631,7 @@ struct EngineVideoMode {
 // MetaHook header declares GetCurrentRenderer with THREE outputs, but the
 // shipped engine implementation (hw.dll 0x01dbddb0, reached through the
 // vtable slot at 0x01dbd310) reads SIX argument slots - (name, namelen,
-// windowed, hdmodels, addons, vid_level), each NULL-safe - and the shipped
+// windowed, hdmodels, addons, vid_level), each nullptr-safe - and the shipped
 // GameUI calls it with six arguments (GameUI.dll FUN_1001cca0 calls slot
 // +0x1c with 6 args; the adjacent +0x18 slot with 3 for
 // GetCurrentVideoMode). Calling through the 3-arg declaration leaves the
@@ -752,7 +752,7 @@ bool hideGameUi() {
   if (!BaseUi) {
     const auto factory = g_pMetaHookAPI->GetEngineFactory();
     BaseUi =
-        factory ? (IBaseUI *)factory(BASEUI_INTERFACE_VERSION, NULL) : nullptr;
+        factory ? (IBaseUI *)factory(BASEUI_INTERFACE_VERSION, nullptr) : nullptr;
   }
   if (!BaseUi) {
     abc::ConsoleWarn("[AbcUi] IBaseUI unavailable - resume cannot run the "

@@ -30,7 +30,7 @@ void MetaRendererInit() {
     return;
   }
   g_pMetaRenderer =
-      (decltype(g_pMetaRenderer))factory(METARENDERER_INTERFACE_VERSION, NULL);
+      (decltype(g_pMetaRenderer))factory(METARENDERER_INTERFACE_VERSION, nullptr);
   if (!g_pMetaRenderer) {
     SysError("Could not get interface from Renderer");
     return;
@@ -42,7 +42,7 @@ void MetaRendererShutdown() {
   // g_pMetaRenderer intentionally stays - the Renderer module is owned by
   // the host, and teardown paths may still call MetaRenderer() after this.
   if (g_hMetaRenderer) {
-    g_hMetaRenderer = NULL;
+    g_hMetaRenderer = nullptr;
   }
 }
 
