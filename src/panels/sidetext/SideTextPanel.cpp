@@ -91,10 +91,11 @@ void SideTextPanel::onData(double frameTime) {
   if (text != LastText) {
     LastText = text;
     if (Rml::Element *message = element("message")) {
-      // Additive glyph ink (framework::glyphs); a template with characters
+      // Ink-only additive glyphs (no black outline layer - the score sits on
+      // the scene like the flashlight percentage); a template with characters
       // outside the glyph set falls back to plain text.
       const std::string ink =
-          framework::glyphs::markup(text, framework::glyphs::kAccentTint);
+          framework::glyphs::inkMarkup(text, framework::glyphs::kAccentTint);
       message->SetInnerRML(ink.empty() ? text : ink);
     }
   }
