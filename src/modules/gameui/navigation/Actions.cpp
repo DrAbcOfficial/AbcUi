@@ -29,13 +29,13 @@ void GameUiModule::onMenuAction(const char *action) {
   } else if (Kind == ActionKind::kPlayerList)
     Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
   else if (Kind == ActionKind::kOpenVoteMenu) {
-    openVoteMenuPage();
+    Vote->open();
     return;
   } else if (Parsed.Domain == ActionDomain::kPlayerList) {
     Player->handleAction(Kind);
     return;
   } else if (Parsed.Domain == ActionDomain::kVoteMenu) {
-    handleVoteMenuAction(Kind);
+    Vote->handleAction(Kind);
     return;
   } else if (Kind == ActionKind::kConsole ||
              Kind == ActionKind::kConsoleClose) {

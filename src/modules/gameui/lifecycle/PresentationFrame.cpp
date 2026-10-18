@@ -33,10 +33,7 @@ void GameUiModule::pumpVisibleWork() {
     Console->render();
   // Vote page: the server roster can change while the page is up. The page
   // rebuilds only when the model revision moved.
-  if (VoteMenuPresented && VoteMenuPage_) {
-    VoteMenu.refresh();
-    VoteMenuPage_->render();
-  }
+  Vote->tick();
   // Per-frame focus guard (T09 step 5): while the menu is presented,
   // the context focus must stay inside one of the menu documents.
   // Foreign holders exist (the Rml debug hook document grabs the focus

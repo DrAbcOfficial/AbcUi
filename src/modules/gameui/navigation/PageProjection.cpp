@@ -78,7 +78,7 @@ void GameUiModule::syncMenuPresentation() {
       Player->present();
       break;
     case MenuPage::kVoteMenu:
-      presentVoteMenuPage();
+      Vote->present();
       break;
     case MenuPage::kCommandMenu:
       presentCommandMenuPage();
@@ -149,12 +149,8 @@ void GameUiModule::syncMenuPresentation() {
   }
   if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList)
     Player->hide();
-  if (state.pages.empty() || state.pages.top() != MenuPage::kVoteMenu) {
-    if (VoteMenuPage_) {
-      VoteMenuPage_->hide();
-      VoteMenuPresented = false;
-    }
-  }
+  if (state.pages.empty() || state.pages.top() != MenuPage::kVoteMenu)
+    Vote->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kCommandMenu) {
     if (CommandMenuPage_) {
       CommandMenuPage_->hide();

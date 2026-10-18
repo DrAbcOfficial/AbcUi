@@ -89,7 +89,7 @@ void GameUiModule::onContextReady(Rml::Context *context) {
         Player->selectRow(Key);
       });
   VoteMenuPage_ = std::make_unique<panels::votemenu::VoteMenuPage>();
-  VoteMenuPage_->setModel(&VoteMenu);
+  Vote->setPage(VoteMenuPage_.get());
   CommandMenuPage_ = std::make_unique<panels::commandmenu::CommandMenuPage>();
   CommandMenuPage_->setModel(&CommandMenu);
   CommandMenuPage_->setCommandSink([this](const std::string &command) {
@@ -143,10 +143,8 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   if (consolePending)
     services::nativeUiBridge().requestConsoleOpen(
         services::NativeUiOrigin::kOwnUi);
-  if (VoteMenuRequested) {
-    VoteMenuRequested = false;
-    openVoteMenuPage();
-  }
+  if (Vote->consumeRequest())
+    Vote->open();
   if (CommandMenuRequested) {
     CommandMenuRequested = false;
     openCommandMenuPage();
@@ -218,7 +216,7 @@ void GameUiModule::serviceEmergencyPages() {
   ServerBrowser.Presented = false;
   CreateGamePresented = false;
   Player->setPresented(false);
-  VoteMenuPresented = false;
+  Vote->setPresented(false);
   CommandMenuPresented = false;
   syncMenuPresentation();
 }

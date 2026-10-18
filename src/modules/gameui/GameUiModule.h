@@ -40,6 +40,7 @@
 #include "playerlist/PlayerListFlow.h"
 #include "settings/SprayMaker.h"
 #include "settings/VideoFlow.h"
+#include "votemenu/VoteMenuFlow.h"
 #include <memory>
 #include <vector>
 #include <string>
@@ -85,8 +86,6 @@ private:
   void applyCreateGame();
   static const char *
   hintTokenFor(const services::creategame::Validation &validation);
-  void openVoteMenuPage();
-  void presentVoteMenuPage();
   void toggleCommandMenuPage();
   void openCommandMenuPage();
   void presentCommandMenuPage();
@@ -104,7 +103,6 @@ private:
   bool retryServerAttempt();
   void tickAutoRetry();
   void handleCreateGameAction(navigation::ActionKind Kind);
-  void handleVoteMenuAction(navigation::ActionKind Kind);
   void handleConnectionAction(navigation::ActionKind Kind);
   void handleServerAction(navigation::ActionKind Kind);
   void onFriendJoin(uint64_t steamId, const char *address);
@@ -151,6 +149,7 @@ private:
   static GameUiModule *Instance;
   VideoHost MakeVideoHost();
   PlayerListHost MakePlayerListHost();
+  VoteMenuHost MakeVoteMenuHost();
   Rml::Context *Context = nullptr;
   gameui::menu::MenuController Controller;
   services::uiconfig::ConfigRepository UiConfig;
@@ -169,14 +168,11 @@ private:
   const char *PendingLaunchFailure = nullptr;
   bool CreateGamePresented = false;
   services::playerlist::PlayerListModel PlayerList;
-  services::votemenu::VoteMenuModel VoteMenu;
   services::commandmenu::Model CommandMenu;
   uint32_t FriendsProjected = 0;
   // Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
   // stalled pump is distinguishable from a stalled refresh.
   double LastFrameTime = 0.0;
-  bool VoteMenuPresented = false;
-  bool VoteMenuRequested = false;
   bool VoteMenuCommandBound = false;
   bool VoteMenuMapListBound = false;
   bool CommandMenuPresented = false;
@@ -204,6 +200,7 @@ private:
   std::unique_ptr<VideoFlow> Video;
   std::unique_ptr<PlayerListFlow> Player;
   std::unique_ptr<SprayMaker> Spray;
+  std::unique_ptr<VoteMenuFlow> Vote;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;

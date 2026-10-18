@@ -56,7 +56,9 @@ GameUiModule::GameUiModule()
                  const std::string &previewUri) {
             if (Settings)
               Settings->setSprayResult(ok, message, previewUri);
-          })) {
+          })),
+      Vote(std::make_unique<VoteMenuFlow>(MakeVoteMenuHost(),
+                                          voteMenuSeams())) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -72,7 +74,6 @@ GameUiModule::GameUiModule()
   PlayerList.setSeams(playerListSeams());
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
-  VoteMenu.setSeams(voteMenuSeams());
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
   // board degrades to the local row plus an availability note).
   services::friends::friendsModel().setProvider(
@@ -106,6 +107,36 @@ VideoHost GameUiModule::MakeVideoHost() {
 
 PlayerListHost GameUiModule::MakePlayerListHost() {
   PlayerListHost host;
+  host.dispatchBack = [this] {
+    Controller.dispatch(MenuEvent{EventKind::kBack});
+  };
+  host.finishDispatch = [this] { finishDispatch(); };
+  return host;
+}
+
+VoteMenuHost GameUiModule::MakeVoteMenuHost() {
+  VoteMenuHost host;
+  host.shellReady = [this] { return Shell && Context; };
+  host.ensureMenu = [this] {
+    if (!MenuPresented) {
+      if (!services::nativeUiBridge().menuUp())
+        services::nativeUiBridge().requestMenuUp(
+            services::NativeUiOrigin::kOwnUi);
+      if (!MenuPresented)
+        presentMenu();
+    }
+    return MenuPresented;
+  };
+  host.reconcileInGame = [this] {
+    reconcilePhase();
+    return Controller.state().phase == menu::BackendPhase::kInGame;
+  };
+  host.pageOnTop = [this] {
+    return Controller.state().pages.topIs(MenuPage::kVoteMenu);
+  };
+  host.dispatchOpen = [this] {
+    Controller.dispatch(menu::makeOpenPage(MenuPage::kVoteMenu));
+  };
   host.dispatchBack = [this] {
     Controller.dispatch(MenuEvent{EventKind::kBack});
   };
@@ -257,7 +288,7 @@ void GameUiModule::onInit() {
   if (!VoteMenuCommandBound) {
     if (abc::CChainedCommand *command = commands::get("votemenu")) {
       command->Event().append([this]() {
-        openVoteMenuPage();
+        Vote->open();
         return false; // always keep the legacy GameUI dialog closed
       });
       VoteMenuCommandBound = true;
@@ -268,10 +299,8 @@ void GameUiModule::onInit() {
   }
   if (!VoteMenuMapListBound) {
     netmsg::MapList.append([this](const netmsg::MapListData &data) {
-      VoteMenu.applyMapList(data.clearAll, data.allCount, data.start, data.end,
-                            data.maps);
-      if (VoteMenuPresented && VoteMenuPage_)
-        VoteMenuPage_->render();
+      Vote->applyMapList(data.clearAll, data.allCount, data.start, data.end,
+                         data.maps);
     });
     VoteMenuMapListBound = true;
   }
@@ -297,6 +326,19 @@ void GameUiModule::onInit() {
 #endif
 }
 
+void GameUiModule::onVidInit() {
+  // A map transition invalidates the map catalog. The server sends a fresh
+  // MapList for the next session; the page is not kept over a world change.
+  Vote->resetForWorld();
+  // The command menu is also world-scoped: a map change closes it and clears
+  // the one-shot request latch before the next session.
+  CommandMenuRequested = false;
+  CommandMenuRaisedMenu = false;
+  if (CommandMenuPage_)
+    CommandMenuPage_->hide();
+  CommandMenuPresented = false;
+}
+
 void GameUiModule::onShutdown() {
   rmlui::closeProbeDocument();
   // Context still alive here: every document closes and drops its
@@ -318,6 +360,7 @@ void GameUiModule::onShutdown() {
   CreateGamePage_.reset();
   Player->shutdown();
   PlayerListPage_.reset();
+  Vote->shutdown();
   VoteMenuPage_.reset();
   CommandMenuPage_.reset();
   Video->shutdown();
@@ -337,8 +380,6 @@ void GameUiModule::onShutdown() {
   PasswordReprepare = false;
   DirectConnectPresented = false;
   CreateGamePresented = false;
-  VoteMenuPresented = false;
-  VoteMenuRequested = false;
   CommandMenuPresented = false;
   CommandMenuRequested = false;
   CommandMenuRaisedMenu = false;
