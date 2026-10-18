@@ -37,8 +37,7 @@ void GameUiModule::syncAttemptState() {
     PasswordReprepare = false;
     // T18b: an attempt that ends without the join beat retires the
     // pending history entry unrecorded (only a real join writes it).
-    if (PendingHistoryValid)
-      PendingHistoryValid = false;
+    Server->discardPendingHistory();
   }
 }
 
@@ -106,7 +105,7 @@ void GameUiModule::drainLoadingFeed() {
         // T18b: the engine-confirmed join is the history moment
         // (the shipped ConnectedToGame wrote flags=2 into Steam's
         // store exactly here).
-        recordPendingHistory();
+        Server->recordPendingHistory();
         // A confirmed join ends any auto-retry chain.
         AutoRetry.reset();
         if (CurrentAttemptIsLocal) {

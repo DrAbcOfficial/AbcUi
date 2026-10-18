@@ -12,7 +12,7 @@ void GameUiModule::syncMenuPresentation() {
   if (!Controller.isMenuActive()) {
     hideAllMenuDocuments();
     if (ServerBrowser.Open || ServerBrowser.Query.listRequest() != 0)
-      releaseServerPageQueries();
+      Server->releaseQueries();
     return;
   }
   // GameMenu.res conditions, verified against the shipped GameUI
@@ -65,7 +65,7 @@ void GameUiModule::syncMenuPresentation() {
       // T18: the real browser replaced the T09 stub. tick() runs on
       // the frame beat; the fresh-open query trigger is the T17
       // block below.
-      presentServerBrowserPage();
+      Server->present();
       break;
     case MenuPage::kCreateGame:
       // T19: the real create-game page replaced the T09 stub.
@@ -112,10 +112,10 @@ void GameUiModule::syncMenuPresentation() {
     // Fresh opening: start the user-triggered query for the active
     // tab with the current filter pairs.
     if (ServerBrowser.Query.listRequest() == 0 && !ServerBrowser.Query.closed())
-      beginServerQuery(ServerBrowser.Query.kind());
+      Server->beginQuery(ServerBrowser.Query.kind());
   } else if (ServerBrowser.Open && !serverPageOpen) {
-    releaseServerPageQueries();
-    logServerQueryChange();
+    Server->releaseQueries();
+    Server->logQueryChange();
   }
   ServerBrowser.Open = serverPageOpen;
   if (shellVisible)
@@ -135,12 +135,8 @@ void GameUiModule::syncMenuPresentation() {
     // extended to the controller-driven leave path).
     VoiceModel.stopTest();
   }
-  if (state.pages.empty() || state.pages.top() != MenuPage::kServers) {
-    if (Browser) {
-      Browser->hide();
-      ServerBrowser.Presented = false;
-    }
-  }
+  if (state.pages.empty() || state.pages.top() != MenuPage::kServers)
+    Server->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame)
     Create->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList)

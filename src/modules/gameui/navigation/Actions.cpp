@@ -73,7 +73,7 @@ void GameUiModule::onMenuAction(const char *action) {
     startKeyCapture();
     return; // no controller transition - the page state already moved
   } else if (Parsed.Domain == ActionDomain::kServers) {
-    handleServerAction(Kind);
+    Server->handleAction(Kind);
     return;
   } else if (Parsed.Domain == ActionDomain::kVideo) {
     Video->handleAction(Kind);

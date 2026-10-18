@@ -111,7 +111,7 @@ void DebugCommands::serverReleaseCommand() {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->releaseServerPageQueries();
+  GameUiModule::Instance->Server->releaseQueries();
   abc::ConsolePrint("[AbcUi] server release issued\n");
   serverStatusCommand();
 }
@@ -238,7 +238,7 @@ void DebugCommands::serverConnectCommand() {
     abc::ConsoleWarn("[AbcUi] connect: no selection\n");
     return;
   }
-  self.connectSelectedServer();
+  self.Server->connectSelected();
   abc::ConsolePrint("[AbcUi] connect issued: phase=%d addr=\"%s\"\n",
                     static_cast<int>(self.Controller.state().phase),
                     self.Controller.state().connectAddress.c_str());

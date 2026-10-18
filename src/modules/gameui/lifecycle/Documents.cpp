@@ -77,6 +77,7 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   Browser->setListModel(&ServerBrowser.List);
   Browser->setBlacklist(&Blacklist);
   Browser->setFavorites(services::serverbrowser::steamFavorites());
+  Server->setPage(Browser.get());
   // T19: the create-local-game page (was the kCreateGame stub).
   CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
   Create->setPage(CreateGamePage_.get());
@@ -210,7 +211,7 @@ void GameUiModule::serviceEmergencyPages() {
   PasswordPresented = false;
   DirectConnectPresented = false;
   LoadingVisible = false;
-  ServerBrowser.Presented = false;
+  Server->setPresented(false);
   Create->setPresented(false);
   Player->setPresented(false);
   Vote->setPresented(false);

@@ -1,48 +1,75 @@
-// Extracted from GameUiModule.cpp (UTF-8). Responsibility:
-// serverbrowser/ServerBrowserFlow.
-#include "modules/gameui/GameUiModule.h"
+// gameui::ServerBrowserFlow implementation - see ServerBrowserFlow.h.
+#include "ServerBrowserFlow.h"
+
+#include "../../../panels/serverbrowser/ServerBrowserPage.h"
+#include "../../../services/loading/LoadingModel.h"
+#include "../../../services/serverbrowser/ServerFavorites.h"
+
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
-#include <string>
-#include "modules/gameui/navigation/MenuAction.h"
+
 namespace gameui {
-using namespace navigation;
-void GameUiModule::presentServerBrowserPage() {
-  if (!Browser)
-    return;
-  if (!ServerBrowser.Presented) {
-    // Fresh opening: no subpage (detail window / row menu) survives from
-    // the last visit, and the cvar-owned unresponsive rule is sampled
-    // again (the page never reads cvars itself).
-    Browser->closeSubpage();
-    auto Filter = ServerBrowser.List.filter();
-    Filter.HideUnresponsive =
-        abc::CVAR_GET_FLOAT("abc_ui_browser_hide_unresponsive") != 0;
-    ServerBrowser.List.setFilter(Filter);
-  }
-  Browser->show();
-  ServerBrowser.Presented = true;
+
+ServerBrowserFlow::ServerBrowserFlow(
+    ServerBrowserHost host,
+    services::serverbrowser::ServerBrowserSession &session,
+    services::serverbrowser::ServerBlacklist &blacklist)
+    : Host(std::move(host)), Session(session), Blacklist(blacklist) {}
+
+void ServerBrowserFlow::setPage(
+    panels::serverbrowser::ServerBrowserPage *page) {
+  Page = page;
 }
 
-void GameUiModule::beginServerQuery(services::serverbrowser::QueryKind kind) {
-  if (ServerBrowser.Query.closed())
+void ServerBrowserFlow::shutdown() {
+  Page = nullptr;
+  PendingHistoryValid = false;
+  Session.Presented = false;
+}
+
+void ServerBrowserFlow::hide() {
+  if (Page)
+    Page->hide();
+  Session.Presented = false;
+}
+
+void ServerBrowserFlow::present() {
+  if (!Page)
+    return;
+  if (!Session.Presented) {
+    // Fresh opening: no subpage (detail window / row menu) survives from the
+    // last visit, and the cvar-owned unresponsive rule is sampled again (the
+    // page never reads cvars itself).
+    Page->closeSubpage();
+    auto filter = Session.List.filter();
+    filter.HideUnresponsive =
+        abc::CVAR_GET_FLOAT("abc_ui_browser_hide_unresponsive") != 0;
+    Session.List.setFilter(filter);
+  }
+  Page->show();
+  Session.Presented = true;
+}
+
+void ServerBrowserFlow::beginQuery(
+    services::serverbrowser::QueryKind kind) {
+  if (Session.Query.closed())
     return;
   services::serverbrowser::FilterPair pairs[8];
-  const int count = ServerBrowser.List.filter().buildPairs(pairs, 8);
-  ServerBrowser.Query.begin(kind, count > 0 ? pairs : nullptr, count);
-  logServerQueryChange();
+  const int count = Session.List.filter().buildPairs(pairs, 8);
+  Session.Query.begin(kind, count > 0 ? pairs : nullptr, count);
+  logQueryChange();
 }
 
-void GameUiModule::connectSelectedServer() {
-  const auto *selected = ServerBrowser.List.selectedEntry(ServerBrowser.Query);
+void ServerBrowserFlow::connectSelected() {
+  const auto *selected = Session.List.selectedEntry(Session.Query);
   if (!selected || !selected->responded) {
     abc::ConsoleWarn(
         "[AbcUi] server connect refused (no responded selection)\n");
     return;
   }
   if (Blacklist.contains(selected->ip, selected->connectionPort
-                                           ? selected->connectionPort
-                                           : selected->queryPort)) {
+                                            ? selected->connectionPort
+                                            : selected->queryPort)) {
     abc::ConsoleWarn("[AbcUi] blocked server must be removed from the "
                      "blacklist before connecting\n");
     return;
@@ -63,13 +90,13 @@ void GameUiModule::connectSelectedServer() {
   PendingHistory = services::serverbrowser::favoriteKeyOf(*selected);
   PendingHistoryValid = PendingHistory.valid();
   // A user-initiated join starts a fresh auto-retry chain.
-  AutoRetry.reset();
-  Controller.dispatch(gameui::menu::makeConnectRequest(address.c_str()));
-  finishDispatch();
+  Host.resetAutoRetry();
+  Host.dispatchConnect(address);
+  Host.finishDispatch();
 }
 
-void GameUiModule::toggleSelectedFavorite() {
-  const auto *selected = ServerBrowser.List.selectedEntry(ServerBrowser.Query);
+void ServerBrowserFlow::toggleSelectedFavorite() {
+  const auto *selected = Session.List.selectedEntry(Session.Query);
   if (!selected) {
     abc::ConsoleWarn("[AbcUi] favorite toggle refused (no selection)\n");
     return;
@@ -90,50 +117,53 @@ void GameUiModule::toggleSelectedFavorite() {
   abc::ConsolePrint("[AbcUi] favorite %s \"%s\": %s (count=%d)\n",
                     wasFavorite ? "remove" : "add", selected->name.c_str(),
                     ok ? "OK" : "REFUSED", favorites->favoriteCount());
-  if (Browser)
-    Browser->tick(); // re-project the button state from the store
+  if (Page)
+    Page->tick(); // re-project the button state from the store
 }
 
-void GameUiModule::releaseServerPageQueries() {
-  ServerBrowser.Query.cancelDetail();
-  ServerBrowser.Query.release();
-  ServerBrowser.Open = false;
+void ServerBrowserFlow::releaseQueries() {
+  Session.Query.cancelDetail();
+  Session.Query.release();
+  Session.Open = false;
 }
 
-void GameUiModule::logServerQueryChange() {
+void ServerBrowserFlow::logQueryChange() {
   using services::serverbrowser::QueryStatus;
-  const QueryStatus status = ServerBrowser.Query.status();
-  if (status == ServerBrowser.LastStatus)
+  const QueryStatus status = Session.Query.status();
+  if (status == Session.LastStatus)
     return;
-  ServerBrowser.LastStatus = status;
+  Session.LastStatus = status;
   switch (status) {
   case QueryStatus::Querying:
     abc::ConsolePrint("[AbcUi] server query started: kind=%d gen=%u\n",
-                      static_cast<int>(ServerBrowser.Query.kind()),
-                      ServerBrowser.Query.generation());
+                      static_cast<int>(Session.Query.kind()),
+                      Session.Query.generation());
     break;
   case QueryStatus::Completed:
     abc::ConsolePrint(
         "[AbcUi] server query completed: gen=%u count=%d noServers=%d\n",
-        ServerBrowser.Query.generation(), ServerBrowser.Query.count(),
-        ServerBrowser.Query.noServersListed() ? 1 : 0);
+        Session.Query.generation(), Session.Query.count(),
+        Session.Query.noServersListed() ? 1 : 0);
     break;
   case QueryStatus::Cancelled:
     abc::ConsolePrint("[AbcUi] server query cancelled: gen=%u partial=%d\n",
-                      ServerBrowser.Query.generation(),
-                      ServerBrowser.Query.count());
+                      Session.Query.generation(), Session.Query.count());
     break;
   case QueryStatus::Failed:
     abc::ConsolePrint("[AbcUi] server query failed: gen=%u failure=%d\n",
-                      ServerBrowser.Query.generation(),
-                      static_cast<int>(ServerBrowser.Query.failure()));
+                      Session.Query.generation(),
+                      static_cast<int>(Session.Query.failure()));
     break;
   default:
     break;
   }
 }
 
-void GameUiModule::recordPendingHistory() {
+void ServerBrowserFlow::discardPendingHistory() {
+  PendingHistoryValid = false;
+}
+
+void ServerBrowserFlow::recordPendingHistory() {
   if (!PendingHistoryValid)
     return;
   PendingHistoryValid = false;
@@ -146,54 +176,44 @@ void GameUiModule::recordPendingHistory() {
                     PendingHistory.connPort, ok ? "OK" : "FAILED");
 }
 
-void GameUiModule::handleServerAction(ActionKind Kind) {
-  // T18 browser intents (fixed page-internal names only): the query
-  // lifecycle entries. Row/sort/paging never reach here (the page
-  // resolves them against its models directly).
+void ServerBrowserFlow::handleAction(navigation::ActionKind kind) {
   using services::serverbrowser::QueryKind;
-  if (Kind == ActionKind::kSbTabInternet)
-    beginServerQuery(QueryKind::Internet);
-  else if (Kind == ActionKind::kSbTabLan)
-    beginServerQuery(QueryKind::Lan);
-  else if (Kind == ActionKind::kSbTabFavorites)
-    beginServerQuery(QueryKind::Favorites);
-  else if (Kind == ActionKind::kSbTabHistory)
-    beginServerQuery(QueryKind::History);
-  else if (Kind == ActionKind::kSbTabFriends)
-    beginServerQuery(QueryKind::Friends);
-  else if (Kind == ActionKind::kSbFiltersApply ||
-           Kind == ActionKind::kSbFilterEmpty ||
-           Kind == ActionKind::kSbFilterFull ||
-           Kind == ActionKind::kSbFilterSecure)
-    // The docked filter column owns the values now: the page applies and
-    // projects them, and a change re-issues the list query so the
-    // master-side pairs (gamedir/empty/full/secure) follow - the same
-    // apply semantics the old modal's button had.
-    beginServerQuery(ServerBrowser.Query.kind());
-  else if (Kind == ActionKind::kSbRefresh) {
-    // The shipped Refresh button semantics (T17 pin): RefreshQuery
-    // on a live handle; a fresh request when nothing is live.
-    if (ServerBrowser.Query.listRequest() != 0)
-      ServerBrowser.Query.refreshAll();
+  if (kind == navigation::ActionKind::kSbTabInternet)
+    beginQuery(QueryKind::Internet);
+  else if (kind == navigation::ActionKind::kSbTabLan)
+    beginQuery(QueryKind::Lan);
+  else if (kind == navigation::ActionKind::kSbTabFavorites)
+    beginQuery(QueryKind::Favorites);
+  else if (kind == navigation::ActionKind::kSbTabHistory)
+    beginQuery(QueryKind::History);
+  else if (kind == navigation::ActionKind::kSbTabFriends)
+    beginQuery(QueryKind::Friends);
+  else if (kind == navigation::ActionKind::kSbFiltersApply ||
+           kind == navigation::ActionKind::kSbFilterEmpty ||
+           kind == navigation::ActionKind::kSbFilterFull ||
+           kind == navigation::ActionKind::kSbFilterSecure)
+    beginQuery(Session.Query.kind());
+  else if (kind == navigation::ActionKind::kSbRefresh) {
+    if (Session.Query.listRequest() != 0)
+      Session.Query.refreshAll();
     else
-      beginServerQuery(ServerBrowser.Query.kind());
-    logServerQueryChange();
-  } else if (Kind == ActionKind::kSbStop) {
-    ServerBrowser.Query.cancel();
-    logServerQueryChange();
-  } else if (Kind == ActionKind::kSbConnect) {
-    connectSelectedServer();
+      beginQuery(Session.Query.kind());
+    logQueryChange();
+  } else if (kind == navigation::ActionKind::kSbStop) {
+    Session.Query.cancel();
+    logQueryChange();
+  } else if (kind == navigation::ActionKind::kSbConnect) {
+    connectSelected();
     return;
-  } else if (Kind == ActionKind::kSbFavoriteToggle) {
+  } else if (kind == navigation::ActionKind::kSbFavoriteToggle) {
     toggleSelectedFavorite();
     return;
   } else {
     abc::ConsoleWarn("[AbcUi] unknown menu action \"%s\" dropped\n",
-                     actionName(Kind));
+                     navigation::actionName(kind));
     return;
   }
-  finishDispatch();
-  return;
+  Host.finishDispatch();
 }
 
 } // namespace gameui

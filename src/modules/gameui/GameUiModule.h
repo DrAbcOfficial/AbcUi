@@ -38,6 +38,7 @@
 #include "creategame/CreateGameFlow.h"
 #include "playerlist/PlayerListFlow.h"
 #include "settings/SprayMaker.h"
+#include "serverbrowser/ServerBrowserFlow.h"
 #include "settings/VideoFlow.h"
 #include "votemenu/VoteMenuFlow.h"
 #include <memory>
@@ -79,19 +80,12 @@ private:
   void reconcilePhase();
   void syncMenuPresentation();
   void presentSettingsPage();
-  void presentServerBrowserPage();
-  void beginServerQuery(services::serverbrowser::QueryKind kind);
-  void connectSelectedServer();
-  void toggleSelectedFavorite();
-  void releaseServerPageQueries();
-  void logServerQueryChange();
   void showStubPage(panels::menushared::MenuStubPage *stub, MenuPage page,
                     bool console);
   void onMenuAction(const char *action);
   bool retryServerAttempt();
   void tickAutoRetry();
   void handleConnectionAction(navigation::ActionKind Kind);
-  void handleServerAction(navigation::ActionKind Kind);
   void onFriendJoin(uint64_t steamId, const char *address);
 
   void finishDispatch();
@@ -99,7 +93,6 @@ private:
   static bool launchLocalGame(const char *map, const char **reasonToken);
   void syncAttemptState();
   void drainLoadingFeed();
-  void recordPendingHistory();
   void hideAllMenuDocuments();
   void focusLog(const char *phase);
   void pumpBackgroundWork();
@@ -139,6 +132,7 @@ private:
   VoteMenuHost MakeVoteMenuHost();
   CommandMenuHost MakeCommandMenuHost();
   CreateGameHost MakeCreateGameHost();
+  ServerBrowserHost MakeServerBrowserHost();
   Rml::Context *Context = nullptr;
   gameui::menu::MenuController Controller;
   services::uiconfig::ConfigRepository UiConfig;
@@ -160,8 +154,6 @@ private:
   bool VoteMenuCommandBound = false;
   bool VoteMenuMapListBound = false;
   bool CommandMenuCommandBound = false;
-  services::serverbrowser::FavoriteKey PendingHistory;
-  bool PendingHistoryValid = false;
   // 自动重试 (the browser's toggle): a failed join attempt re-enters the
   // existing typed retry path, bounded per failure chain. The page owns the
   // toggle's truth; the gate owns the run policy.
@@ -184,6 +176,7 @@ private:
   std::unique_ptr<VoteMenuFlow> Vote;
   std::unique_ptr<CommandMenuFlow> Command;
   std::unique_ptr<CreateGameFlow> Create;
+  std::unique_ptr<ServerBrowserFlow> Server;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;

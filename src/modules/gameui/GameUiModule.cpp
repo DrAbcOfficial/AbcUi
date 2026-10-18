@@ -61,7 +61,9 @@ GameUiModule::GameUiModule()
                                           voteMenuSeams())),
       Command(std::make_unique<CommandMenuFlow>(MakeCommandMenuHost())),
       Create(std::make_unique<CreateGameFlow>(MakeCreateGameHost(),
-                                              createGameSeams())) {
+                                              createGameSeams())),
+      Server(std::make_unique<ServerBrowserFlow>(
+          MakeServerBrowserHost(), ServerBrowser, Blacklist)) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -196,6 +198,16 @@ CreateGameHost GameUiModule::MakeCreateGameHost() {
   };
   host.dispatchBack = [this] {
     Controller.dispatch(MenuEvent{EventKind::kBack});
+  };
+  host.finishDispatch = [this] { finishDispatch(); };
+  host.resetAutoRetry = [this] { AutoRetry.reset(); };
+  return host;
+}
+
+ServerBrowserHost GameUiModule::MakeServerBrowserHost() {
+  ServerBrowserHost host;
+  host.dispatchConnect = [this](const std::string &address) {
+    Controller.dispatch(menu::makeConnectRequest(address.c_str()));
   };
   host.finishDispatch = [this] { finishDispatch(); };
   host.resetAutoRetry = [this] { AutoRetry.reset(); };
@@ -429,6 +441,7 @@ void GameUiModule::onShutdown() {
   SubStub.reset();
   Console.reset();
   Settings.reset();
+  Server->shutdown();
   Browser.reset();
   Create->shutdown();
   CreateGamePage_.reset();
