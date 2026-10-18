@@ -31,7 +31,7 @@
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 #include "backdrop/ElementBackdrop.h"
-#include "../services/menubackdrop/Backdrop.h"
+#include "backdrop/Backdrop.h"
 #include "../services/menumusic/MenuMusic.h"
 #include "../services/friends/FriendsModel.h"
 #include "../services/GameUiBridge.h"

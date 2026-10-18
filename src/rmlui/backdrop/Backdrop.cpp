@@ -14,13 +14,13 @@
 #include <cstring>
 #include <vector>
 
-#include "../../rmlui/AbcRenderInterface.h"
-#include "../../rmlui/RmlUiModule.h"
+#include "../AbcRenderInterface.h"
+#include "../RmlUiModule.h"
 #include "../../render/Render.h"
 #include "../../render/RenderCommon.h"
-#include "../GameUiBridge.h"
-#include "../video/AsyncDecoder.h"
-#include "../video/VideoTexture.h"
+#include "../../services/GameUiBridge.h"
+#include "../../services/video/AsyncDecoder.h"
+#include "../../services/video/VideoTexture.h"
 
 namespace menubackdrop {
 

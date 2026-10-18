@@ -89,7 +89,7 @@ add_library(AbcUi MODULE
     src/rmlui/model/ElementModel.cpp
     src/rmlui/backdrop/ElementBackdrop.cpp
     src/rmlui/video/ElementVideo.cpp
-    src/services/menubackdrop/Backdrop.cpp
+    src/rmlui/backdrop/Backdrop.cpp
     src/services/menumusic/MenuMusic.cpp
     src/services/friends/FriendsModel.cpp
     src/services/friends/FriendsSteam.cpp
