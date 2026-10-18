@@ -1,5 +1,8 @@
-/* flashlight.rcss - FlashLightPanel layout, from the old
-   abcenchance/res/FlashLightPanel.res (r55/18 anchor, 50x12). */
+/* flashlight.rcss - FlashLightPanel layout. Anchors from the old
+   abcenchance/res/FlashLightPanel.res (r55/18, 50x12); the lamp art is
+   redrawn (white glyph PNGs tinted with the HUD accent) and the battery
+   gauge now uses the same 23x12dp box as the icon, so the fill sits inside
+   the outline instead of being squashed into an 8dp strip. */
 
 #flashlight {
 	position: absolute;
@@ -18,6 +21,9 @@
 	/* Old FlashLightOn/Off animation sequences: the newly shown icon fades
 	   in over 0.1s. */
 	transition: opacity 0.1s linear-in;
+	/* White lamp glyph tinted by the HUD accent; the off art carries its own
+	   lower alpha. */
+	image-color: var(--abc-hud-accent);
 }
 #on-image { visibility: hidden; }
 
@@ -25,16 +31,16 @@
    overriding the .res box (18dp) - keep the code's value. */
 #power-wrap {
 	position: absolute;
-	left: 28dp;
-	top: 2dp;
+	left: 27dp;
+	top: 0dp;
 	width: 23dp;
-	height: 8dp;
+	height: 12dp;
 	overflow: hidden;
 }
 #power-bar {
 	display: block;
 	width: 23dp;
-	height: 8dp;
+	height: 12dp;
 }
 
 #message {
