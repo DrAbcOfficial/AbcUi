@@ -20,7 +20,7 @@
 #include "../../render/RenderCommon.h"
 #include "../../services/GameUiBridge.h"
 #include "../../services/video/AsyncDecoder.h"
-#include "../../services/video/VideoTexture.h"
+#include "../video/VideoTexture.h"
 
 namespace menubackdrop {
 

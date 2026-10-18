@@ -2,7 +2,7 @@
 #include "ElementVideo.h"
 #include "../../services/video/AsyncDecoder.h"
 #include "../../services/video/Options.h"
-#include "../../services/video/VideoTexture.h"
+#include "VideoTexture.h"
 
 #define NOMINMAX
 #include <windows.h>

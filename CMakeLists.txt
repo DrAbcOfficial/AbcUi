@@ -98,8 +98,8 @@ add_library(AbcUi MODULE
     src/services/video/Decoder.cpp
     src/services/video/AsyncDecoder.cpp
     src/services/video/Options.cpp
-    src/services/video/VideoTexture.cpp
-    src/services/texture/DynamicTexture.cpp
+    src/rmlui/video/VideoTexture.cpp
+    src/rmlui/texture/DynamicTexture.cpp
     src/services/filedialog/FileBrowser.cpp
     src/services/spray/Encoder.cpp
     src/modules/modeltest/ModelTest.cpp

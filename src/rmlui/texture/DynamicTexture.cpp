@@ -1,10 +1,10 @@
-#include "services/texture/DynamicTexture.h"
+#include "DynamicTexture.h"
 
 #include <abc/Console.h>
 
-#include "../../rmlui/AbcRenderInterface.h"
-#include "../../rmlui/RmlUiModule.h"
-#include "../../rmlui/VGUI2ExtensionImport.h"
+#include "../AbcRenderInterface.h"
+#include "../RmlUiModule.h"
+#include "../VGUI2ExtensionImport.h"
 
 namespace services::texture {
 

@@ -13,7 +13,7 @@
 #include "framework/Localization.h"
 #include "framework/ResourceLimits.h"
 #include "services/spray/Encoder.h"
-#include "services/texture/DynamicTexture.h"
+#include "rmlui/texture/DynamicTexture.h"
 
 #include <abc/Format.h>
 
