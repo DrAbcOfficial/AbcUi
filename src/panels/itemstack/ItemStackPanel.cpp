@@ -5,7 +5,8 @@
 
 #include <RmlUi/Core/Element.h>
 
-#include <cstdio>
+#include <format>
+#include <string>
 
 #include "../../data/NetworkMessages.h"
 #include "../../data/SpriteResource.h"
@@ -31,9 +32,8 @@ void ItemStackPanel::onDocumentReady() {
 		wrect_t rect{};
 		if (!sprites::findHudSprite(name, atlas, rect))
 			return;
-		char item[128];
-		sprintf_s(item, "<img class=\"icon\" src=\"spr://%s\"/>", name);
-		appendItem("item", item);
+		const std::string item = std::format("<img class=\"icon\" src=\"spr://{}\"/>", name);
+		appendItem("item", item.c_str());
 	});
 }
 

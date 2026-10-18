@@ -8,6 +8,8 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
+#include <string>
 
 #include <abc/CvarCmd.h>
 
@@ -120,9 +122,8 @@ void EffectPanel::applyWaterFrame(const char* elementId, const char* sprPath, in
 	Rml::Element* splash = Document ? Document->GetElementById(elementId) : nullptr;
 	if (!splash)
 		return;
-	char uri[160];
-	sprintf_s(uri, "sprframe://%s|%d", sprPath, frame);
-	splash->SetAttribute("src", Rml::String(uri));
+	const std::string uri = std::format("sprframe://{}|{}", sprPath, frame);
+	splash->SetAttribute("src", uri);
 }
 
 void EffectPanel::animateWater() {

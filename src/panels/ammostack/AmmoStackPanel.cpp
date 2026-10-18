@@ -5,7 +5,8 @@
 
 #include <RmlUi/Core/Element.h>
 
-#include <cstdio>
+#include <format>
+#include <string>
 
 #include "../../data/NetworkMessages.h"
 #include "../../data/SpriteResource.h"
@@ -34,15 +35,14 @@ void AmmoStackPanel::onDocumentReady() {
 		if (!weaponres::ammoIcon(index, atlas, rect))
 			return;
 		// Server-provided atlases live under subdirectories
-		// ("bdsc_custom/..."), so the markup needs room for the full sprite
-		// path plus the rect and count; 160 overflowed sprintf_s (fatal
-		// invalid-parameter handler) on a long path.
-		char item[256];
-		sprintf_s(item,
-			"<img class=\"icon\" src=\"spricon://%s/%d,%d,%d,%d\"/>"
-			"<div class=\"count font-default\">%d</div>",
-			atlas.c_str(), rect.left, rect.top, rect.right, rect.bottom, count);
-		appendItem("item", item);
+		// ("bdsc_custom/..."). The markup is composed as std::string, so the
+		// full sprite path cannot overflow a fixed buffer (the old 160-byte
+		// buffer hit the sprintf_s invalid-parameter handler on long paths).
+		const std::string item = std::format(
+			"<img class=\"icon\" src=\"spricon://{}/{},{},{},{}\"/>"
+			"<div class=\"count font-default\">{}</div>",
+			atlas, rect.left, rect.top, rect.right, rect.bottom, count);
+		appendItem("item", item.c_str());
 	});
 }
 

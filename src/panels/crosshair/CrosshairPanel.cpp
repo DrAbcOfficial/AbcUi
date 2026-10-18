@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <format>
 
 #include <event_api.h>
 #include <pm_defs.h>
@@ -21,6 +22,7 @@
 #include "../../data/NetworkMessages.h"
 #include "../../data/PlayerTrace.h"
 #include "../../data/WeaponResource.h"
+#include "../../framework/ColorUtil.h"
 #include "../../framework/Projection.h"
 #include "../../services/crosshair/Geometry.h"
 
@@ -207,15 +209,14 @@ void CrosshairPanel::drawDefaultCrosshair() {
 		return;
 	}
 
-	char uri[160];
-	sprintf_s(uri, "spralpha://%s/%d,%d,%d,%d", source->atlas.c_str(),
+	const std::string uri = std::format("spralpha://{}/{},{},{},{}", source->atlas,
 		source->rect.left, source->rect.top, source->rect.right, source->rect.bottom);
 	const float w = static_cast<float>(source->rect.right - source->rect.left);
 	const float h = static_cast<float>(source->rect.bottom - source->rect.top);
 
 	if (SprUri != uri) {
 		SprUri = uri;
-		spr->SetAttribute("src", Rml::String(uri));
+		spr->SetAttribute("src", uri);
 	}
 	spr->SetProperty("display", "block");
 	spr->SetProperty("left", std::to_string(CenterX - w / 2.0f) + "px");
@@ -286,19 +287,16 @@ void CrosshairPanel::onRedraw(double frameTime) {
 	layout.TShape = crosshair::TShape && crosshair::TShape->value > 0;
 	const float finalOffset = layout.Offset + layout.Thickness / 2.0f;
 
-	char color[40];
-	sprintf_s(color, "rgba(%d, %d, %d, %d)",
+	const Rml::String coreColor = framework::ColorUtil::formatRgba(
 		static_cast<int>(crosshair::ColorR ? crosshair::ColorR->value : 50.0f),
 		static_cast<int>(crosshair::ColorG ? crosshair::ColorG->value : 250.0f),
 		static_cast<int>(crosshair::ColorB ? crosshair::ColorB->value : 50.0f),
 		static_cast<int>(crosshair::Alpha ? crosshair::Alpha->value : 200.0f));
-	const Rml::String coreColor = color;
-	sprintf_s(color, "rgba(%d, %d, %d, %d)",
+	const Rml::String outlineColor = framework::ColorUtil::formatRgba(
 		static_cast<int>(crosshair::OutlineR ? crosshair::OutlineR->value : 0.0f),
 		static_cast<int>(crosshair::OutlineG ? crosshair::OutlineG->value : 0.0f),
 		static_cast<int>(crosshair::OutlineB ? crosshair::OutlineB->value : 0.0f),
 		static_cast<int>(crosshair::OutlineAlpha ? crosshair::OutlineAlpha->value : 255.0f));
-	const Rml::String outlineColor = color;
 
 	// Old DrawDefaultCrosshair ran in PaintBackground (every frame, outside
 	// the bounds throttle).

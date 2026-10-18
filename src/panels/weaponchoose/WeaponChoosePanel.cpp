@@ -11,6 +11,8 @@
 #include <RmlUi/Core/Element.h>
 
 #include <cmath>
+#include <format>
+#include <string>
 
 #include <abc/CvarCmd.h>
 
@@ -280,12 +282,11 @@ void WeaponChoosePanel::rebuild() {
 			const weaponres::Weapon::SpriteSource& source = active ? weapon->active : weapon->inactive;
 			std::string img;
 			if (source.valid) {
-				sprintf_s(buffer,
-					"<img src='spricon://%s/%d,%d,%d,%d' style='width:100%%; height:100%%; image-color: rgba(%d, %d, %d, %d);'/>",
-					source.atlas.c_str(), source.rect.left, source.rect.top,
+				img = std::format(
+					"<img src='spricon://{}/{},{},{},{}' style='width:100%; height:100%; image-color: rgba({}, {}, {}, {});'/>",
+					source.atlas, source.rect.left, source.rect.top,
 					source.rect.right, source.rect.bottom,
 					active ? r : ri, active ? g : gi, active ? b : bi, active ? a : ai);
-				img = buffer;
 			}
 
 			sprintf_s(buffer,
