@@ -18,6 +18,7 @@
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
+#include "../modules/HudPanelCatalog.h"
 #include "../modules/Module.h"
 #include "../render/Render.h"
 #include "../data/Avatars.h"
@@ -379,6 +380,7 @@ void init() {
   sprites::vidInit();
   avatars::init();
   framework::Assets::verifyInstalled();
+  modules::installHudPanels();
   framework::PanelManager::initAll(Context);
 
   Rml::Debugger::Initialise(Context);

@@ -1,12 +1,12 @@
 #pragma once
 
-// framework::PanelManager - panel registry + lifecycle, the successor of the
-// old Viewport god object's "hold and route 25 panels" duty (plan 05 §4.1).
+// framework::PanelManager - panel registry + lifecycle.
 //
-// Panels are explicitly assembled by the built-in factory list in
-// PanelManager.cpp (Phase 4+ adds one line per batch panel - the old
-// Viewport constructor did all of them inline). The manager owns panel
-// lifetime and routes the HUD pump.
+// The manager owns the panel list and routes the HUD pump, but it does not
+// know the concrete panel types: modules/HudPanelCatalog.cpp fixes the
+// construction order and calls installPanels() once per init cycle. This
+// keeps framework free of panel includes (the old Viewport god object's
+// "hold and route 25 panels" duty without the compile-time dependency).
 
 #include <RmlUi/Core/Context.h>
 
@@ -19,9 +19,10 @@ class HudPanel;
 
 class PanelManager {
 public:
-  // HUD_Init-time cvar registration for the batch panels (plan 08 §4.9).
-  static void registerPanelCvars();
-  // Creates all registered panels and loads their documents.
+  // Takes ownership of the ordered panel list. Called by HudPanelCatalog
+  // before initAll(); a second call replaces the previous list.
+  static void installPanels(std::vector<std::unique_ptr<HudPanel>> panels);
+  // Loads every installed panel's document.
   static void initAll(Rml::Context *context);
   // HUD_VidInit: resolution changes + per-panel map reset.
   static void vidInitAll();

@@ -140,6 +140,7 @@ add_library(AbcUi MODULE
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
     src/modules/UiModuleRegistry.cpp
+    src/modules/HudPanelCatalog.cpp
     src/modules/gameui/GameUiModule.cpp
     src/modules/gameui/lifecycle/Frame.cpp
     src/modules/gameui/lifecycle/BackgroundWork.cpp
