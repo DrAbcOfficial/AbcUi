@@ -2,6 +2,7 @@
 #include "Commands.h"
 
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <memory>
 #include <vector>
@@ -55,9 +56,8 @@ abc::CChainedCommand *get(const char *name) {
 abc::CChainedCommand *slotCommand(int index) {
   if (index < 0 || index > 9)
     return nullptr;
-  char name[16];
-  sprintf_s(name, "slot%d", index + 1);
-  return get(name);
+  const std::string name = std::format("slot{}", index + 1);
+  return get(name.c_str());
 }
 
 } // namespace commands

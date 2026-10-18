@@ -7,6 +7,7 @@
 #include <RmlUi/Core/Element.h>
 
 #include <algorithm>
+#include <format>
 
 #include <abc/CvarCmd.h>
 #include <abc/Console.h>
@@ -25,9 +26,8 @@ namespace textmenu {
 abc::CChainedCommand *command(int index) {
   if (index < 0 || index > 9)
     return nullptr;
-  char name[16];
-  sprintf_s(name, "slot%d", index + 1);
-  return commands::get(name);
+  const std::string name = std::format("slot{}", index + 1);
+  return commands::get(name.c_str());
 }
 
 bool isOpen() {
@@ -233,11 +233,11 @@ void TextMenuPanel::showMenu(int validSlots, int displaySeconds, int bits,
 
 void TextMenuPanel::selectMenuItem(int slot) {
   // Old SelectMenuItem.
-  char command[32];
   if (slot > 0 && (ValidSlots & (1 << (slot - 1)))) {
-    sprintf_s(command, IsASMenu ? "as_menuselect %d\n" : "menuselect %d\n",
-              slot);
-    abc::EngineClientCmd(command);
+    const std::string command = IsASMenu
+                                    ? std::format("as_menuselect {}\n", slot)
+                                    : std::format("menuselect {}\n", slot);
+    abc::EngineClientCmd(command.c_str());
     commands::setTextMenuOpen(false);
     if (Rml::Element *body = getDocument())
       fadeTo(body, false);

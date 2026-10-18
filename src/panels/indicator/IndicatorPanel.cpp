@@ -8,6 +8,7 @@
 #include <RmlUi/Core/Element.h>
 
 #include <cmath>
+#include <format>
 #include <cstdio>
 
 #include <abc/CvarCmd.h>
@@ -163,8 +164,7 @@ void IndicatorPanel::onData(double frameTime) {
         degAngle = 270.0f;
     }
 
-    char angle[32];
-    sprintf_s(angle, "rotate(%.1fdeg)", degAngle);
+    const std::string angle = std::format("rotate({:.1f}deg)", degAngle);
     if (slot.appliedAngle != angle) {
       slot.appliedAngle = angle;
       rotor->SetProperty("transform", angle);

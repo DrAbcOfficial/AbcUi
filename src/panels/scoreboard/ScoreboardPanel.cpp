@@ -709,17 +709,16 @@ void ScoreboardPanel::rebuildTable() {
       if (showSteamId) {
         // hud_scoreboard_showsteamidtype: 64-bit form vs STEAM_0:X:Y
         // (old m_szSteamID64 vs m_pSteamId.Render()).
-        char steam[32];
+        std::string steam;
         if (info.steamId64 == 0) {
-          steam[0] = '\0'; // old m_szSteamID64 stayed empty when invalid
+          // old m_szSteamID64 stayed empty when invalid
         } else if (scoreboard::ShowSteamIdType &&
                    scoreboard::ShowSteamIdType->value > 0) {
-          sprintf_s(steam, "%llu",
-                    static_cast<unsigned long long>(info.steamId64));
+          steam = std::format("{}", info.steamId64);
         } else {
           const std::uint32_t accountId =
               static_cast<std::uint32_t>(info.steamId64 & 0xFFFFFFFFull);
-          sprintf_s(steam, "STEAM_0:%u:%u", accountId & 1, accountId >> 1);
+          steam = std::format("STEAM_0:{}:{}", accountId & 1, accountId >> 1);
         }
         appendFmt(rml, "<div class='cell c-steamid'>%s</div>",
                   framework::TextUtil::escapeRml(steam).c_str());

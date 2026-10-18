@@ -7,6 +7,7 @@
 #include <RmlUi/Core/Element.h>
 
 #include <cstdio>
+#include <format>
 
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
@@ -75,7 +76,7 @@ void AmmoBarPanel::refreshAmmo() {
   if (!(HandledWeapon->state & kStateValid))
     return;
 
-  char buf[64];
+  std::string buf;
   if (HandledWeapon->ammoType > 0) {
     if (Rml::Element *icon = element("ammo1-icon")) {
       if (HandledWeapon->ammo.valid) {
@@ -96,12 +97,12 @@ void AmmoBarPanel::refreshAmmo() {
     if (HandledWeapon->clip >= 0) {
       if ((HandledWeapon->state & kStateUzi) &&
           (HandledWeapon->flags & kUziAkimboFlag) && HandledWeapon->clip2 >= 0)
-        sprintf_s(buf, "%dx%d/%d", HandledWeapon->clip2, HandledWeapon->clip,
-                  ammoLeft);
+        buf = std::format("{}x{}/{}", HandledWeapon->clip2, HandledWeapon->clip,
+                          ammoLeft);
       else
-        sprintf_s(buf, "%d/%d", HandledWeapon->clip, ammoLeft);
+        buf = std::format("{}/{}", HandledWeapon->clip, ammoLeft);
     } else {
-      sprintf_s(buf, "%d", ammoLeft);
+      buf = std::format("{}", ammoLeft);
     }
     if (Rml::Element *label = element("ammo1"))
       label->SetInnerRML(buf);
@@ -131,9 +132,9 @@ void AmmoBarPanel::refreshAmmo() {
       slash->SetProperty("visibility", "visible");
     const int ammoLeft2 = weaponres::countAmmo(HandledWeapon->ammo2Type);
     if (HandledWeapon->clip2 >= 0)
-      sprintf_s(buf, "%d/%d", HandledWeapon->clip2, ammoLeft2);
+      buf = std::format("{}/{}", HandledWeapon->clip2, ammoLeft2);
     else
-      sprintf_s(buf, "%d", ammoLeft2);
+      buf = std::format("{}", ammoLeft2);
     if (Rml::Element *label = element("ammo2"))
       label->SetInnerRML(buf);
   } else {

@@ -6,6 +6,7 @@
 #include <RmlUi/Core/Element.h>
 
 #include <algorithm>
+#include <format>
 
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
@@ -90,8 +91,7 @@ void FlashlightPanel::setFlashBattery(int battery) {
     bar->SetProperty("image-color",
                      framework::ColorUtil::formatRgba(rgb, kIconAlpha));
 
-  char text[32];
-  sprintf_s(text, "%d%%", battery);
+  const std::string text = std::format("{}%", battery);
   if (Rml::Element *message = element("message"))
     message->SetInnerRML(text);
 }

@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <format>
 #include <cstdio>
 #include <string>
 
@@ -395,8 +396,8 @@ void RadarPanel::onData(double frameTime) {
   // Map <img>: the external FBO texture through the registered URI; the
   // generation suffix re-resolves after frame-buffer regeneration.
   if (radar::FboReady) {
-    char uri[64];
-    sprintf_s(uri, "radarfbo://map?gen=%d", radar::MapGeneration);
+    const std::string uri =
+        std::format("radarfbo://map?gen={}", radar::MapGeneration);
     if (radar::MapUri != uri) {
       radar::MapUri = uri;
       map->SetAttribute("src", Rml::String(uri));
@@ -492,10 +493,8 @@ void RadarPanel::onData(double frameTime) {
 
     // Old SetPlayer(i+1, 32x32): the avatar texture resolves through
     // data::avatars (steamapi facade) with the cache-bust generation.
-    char uri[80];
-    sprintf_s(uri, "avatar://%llu?gen=%d",
-              static_cast<unsigned long long>(info->steamId64),
-              avatars::generation(info->steamId64));
+    const std::string uri = std::format("avatar://{}?gen={}", info->steamId64,
+                                        avatars::generation(info->steamId64));
     used.insert(index);
     Rml::Element *&img = AvatarElements[index];
     if (!img) {

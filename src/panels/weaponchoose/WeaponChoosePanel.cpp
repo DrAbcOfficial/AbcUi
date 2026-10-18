@@ -224,7 +224,7 @@ void WeaponChoosePanel::rebuild() {
   const weaponres::Weapon *selected = weaponres::selectedWeapon();
   const int activeSlot = weaponres::selectedSlot();
 
-  char buffer[512];
+  std::string buffer;
   std::string rml;
   rml.reserve(4096);
   float x = 0.0f;
@@ -253,14 +253,14 @@ void WeaponChoosePanel::rebuild() {
               ? std::clamp(static_cast<float>(count) / maxes[bar], 0.0f, 1.0f)
               : 1.0f;
       const float bx = abx + bar * (abw + abg);
-      sprintf_s(buffer,
-                "<div class='bar-bg' style='left:%.1fdp; top:0dp; "
-                "width:%.1fdp; height:%.1fdp;'></div>"
-                "<div class='bar-fill' style='left:%.1fdp; top:0dp; "
-                "width:%.1fdp; height:%.1fdp; "
-                "background-color: %s;'></div>",
-                bx, abw, abh, bx, abw * ratio, abh,
-                count > 0 ? "rgba(255, 255, 0, 125)" : "rgba(255, 0, 0, 255)");
+      buffer = std::format(
+          "<div class='bar-bg' style='left:{:.1f}dp; top:0dp; "
+          "width:{:.1f}dp; height:{:.1f}dp;'></div>"
+          "<div class='bar-fill' style='left:{:.1f}dp; top:0dp; "
+          "width:{:.1f}dp; height:{:.1f}dp; "
+          "background-color: {};'></div>",
+          bx, abw, abh, bx, abw * ratio, abh,
+          count > 0 ? "rgba(255, 255, 0, 125)" : "rgba(255, 0, 0, 255)");
       rml += buffer;
     }
   };
@@ -269,11 +269,10 @@ void WeaponChoosePanel::rebuild() {
     float y = 0.0f;
     // Slot icon row (old Slot1..Slot9, Slot0 order with the matching
     // slotN_icon assets; the icons tint by scheme SlotColor).
-    sprintf_s(buffer,
-              "<div class='slot' style='left:%.0fdp; top:0dp;'>"
-              "<img src='../img/weaponchoose/slot%zu_icon.png' "
-              "style='image-color: rgba(0, 255, 0, 125);'/></div>",
-              x, (slot + 1) % 10);
+    buffer = std::format("<div class='slot' style='left:{:.0f}dp; top:0dp;'>"
+                         "<img src='../img/weaponchoose/slot{}_icon.png' "
+                         "style='image-color: rgba(0, 255, 0, 125);'/></div>",
+                         x, (slot + 1) % 10);
     rml += buffer;
     y = kSlotIcon + kGap;
 
@@ -313,10 +312,10 @@ void WeaponChoosePanel::rebuild() {
             active ? b : bi, active ? a : ai);
       }
 
-      sprintf_s(buffer,
-                "<div class='item%s' style='left:%.0fdp; top:%.0fdp; "
-                "width:%.0fdp; height:%.0fdp;'>",
-                active ? " active" : "", x, y, w, h);
+      buffer =
+          std::format("<div class='item{}' style='left:{:.0f}dp; top:{:.0f}dp; "
+                      "width:{:.0f}dp; height:{:.0f}dp;'>",
+                      active ? " active" : "", x, y, w, h);
       rml += buffer;
       if (active) {
         selX = x;
@@ -340,11 +339,11 @@ void WeaponChoosePanel::rebuild() {
   // rebuilt list (dropped while shown) hides the frame, like the old
   // ChooseWeapon empty-slot path.
   if (selFound) {
-    sprintf_s(
-        buffer,
+    buffer = std::format(
         "<img id='bucket' src='../img/weaponchoose/select_icon.png' "
-        "style='left:%.0fdp; top:%.0fdp; "
-        "width:%.0fdp; height:%.0fdp; image-color: rgba(255, 255, 0, 255);'/>",
+        "style='left:{:.0f}dp; top:{:.0f}dp; "
+        "width:{:.0f}dp; height:{:.0f}dp; image-color: rgba(255, 255, 0, "
+        "255);'/>",
         selX, selY, selW, selH);
     rml += buffer;
   }
