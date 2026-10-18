@@ -21,6 +21,7 @@
 #include <metahook.h>
 
 #include <cstring>
+#include <string>
 
 namespace services {
 namespace playerlist {
@@ -70,18 +71,17 @@ void resolve() {
 		// so the log distinguishes "the factory path is broken" from "this one
 		// interface does not exist".
 		static const char* kControlNames[] = {"SCClientDLL001", "VClientVGUI001"};
-		char controls[96] = {};
+		std::string controls;
 		for (const char* control : kControlNames) {
 			int code = 0;
 			const bool served = factory(control, &code) != nullptr;
-			// Keep the line short; missing controls are informational only.
-			char piece[40];
-			_snprintf_s(piece, sizeof(piece), _TRUNCATE, "%s%s=%d", controls[0] ? "," : "",
-				control, served ? 1 : 0);
-			strncat_s(controls, sizeof(controls), piece, _TRUNCATE);
+			if (!controls.empty())
+				controls += ',';
+			controls += control;
+			controls += served ? "=1" : "=0";
 		}
 		abc::ConsoleWarn("[AbcUi] player mute backend unavailable (client DLL does not serve %s; factory control %s)\n",
-			kClientExportsInterface, controls);
+			kClientExportsInterface, controls.c_str());
 		return;
 	}
 	// MSVC x86 vtable layout for IGameClientExports : IBaseInterface: slot 0
