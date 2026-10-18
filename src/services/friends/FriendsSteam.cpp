@@ -68,10 +68,12 @@ IFriendsProvider* steamFriendsProvider() {
 		bool bind() {
 			// Re-resolve on every use: Steam may come up after the first UI
 			// frame (interface lookups are cheap and cached inside Steam).
-			if (!Friends) {
+			if (!Friends)
 				Friends = static_cast<ISteamFriends*>(services::steam::findUserInterface(STEAMFRIENDS_INTERFACE_VERSION));
+			// Resolve Utils independently: SteamUtils can appear later than
+			// SteamFriends, and the old nested lookup never retried it.
+			if (!Utils)
 				Utils = static_cast<ISteamUtils*>(services::steam::findUserInterface(STEAMUTILS_INTERFACE_VERSION));
-			}
 			return Friends != nullptr;
 		}
 
