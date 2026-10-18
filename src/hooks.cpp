@@ -27,7 +27,7 @@
 #include "panels/vote/VotePanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
-#include "rmlui/SteamAPI.h"
+#include "services/steam/SteamAPI.h"
 #include "services/GameUiBridge.h"
 
 namespace hooks {

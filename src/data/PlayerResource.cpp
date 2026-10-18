@@ -15,7 +15,7 @@
 #include <cstdio>
 
 #include "../hooks.h"
-#include "../rmlui/SteamAPI.h"
+#include "../services/steam/SteamAPI.h"
 #include "NetworkMessages.h"
 
 namespace playerres {

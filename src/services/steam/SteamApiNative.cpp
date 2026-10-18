@@ -16,7 +16,7 @@
 
 #include "SteamApiBackend.h"
 
-#include "../services/steam/RuntimeAccess.h"
+#include "RuntimeAccess.h"
 
 #include <steam/isteamuser.h>
 #include <steam/isteamfriends.h>

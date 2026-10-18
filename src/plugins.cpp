@@ -12,7 +12,7 @@
 #include "hooks.h"
 #include "render/Render.h"
 #include "rmlui/RmlUiModule.h"
-#include "rmlui/SteamAPI.h"
+#include "services/steam/SteamAPI.h"
 #include "rmlui/VGUI2ExtensionImport.h"
 
 #ifndef NDEBUG

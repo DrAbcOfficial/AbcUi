@@ -2,7 +2,7 @@
 #include "modules/gameui/GameUiModule.h"
 #include "FramePump.h"
 #include "services/menumusic/MenuMusic.h"
-#include "rmlui/SteamAPI.h"
+#include "services/steam/SteamAPI.h"
 #include "modules/gameui/engine/MenuBindings.h"
 #include <abc/CvarCmd.h>
 namespace gameui {

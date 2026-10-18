@@ -113,9 +113,9 @@ add_library(AbcUi MODULE
     src/rmlui/ProbeCommand.cpp
     src/rmlui/TextInput.cpp
     src/rmlui/SourceSpewStub.cpp
-    src/rmlui/SteamAPI.cpp
-    src/rmlui/SteamApiBridge.cpp
-    src/rmlui/SteamApiNative.cpp
+    src/services/steam/SteamAPI.cpp
+    src/services/steam/SteamApiBridge.cpp
+    src/services/steam/SteamApiNative.cpp
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/Assets.cpp
     src/framework/ResourceFile.cpp

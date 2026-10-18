@@ -8,7 +8,7 @@
 #include "../framework/ImageLoader.h"
 #include "../framework/ResourceLimits.h"
 #include "../hooks.h"
-#include "../rmlui/SteamAPI.h"
+#include "../services/steam/SteamAPI.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
 
 namespace avatars {

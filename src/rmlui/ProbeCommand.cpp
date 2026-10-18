@@ -24,7 +24,7 @@
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 
-#include "../rmlui/SteamAPI.h"
+#include "../services/steam/SteamAPI.h"
 
 #include "RmlUiModule.h"
 #include "PaintGate.h"

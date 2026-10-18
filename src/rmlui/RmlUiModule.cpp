@@ -2,7 +2,7 @@
 #include <metahook.h>
 
 #include "RmlUiModule.h"
-#include "SteamAPI.h"
+#include "../services/steam/SteamAPI.h"
 
 #include <RmlUi/Core.h>
 #include <RmlUi/Debugger.h>
