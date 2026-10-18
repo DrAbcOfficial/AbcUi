@@ -29,6 +29,7 @@ void GameUiModule::endKeyCapture() {
 
 void GameUiModule::onCapturedKeyEdge(int keynum) {
   const auto result = BindModel.captureKey(keynum);
+  (void)result; // only the Debug trace reads it
 #ifndef NDEBUG
   abc::ConsolePrint("[AbcUi] capture key=%d result=%d conflict=%d\n", keynum,
                     static_cast<int>(result),
