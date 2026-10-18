@@ -72,6 +72,7 @@
 // never persisted, and never leaves the single "sv_password" write.
 
 #include <cstddef>
+#include <array>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -211,8 +212,13 @@ public:
 	// machinery only - callers must never log snapshot values.
 	static constexpr int kRecoverableCount = 3;
 	static const char* recoverableName(int index);
-	const std::string& snapshot(int index) const { return Snapshots[index].Value; }
-	bool snapshotPresent(int index) const { return Snapshots[index].Present; }
+	const std::string& snapshot(int index) const {
+		static const std::string kEmpty;
+		return index >= 0 && index < kRecoverableCount ? Snapshots[index].Value : kEmpty;
+	}
+	bool snapshotPresent(int index) const {
+		return index >= 0 && index < kRecoverableCount && Snapshots[index].Present;
+	}
 	int lastFailIndex() const { return FailIndex; }
 	int lastRestoreFailures() const { return RestoreFailures; }
 
@@ -228,8 +234,8 @@ private:
 	MapCatalog Catalog;
 	std::vector<ServerOption> Options;
 	Seams Seams_;
-	Snapshot Snapshots[kRecoverableCount];
-	bool Wrote[kRecoverableCount] = {};
+	std::array<Snapshot, kRecoverableCount> Snapshots;
+	std::array<bool, kRecoverableCount> Wrote = {};
 	int FailIndex = -1;
 	int RestoreFailures = 0;
 };
