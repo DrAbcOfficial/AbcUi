@@ -41,8 +41,12 @@ bool ServerQuery::begin(QueryKind kind, const FilterPair* filters, int filterCou
 	// (Steam wants CancelQuery before ReleaseRequest for in-flight queries;
 	// the shipped browser uses the same order at 0x10007940/0x10007ad0).
 	if (Request != 0) {
-		Provider->cancelQuery(Request);
-		Provider->releaseRequest(Request);
+		// setProvider(nullptr) is a legal teardown call; do not dereference a
+		// vanished provider just to cancel the handle it used to own.
+		if (Provider) {
+			Provider->cancelQuery(Request);
+			Provider->releaseRequest(Request);
+		}
 		Request = 0;
 	}
 	// Every attempt advances the generation, including failed attempts - the
