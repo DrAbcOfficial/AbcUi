@@ -1,25 +1,19 @@
-// Extracted from GameUiModule.cpp (UTF-8). Responsibility: the spray maker's
-// module half.
-//
-// The settings page only picks a file; decode, encode and write belong here,
-// where the engine filesystem and the framework seams live. The answer travels
-// back through SettingsPage::setSprayResult (message + the encoded preview).
+// gameui::SprayMaker implementation - see SprayMaker.h.
+#include "SprayMaker.h"
 
-#include "modules/gameui/GameUiModule.h"
-#include "modules/gameui/settings/SettingsResources.h"
-#include "panels/settings/SettingsPage.h"
-
+#include "SettingsResources.h"
 #include "framework/ImageLoader.h"
 #include "framework/Localization.h"
 #include "framework/ResourceLimits.h"
-#include "services/spray/Encoder.h"
 #include "rmlui/texture/DynamicTexture.h"
+#include "services/spray/Encoder.h"
 
 #include <abc/Format.h>
 
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace gameui {
@@ -34,30 +28,21 @@ std::string tokenText(const char *token) {
   return token ? token : std::string();
 }
 
-// The made spray's preview texture: one instance for the plugin's lifetime,
-// released by shutdownSprayPreview() while the renderer is still alive.
-std::unique_ptr<services::texture::DynamicTexture> &sprayPreviewTexture() {
-  static std::unique_ptr<services::texture::DynamicTexture> Texture;
-  if (!Texture)
-    Texture =
-        std::make_unique<services::texture::DynamicTexture>("spraytex://");
-  return Texture;
-}
-
 } // namespace
 
-void GameUiModule::shutdownSprayPreview() {
-  sprayPreviewTexture().reset();
-}
+SprayMaker::SprayMaker(Result result) : ResultSink(std::move(result)) {}
 
-void GameUiModule::makeSprayPaint(const std::string &path) {
-  if (!Settings)
-    return;
+SprayMaker::~SprayMaker() { shutdown(); }
+
+void SprayMaker::shutdown() { Texture.reset(); }
+
+void SprayMaker::run(const std::string &path) {
   const auto fail = [this](const char *token, const std::string &detail) {
     std::string message = tokenText(token);
     if (!detail.empty())
       message += " (" + detail + ")";
-    Settings->setSprayResult(false, message, nullptr);
+    if (ResultSink)
+      ResultSink(false, message, {});
   };
   // Read the picked file (bounded: the same cap the decoders use).
   std::ifstream stream(std::filesystem::path(path),
@@ -98,12 +83,14 @@ void GameUiModule::makeSprayPaint(const std::string &path) {
       abc::Format("{0}: {1}x{2}", tokenText("#Settings_SprayMakerDone"),
                   std::to_string(spray.Width), std::to_string(spray.Height));
   std::string previewUri;
-  if (auto &texture = sprayPreviewTexture()) {
-    if (texture->upload(spray.Preview.Pixels.data(), spray.Preview.Width,
-                        spray.Preview.Height))
-      previewUri = texture->uri();
-  }
-  Settings->setSprayResult(true, message, previewUri);
+  if (!Texture)
+    Texture =
+        std::make_unique<services::texture::DynamicTexture>("spraytex://");
+  if (Texture->upload(spray.Preview.Pixels.data(), spray.Preview.Width,
+                      spray.Preview.Height))
+    previewUri = Texture->uri();
+  if (ResultSink)
+    ResultSink(true, message, previewUri);
 }
 
 } // namespace gameui

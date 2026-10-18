@@ -156,7 +156,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/navigation/MenuAction.cpp
     src/modules/gameui/input/MenuInput.cpp
     src/modules/gameui/settings/SettingsFlow.cpp
-    src/modules/gameui/settings/SprayMakerFlow.cpp
+    src/modules/gameui/settings/SprayMaker.cpp
     src/modules/gameui/settings/VideoFlow.cpp
     src/modules/gameui/serverbrowser/ServerBrowserFlow.cpp
     src/modules/gameui/creategame/CreateGameFlow.cpp

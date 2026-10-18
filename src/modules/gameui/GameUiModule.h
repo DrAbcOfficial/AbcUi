@@ -38,6 +38,7 @@
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
 #include "playerlist/PlayerListFlow.h"
+#include "settings/SprayMaker.h"
 #include "settings/VideoFlow.h"
 #include <memory>
 #include <vector>
@@ -78,11 +79,6 @@ private:
   void reconcilePhase();
   void syncMenuPresentation();
   void presentSettingsPage();
-  // Spray maker: decode, encode and write one picked image, then answer the
-  // settings page (message + the preview pixels of the made spray).
-  void makeSprayPaint(const std::string &path);
-  // Releases the spray preview texture (renderer still alive).
-  void shutdownSprayPreview();
   void presentServerBrowserPage();
   void presentCreateGamePage();
   void loadMapCatalog();
@@ -207,6 +203,7 @@ private:
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;
   std::unique_ptr<PlayerListFlow> Player;
+  std::unique_ptr<SprayMaker> Spray;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;

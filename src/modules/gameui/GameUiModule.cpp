@@ -50,7 +50,13 @@ GameUiModule::GameUiModule()
     : Controller(&menuBackend()), CaptureOwner(this),
       Video(std::make_unique<VideoFlow>(MakeVideoHost(), VideoModel)),
       Player(std::make_unique<PlayerListFlow>(MakePlayerListHost(),
-                                              PlayerList)) {
+                                              PlayerList)),
+      Spray(std::make_unique<SprayMaker>(
+          [this](bool ok, const std::string &message,
+                 const std::string &previewUri) {
+            if (Settings)
+              Settings->setSprayResult(ok, message, previewUri);
+          })) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -299,7 +305,7 @@ void GameUiModule::onShutdown() {
   // The mic test is a device resource: stop it before anything tears
   // down (the pairing guarantee covers the shutdown path too).
   VoiceModel.stopTest();
-  shutdownSprayPreview();
+  Spray->shutdown();
   CaptureToken.release();
   PageToken.release();
   // Stop callbacks and release queries before any observing document dies.
