@@ -18,6 +18,7 @@
 #include "../../data/HudState.h"
 #include "../../data/PlayerResource.h"
 #include "../../data/WeaponResource.h"
+#include "../../framework/ColorUtil.h"
 #include "../../framework/Projection.h"
 #include "../../framework/TextUtil.h"
 #include "../../hooks.h"
@@ -122,11 +123,10 @@ bool PlayerBoardPanel::updateClientInfo(Rml::Element* tile, int entindex) {
 		if (hooks::GetClientColor) {
 			const float* tint = hooks::GetClientColor(entindex);
 			if (tint) {
-				char color[40];
-				sprintf_s(color, "rgba(%d, %d, %d, 255)",
+				const std::string color = framework::ColorUtil::formatRgba(
 					static_cast<int>(std::clamp(tint[0], 0.0f, 1.0f) * 255.0f),
 					static_cast<int>(std::clamp(tint[1], 0.0f, 1.0f) * 255.0f),
-					static_cast<int>(std::clamp(tint[2], 0.0f, 1.0f) * 255.0f));
+					static_cast<int>(std::clamp(tint[2], 0.0f, 1.0f) * 255.0f), 255);
 				AppliedDom.property(name, "color", color);
 			}
 		}

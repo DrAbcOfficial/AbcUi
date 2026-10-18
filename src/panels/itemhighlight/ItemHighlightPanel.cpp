@@ -13,6 +13,8 @@
 #include <cstring>
 #include <string>
 #include <unordered_map>
+
+#include "../../framework/ColorUtil.h"
 #include <vector>
 
 #include <com_model.h>
@@ -285,9 +287,8 @@ ItemHighlightPanel::Marker* ItemHighlightPanel::updateMarker(int entindex, int i
 	}
 
 	// Old per-item tint (list RGBA) on both the icon and the label.
-	char tint[40];
-	sprintf_s(tint, "rgba(%d, %d, %d, %d)", item->color[0], item->color[1],
-		item->color[2], item->color[3]);
+	const std::string tint = framework::ColorUtil::formatRgba(
+		item->color[0], item->color[1], item->color[2], item->color[3]);
 	AppliedDom.property(marker.art, "image-color", tint);
 	if (marker.label) {
 		AppliedDom.property(marker.label, "color", tint);

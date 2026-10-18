@@ -15,6 +15,7 @@
 
 #include "ScoreboardPanel.h"
 #include "../../data/HudState.h"
+#include "../../framework/ColorUtil.h"
 #include "../../framework/Theme.h"
 
 #include <RmlUi/Core/Context.h>
@@ -159,10 +160,9 @@ std::string hueColor(float hue) {
 	float r = 0, g = 0, b = 0;
 	if (sector < 1.0f) { r = c; g = x; }
 	else { r = x; g = c; }
-	char out[32];
-	sprintf_s(out, "rgba(%d, %d, %d, 255)",
-		static_cast<int>(r * 255.0f), static_cast<int>(g * 255.0f), static_cast<int>(b * 255.0f));
-	return out;
+	return framework::ColorUtil::formatRgba(
+		static_cast<int>(r * 255.0f), static_cast<int>(g * 255.0f),
+		static_cast<int>(b * 255.0f), 255);
 }
 
 // Old COLOR_PERCENT cell: |value|/100*90 hue.

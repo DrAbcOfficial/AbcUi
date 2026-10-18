@@ -14,6 +14,8 @@
 #include <abc/CvarCmd.h>
 #include <abc/Console.h>
 #include <abc/Format.h>
+
+#include "../../framework/ColorUtil.h"
 #include <abc/Math.h>
 
 #include "../../data/HudState.h"
@@ -134,8 +136,8 @@ void PopNumPanel::addNumber(const float origin[3], int value, const int color[4]
 	number->SetClass("number", true);
 	number->SetClass("font-default", true);
 	number->SetInnerRML(formatValue(value));
-	char tint[40];
-	sprintf_s(tint, "rgba(%d, %d, %d, %d)", color[0], color[1], color[2], color[3]);
+	const std::string tint = framework::ColorUtil::formatRgba(
+		color[0], color[1], color[2], color[3]);
 	number->SetProperty("color", tint);
 	container->AppendChild(std::move(holder));
 
