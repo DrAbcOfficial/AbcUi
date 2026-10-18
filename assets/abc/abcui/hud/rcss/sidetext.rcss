@@ -1,33 +1,41 @@
-/* sidetext.rcss - SidePanel layout, from the old
-   abcenchance/res/SideTextPanel.res (0/c-64 anchor, 72x24, ecco bg). */
+/* sidetext.rcss - SidePanel layout. Rebuilt from the old
+   abcenchance/res/SideTextPanel.res 72x24 pill (ecco bg) into the HL2 readout
+   language: a small amber glyph plus the value, drawn straight on the scene
+   with no plate and no money prefix. The panel keeps the old anchors - the
+   readout still sits a little above the vertical centre on the left edge. */
 
 #sidetext {
 	position: absolute;
-	left: 0dp;
+	left: 16dp;
 	top: 50%;
-	width: 72dp;
-	height: 24dp;
 	margin-top: -64dp;
 }
 
-#sidetext .bg {
-	position: absolute;
-	left: 0dp;
-	top: 0dp;
-	width: 72dp;
-	height: 24dp;
+#sidetext #readout {
+	display: flex;
+	flex-flow: row;
+	align-items: center;
 }
 
+/* Score glyph: white star art tinted by the HUD accent (same treatment as the
+   vitals icons). */
+#sidetext #score-icon {
+	width: 18dp;
+	height: 18dp;
+	margin-right: 6dp;
+	image-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-icon-opacity);
+}
+
+/* Value template ({SCORE}/{SPEED}/{MAXSPEED}); doubles as the old side text
+   label. */
 #sidetext #message {
-	position: absolute;
-	left: 12dp;
-	top: 0dp;
-	width: 60dp;
-	height: 24dp;
-	text-align: center;
-	/* vgui Labels centre their text vertically; Rml needs the explicit
-	   line box (box height = one line, template ships single-line). */
-	line-height: 24dp;
-	/* Old SideText.TextFgColor = scheme Default. */
+	font-family: Verdana;
+	font-weight: bold;
+	font-size: 18dp;
+	line-height: 22dp;
+	letter-spacing: 0.3dp;
+	white-space: nowrap;
 	color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-value-opacity);
 }
