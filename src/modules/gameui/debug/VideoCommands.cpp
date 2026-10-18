@@ -11,11 +11,11 @@
 #include <cstdlib>
 namespace gameui {
 void DebugCommands::videoStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   abc::ConsolePrint("[AbcUi] video: available=%d\n",
                     self.VideoModel.available() ? 1 : 0);
   services::settings::VideoMode actual;
@@ -39,13 +39,13 @@ void DebugCommands::videoStatusCommand() {
 }
 
 void DebugCommands::videoScrollCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->Settings ||
-      !GameUiModule::Instance->Settings->document()) {
+  if (!currentModule() || !currentModule()->Settings ||
+      !currentModule()->Settings->document()) {
     abc::ConsoleWarn("[AbcUi] settings page not open\n");
     return;
   }
   Rml::Element *panel =
-      GameUiModule::Instance->Settings->document()->GetElementById("panel");
+      currentModule()->Settings->document()->GetElementById("panel");
   if (!panel) {
     abc::ConsoleWarn("[AbcUi] settings panel missing\n");
     return;
@@ -56,11 +56,11 @@ void DebugCommands::videoScrollCommand() {
 }
 
 void DebugCommands::videoStageCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   self.VideoModel.snapshot();
   // Args: width height (engine argv through the client engine funcs).
   if (gEngfuncs.Cmd_Argc() < 3) {
@@ -86,22 +86,21 @@ void DebugCommands::videoStageCommand() {
 }
 
 void DebugCommands::videoApplyCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->Video->applyChange();
+  currentModule()->Video->applyChange();
   abc::ConsolePrint("[AbcUi] video apply issued (awaiting=%d)\n",
-                    GameUiModule::Instance->VideoModel.awaitingConfirm() ? 1
-                                                                         : 0);
+                    currentModule()->VideoModel.awaitingConfirm() ? 1 : 0);
 }
 
 void DebugCommands::videoKeepCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (self.VideoModel.confirm()) {
     abc::ConsolePrint(
         "[AbcUi] video kept: %s\n",
@@ -116,25 +115,25 @@ void DebugCommands::videoKeepCommand() {
 }
 
 void DebugCommands::videoWindowCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
   int seconds = 0;
   if (gEngfuncs.Cmd_Argc() >= 2)
     seconds = atoi(gEngfuncs.Cmd_Argv(1));
-  GameUiModule::Instance->VideoModel.setConfirmWindowMsForTesting(
+  currentModule()->VideoModel.setConfirmWindowMsForTesting(
       seconds > 0 ? seconds * 1000 : 0);
   abc::ConsolePrint("[AbcUi] video confirm window: %ds\n",
                     seconds > 0 ? seconds : 15);
 }
 
 void DebugCommands::videoRevertCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (self.VideoModel.revert())
     abc::ConsolePrint("[AbcUi] video reverted\n");
   else

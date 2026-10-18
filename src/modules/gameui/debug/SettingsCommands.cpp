@@ -11,11 +11,11 @@
 #include <string>
 namespace gameui {
 void DebugCommands::voiceStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   abc::ConsolePrint(
       "[AbcUi] voice available=%d testing=%d mic=%.3f micDraft=%.3f "
       "micDirty=%d boost=%d boostDraft=%d boostDirty=%d level=%.3f\n",
@@ -27,11 +27,11 @@ void DebugCommands::voiceStatusCommand() {
 }
 
 void DebugCommands::voiceBoostCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (!self.VoiceModel.available()) {
     abc::ConsoleWarn("[AbcUi] voice unavailable\n");
     return;
@@ -46,11 +46,11 @@ void DebugCommands::voiceBoostCommand() {
 }
 
 void DebugCommands::voiceTestCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (self.VoiceModel.testing()) {
     self.VoiceModel.stopTest();
     abc::ConsolePrint("[AbcUi] voice test STOPPED\n");
@@ -67,11 +67,11 @@ void DebugCommands::voiceTestCommand() {
 }
 
 void DebugCommands::voiceApplyCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (!self.VoiceModel.available()) {
     abc::ConsoleWarn("[AbcUi] voice unavailable\n");
     return;
@@ -86,11 +86,11 @@ void DebugCommands::voiceApplyCommand() {
 }
 
 void DebugCommands::settingsApplyCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const auto results = self.SettingsModel.apply();
   abc::ConsolePrint("[AbcUi] settings apply rows=%d\n",
                     static_cast<int>(results.size()));
@@ -103,11 +103,11 @@ void DebugCommands::settingsApplyCommand() {
 }
 
 void DebugCommands::settingsStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   abc::ConsolePrint(
       "[AbcUi] settings rows=%d voice=%d testing=%d mic=%.2f boost=%d\n",
       static_cast<int>(self.SettingsModel.rows().size()),
@@ -125,11 +125,11 @@ void DebugCommands::settingsStatusCommand() {
 }
 
 void DebugCommands::bindStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   unsigned wheelPulses = 0, wheelDelivered = 0;
   rmlui::wheelDiagCounts(wheelPulses, wheelDelivered);
   float panelScroll = -1.0f, panelScrollHeight = -1.0f;

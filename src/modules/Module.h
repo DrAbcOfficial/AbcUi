@@ -97,6 +97,8 @@ public:
   constexpr ModuleRegistry() = default;
 
   void add(IUiModule *module);
+  // Debug/backend lookup by module name; nullptr when not registered yet.
+  IUiModule *find(const char *name) const;
 
   void initAll();
   void contextReadyAll(Rml::Context *context);

@@ -10,11 +10,11 @@
 #include <cstdlib>
 namespace gameui {
 void DebugCommands::playerListUiCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   self.PlayerList.refresh();
   abc::ConsolePrint(
       "[AbcUi] playerlist: mute=%d gen=%u rows=%d rev=%llu sel=%d\n",
@@ -45,7 +45,7 @@ void DebugCommands::playerListUiCommand() {
 }
 
 void DebugCommands::playerListSelectCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
@@ -53,7 +53,7 @@ void DebugCommands::playerListSelectCommand() {
     abc::ConsoleWarn("[AbcUi] usage: abc_ui_playerlist_select <index>\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const int index = atoi(gEngfuncs.Cmd_Argv(1));
   self.PlayerList.refresh();
   for (const auto &entry : self.PlayerList.roster()) {
@@ -70,11 +70,11 @@ void DebugCommands::playerListSelectCommand() {
 }
 
 void DebugCommands::playerListOpenCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (!self.MenuPresented)
     services::nativeUiBridge().requestMenuUp(services::NativeUiOrigin::kOwnUi);
   self.Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));
@@ -90,11 +90,11 @@ void DebugCommands::playerListOpenCommand() {
 }
 
 void DebugCommands::playerListMuteCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->Player->toggleMute();
+  currentModule()->Player->toggleMute();
   playerListUiCommand();
 }
 

@@ -14,11 +14,11 @@
 #include "services/console/ConsoleBackend.h"
 namespace gameui {
 void DebugCommands::consoleUiStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   auto &bridge = services::nativeUiBridge();
   int rows = -1;
   int scrollTop = -1;
@@ -80,11 +80,11 @@ void DebugCommands::consoleUiStatusCommand() {
 }
 
 void DebugCommands::consoleUiToggleCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->onMenuAction("console");
+  currentModule()->onMenuAction("console");
   consoleUiStatusCommand();
 }
 
@@ -94,8 +94,8 @@ void DebugCommands::consoleUiToggleCommand() {
 // that is production: the page's Enter handler, the submit sink, the T15
 // backend and the module's unknown-verb answer.
 void DebugCommands::consoleUiSubmitCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->Console ||
-      !GameUiModule::Instance->Console->document()) {
+  if (!currentModule() || !currentModule()->Console ||
+      !currentModule()->Console->document()) {
     abc::ConsoleWarn("[AbcUi] console page not open\n");
     return;
   }
@@ -103,7 +103,7 @@ void DebugCommands::consoleUiSubmitCommand() {
     abc::ConsoleWarn("[AbcUi] usage: abc_ui_console_ui_submit <command...>\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   std::string command;
   for (int i = 1; i < gEngfuncs.Cmd_Argc(); ++i) {
     if (i > 1)

@@ -8,13 +8,13 @@
 #include <abc/Console.h>
 namespace gameui {
 void DebugCommands::menuPageCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->Shell ||
-      !GameUiModule::Instance->Context) {
+  if (!currentModule() || !currentModule()->Shell ||
+      !currentModule()->Context) {
     abc::ConsoleWarn("[AbcUi] menu not available\n");
     return;
   }
   auto &bridge = services::nativeUiBridge();
-  if (GameUiModule::Instance->MenuPresented) {
+  if (currentModule()->MenuPresented) {
     bridge.requestMenuDown(services::NativeUiOrigin::kOwnUi);
     abc::ConsolePrint("[AbcUi] menu hidden (bridge menuUp=%d)\n",
                       bridge.menuUp() ? 1 : 0);
@@ -31,7 +31,7 @@ void DebugCommands::menuPageCommand() {
 // card's preview view (camera, fov, animation) while the menu is up; with no
 // arguments it dumps the current view. Debug-only calibration seam.
 void DebugCommands::menuModelCommand() {
-  GameUiModule *module = GameUiModule::Instance;
+  GameUiModule *module = currentModule();
   if (!module || !module->Shell || !module->Context) {
     abc::ConsoleWarn("[AbcUi] menu not available\n");
     return;
@@ -121,7 +121,7 @@ void DebugCommands::friendsTestCommand() {
     return;
   }
   if (action == "open" && gEngfuncs.Cmd_Argc() >= 3) {
-    GameUiModule *module = GameUiModule::Instance;
+    GameUiModule *module = currentModule();
     Rml::ElementDocument *document =
         module && module->Shell ? module->Shell->document() : nullptr;
     const int index = atoi(gEngfuncs.Cmd_Argv(2));
@@ -142,7 +142,7 @@ void DebugCommands::friendsTestCommand() {
     return;
   }
   if (action == "join" && gEngfuncs.Cmd_Argc() >= 3) {
-    GameUiModule *module = GameUiModule::Instance;
+    GameUiModule *module = currentModule();
     if (!module || !module->Shell) {
       abc::ConsoleWarn("[AbcUi] friends test: no menu\n");
       return;
@@ -157,7 +157,7 @@ void DebugCommands::friendsTestCommand() {
 // abc_ui_settings_page <pageId> - Debug-only: open one settings page without
 // mouse navigation. Lists the available ids when called without arguments.
 void DebugCommands::settingsPageCommand() {
-  GameUiModule *module = GameUiModule::Instance;
+  GameUiModule *module = currentModule();
   if (!module || !module->Settings) {
     abc::ConsoleWarn("[AbcUi] settings page not available\n");
     return;

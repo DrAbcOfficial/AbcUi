@@ -9,11 +9,11 @@
 #include <string>
 namespace gameui {
 void DebugCommands::loadingConnectCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (gEngfuncs.Cmd_Argc() < 2) {
     abc::ConsoleWarn("[AbcUi] usage: abc_ui_loading_connect <host[:port]>\n");
     return;
@@ -36,11 +36,11 @@ void DebugCommands::loadingConnectCommand() {
 }
 
 void DebugCommands::loadingCancelCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const uint32_t live = self.LoadingModelState.generation();
   if (live != 0 && !self.LoadingModelState.requestCancel(live)) {
     abc::ConsoleWarn("[AbcUi] loading cancel already latched (gen=%u)\n", live);
@@ -54,11 +54,11 @@ void DebugCommands::loadingCancelCommand() {
 }
 
 void DebugCommands::loadingPasswordCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (gEngfuncs.Cmd_Argc() < 2) {
     abc::ConsoleWarn("[AbcUi] usage: abc_ui_loading_password <password>\n");
     return;
@@ -75,11 +75,11 @@ void DebugCommands::loadingPasswordCommand() {
 }
 
 void DebugCommands::loadingStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const auto &state = self.Controller.state();
   abc::ConsolePrint(
       "[AbcUi] loading: phase=%d gen=%u modelGen=%u canceled=%d addr=\"%s\"\n",

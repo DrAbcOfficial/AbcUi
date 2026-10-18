@@ -11,12 +11,12 @@
 #include <abc/Plugin.h>
 namespace gameui {
 void DebugCommands::createGameUiCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->CreateGamePage_ ||
-      !GameUiModule::Instance->CreateGamePage_->document()) {
+  if (!currentModule() || !currentModule()->CreateGamePage_ ||
+      !currentModule()->CreateGamePage_->document()) {
     abc::ConsoleWarn("[AbcUi] create-game page not open\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const auto &catalog = self.Create->model().catalog();
   abc::ConsolePrint("[AbcUi] create-game-ui: maps=%d first=%s\n",
                     static_cast<int>(catalog.size()),
@@ -36,8 +36,8 @@ void DebugCommands::createGameUiCommand() {
 }
 
 void DebugCommands::createGameFillCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->CreateGamePage_ ||
-      !GameUiModule::Instance->CreateGamePage_->document()) {
+  if (!currentModule() || !currentModule()->CreateGamePage_ ||
+      !currentModule()->CreateGamePage_->document()) {
     abc::ConsoleWarn("[AbcUi] create-game page not open\n");
     return;
   }
@@ -46,7 +46,7 @@ void DebugCommands::createGameFillCommand() {
                      "<name> [password]\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   Rml::ElementDocument *doc = self.CreateGamePage_->document();
   if (Rml::ElementFormControlSelect *select =
           rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(
@@ -84,11 +84,11 @@ void DebugCommands::createGameFillCommand() {
 }
 
 void DebugCommands::createGameApplyCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   self.Create->apply();
   abc::ConsolePrint(
       "[AbcUi] create-game apply issued: phase=%d gen=%u map=%s pending=%d\n",
@@ -99,7 +99,7 @@ void DebugCommands::createGameApplyCommand() {
 }
 
 void DebugCommands::createGameProbeCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
@@ -108,7 +108,7 @@ void DebugCommands::createGameProbeCommand() {
                      "<name> [password]\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   services::creategame::Request request;
   request.Map = gEngfuncs.Cmd_Argv(1);
   int players = 0;

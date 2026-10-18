@@ -13,11 +13,11 @@
 #include <string>
 namespace gameui {
 void DebugCommands::serverQueryCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (gEngfuncs.Cmd_Argc() < 2) {
     abc::ConsoleWarn(
         "[AbcUi] usage: abc_ui_server_query "
@@ -59,11 +59,11 @@ void DebugCommands::serverQueryCommand() {
 }
 
 void DebugCommands::serverStatusCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   auto &query = self.ServerBrowser.Query;
   abc::ConsolePrint("[AbcUi] server: status=%d failure=%d gen=%u count=%d "
                     "listing=%llu noServers=%d stale=%llu dropped=%d "
@@ -98,31 +98,31 @@ void DebugCommands::serverStatusCommand() {
 }
 
 void DebugCommands::serverCancelCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->ServerBrowser.Query.cancel();
+  currentModule()->ServerBrowser.Query.cancel();
   abc::ConsolePrint("[AbcUi] server cancel issued\n");
   serverStatusCommand();
 }
 
 void DebugCommands::serverReleaseCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->Server->releaseQueries();
+  currentModule()->Server->releaseQueries();
   abc::ConsolePrint("[AbcUi] server release issued\n");
   serverStatusCommand();
 }
 
 void DebugCommands::serverDetailCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (gEngfuncs.Cmd_Argc() < 3) {
     abc::ConsoleWarn(
         "[AbcUi] usage: abc_ui_server_detail <ping|players> <index>\n");
@@ -151,21 +151,21 @@ void DebugCommands::serverDetailCommand() {
 }
 
 void DebugCommands::serverDetailCancelCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->ServerBrowser.Query.cancelDetail();
+  currentModule()->ServerBrowser.Query.cancelDetail();
   abc::ConsolePrint("[AbcUi] server detail cancel issued\n");
   serverStatusCommand();
 }
 
 void DebugCommands::serverRefreshCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (self.ServerBrowser.Query.listRequest() == 0) {
     abc::ConsoleWarn("[AbcUi] no live request to refresh\n");
     return;
@@ -176,11 +176,11 @@ void DebugCommands::serverRefreshCommand() {
 }
 
 void DebugCommands::serverFavoriteCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   auto *favorites = services::serverbrowser::steamFavorites();
   abc::ConsolePrint(
       "[AbcUi] favorites: available=%d favCount=%d histCount=%d\n",
@@ -202,7 +202,7 @@ void DebugCommands::serverFavoriteCommand() {
 }
 
 void DebugCommands::serverHistoryCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
@@ -228,11 +228,11 @@ void DebugCommands::serverHistoryCommand() {
 }
 
 void DebugCommands::serverConnectCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const auto *selected =
       self.ServerBrowser.List.selectedEntry(self.ServerBrowser.Query);
   if (!selected) {
@@ -246,11 +246,11 @@ void DebugCommands::serverConnectCommand() {
 }
 
 void DebugCommands::serverTimeoutCommand() {
-  if (!GameUiModule::Instance) {
+  if (!currentModule()) {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   if (gEngfuncs.Cmd_Argc() < 2) {
     abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_timeout <ms|0>\n");
     return;
@@ -264,8 +264,8 @@ void DebugCommands::serverTimeoutCommand() {
 }
 
 void DebugCommands::serverSelectCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->Browser ||
-      !GameUiModule::Instance->Browser->document()) {
+  if (!currentModule() || !currentModule()->Browser ||
+      !currentModule()->Browser->document()) {
     abc::ConsoleWarn("[AbcUi] browser page not open\n");
     return;
   }
@@ -273,7 +273,7 @@ void DebugCommands::serverSelectCommand() {
     abc::ConsoleWarn("[AbcUi] usage: abc_ui_server_select <row>\n");
     return;
   }
-  GameUiModule &self = *GameUiModule::Instance;
+  GameUiModule &self = *currentModule();
   const int row = atoi(gEngfuncs.Cmd_Argv(1));
   self.ServerBrowser.List.selectRow(row);
   const auto *selected =
@@ -290,12 +290,12 @@ void DebugCommands::serverSelectCommand() {
 }
 
 void DebugCommands::serverUiCommand() {
-  if (!GameUiModule::Instance || !GameUiModule::Instance->Browser ||
-      !GameUiModule::Instance->Browser->document()) {
+  if (!currentModule() || !currentModule()->Browser ||
+      !currentModule()->Browser->document()) {
     abc::ConsoleWarn("[AbcUi] browser page not open\n");
     return;
   }
-  Rml::ElementDocument *doc = GameUiModule::Instance->Browser->document();
+  Rml::ElementDocument *doc = currentModule()->Browser->document();
   Rml::Element *list = doc->GetElementById("sb-list");
   abc::ConsolePrint("[AbcUi] browser-ui: doc=%s list=%s\n",
                     doc->IsVisible() ? "visible" : "hidden",

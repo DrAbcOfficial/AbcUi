@@ -3,6 +3,8 @@
 
 #include <abc/Console.h>
 
+#include <cstring>
+
 namespace modules {
 
 ModuleRegistry &registry() {
@@ -27,6 +29,16 @@ void ModuleRegistry::add(IUiModule *module) {
     return;
   }
   Modules[Count++] = module;
+}
+
+IUiModule *ModuleRegistry::find(const char *name) const {
+  if (!name)
+    return nullptr;
+  for (size_t i = 0; i < Count; ++i) {
+    if (std::strcmp(Modules[i]->name(), name) == 0)
+      return Modules[i];
+  }
+  return nullptr;
 }
 
 void ModuleRegistry::initAll() {

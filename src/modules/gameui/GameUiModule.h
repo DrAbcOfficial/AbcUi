@@ -155,7 +155,6 @@ private:
   private:
     GameUiModule *Owner;
   };
-  static GameUiModule *Instance;
   VideoHost MakeVideoHost();
   PlayerListHost MakePlayerListHost();
   VoteMenuHost MakeVoteMenuHost();
@@ -228,4 +227,9 @@ private:
   uint32_t NextPhaseSession = 1;
   MenuPage LastStubPage = MenuPage::kMain;
 };
+// Debug commands and the backend thunk cannot capture a module pointer
+// (AbcCore's ADD_COMMAND takes a bare function pointer), so they resolve the
+// registered module by name instead of reading a public static.
+GameUiModule *currentModule();
+
 } // namespace gameui

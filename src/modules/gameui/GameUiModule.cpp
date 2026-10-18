@@ -84,7 +84,7 @@ GameUiModule::GameUiModule()
   VoiceModel.setSeams(voiceSeams());
   // T19: the create-game launcher (typed cvar writes + the shipped
   // command sequence) and its backend relay. The thunk reaches the
-  // module's request value object through the Instance pointer, the
+  // module's request value object through the registry lookup, the
   // same shape the Debug diagnostics use.
   menuBackend().setLocalGameLauncher(&GameUiModule::launchLocalGame);
   // T20: the player-list model's roster/mute seams (playerres + the
@@ -98,7 +98,6 @@ GameUiModule::GameUiModule()
       services::friends::steamFriendsProvider());
   modules::registry().add(this);
   services::nativeUiBridge().setMenuSink(this);
-  Instance = this;
 }
 
 VideoHost GameUiModule::MakeVideoHost() {
@@ -233,6 +232,10 @@ GameUiModule::~GameUiModule() = default;
 
 const char *GameUiModule::name() const {
   return "gameui";
+}
+
+GameUiModule *currentModule() {
+  return static_cast<GameUiModule *>(modules::registry().find("gameui"));
 }
 
 void GameUiModule::onInit() {
@@ -421,9 +424,9 @@ void GameUiModule::onVidInit() {
 }
 
 bool GameUiModule::launchLocalGame(const char *map, const char **reasonToken) {
-  if (!Instance)
-    return false;
-  return Instance->Create->launchLocal(map, reasonToken);
+  if (GameUiModule *module = currentModule())
+    return module->Create->launchLocal(map, reasonToken);
+  return false;
 }
 
 bool GameUiModule::consumeLaunchFailure() {
@@ -486,7 +489,6 @@ void GameUiModule::onShutdown() {
   LastStubPage = MenuPage::kMain;
 }
 
-GameUiModule *GameUiModule::Instance = nullptr;
 namespace {
 GameUiModule RegisterModule;
 }
