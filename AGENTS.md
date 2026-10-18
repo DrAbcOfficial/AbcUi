@@ -33,6 +33,12 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `windows.h` to keep RmlUi's `Rml::Assert` declaration visible.
 - `tests/` is session scaffolding per the hard rule above; the release has no
   committed test target. Unit-test additions require a separate policy change.
+- Process-lifetime services (`consoleBuffer`, `menuBackend`, `steamFavorites`,
+  `friendsModel`, `nativeUiBridge`, `loadingFeed`) are function-local statics:
+  the engine calls back through bare C function pointers and the DLL lifetime
+  is the service lifetime. Consume them through their named accessor; do not
+  add new ad-hoc file-level statics. Module and panel lookup goes through
+  `modules::registry()` / `PanelManager::find`, not reverse pointers.
 
 ## Build
 
