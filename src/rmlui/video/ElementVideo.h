@@ -17,15 +17,20 @@
 //   fit       cover|contain|fill (default cover)
 //   muted     accepted, inert: audio is never decoded
 
-#include "../../services/video/AsyncDecoder.h"
-#include "../../services/video/Options.h"
-#include "../../services/video/VideoTexture.h"
-
 #include <RmlUi/Core/Element.h>
+
+#include <memory>
 
 namespace Rml {
 class ElementDocument;
 }
+
+namespace video {
+struct FrameView;
+struct Options;
+class AsyncDecoder;
+class VideoTexture;
+} // namespace video
 
 namespace rmlui::video {
 
@@ -43,12 +48,8 @@ public:
   void reset();
 
   // Diagnostics (Debug harness, abc_ui_video_test): what the element shows.
-  const ::video::FrameView &currentFrame() const {
-    return Media.frame();
-  }
-  double currentSeconds() const {
-    return Media.lastSeconds();
-  }
+  const ::video::FrameView &currentFrame() const;
+  double currentSeconds() const;
 
 protected:
   void OnAttributeChange(const Rml::ElementAttributes &Changed) override;
@@ -64,9 +65,9 @@ private:
 
   // note: qualified as ::video:: - the element namespace is rmlui::video and
   // would otherwise shadow the services namespace.
-  ::video::Options Config;
-  ::video::AsyncDecoder Media;
-  ::video::VideoTexture Texture;
+  std::unique_ptr<::video::Options> Config;
+  std::unique_ptr<::video::AsyncDecoder> Media;
+  std::unique_ptr<::video::VideoTexture> Texture;
   Rml::Element *Image = nullptr;
   bool SourceApplied = false;
   bool Hidden = true;

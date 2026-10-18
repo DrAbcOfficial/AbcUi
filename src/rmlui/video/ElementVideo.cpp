@@ -1,5 +1,8 @@
 // rmlui::video::ElementVideo implementation - see ElementVideo.h.
 #include "ElementVideo.h"
+#include "../../services/video/AsyncDecoder.h"
+#include "../../services/video/Options.h"
+#include "../../services/video/VideoTexture.h"
 
 #define NOMINMAX
 #include <windows.h>
@@ -50,7 +53,10 @@ PerfWindow Perf;
 
 } // namespace
 
-ElementVideo::ElementVideo(const Rml::String &Tag) : Element(Tag) {
+ElementVideo::ElementVideo(const Rml::String &Tag)
+    : Element(Tag), Config(std::make_unique<::video::Options>()),
+      Media(std::make_unique<::video::AsyncDecoder>()),
+      Texture(std::make_unique<::video::VideoTexture>()) {
   auto Child = Rml::Factory::InstanceElement(this, "img", "img", {});
   Image = Child.get();
   if (Image) {
@@ -63,13 +69,19 @@ ElementVideo::ElementVideo(const Rml::String &Tag) : Element(Tag) {
   elements().push_back(this);
 }
 
+const ::video::FrameView &ElementVideo::currentFrame() const {
+  return Media->frame();
+}
+
+double ElementVideo::currentSeconds() const { return Media->lastSeconds(); }
+
 ElementVideo::~ElementVideo() {
   std::erase(elements(), this);
 }
 
 void ElementVideo::closeMedia() {
-  Media.close();
-  Texture.release();
+  Media->close();
+  Texture->release();
   Hidden = true;
   DecodeSize = {};
   SourceApplied = false;
@@ -96,13 +108,13 @@ void ElementVideo::OnAttributeChange(const Rml::ElementAttributes &Changed) {
       abc::ConsoleWarn("[AbcUi video] invalid %s on #%s\n", Name.c_str(),
                        GetId().c_str());
   }
-  Config = std::move(Updated);
+  *Config = std::move(Updated);
 }
 
 void ElementVideo::applyImageSource() {
   if (!Image)
     return;
-  const std::string &uri = Texture.uri();
+  const std::string &uri = Texture->uri();
   const Rml::String current = Image->GetAttribute<Rml::String>("src", "");
   if (current != uri)
     Image->SetAttribute("src", uri);
@@ -134,21 +146,21 @@ void ElementVideo::applyPlacement(Rml::Vector2i box, float width,
 // Sizes and places the inner <img> for the configured fit mode; returns the
 // displayed pixel size (the decode target is derived from it).
 Rml::Vector2i ElementVideo::applyFit(Rml::Vector2i box) {
-  const int sourceWidth = Media.sourceWidth();
-  const int sourceHeight = Media.sourceHeight();
+  const int sourceWidth = Media->sourceWidth();
+  const int sourceHeight = Media->sourceHeight();
   if (sourceWidth <= 0 || sourceHeight <= 0 || box.x <= 0 || box.y <= 0)
     return {};
   const float aspect =
       static_cast<float>(sourceWidth) / static_cast<float>(sourceHeight);
   float width = static_cast<float>(box.x);
   float height = static_cast<float>(box.y);
-  if (Config.FitMode == ::video::Options::Fit::kCover) {
+  if (Config->FitMode == ::video::Options::Fit::kCover) {
     height = width / aspect;
     if (height < static_cast<float>(box.y)) {
       height = static_cast<float>(box.y);
       width = height * aspect;
     }
-  } else if (Config.FitMode == ::video::Options::Fit::kContain) {
+  } else if (Config->FitMode == ::video::Options::Fit::kContain) {
     height = width / aspect;
     if (height > static_cast<float>(box.y)) {
       height = static_cast<float>(box.y);
@@ -160,18 +172,18 @@ Rml::Vector2i ElementVideo::applyFit(Rml::Vector2i box) {
 }
 
 bool ElementVideo::openMedia(const char *reason) {
-  const std::string path = abc::ModPath(Config.Source.c_str());
+  const std::string path = abc::ModPath(Config->Source.c_str());
   const int width = DecodeSize.x > 0 ? DecodeSize.x : kMaxDecodeEdge;
   const int height = DecodeSize.y > 0 ? DecodeSize.y : kMaxDecodeEdge;
-  if (Media.open(path.c_str(), width, height)) {
+  if (Media->open(path.c_str(), width, height)) {
     SourceApplied = true;
     return true;
   }
   // One warning per distinct failure per element; the document keeps
   // running with the element invisible.
-  if (LastError != Media.error()) {
-    LastError = Media.error();
-    abc::ConsoleWarn("[AbcUi video] %s (%s): %s\n", Config.Source.c_str(),
+  if (LastError != Media->error()) {
+    LastError = Media->error();
+    abc::ConsoleWarn("[AbcUi video] %s (%s): %s\n", Config->Source.c_str(),
                      reason, LastError.c_str());
   }
   return false;
@@ -179,45 +191,45 @@ bool ElementVideo::openMedia(const char *reason) {
 
 bool ElementVideo::pump(double frameTime, bool Enabled) {
   if (!Enabled || !Image || !GetContext() || !IsVisible(true)) {
-    Media.pause();
+    Media->pause();
     return false;
   }
-  if (Config.Source.empty()) {
+  if (Config->Source.empty()) {
     if (SourceApplied)
       closeMedia();
     return false;
   }
-  if (AppliedSource != Config.Source) {
+  if (AppliedSource != Config->Source) {
     closeMedia();
-    AppliedSource = Config.Source;
+    AppliedSource = Config->Source;
   }
   const auto size = GetBox().GetSize(Rml::BoxArea::Content);
   if (!std::isfinite(size.x) || !std::isfinite(size.y) || size.x <= 1.0f ||
       size.y <= 1.0f) {
-    Media.pause();
+    Media->pause();
     return false;
   }
 
-  if (!Media.isOpen() && !openMedia("open")) {
+  if (!Media->isOpen() && !openMedia("open")) {
     DecodeSize = {};
     return false;
   }
 
-  Media.setLooping(Config.Loop);
+  Media->setLooping(Config->Loop);
   // autoplay=false holds the very first frame: the clock only moves when the
   // document asked for playback.
   const double delta =
-      Config.Autoplay ? static_cast<double>(frameTime) * Config.Speed : 0.0;
-  const bool advanced = Media.advance(delta);
+      Config->Autoplay ? static_cast<double>(frameTime) * Config->Speed : 0.0;
+  const bool advanced = Media->advance(delta);
   if (advanced) {
-    const ::video::FrameView &frame = Media.frame();
+    const ::video::FrameView &frame = Media->frame();
     if (frame.Pixels &&
-        !Texture.upload(frame.Pixels, frame.Width, frame.Height))
+        !Texture->upload(frame.Pixels, frame.Width, frame.Height))
       return false;
   }
-  if (!Media.error().empty() && LastError != Media.error()) {
-    LastError = Media.error();
-    abc::ConsoleWarn("[AbcUi video] %s: %s\n", Config.Source.c_str(),
+  if (!Media->error().empty() && LastError != Media->error()) {
+    LastError = Media->error();
+    abc::ConsoleWarn("[AbcUi video] %s: %s\n", Config->Source.c_str(),
                      LastError.c_str());
   }
 
