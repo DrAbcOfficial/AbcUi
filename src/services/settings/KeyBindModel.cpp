@@ -457,9 +457,7 @@ void KeyBindModel::cancel() {
   ConflictOtherCommand.clear();
 }
 
-std::vector<std::string> KeyBindModel::pendingCommands() const {
-  std::vector<std::string> commands;
-  // Desired state per key: at most one action's draft claims a key.
+std::map<int, std::string> KeyBindModel::desiredKeys() const {
   std::map<int, std::string> desired;
   for (const auto &row : Rows_) {
     if (!row.action || row.action->Header)
@@ -467,6 +465,13 @@ std::vector<std::string> KeyBindModel::pendingCommands() const {
     for (int keynum : row.draftKeys)
       desired[keynum] = row.action->Command;
   }
+  return desired;
+}
+
+std::vector<std::string> KeyBindModel::pendingCommands() const {
+  std::vector<std::string> commands;
+  // Desired state per key: at most one action's draft claims a key.
+  const auto desired = desiredKeys();
   // Bind keys that moved into an action (one command per key - a key
   // moving between actions is exactly one bind, never bind+unbind).
   for (const auto &entry : desired) {
@@ -500,13 +505,7 @@ std::vector<BindApplyResult> KeyBindModel::apply() {
     return results;
 
   // Per-key desired state (the invariant: one key, at most one draft).
-  std::map<int, std::string> desired;
-  for (const auto &row : Rows_) {
-    if (!row.action || row.action->Header)
-      continue;
-    for (int keynum : row.draftKeys)
-      desired[keynum] = row.action->Command;
-  }
+  const auto desired = desiredKeys();
 
   // Row attribution: every write for a key touches the row(s) that list
   // the key in their draft or engine set.

@@ -40,6 +40,7 @@
 // binding table (05 doc evidence tier 1/2).
 
 #include <cstddef>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -170,6 +171,10 @@ public:
   conflictOtherLabel() const; // other action label, or the raw unlisted command
 
   // Draft edits without capture: remove every key from one action, or one
+  // Per-key desired command (one key, at most one draft). Shared by the
+  // preview (pendingCommands) and the writer (apply).
+  std::map<int, std::string> desiredKeys() const;
+
   // specific key. Drafts only - the writes wait for apply().
   bool clearActionDraft(int actionIndex);
   bool removeKeyFromAction(int actionIndex, const std::string &keyName);
