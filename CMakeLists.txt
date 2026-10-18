@@ -197,6 +197,7 @@ add_library(AbcUi MODULE
     src/services/loading/LoadingModel.cpp
     src/services/loading/AutoRetryGate.cpp
     src/services/settings/SettingsModel.cpp
+    src/services/settings/UserScrParser.cpp
     src/services/settings/KeyBindModel.cpp
     src/services/settings/VideoModeModel.cpp
     src/services/settings/VideoPendingStore.cpp
