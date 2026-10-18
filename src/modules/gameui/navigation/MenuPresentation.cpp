@@ -65,8 +65,7 @@ void GameUiModule::dismissMenu() {
   // A running capture session ends with it (draft-free, clamp off).
   endKeyCapture();
   BindModel.cancelCapture();
-  CommandMenuRequested = false;
-  CommandMenuRaisedMenu = false;
+  Command->cancelPending();
   // T13b: menu focus loss ends the mic test with it (the device
   // session must never outlive the surface that owns it).
   VoiceModel.stopTest();
@@ -116,10 +115,7 @@ void GameUiModule::hideAllMenuDocuments() {
   }
   Player->hide();
   Vote->hide();
-  if (CommandMenuPage_) {
-    CommandMenuPage_->hide();
-    CommandMenuPresented = false;
-  }
+  Command->hide();
   if (ConfirmQuit)
     ConfirmQuit->hide();
   // T14 connection surfaces: hidden with the menu; a later present

@@ -81,7 +81,7 @@ void GameUiModule::syncMenuPresentation() {
       Vote->present();
       break;
     case MenuPage::kCommandMenu:
-      presentCommandMenuPage();
+      Command->present();
       break;
     case MenuPage::kLoading:
       // Fresh projection on every sync: the attempt's values moved
@@ -151,13 +151,8 @@ void GameUiModule::syncMenuPresentation() {
     Player->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kVoteMenu)
     Vote->hide();
-  if (state.pages.empty() || state.pages.top() != MenuPage::kCommandMenu) {
-    if (CommandMenuPage_) {
-      CommandMenuPage_->hide();
-      CommandMenuPresented = false;
-    }
-    CommandMenuRaisedMenu = false;
-  }
+  if (state.pages.empty() || state.pages.top() != MenuPage::kCommandMenu)
+    Command->hide();
 
   // Overlay layer, top-most last (each show pulls to the context
   // front); idempotent shows neither re-focus nor re-order.

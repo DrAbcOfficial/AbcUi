@@ -91,11 +91,10 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   VoteMenuPage_ = std::make_unique<panels::votemenu::VoteMenuPage>();
   Vote->setPage(VoteMenuPage_.get());
   CommandMenuPage_ = std::make_unique<panels::commandmenu::CommandMenuPage>();
-  CommandMenuPage_->setModel(&CommandMenu);
-  CommandMenuPage_->setCommandSink([this](const std::string &command) {
-    handleCommandMenuCommand(command);
-  });
-  CommandMenuPage_->setCloseSink([this]() { closeCommandMenuPage(); });
+  Command->setPage(CommandMenuPage_.get());
+  CommandMenuPage_->setCommandSink(
+      [this](const std::string &command) { Command->handleCommand(command); });
+  CommandMenuPage_->setCloseSink([this] { Command->close(); });
   VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
   VideoConfirm->setVideoModel(&VideoModel);
   Video->setPage(VideoConfirm.get());
@@ -145,10 +144,8 @@ void GameUiModule::onContextReady(Rml::Context *context) {
         services::NativeUiOrigin::kOwnUi);
   if (Vote->consumeRequest())
     Vote->open();
-  if (CommandMenuRequested) {
-    CommandMenuRequested = false;
-    openCommandMenuPage();
-  }
+  if (Command->consumeRequest())
+    Command->open();
 }
 
 void GameUiModule::logLoadOutcome(
@@ -217,7 +214,7 @@ void GameUiModule::serviceEmergencyPages() {
   CreateGamePresented = false;
   Player->setPresented(false);
   Vote->setPresented(false);
-  CommandMenuPresented = false;
+  Command->setPresented(false);
   syncMenuPresentation();
 }
 

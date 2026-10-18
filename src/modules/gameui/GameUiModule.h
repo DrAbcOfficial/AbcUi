@@ -36,6 +36,7 @@
 #include "navigation/MenuController.h"
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
+#include "commandmenu/CommandMenuFlow.h"
 #include "playerlist/PlayerListFlow.h"
 #include "settings/SprayMaker.h"
 #include "settings/VideoFlow.h"
@@ -85,12 +86,6 @@ private:
   void applyCreateGame();
   static const char *
   hintTokenFor(const services::creategame::Validation &validation);
-  void toggleCommandMenuPage();
-  void openCommandMenuPage();
-  void presentCommandMenuPage();
-  void closeCommandMenuPage();
-  void handleCommandMenuCommand(const std::string &command);
-  bool handleCommandMenuKey(int keynum);
   void beginServerQuery(services::serverbrowser::QueryKind kind);
   void connectSelectedServer();
   void toggleSelectedFavorite();
@@ -149,6 +144,7 @@ private:
   VideoHost MakeVideoHost();
   PlayerListHost MakePlayerListHost();
   VoteMenuHost MakeVoteMenuHost();
+  CommandMenuHost MakeCommandMenuHost();
   Rml::Context *Context = nullptr;
   gameui::menu::MenuController Controller;
   services::uiconfig::ConfigRepository UiConfig;
@@ -167,16 +163,12 @@ private:
   const char *PendingLaunchFailure = nullptr;
   bool CreateGamePresented = false;
   services::playerlist::PlayerListModel PlayerList;
-  services::commandmenu::Model CommandMenu;
   uint32_t FriendsProjected = 0;
   // Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
   // stalled pump is distinguishable from a stalled refresh.
   double LastFrameTime = 0.0;
   bool VoteMenuCommandBound = false;
   bool VoteMenuMapListBound = false;
-  bool CommandMenuPresented = false;
-  bool CommandMenuRequested = false;
-  bool CommandMenuRaisedMenu = false;
   bool CommandMenuCommandBound = false;
   services::serverbrowser::FavoriteKey PendingHistory;
   bool PendingHistoryValid = false;
@@ -200,6 +192,7 @@ private:
   std::unique_ptr<PlayerListFlow> Player;
   std::unique_ptr<SprayMaker> Spray;
   std::unique_ptr<VoteMenuFlow> Vote;
+  std::unique_ptr<CommandMenuFlow> Command;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;

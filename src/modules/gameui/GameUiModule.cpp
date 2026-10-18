@@ -58,7 +58,8 @@ GameUiModule::GameUiModule()
               Settings->setSprayResult(ok, message, previewUri);
           })),
       Vote(std::make_unique<VoteMenuFlow>(MakeVoteMenuHost(),
-                                          voteMenuSeams())) {
+                                          voteMenuSeams())),
+      Command(std::make_unique<CommandMenuFlow>(MakeCommandMenuHost())) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -144,6 +145,49 @@ VoteMenuHost GameUiModule::MakeVoteMenuHost() {
   return host;
 }
 
+CommandMenuHost GameUiModule::MakeCommandMenuHost() {
+  CommandMenuHost host;
+  host.shellReady = [this] { return Shell && Context; };
+  host.ensureMenu = [this](bool &raisedMenu) {
+    const bool menuWasUp = MenuPresented;
+    if (!menuWasUp) {
+      if (!services::nativeUiBridge().menuUp())
+        services::nativeUiBridge().requestMenuUp(
+            services::NativeUiOrigin::kOwnUi);
+      if (!MenuPresented)
+        presentMenu();
+    }
+    raisedMenu = !menuWasUp;
+    return MenuPresented;
+  };
+  host.cancelRaisedMenu = [this] {
+    services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
+  };
+  host.reconcileInGame = [this] {
+    reconcilePhase();
+    return Controller.state().phase == menu::BackendPhase::kInGame;
+  };
+  host.dispatchOpen = [this] {
+    Controller.dispatch(menu::makeOpenPage(MenuPage::kCommandMenu));
+  };
+  host.closeNavigation = [this](bool raisedMenu) {
+    if (!Controller.state().pages.topIs(MenuPage::kCommandMenu))
+      return;
+    Controller.dispatch(MenuEvent{EventKind::kBack}); // command page -> Pause
+    if (!raisedMenu)
+      return;
+    if (Controller.state().pages.topIs(MenuPage::kPause))
+      Controller.dispatch(MenuEvent{EventKind::kResume}); // close + resume
+    // A phase change can make the decided resume illegal. The menu command
+    // still owns this presentation, so force-clear the host instead of
+    // leaving the pause page behind it.
+    if (Controller.isMenuActive())
+      Controller.dispatch(MenuEvent{EventKind::kMenuHidden});
+  };
+  host.finishDispatch = [this] { finishDispatch(); };
+  return host;
+}
+
 const char *GameUiModule::name() const {
   return "gameui";
 }
@@ -224,7 +268,7 @@ void GameUiModule::onInit() {
   services::commandmenu::Definition CommandDefinition;
   std::string CommandDefinitionError;
   if (loadCommandMenuDefinition(CommandDefinition, CommandDefinitionError))
-    CommandMenu.setDefinition(std::move(CommandDefinition));
+    Command->setDefinition(std::move(CommandDefinition));
   else
     abc::ConsoleWarn("[AbcUi] commandmenu.json: %s\n",
                      CommandDefinitionError.c_str());
@@ -309,7 +353,7 @@ void GameUiModule::onInit() {
     abc::CChainedCommand *release = commands::get("-commandmenu");
     if (open && release) {
       open->Event().append([this]() {
-        toggleCommandMenuPage();
+        Command->toggle();
         return false; // the native command menu never opens
       });
       release->Event().append([]() {
@@ -330,13 +374,7 @@ void GameUiModule::onVidInit() {
   // A map transition invalidates the map catalog. The server sends a fresh
   // MapList for the next session; the page is not kept over a world change.
   Vote->resetForWorld();
-  // The command menu is also world-scoped: a map change closes it and clears
-  // the one-shot request latch before the next session.
-  CommandMenuRequested = false;
-  CommandMenuRaisedMenu = false;
-  if (CommandMenuPage_)
-    CommandMenuPage_->hide();
-  CommandMenuPresented = false;
+  Command->resetForWorld();
 }
 
 void GameUiModule::onShutdown() {
@@ -362,6 +400,7 @@ void GameUiModule::onShutdown() {
   PlayerListPage_.reset();
   Vote->shutdown();
   VoteMenuPage_.reset();
+  Command->shutdown();
   CommandMenuPage_.reset();
   Video->shutdown();
   VideoConfirm.reset();
@@ -380,9 +419,6 @@ void GameUiModule::onShutdown() {
   PasswordReprepare = false;
   DirectConnectPresented = false;
   CreateGamePresented = false;
-  CommandMenuPresented = false;
-  CommandMenuRequested = false;
-  CommandMenuRaisedMenu = false;
   LastStubPage = MenuPage::kMain;
 }
 
