@@ -23,7 +23,7 @@
 	width: 15dp;
 	height: 15dp;
 	/* Old AmmoBar.Ammo1/2IconColor = scheme Default. */
-	image-color: #00ff00;
+	image-color: var(--abc-hud-accent);
 	visibility: hidden;
 }
 #ammo1-icon { left: 0dp; }
@@ -31,7 +31,7 @@
 
 /* Old AmmoBar.Ammo1/2FgColor = scheme Default. */
 #ammo1, #ammo2 {
-	color: #00ff00;
+	color: var(--abc-hud-accent);
 }
 #ammo1, #ammo2, #slash {
 	position: absolute;

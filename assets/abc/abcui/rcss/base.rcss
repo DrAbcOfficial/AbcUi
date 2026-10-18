@@ -5,8 +5,12 @@
    go through the file interface and fail.
 
    Colour source of truth: the old ABCEnchance scheme (abcenchance/res/
-   SchemeBase.res), byte-exact:
-     Default (HUD green)      0 255 0 255   -> #00ff00
+   SchemeBase.res) for the semantic colours, with the HUD accent retuned from
+   that scheme's green "Default" to the Half-Life amber - the old palette's
+   own "Orange" (255 176 0), the same amber family the menu surfaces use in
+   theme.rcss. Byte values:
+     HUD accent (was Default green) 255 176 0 255 -> #ffb000
+     HUD accent dim (was DefaultTransparent)      -> #ffb0007d
      Red (danger/empty)     255 0 0 255     -> #ff0000
      HealthBar/ArmorBar bg   255 255 255 125 -> #ffffff7d
      TextMenu bg             0 0 0 64       -> #00000040
@@ -29,6 +33,16 @@ body {
 	font-family: Verdana;
 	font-size: 8.9dp;
 	color: #e8e8e8;
+
+	/* HUD palette tokens. RmlUi 6.3 resolves var() per property
+	   (ElementStyle::ResolveVariables), so every HUD sheet references these
+	   instead of repeating the literals; changing the accent here retunes the
+	   whole HUD. */
+	--abc-hud-accent: #ffb000;
+	--abc-hud-accent-dim: #ffb0007d;
+	--abc-hud-accent-faint: #ffb0004d;
+	--abc-hud-danger: #ff0000;
+	--abc-hud-track: #000000a0;
 }
 
 /* RmlUi ships no HTML user-agent stylesheet: everything defaults to

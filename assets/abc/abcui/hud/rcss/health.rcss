@@ -28,7 +28,7 @@
 	height: 15dp;
 	/* Old HealthBar.Health/ArmorIconFgColor = scheme Default (danger rule
 	   overrides). The bar fill rides the same scheme colour. */
-	image-color: #00ff00;
+	image-color: var(--abc-hud-accent);
 }
 #health-icon { left: 6dp; }
 #armor-icon { left: 120dp; }
@@ -44,7 +44,7 @@
 	line-height: 30dp;
 	/* Old HealthBar.Health/ArmorFgColor = scheme Default; the danger
 	   rule (applyDanger) overrides per value at runtime. */
-	color: #00ff00;
+	color: var(--abc-hud-accent);
 }
 #health-label { left: 14dp; }
 #armor-label { left: 128dp; }
@@ -78,7 +78,7 @@
 	width: 56dp;
 	height: 11dp;
 	/* Old HealthBar.Health/ArmorBarFgColor = scheme Default. */
-	image-color: #00ff00;
+	image-color: var(--abc-hud-accent);
 }
 
 #longjump {

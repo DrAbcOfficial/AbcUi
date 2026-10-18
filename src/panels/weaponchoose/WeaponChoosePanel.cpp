@@ -2,8 +2,8 @@
 // from: ABCEnchance/src/hud/vgui/weaponchoose.cpp (GBK->UTF-8).
 // Layout numbers from WeaponChoosePanel.res (slot icons 15x15, active items
 // 60x20, inactive 20x20, 1dp gaps; close_time 5); scheme WeaponChoose.*
-// colors (ActiveColor Default green, Inactive DefaultTransparent, empty Red
-// variants, ammo bar 80,80,80,125 / 255,255,0,125, bucket 255 255 0 255).
+// colors (ActiveColor = HUD accent amber, Inactive = HUD accent @125, empty
+// Red variants, ammo bar 80,80,80,125 / 255,255,0,125, bucket 255 255 0 255).
 #include <metahook.h>
 
 #include "WeaponChoosePanel.h"
@@ -273,7 +273,7 @@ void WeaponChoosePanel::rebuild() {
     // slotN_icon assets; the icons tint by scheme SlotColor).
     buffer = std::format("<div class='slot' style='left:{:.0f}dp; top:0dp;'>"
                          "<img src='../img/weaponchoose/slot{}_icon.png' "
-                         "style='image-color: rgba(0, 255, 0, 125);'/></div>",
+                         "style='image-color: rgba(255, 176, 0, 125);'/></div>",
                          x, (slot + 1) % 10);
     rml += buffer;
     y = kSlotIcon + kGap;
@@ -289,8 +289,8 @@ void WeaponChoosePanel::rebuild() {
       // Old UpdateColor: ammo state picks the scheme tint, rainbow
       // rotates the hue per item (ActiveColor Default, InactiveColor
       // DefaultTransparent, EmptyColor Red, EmptyInactive 125 0 0 80).
-      unsigned char r = 0, g = 255, b = 0, a = 255;
-      unsigned char ri = 0, gi = 255, bi = 0, ai = 125;
+      unsigned char r = 255, g = 176, b = 0, a = 255;
+      unsigned char ri = 255, gi = 176, bi = 0, ai = 125;
       if (!weaponres::hasAmmo(weapon)) {
         r = 255, g = 0;
         ri = 125, gi = 0, ai = 80;

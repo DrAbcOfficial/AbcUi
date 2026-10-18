@@ -33,8 +33,10 @@ void registerCvars() {
 
 namespace {
 
-// Old scheme "Default" (0 255 0) and "Red" (255 0 0).
-constexpr float kGreen[3] = {0.0f, 255.0f, 0.0f};
+// HUD accent amber (255 176 0, base.rcss --abc-hud-accent) and the scheme
+// "Red" danger colour (255 0 0). The old scheme's "Default" green was
+// retuned to the Half-Life amber; the hue-shift path is unchanged.
+constexpr float kAccent[3] = {255.0f, 176.0f, 0.0f};
 constexpr float kRed[3] = {255.0f, 0.0f, 0.0f};
 // Bar geometry (old HealthPanel.res): 56dp full width.
 constexpr float kBarWidth = 56.0f;
@@ -132,11 +134,11 @@ void HealthPanel::applyDanger(const char *labelId, const char *barId,
   if (dangerValue > 0.0f && value < dangerValue) {
     // Old GetDifferColor: hue pulled toward the danger red as the value
     // falls below the threshold (ratio = value / danger).
-    framework::ColorUtil::differColor(kGreen, kRed, value / dangerValue, rgb);
+    framework::ColorUtil::differColor(kAccent, kRed, value / dangerValue, rgb);
   } else {
-    rgb[0] = kGreen[0];
-    rgb[1] = kGreen[1];
-    rgb[2] = kGreen[2];
+    rgb[0] = kAccent[0];
+    rgb[1] = kAccent[1];
+    rgb[2] = kAccent[2];
   }
   const Rml::String color = framework::ColorUtil::format(rgb);
   if (Rml::Element *label = element(labelId))
