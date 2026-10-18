@@ -506,7 +506,7 @@ private:
 // (see ServerFavorites.h for the shipped-binary evidence): the same records
 // the Favorites/History list queries read back. No file of ours, no second
 // truth. Every operation fail-closes to false/0 when Steam is unavailable.
-class SteammFavorites final : public IServerFavorites {
+class SteamFavorites final : public IServerFavorites {
 public:
 	bool available() override { return ensureBindings(false) && bindings().matchmaking != nullptr; }
 
@@ -626,7 +626,7 @@ IServerQueryProvider* steamQueryProvider() {
 }
 
 IServerFavorites* steamFavorites() {
-	static SteammFavorites instance;
+	static SteamFavorites instance;
 	return &instance;
 }
 
