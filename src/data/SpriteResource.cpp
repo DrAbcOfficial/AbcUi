@@ -19,8 +19,8 @@
 #include <abc/Console.h>
 #include <abc/Paths.h>
 
-#include "render/Render.h"
-#include "../rmlui/VGUI2ExtensionImport.h"
+#include "framework/ScreenMetrics.h"
+#include "../framework/TextureSink.h"
 
 namespace sprites {
 
@@ -375,7 +375,7 @@ int standaloneFrameTexture(const std::string &relativePath, int frame,
 }
 
 int createTexture(const DecodedAtlas &atlas) {
-  if (!vgui2ext::available()) {
+  if (!framework::texture::available()) {
     if (!ChannelWarned) {
       ChannelWarned = true;
       abc::ConsoleWarn(
@@ -383,10 +383,10 @@ int createTexture(const DecodedAtlas &atlas) {
     }
     return 0;
   }
-  const int id = vgui2ext::createTexture();
+  const int id = framework::texture::create();
   if (!id)
     return 0;
-  vgui2ext::uploadTexture(id, atlas.rgba.data(), atlas.width, atlas.height);
+  framework::texture::upload(id, atlas.rgba.data(), atlas.width, atlas.height);
   return id;
 }
 
@@ -404,10 +404,7 @@ DecodedAtlas *ensureAtlas(const std::string &atlasFile) {
 } // namespace
 
 void vidInit() {
-  const int screenW =
-      abc::MetaRenderer()
-          ? static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth())
-          : 1920;
+  const int screenW = framework::ScreenWidth();
   const int wantedRes = screenW < 640 ? 320 : 640;
   if (HudResolution == wantedRes && !HudEntries.empty())
     return;
@@ -441,7 +438,7 @@ void shutdown() {
     ids.insert(id);
   for (int id : ids)
     if (id)
-      vgui2ext::deleteTextureById(id);
+      framework::texture::release(id);
   CropTextures.clear();
   Atlases.clear();
   HudEntries.clear();

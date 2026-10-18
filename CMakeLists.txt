@@ -85,6 +85,7 @@ add_library(AbcUi MODULE
     src/plugins.cpp
     src/hooks.cpp
     src/render/Render.cpp
+    src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp
     src/rmlui/backdrop/ElementBackdrop.cpp
@@ -112,6 +113,8 @@ add_library(AbcUi MODULE
     src/rmlui/RmlUiModule.cpp
     src/rmlui/ProbeCommand.cpp
     src/rmlui/TextInput.cpp
+    src/rmlui/TextureChannel.cpp
+    src/rmlui/LanguageChannel.cpp
     src/rmlui/SourceSpewStub.cpp
     src/services/steam/SteamAPI.cpp
     src/services/steam/SteamApiBridge.cpp

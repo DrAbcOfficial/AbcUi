@@ -5,7 +5,7 @@
 
 #include <abc/Console.h>
 
-#include "../rmlui/VGUI2ExtensionImport.h"
+#include "Language.h"
 
 #include <cstring>
 #include <unordered_map>
@@ -42,7 +42,7 @@ void parseTableFile(const std::string &path) {
 void Localization::load() {
   Table.clear();
 
-  const char *language = vgui2ext::currentLanguage();
+  const char *language = CurrentLanguage();
   if (!language || !*language)
     language = "english";
 

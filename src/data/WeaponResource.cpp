@@ -20,7 +20,7 @@
 
 #include "HudState.h"
 #include "NetworkMessages.h"
-#include "render/Render.h"
+#include "framework/ScreenMetrics.h"
 #include "SpriteResource.h"
 
 namespace weaponres {
@@ -188,10 +188,7 @@ void loadWeaponSprites(Weapon &weapon, const char *customSpr) {
       return;
   }
 
-  const int screenW =
-      abc::MetaRenderer()
-          ? static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth())
-          : 1920;
+  const int screenW = framework::ScreenWidth();
   const int res = screenW < 640 ? 320 : 640;
 
   const auto load = [&](const char *type, Weapon::SpriteSource &source,

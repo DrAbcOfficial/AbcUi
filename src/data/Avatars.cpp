@@ -9,7 +9,7 @@
 #include "../framework/ResourceLimits.h"
 #include "../hooks.h"
 #include "../services/steam/SteamAPI.h"
-#include "../rmlui/VGUI2ExtensionImport.h"
+#include "../framework/TextureSink.h"
 
 namespace avatars {
 
@@ -38,16 +38,16 @@ bool loadDefaultAvatar() {
   // Mod-relative image through the shared FreeImage loader (format is
   // detected from the file content, so the shipped asset's format is free
   // to change without touching this layer).
-  if (!vgui2ext::available())
+  if (!framework::texture::available())
     return false;
   framework::ImageLoader::DecodedImage image;
   if (!framework::ImageLoader::loadFromFile("abc/abcui/img/default_avatar.png",
                                             image))
     return false;
-  DefaultAvatarTexture = vgui2ext::createTexture();
+  DefaultAvatarTexture = framework::texture::create();
   if (!DefaultAvatarTexture)
     return false;
-  vgui2ext::uploadTexture(DefaultAvatarTexture, image.Pixels.data(),
+  framework::texture::upload(DefaultAvatarTexture, image.Pixels.data(),
                           image.Width, image.Height);
   DefaultAvatarWidth = image.Width;
   DefaultAvatarHeight = image.Height;
@@ -55,13 +55,13 @@ bool loadDefaultAvatar() {
 }
 
 bool upload(Entry &entry) {
-  if (!vgui2ext::available())
+  if (!framework::texture::available())
     return false;
   if (!entry.textureId)
-    entry.textureId = vgui2ext::createTexture();
+    entry.textureId = framework::texture::create();
   if (!entry.textureId)
     return false;
-  vgui2ext::uploadTexture(entry.textureId, entry.rgba.data(), entry.width,
+  framework::texture::upload(entry.textureId, entry.rgba.data(), entry.width,
                           entry.height);
   return true;
 }
@@ -101,9 +101,9 @@ void init() {
 void shutdown() {
   for (const auto &[id, entry] : Entries)
     if (entry.textureId)
-      vgui2ext::deleteTextureById(entry.textureId);
+      framework::texture::release(entry.textureId);
   if (DefaultAvatarTexture)
-    vgui2ext::deleteTextureById(DefaultAvatarTexture);
+    framework::texture::release(DefaultAvatarTexture);
   Entries.clear();
   DefaultAvatarTexture = 0;
   DefaultAvatarWidth = 0;
