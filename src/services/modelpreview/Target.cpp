@@ -171,7 +171,14 @@ bool Target::render(const Options& Config, int Width, int Height) {
 	}
 	// Use the model's own FPS/frame count, not a hard-coded 30 FPS.
 	auto* Header = static_cast<studiohdr_t*>(Views->GetModelData(Entity.model));
-	if (!Header || Header->numseq <= 0)
+	if (!Header || Header->numseq <= 0 || Header->length <= 0)
+		return false;
+	// Bound the sequence table against the model's own byte length before
+	// indexing it: seqindex comes from the (untrusted) .mdl file.
+	const auto HeaderSize = static_cast<std::size_t>(Header->length);
+	const auto SeqOffset = static_cast<std::size_t>(Header->seqindex);
+	const auto SeqBytes = static_cast<std::size_t>(Header->numseq) * sizeof(mstudioseqdesc_t);
+	if (SeqOffset > HeaderSize || SeqBytes > HeaderSize - SeqOffset)
 		return false;
 	State.sequence = std::clamp(Config.Sequence, 0, Header->numseq - 1);
 	State.skin = std::clamp(Config.Skin, 0, std::max(Header->numskinfamilies - 1, 0));
