@@ -4,7 +4,6 @@
 #include "../../services/video/Options.h"
 #include "VideoTexture.h"
 
-#define NOMINMAX
 #include <windows.h>
 
 #include <RmlUi/Core/Context.h>

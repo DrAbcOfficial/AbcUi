@@ -1,5 +1,4 @@
 // services::menubackdrop::Backdrop implementation - see Backdrop.h.
-#define NOMINMAX
 #include <windows.h>
 
 #include "Backdrop.h"

@@ -259,7 +259,7 @@ add_library(AbcUi MODULE
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )
-target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS)
+target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS NOMINMAX)
 target_compile_options(AbcUi PRIVATE /W4)
 target_compile_options(AbcUi PRIVATE /FIabc/ForceImport.h)
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
