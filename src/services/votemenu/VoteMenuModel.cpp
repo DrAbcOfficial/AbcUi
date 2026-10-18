@@ -122,12 +122,8 @@ void VoteMenuModel::rebuild() {
 			candidate.slot = player.slot;
 			candidate.name = player.name;
 			candidate.realName = player.realName;
-			if (player.steamId64 != 0) {
-				char id[32];
-				_snprintf_s(id, sizeof(id), _TRUNCATE, "%llu",
-					static_cast<unsigned long long>(player.steamId64));
-				candidate.steamId = id;
-			}
+			if (player.steamId64 != 0)
+				candidate.steamId = std::to_string(player.steamId64);
 			candidate.value = player.name;
 			Visible.push_back(std::move(candidate));
 		}
