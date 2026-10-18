@@ -304,9 +304,8 @@ CreateGameModel::Launch CreateGameModel::launch(const Request& request) {
 	// 4. maxplayers %d: an engine command, not a cvar (see the header). The
 	// value passed validate() [1, 32] - the settings.scr row limit - and the
 	// engine's own handler clamps against the live player count.
-	char players[32];
-	_snprintf_s(players, sizeof(players), _TRUNCATE, "maxplayers %d\n", request.MaxPlayers);
-	Seams_.clientCmd(players);
+	const std::string players = "maxplayers " + std::to_string(request.MaxPlayers) + "\n";
+	Seams_.clientCmd(players.c_str());
 
 	// 5. sv_password: the password never leaves this single typed write; it is
 	// not logged, not snapshotted and not kept anywhere else.
@@ -323,9 +322,8 @@ CreateGameModel::Launch CreateGameModel::launch(const Request& request) {
 	// 8. the irreversible map change: last, and only with every write above
 	// verified. Success is NOT declared here - the engine's loading stream
 	// owns the outcome (T14 Loading, T19 step 5).
-	char command[192];
-	_snprintf_s(command, sizeof(command), _TRUNCATE, "map %s\n", request.Map.c_str());
-	Seams_.clientCmd(command);
+	const std::string command = "map " + request.Map + "\n";
+	Seams_.clientCmd(command.c_str());
 
 	// 9. the shipped trailer (a separate issue right after the template).
 	Seams_.clientCmd("wait\nwait\n");
