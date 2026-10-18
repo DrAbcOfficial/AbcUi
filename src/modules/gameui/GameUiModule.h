@@ -33,7 +33,6 @@
 #include "../../services/settings/SettingsModel.h"
 #include "../../services/settings/VideoModeModel.h"
 #include "../../services/settings/VoiceModel.h"
-#include "../../services/votemenu/VoteMenuModel.h"
 #include "navigation/MenuController.h"
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
