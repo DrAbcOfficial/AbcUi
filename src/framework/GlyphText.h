@@ -47,6 +47,10 @@ std::string glyph(char c, const char *tint);
 // Markup for a whole string; empty when any character is unsupported.
 std::string markup(const std::string &text, const char *tint);
 
+// Ink-only variant: the additive glyph without the black outline layer, for
+// readouts that sit on their own dark backing and do not want the ring.
+std::string inkMarkup(const std::string &text, const char *tint);
+
 } // namespace glyphs
 
 } // namespace framework

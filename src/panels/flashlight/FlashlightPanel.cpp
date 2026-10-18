@@ -104,10 +104,11 @@ void FlashlightPanel::setFlashBattery(int battery) {
 
   const std::string text = std::format("{}%", battery);
   if (Rml::Element *message = element("message")) {
-    // Additive glyph ink (framework::glyphs), text fallback when a character
-    // has no glyph.
+    // Ink-only additive glyphs (no black outline layer - the readout sits on
+    // the sky/lamp art and the ring read as a black backing there), text
+    // fallback when a character has no glyph.
     const std::string ink =
-        framework::glyphs::markup(text, framework::glyphs::kAccentTint);
+        framework::glyphs::inkMarkup(text, framework::glyphs::kAccentTint);
     message->SetInnerRML(ink.empty() ? text : ink);
   }
 }

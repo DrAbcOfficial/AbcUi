@@ -52,17 +52,20 @@ bool supports(const std::string &text) {
   return true;
 }
 
-std::string glyph(char c, const char *tint) {
+namespace {
+
+// One glyph cell; `outline` adds the black silhouette layer under the ink.
+std::string glyphMarkup(char c, const char *tint, bool outline) {
   const char *file = glyphFile(c);
   if (!file)
     return {};
-  // One inline-block cell: the black outline layer first (source-over), then
-  // the additive ink on top of it.
   std::string out = "<span class=\"hud-glyph\">";
-  out += "<img class=\"glyph-outline\" src=\"tex://";
-  out += kOutlineRoot;
-  out += file;
-  out += ".png\"/>";
+  if (outline) {
+    out += "<img class=\"glyph-outline\" src=\"tex://";
+    out += kOutlineRoot;
+    out += file;
+    out += ".png\"/>";
+  }
   out += "<img class=\"glyph-ink\" src=\"texadd://";
   out += kGlyphRoot;
   out += file;
@@ -72,16 +75,31 @@ std::string glyph(char c, const char *tint) {
   return out;
 }
 
-std::string markup(const std::string &text, const char *tint) {
+std::string markupWith(const std::string &text, const char *tint,
+                       bool outline) {
   std::string out;
   out.reserve(text.size() * 240);
   for (const char c : text) {
-    const std::string one = glyph(c, tint);
+    const std::string one = glyphMarkup(c, tint, outline);
     if (one.empty())
       return {};
     out += one;
   }
   return out;
+}
+
+} // namespace
+
+std::string glyph(char c, const char *tint) {
+  return glyphMarkup(c, tint, true);
+}
+
+std::string markup(const std::string &text, const char *tint) {
+  return markupWith(text, tint, true);
+}
+
+std::string inkMarkup(const std::string &text, const char *tint) {
+  return markupWith(text, tint, false);
 }
 
 } // namespace glyphs

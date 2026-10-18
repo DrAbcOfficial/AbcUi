@@ -61,6 +61,10 @@
 	top: 0dp;
 	width: 26dp;
 	height: 12dp;
+	/* The glyph cell is wider than the type advance, so the percentage gets
+	   its own slightly smaller size to keep three digits + % clear of the
+	   box edges. */
+	font-size: 8dp;
 	text-align: center;
 	/* vgui Labels centre their text vertically; Rml needs the explicit
 	   line box (box height = one line). */
