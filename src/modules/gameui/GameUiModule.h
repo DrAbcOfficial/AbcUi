@@ -20,8 +20,6 @@
 #include "../../panels/commandmenu/CommandMenuPage.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
-#include "../../services/commandmenu/CommandMenuModel.h"
-#include "../../services/creategame/CreateGameModel.h"
 #include "../../services/loading/LoadingModel.h"
 #include "../../services/loading/AutoRetryGate.h"
 #include "../../services/playerlist/PlayerListModel.h"
