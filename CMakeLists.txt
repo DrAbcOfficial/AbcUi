@@ -93,8 +93,8 @@ add_library(AbcUi MODULE
     src/services/menumusic/MenuMusic.cpp
     src/services/friends/FriendsModel.cpp
     src/services/friends/FriendsSteam.cpp
-    src/services/modelpreview/Options.cpp
-    src/services/modelpreview/Target.cpp
+    src/rmlui/modelpreview/Options.cpp
+    src/rmlui/modelpreview/Target.cpp
     src/services/video/Decoder.cpp
     src/services/video/AsyncDecoder.cpp
     src/services/video/Options.cpp

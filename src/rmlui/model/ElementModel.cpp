@@ -1,8 +1,8 @@
 // New implementation; see ElementModel.h. Register before loading documents,
 // render once at the end-of-frame UI boundary, never inside Rml geometry draws.
 #include "ElementModel.h"
-#include "../../services/modelpreview/Options.h"
-#include "../../services/modelpreview/Target.h"
+#include "../modelpreview/Options.h"
+#include "../modelpreview/Target.h"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>

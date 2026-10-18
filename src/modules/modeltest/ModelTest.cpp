@@ -4,7 +4,7 @@
 #include <metahook.h>
 #include "../Module.h"
 #include "../../rmlui/model/ElementModel.h"
-#include "../../services/modelpreview/Target.h"
+#include "../../rmlui/modelpreview/Target.h"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <abc/Console.h>

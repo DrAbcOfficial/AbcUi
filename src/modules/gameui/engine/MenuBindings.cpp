@@ -3,7 +3,7 @@
 #include <abc/Plugin.h>
 #include "rmlui/VGUI2ExtensionImport.h"
 #include "data/PlayerResource.h"
-#include "services/modelpreview/Options.h"
+#include "rmlui/modelpreview/Options.h"
 #include "services/playerlist/MuteBackend.h"
 #include <cstring>
 #include <string>

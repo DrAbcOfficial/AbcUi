@@ -1,7 +1,7 @@
 #pragma once
 
 // services::video::Options - engine-independent <video> attribute validation.
-// Mirrors services/modelpreview/Options: the element supplies raw DOM
+// Mirrors rmlui/modelpreview/Options: the element supplies raw DOM
 // attribute strings, this unit decides what is a known attribute, what is an
 // error, and what the defaults are. No engine, no Rml, no FFmpeg here, so the
 // offline tests cover it directly.
