@@ -1,5 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
+#include "../../data/WeaponResource.h"
 #include "modules/gameui/settings/SettingsResources.h"
 #include "modules/gameui/debug/DebugCommands.h"
 #include <abc/Console.h>
@@ -77,6 +78,12 @@ void GameUiModule::onInit() {
   // T17: the server data provider. The Steam adapter resolves its
   // interface lazily (Steam may not be up yet at HUD_Init) and is a
   // process-lifetime singleton; the model owns the async lifecycle.
+  // hud_fastswitch: the data registry only reports the selection; the
+  // engine command is an engine-facing concern owned here.
+  weaponres::FastSwitchWeapon.append([](const weaponres::Weapon *weapon) {
+    if (weapon)
+      gEngfuncs.pfnServerCmd(weapon->name.c_str());
+  });
   ServerBrowser.setProvider(services::serverbrowser::steamQueryProvider());
   const auto BlacklistPath = abc::ModPath("abc/abcui/server_blacklist.json");
   std::string BlacklistError;

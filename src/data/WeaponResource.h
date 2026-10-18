@@ -120,6 +120,9 @@ void selectSlot(int slot, int advance, bool wheel);
 // Selection/ownership feeds for the WeaponChoose UI.
 extern abc::CallbackList<void(const Weapon *)>
     ChooseWeapon; // highlight changed
+// hud_fastswitch requested an immediate weapon change. The engine command is
+// sent by the UI/module subscriber, never by this data registry.
+extern abc::CallbackList<void(const Weapon *)> FastSwitchWeapon;
 extern abc::CallbackList<void(const Weapon *)> PickupWeapon;
 extern abc::CallbackList<void(const Weapon *)> DropWeapon;
 extern abc::CallbackList<void()> DropAllWeapons;

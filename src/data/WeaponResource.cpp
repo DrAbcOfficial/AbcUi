@@ -26,6 +26,7 @@
 namespace weaponres {
 
 abc::CallbackList<void(const Weapon *)> ChooseWeapon;
+abc::CallbackList<void(const Weapon *)> FastSwitchWeapon;
 abc::CallbackList<void(const Weapon *)> PickupWeapon;
 abc::CallbackList<void(const Weapon *)> DropWeapon;
 abc::CallbackList<void()> DropAllWeapons;
@@ -127,8 +128,8 @@ std::vector<const Weapon *> allSelectableWeapons() {
 void applySelection(const Weapon *weapon) {
   RegistryState.selected = weapon;
   RegistryState.selectedSlotId = weapon ? weapon->slot : kInvalidWeaponSlot;
-  if (weapon && cvar_fastswitch && cvar_fastswitch->value > 0)
-    gEngfuncs.pfnServerCmd(weapon->name.c_str());
+  if (weapon && fastSwitchOn())
+    FastSwitchWeapon(weapon);
   ChooseWeapon(weapon);
 }
 
