@@ -42,6 +42,8 @@
 	/* HUD accent (was scheme Default); applyDanger shifts the hue toward red
 	   below hud_danger_health / hud_danger_armor. */
 	image-color: var(--abc-hud-accent);
+	/* Translucent readout: the sprite is a step softer than the value. */
+	opacity: var(--abc-hud-icon-opacity);
 }
 #health-icon { left: 0dp; }
 #armor-icon { left: 150dp; }
@@ -57,6 +59,7 @@
 	line-height: 28dp;
 	/* HUD accent; the danger rule overrides per value at runtime. */
 	color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-value-opacity);
 }
 #health-label { left: 26dp; }
 #armor-label { left: 176dp; }
@@ -93,6 +96,8 @@
 	width: 92dp;
 	height: 5dp;
 	background-color: var(--abc-hud-accent);
+	/* The meter is the softest part of the readout. */
+	opacity: var(--abc-hud-meter-opacity);
 }
 
 #longjump {
@@ -103,4 +108,5 @@
 	height: 20dp;
 	visibility: hidden;
 	image-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-icon-opacity);
 }

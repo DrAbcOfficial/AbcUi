@@ -49,4 +49,5 @@
 	line-height: 12dp;
 	/* Old FlashLight.TextFgColor = scheme Default. */
 	color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-value-opacity);
 }

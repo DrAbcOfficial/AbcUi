@@ -42,7 +42,14 @@ body {
 	--abc-hud-accent-dim: #ffb0007d;
 	--abc-hud-accent-faint: #ffb0004d;
 	--abc-hud-danger: #ff0000;
-	--abc-hud-track: #000000a0;
+	--abc-hud-track: #00000080;
+	/* Translucent finish of the readouts: the value stays legible, icons and
+	   meters sit a step softer so the scene reads through them. Opacity is an
+	   inherited RmlUi property applied per element, so a panel can soften one
+	   part without fading the rest. */
+	--abc-hud-value-opacity: 0.88;
+	--abc-hud-icon-opacity: 0.8;
+	--abc-hud-meter-opacity: 0.75;
 }
 
 /* RmlUi ships no HTML user-agent stylesheet: everything defaults to

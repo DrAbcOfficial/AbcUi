@@ -43,6 +43,8 @@
 	line-height: 26dp;
 	color: var(--abc-hud-accent);
 	font-effect: outline(1px #000000b4);
+	/* Translucent readout: inks are a step stronger than the sprite/divider. */
+	opacity: var(--abc-hud-value-opacity);
 }
 
 #ammobar .pool .icon {
@@ -51,6 +53,9 @@
 	margin-right: 7dp;
 	/* Old AmmoBar.Ammo1/2IconColor = HUD accent. */
 	image-color: var(--abc-hud-accent);
+	/* Per-element opacity, not a group: the sprite sits at icon opacity even
+	   inside the value-opacity pool. */
+	opacity: var(--abc-hud-icon-opacity);
 }
 
 /* HL2-style reserve: a step smaller, dimmer, still on the clip baseline. */
@@ -75,4 +80,5 @@
 	margin-bottom: 8dp;
 	align-self: flex-end;
 	background-color: var(--abc-hud-accent-faint);
+	opacity: var(--abc-hud-meter-opacity);
 }
