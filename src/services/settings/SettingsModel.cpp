@@ -3,6 +3,8 @@
 // production model links into the offline acceptance unchanged.
 #include "SettingsModel.h"
 
+#include <abc/Parse.h>
+
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
@@ -199,20 +201,11 @@ std::string SettingsModel::formatValue(float value) {
 bool SettingsModel::parseValue(const char* text, float& out) {
 	if (!text)
 		return false;
-	// Full-consumption strtod: "3abc" and "" are input errors, not 3.
-	std::string trimmed = text;
-	const auto first = trimmed.find_first_not_of(" \t");
-	if (first == std::string::npos)
+	// Whole-view parse: "3abc" and "" are input errors, not 3.
+	const auto parsed = abc::ParseFloat(text);
+	if (!parsed || !std::isfinite(*parsed))
 		return false;
-	const auto last = trimmed.find_last_not_of(" \t");
-	trimmed = trimmed.substr(first, last - first + 1);
-	char* end = nullptr;
-	const double parsed = std::strtod(trimmed.c_str(), &end);
-	if (end != trimmed.c_str() + trimmed.size())
-		return false;
-	if (!std::isfinite(parsed))
-		return false;
-	out = static_cast<float>(parsed);
+	out = *parsed;
 	return std::isfinite(out);
 }
 

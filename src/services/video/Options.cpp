@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <abc/Parse.h>
+
 #include <cmath>
 
 namespace video {
@@ -22,16 +24,11 @@ bool boolean(std::string_view Text, bool& Output) {
 }
 
 bool positiveFloat(std::string_view Text, float Min, float Max, float& Output) {
-	try {
-		std::size_t consumed = 0;
-		const float value = std::stof(std::string(Text), &consumed);
-		if (consumed != Text.size() || !std::isfinite(value) || value < Min || value > Max)
-			return false;
-		Output = value;
-		return true;
-	} catch (...) {
+	const auto Value = abc::ParseFloat(Text);
+	if (!Value || !std::isfinite(*Value) || *Value < Min || *Value > Max)
 		return false;
-	}
+	Output = *Value;
+	return true;
 }
 
 } // namespace

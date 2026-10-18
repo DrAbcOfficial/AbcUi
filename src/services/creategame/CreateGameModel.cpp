@@ -2,12 +2,15 @@
 // evidence, the recoverable/irreversible classification and the seams.
 #include "CreateGameModel.h"
 
+#include <abc/Parse.h>
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cmath>
+#include <format>
 
 namespace services {
 namespace creategame {
@@ -30,19 +33,17 @@ bool equalsIgnoreCase(const std::string& a, const std::string& b) {
 	return true;
 }
 
-// Strict base-10 integer parse: the whole string, no sign, no whitespace, no
-// overflow (the digit cap keeps 11+ digit garbage away from strtol's
-// overflow behaviour).
+// Strict base-10 integer parse: the whole string, digits only, no sign, no
+// whitespace, no overflow (the 9-digit cap keeps 11+ digit garbage away).
 bool parseStrictDigits(const std::string& text, long& out) {
 	if (text.empty() || text.size() > 9)
 		return false;
-	long value = 0;
-	for (char c : text) {
-		if (c < '0' || c > '9')
-			return false;
-		value = value * 10 + (c - '0');
-	}
-	out = value;
+	if (text.find_first_not_of("0123456789") != std::string::npos)
+		return false;
+	const auto value = abc::ParseInt(text);
+	if (!value)
+		return false;
+	out = *value;
 	return true;
 }
 
@@ -332,9 +333,10 @@ CreateGameModel::Launch CreateGameModel::launch(const Request& request) {
 	// settings after that DLL/map configuration has loaded. Both the names
 	// and values passed the script allowlist and complete finite-number gate.
 	for (const auto& Option : request.Options) {
-		char Value[48];
-		std::snprintf(Value, sizeof(Value), "%.9g", static_cast<double>(std::strtof(Option.Value.c_str(), nullptr)));
-		const std::string Command = Option.Name + " " + Value + "\n";
+		const auto Parsed = abc::ParseFloat(Option.Value);
+		if (!Parsed)
+			continue;
+		const std::string Command = Option.Name + " " + std::format("{:.9g}", static_cast<double>(*Parsed)) + "\n";
 		Seams_.clientCmd(Command.c_str());
 	}
 	return Launch::kLaunched;
@@ -344,13 +346,14 @@ std::vector<std::string> CreateGameModel::settleOptions(const Request& Value) {
 	std::vector<std::string> Failed;
 	if (!wired() || !validOptions(Value)) return {"invalid request"};
 	for (const auto& Option : Value.Options) {
-		const float Wanted = std::strtof(Option.Value.c_str(), nullptr);
+		const auto Wanted = abc::ParseFloat(Option.Value);
+		if (!Wanted)
+			continue;
 		auto Matches = [&]() {
 			const auto* Live = Seams_.readCvar(Option.Name.c_str());
 			if (!Live) return false;
-			char* End = nullptr;
-			const float Number = std::strtof(Live, &End);
-			return End != Live && *End == '\0' && std::isfinite(Number) && std::abs(Number - Wanted) < 1e-5f;
+			const auto Number = abc::ParseFloat(Live);
+			return Number && std::abs(*Number - *Wanted) < 1e-5f;
 		};
 		if (Matches()) continue;
 		if (!Seams_.writeCvarString(Option.Name.c_str(), Option.Value.c_str()) || !Matches())

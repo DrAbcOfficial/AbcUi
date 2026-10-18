@@ -1,4 +1,6 @@
 #include "ServerOptions.h"
+
+#include <abc/Parse.h>
 #include "services/settings/SettingsModel.h"
 #include <algorithm>
 #include <cmath>
@@ -45,10 +47,10 @@ bool validateServerOptions(const std::vector<ServerOption>& Definitions,
 			|| Entry.Value.size() > 32)
 			return false;
 		// Entire text must be a finite number, not a command delimiter.
-		char* End = nullptr;
-		const float Number = std::strtof(Entry.Value.c_str(), &End);
-		if (End != Entry.Value.c_str() + Entry.Value.size() || !std::isfinite(Number))
+		const auto Parsed = abc::ParseFloat(Entry.Value);
+		if (!Parsed || !std::isfinite(*Parsed))
 			return false;
+		const float Number = *Parsed;
 		if (It->Toggle && Number != 0 && Number != 1) return false;
 		if (!It->Choices.empty()) {
 			if (std::none_of(It->Choices.begin(), It->Choices.end(),

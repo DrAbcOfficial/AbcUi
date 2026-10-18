@@ -2,6 +2,8 @@
 // trailing junk or unsafe entity modes to the native Studio renderer.
 #include "Options.h"
 
+#include <abc/Parse.h>
+
 #include <algorithm>
 #include <charconv>
 #include <cmath>
@@ -11,12 +13,10 @@ namespace modelpreview {
 namespace {
 template <class T>
 bool number(std::string_view Text, T& Output, T Min, T Max) {
-	T Value{};
-	const auto Result = std::from_chars(Text.data(), Text.data() + Text.size(), Value);
-	if (Result.ec != std::errc() || Result.ptr != Text.data() + Text.size() ||
-		!std::isfinite(static_cast<double>(Value)) || Value < Min || Value > Max)
+	const auto Value = abc::ParseNumber<T>(Text);
+	if (!Value || !std::isfinite(static_cast<double>(*Value)) || *Value < Min || *Value > Max)
 		return false;
-	Output = Value;
+	Output = *Value;
 	return true;
 }
 

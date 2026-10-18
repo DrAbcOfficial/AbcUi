@@ -1,6 +1,8 @@
 // services::loading::LoadingModel implementation - see LoadingModel.h.
 #include "LoadingModel.h"
 
+#include <abc/Parse.h>
+
 #include <cstring>
 
 namespace services {
@@ -20,17 +22,13 @@ bool validHostChar(char c) {
 bool parsePort(const char* text, int& outPort) {
 	if (!text || !*text)
 		return false;
-	int value = 0;
-	for (const char* it = text; *it; ++it) {
-		if (*it < '0' || *it > '9')
-			return false;
-		value = value * 10 + (*it - '0');
-		if (value > 65535)
-			return false;  // also caps absurd lengths
-	}
-	if (value < 1)
+	const std::string_view View(text);
+	if (View.find_first_not_of("0123456789") != View.npos)
 		return false;
-	outPort = value;
+	const auto Value = abc::ParseInt(View);
+	if (!Value || *Value < 1 || *Value > 65535)
+		return false;
+	outPort = *Value;
 	return true;
 }
 
