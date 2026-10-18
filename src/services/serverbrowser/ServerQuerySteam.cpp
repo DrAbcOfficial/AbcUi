@@ -283,6 +283,8 @@ public:
 		// (SDK 1.51 header shape) - the pairs stay local and fully owned here.
 		MatchMakingKeyValuePair_t stackPairs[32];
 		MatchMakingKeyValuePair_t* pairPointers[32];
+		// begin() rejects oversized lists; keep a defensive provider-level
+		// clamp for direct callers, never a silent different query.
 		int count = filterCount;
 		if (count < 0)
 			count = 0;

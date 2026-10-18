@@ -54,6 +54,7 @@ namespace services::serverbrowser {
 inline constexpr int kMaxServers = 1000;       // list snapshot cap
 inline constexpr int kMaxPlayers = 64;         // per-server player lines
 inline constexpr int kMaxEventsPerPump = 256;  // bounded main-thread work per frame
+inline constexpr int kMaxFiltersPerQuery = 32; // Steam MatchMakingKeyValuePair_t limit
 inline constexpr uint32_t kDefaultTimeoutMs = 30000;
 
 // The six Steam list kinds (slots 0x00-0x14; T18 exposes Internet/LAN/

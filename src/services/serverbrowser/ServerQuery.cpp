@@ -33,6 +33,15 @@ void ServerQuery::resetListState() {
 bool ServerQuery::begin(QueryKind kind, const FilterPair* filters, int filterCount) {
 	if (Closed)
 		return false;
+	if (filterCount < 0)
+		return false;
+	if (filterCount > kMaxFiltersPerQuery) {
+		// The Steam provider can only forward 32 pairs; refusing is safer
+		// than silently querying a different filter set.
+		Status = QueryStatus::Failed;
+		Failure = QueryFailure::Rejected;
+		return false;
+	}
 	std::vector<FilterPair> NextFilters;
 	if (filters && filterCount > 0)
 		NextFilters.assign(filters, filters + filterCount);
