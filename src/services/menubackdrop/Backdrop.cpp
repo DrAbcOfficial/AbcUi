@@ -199,6 +199,13 @@ bool Backdrop::render() {
 	if (!renderer || !rendererInterface)
 		return false;
 
+	bool Republished = false;
+	const auto Publish = [&state]() {
+		state.Generation = static_cast<unsigned int>(++NextGeneration);
+		state.Uri = std::string(kTexturePrefix) + std::to_string(state.Generation);
+		state.Published = true;
+	};
+
 	const bool inLevel = services::nativeUiBridge().hasLevel();
 	Mode mode = state.Requested;
 	if (mode == Mode::kAuto)
@@ -258,9 +265,15 @@ bool Backdrop::render() {
 		state.TargetHeight = height;
 		// A fresh texture id behind the same registration key: publish a new
 		// URI so Rml re-resolves once.
-		state.Generation = static_cast<unsigned int>(++NextGeneration);
-		state.Uri = std::string(kTexturePrefix) + std::to_string(state.Generation);
-		state.Published = true;
+		Publish();
+		Republished = true;
+	}
+
+	// The source can come back after a solid frame (unpublish() cleared the
+	// URI while the FBOs stayed valid): publish again before capturing.
+	if (!state.Published) {
+		Publish();
+		Republished = true;
 	}
 
 	// Capture: an opaque white fill first, then the source alpha-blended over
@@ -293,7 +306,7 @@ bool Backdrop::render() {
 	// The URI only changes with the texture (see above): the per-frame pixel
 	// changes ride the same texture handle, so Rml's texture cache is not
 	// disturbed and the element writes no DOM while the backdrop is steady.
-	return false;
+	return Republished;
 }
 
 Backdrop& menuBackdrop() {
