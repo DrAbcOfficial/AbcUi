@@ -1,6 +1,7 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: lifecycle/Documents.
 #include <RmlUi/Core/Context.h>
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include <abc/Console.h>
 #include "framework/FatalExit.h"
 #include "framework/Localization.h"

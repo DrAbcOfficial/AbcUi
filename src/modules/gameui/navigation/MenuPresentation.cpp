@@ -4,6 +4,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include <abc/Console.h>
 #include "framework/Localization.h"
 #include "rmlui/InputBridge.h"

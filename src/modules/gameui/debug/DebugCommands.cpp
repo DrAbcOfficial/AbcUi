@@ -1,6 +1,7 @@
 // Frozen Debug command registration.
 #ifndef NDEBUG
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include "DebugCommands.h"
 #include <abc/CvarCmd.h>
 namespace gameui {

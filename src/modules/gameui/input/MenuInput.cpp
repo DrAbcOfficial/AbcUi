@@ -1,5 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: input/MenuInput.
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include <abc/Console.h>
 #include <keydefs.h>
 #include "rmlui/InputBridge.h"

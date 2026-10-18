@@ -1,23 +1,13 @@
 #pragma once
 #include "navigation/MenuAction.h"
+#include "../../framework/InteractiveDocument.h"
 #include "../../framework/UiInputRouter.h"
 // GameUI composition root and cross-domain navigation coordinator. Platform
 // binding, resource loading, diagnostics and context query ownership are
 // separate collaborators. Domain flow implementations live beside their
 // peers; this header is internal to the gameui module, never a spine API.
 #include "../Module.h"
-#include "../../panels/console/ConsolePage.h"
-#include "../../panels/creategame/CreateGamePage.h"
-#include "../../panels/loading/LoadingWindows.h"
-#include "../../panels/mainmenu/MainMenuPage.h"
 #include "services/uiconfig/ConfigRepository.h"
-#include "../../panels/menushared/MenuShellWindows.h"
-#include "../../panels/playerlist/PlayerListPage.h"
-#include "../../panels/serverbrowser/ServerBrowserPage.h"
-#include "../../panels/settings/SettingsPage.h"
-#include "../../panels/settings/VideoConfirmPage.h"
-#include "../../panels/votemenu/VoteMenuPage.h"
-#include "../../panels/commandmenu/CommandMenuPage.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
 #include "../../services/loading/LoadingModel.h"
@@ -45,6 +35,30 @@
 #include <memory>
 #include <vector>
 #include <string>
+namespace panels {
+namespace commandmenu { class CommandMenuPage; }
+namespace console { class ConsolePage; }
+namespace creategame { class CreateGamePage; }
+namespace loading {
+class LoadingPage;
+class ConnectionErrorOverlay;
+class PasswordOverlay;
+class DirectConnectOverlay;
+} // namespace loading
+namespace mainmenu { class MainMenuPage; }
+namespace menushared {
+class MenuStubPage;
+class ConfirmQuitOverlay;
+} // namespace menushared
+namespace playerlist { class PlayerListPage; }
+namespace serverbrowser { class ServerBrowserPage; }
+namespace settings {
+class SettingsPage;
+class VideoConfirmPage;
+} // namespace settings
+namespace votemenu { class VoteMenuPage; }
+} // namespace panels
+
 namespace gameui {
 using menu::EventKind;
 using menu::MenuEvent;
@@ -56,6 +70,7 @@ class GameUiModule final : public modules::IUiModule,
                            private services::INativeMenuSink {
 public:
   GameUiModule();
+  ~GameUiModule() override;
   const char *name() const override;
   void onInit() override;
   void onFrame(double frameTime) override;

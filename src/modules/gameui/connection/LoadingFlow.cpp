@@ -1,6 +1,7 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility:
 // connection/LoadingFlow.
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include <string>
 #include <abc/Console.h>
 namespace gameui {

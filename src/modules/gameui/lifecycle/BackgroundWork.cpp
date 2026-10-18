@@ -1,5 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: lifecycle/Frame.
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include <abc/CvarCmd.h>
 #include "modules/gameui/engine/VideoBindings.h"
 namespace gameui {

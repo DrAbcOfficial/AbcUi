@@ -8,6 +8,7 @@
 #include <RmlUi/Core/Input.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include "DebugCommands.h"
 #include <abc/Console.h>
 #include "services/console/ConsoleBackend.h"

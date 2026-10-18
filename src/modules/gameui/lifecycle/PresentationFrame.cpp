@@ -4,6 +4,7 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Debugger.h>
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 namespace gameui {
 void GameUiModule::pumpVisibleWork() {
 

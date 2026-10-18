@@ -1,5 +1,18 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
+#include "../../panels/commandmenu/CommandMenuPage.h"
+#include "../../panels/console/ConsolePage.h"
+#include "../../panels/creategame/CreateGamePage.h"
+#include "../../panels/loading/LoadingWindows.h"
+#include "../../panels/mainmenu/MainMenuPage.h"
+#include "../../panels/menushared/MenuShellWindows.h"
+#include "../../panels/playerlist/PlayerListPage.h"
+#include "../../panels/serverbrowser/ServerBrowserPage.h"
+#include "../../panels/settings/SettingsPage.h"
+#include "../../panels/settings/VideoConfirmPage.h"
+#include "../../panels/votemenu/VoteMenuPage.h"
+
 #include "../../data/WeaponResource.h"
 #include "modules/gameui/settings/SettingsResources.h"
 #include "modules/gameui/debug/DebugCommands.h"
@@ -215,6 +228,8 @@ ServerBrowserHost GameUiModule::MakeServerBrowserHost() {
   host.resetAutoRetry = [this] { AutoRetry.reset(); };
   return host;
 }
+
+GameUiModule::~GameUiModule() = default;
 
 const char *GameUiModule::name() const {
   return "gameui";

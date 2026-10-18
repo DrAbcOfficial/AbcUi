@@ -1,6 +1,7 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility:
 // navigation/PageProjection.
 #include "modules/gameui/GameUiModule.h"
+#include "modules/gameui/GameUiPages.h"
 #include <abc/Plugin.h>
 #include "modules/gameui/engine/MenuBindings.h"
 namespace gameui {
