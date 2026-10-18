@@ -4,19 +4,22 @@
 	<link type="text/rcss" href="../rcss/health.rcss"/>
 </head>
 <body id="health">
-	<!-- HL2-inspired vitals: amber icon + large amber number straight on the
-	     scene, with the vgui-era meter kept underneath each value. The old
-	     vgui plate is gone; the numbers carry a one-pixel outline instead
-	     (rcss font-effect) so they stay readable on bright maps. -->
+	<!-- HL2-inspired vitals: amber icon + large amber value straight on the
+	     scene, with the vgui-era meter kept underneath each value. The value
+	     ink is additive (framework::glyphs + texadd://) exactly like the HUD
+	     sprite icons, and the meter fill is the additive strip - no outline
+	     and no black track. -->
 	<img id="health-icon" class="icon" src="../img/healthbar_icon.png"/>
 	<div id="health-label" class="font-vital">0</div>
 	<div id="health-bar-bg"></div>
-	<div id="health-bar-wrap"><div id="health-bar"></div></div>
+	<div id="health-bar-wrap"><img id="health-bar" class="hud-meter"
+		src="texadd://abc/abcui/hud/img/glyph/meter.png"/></div>
 
 	<img id="armor-icon" class="icon" src="../img/armorbar_icon.png"/>
 	<div id="armor-label" class="font-vital">0</div>
 	<div id="armor-bar-bg"></div>
-	<div id="armor-bar-wrap"><div id="armor-bar"></div></div>
+	<div id="armor-bar-wrap"><img id="armor-bar" class="hud-meter"
+		src="texadd://abc/abcui/hud/img/glyph/meter.png"/></div>
 
 	<img id="longjump" src="../img/longjump.png"/>
 </body>

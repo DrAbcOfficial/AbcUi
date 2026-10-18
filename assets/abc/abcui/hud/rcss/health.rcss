@@ -20,18 +20,21 @@
 }
 
 /* HL2-style vitals type: one big amber value per group. Verdana Bold stands
-   in for the old CompactaBold; the outline font-effect keeps the number
-   legible without the old dark plate. */
+   in for the old CompactaBold. The value ink is additive glyphs
+   (framework::glyphs), so there is no outline: black would add nothing
+   anyway, and the additive blend keeps the readout glowing over the scene. */
 #health .font-vital {
 	font-family: Verdana;
 	font-weight: bold;
 	font-size: 20dp;
 	letter-spacing: 0.4dp;
 	white-space: nowrap;
-	/* RmlUi font effects take plain px (the effect has no element context to
-	   resolve dp against), so the outline stays a 1px hairline at any
-	   resolution. */
-	font-effect: outline(1px #000000b4);
+}
+
+/* Additive glyph run: .hud-glyph carries the em sizing, the accent tint and
+   the value opacity (base.rcss); the run inherits the 20dp type above. */
+#health .hud-glyph {
+	vertical-align: baseline;
 }
 
 #health-icon, #armor-icon {
@@ -76,28 +79,26 @@
 #health-bar-wrap { left: 26dp; }
 #armor-bar-wrap { left: 176dp; }
 
-/* Meter track: HL2 keeps the readout chrome dark and flat, so the old white
-   vgui plate becomes a translucent black well. */
+/* No meter well: the additive fill is the whole indicator (the old black
+   track was the chrome this pass removes). The elements stay in the tree
+   because HealthPanel toggles them with the group visibility. */
 #health-bar-bg, #armor-bar-bg {
 	position: absolute;
 	top: 32dp;
 	width: 92dp;
 	height: 5dp;
-	background-color: var(--abc-hud-track);
-	border-radius: 2dp;
 }
 #health-bar-bg { left: 26dp; }
 #armor-bar-bg { left: 176dp; }
 
 /* In-flow (display:block) so overflow:hidden on the wrap clips the fill
    reliably (RmlUi clipping of abs-positioned children is not guaranteed). */
+/* Additive meter strip (texadd:// in the document): .hud-meter carries the
+   tint and the meter opacity, the wrap clips it to the value. */
 #health-bar, #armor-bar {
 	display: block;
 	width: 92dp;
 	height: 5dp;
-	background-color: var(--abc-hud-accent);
-	/* The meter is the softest part of the readout. */
-	opacity: var(--abc-hud-meter-opacity);
 }
 
 #longjump {

@@ -52,6 +52,25 @@ body {
 	--abc-hud-meter-opacity: 0.75;
 }
 
+/* Additive HUD ink (framework::glyphs). A texadd:// texture is loaded with
+   the additive blend the sprite icons use, so its pixels are added to the
+   scene instead of covering it: black contributes nothing, which is why an
+   additive readout needs no outline. Sizing is per context (em, so the ink
+   follows the surrounding type); the value tint defaults to the HUD accent
+   and the danger rule overrides it inline. */
+.hud-glyph {
+	display: inline-block;
+	width: 0.64em;
+	height: 0.73em;
+	image-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-value-opacity);
+}
+
+.hud-meter {
+	image-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-meter-opacity);
+}
+
 /* RmlUi ships no HTML user-agent stylesheet: everything defaults to
    display:inline. Give the common text elements their block flow here. */
 h1, h2, h3, p, div {

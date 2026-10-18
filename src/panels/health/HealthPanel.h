@@ -37,8 +37,11 @@ private:
   void updateVisibility();
   void setHealth(int health);
   void setArmor(int armor);
-  void applyDanger(const char *labelId, const char *barId, const char *iconId,
-                   int value, float dangerValue);
+  // Danger hue (amber -> red below the cvar threshold), then one vitals group
+  // update: additive value ink, tinted meter fill and icon, meter width.
+  Rml::String dangerColor(int value, float dangerValue) const;
+  void applyVital(const char *labelId, const char *barId, const char *iconId,
+                  const char *wrapId, int value, float dangerValue);
   void setLongJump(bool longJump);
 };
 

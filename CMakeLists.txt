@@ -208,6 +208,7 @@ add_library(AbcUi MODULE
     src/framework/PanelManagerLifecycle.cpp
     src/framework/Theme.cpp
     src/framework/StackBase.cpp
+    src/framework/GlyphText.cpp
     src/framework/Projection.cpp
     src/panels/ammostack/AmmoStackPanel.cpp
     src/panels/ammobar/AmmoBarPanel.cpp
