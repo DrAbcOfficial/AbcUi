@@ -7,8 +7,11 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
 - Nothing committed (code, comments, docs, commit messages, tags) may contain local machine paths, personal directories, session logs or any credentials; the deployment destination is provided through the `ABC_GAME_DIR` environment variable (optional; unset means no deploy).
 - Do not commit test scaffolding, acceptance scripts, evidence screenshots, plans or progress logs; those are session artifacts that do not belong in the release.
 - The README is the single public document; UI, config-format or cvar behaviour changes must update it in the same commit.
+- AbcCore is managed by the aggregate `ABCEnchance` repository and consumed
+  through `ABC_CORE_DIR`; do not add a `thirdparty/AbcCore` submodule back. The
+  plugin-facing contract is the versioned C ABI `AbcCore_CreateInterface`
+  table, not exported C++ symbols.
 - Submodule pins may only point at commits that are already public upstream; confirm the commit is pushed before bumping a pin.
-- AbcCore is managed by the aggregate `ABCEnchance` repository and consumed through `ABC_CORE_DIR`; do not add a `thirdparty/AbcCore` submodule back to AbcUi.
 - Rendering draws go exclusively through IMetaRenderer: no direct OpenGL calls.
   VGUI2 `ISurface2` is used only for the texture upload channel
   (`DrawSetTextureRGBA`), cursor handling and engine UI seams, never to draw a
@@ -48,10 +51,11 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
 
 ## Build
 
-Win32 x86 only / C++20 / dynamic CRT (/MD). AbcCore is linked from
-`ABC_CORE_DIR` (sibling `../AbcCore` by default) and its target is pinned to the
-same `/MD` runtime. `ABC_GAME_DIR` is optional: unset means the plugin and
-assets are built but not deployed.
+Win32 x86 only / C++20 / dynamic CRT (/MD). AbcCore is consumed as
+`AbcCore.dll` from `ABC_CORE_DIR` (sibling `../AbcCore` by default); the plugin
+links the import library and the DLL must be deployed under
+`metahook/dlls/AbcCore/`. `ABC_GAME_DIR` is optional: unset means the plugin
+and assets are built but not deployed.
 
 ```bash
 cmake --preset win32-debug

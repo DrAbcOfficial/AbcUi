@@ -15,9 +15,8 @@ if(NOT EXISTS "${ABC_CORE_DIR}/CMakeLists.txt")
 endif()
 add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
 
-# AbcUi and the statically linked AbcCore must share one CRT heap. Pin the
-# core target explicitly so a sibling checkout and the older thirdparty copy
-# both build with the dynamic CRT (/MD).
+# AbcUi and AbcCore.dll must share one CRT heap. Pin the core target
+# explicitly so a sibling or aggregate-source checkout always builds /MD.
 set_target_properties(abc_core PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
@@ -83,6 +82,7 @@ target_compile_features(abc_ui_config PUBLIC cxx_std_20)
 
 add_library(AbcUi MODULE
     src/plugins.cpp
+    src/CoreGlobals.cpp
     src/hooks.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp

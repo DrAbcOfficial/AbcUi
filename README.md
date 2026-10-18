@@ -1,6 +1,6 @@
 # AbcUi
 
-HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, drawing exclusively through IMetaRenderer with zero direct OpenGL (textures upload through the VGUI2 surface channel). The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is built as a static `abc_core` from an external source tree (`ABC_CORE_DIR`, sibling `../AbcCore` by default); AbcUi no longer vendors AbcCore as a submodule, and no `AbcCore.dll` is required. AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
+HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, drawing exclusively through IMetaRenderer with zero direct OpenGL (textures upload through the VGUI2 surface channel). The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is loaded as `AbcCore.dll` from an external source tree (`ABC_CORE_DIR`, sibling `../AbcCore` by default); AbcUi no longer vendors AbcCore as a submodule. The DLL exposes a Valve-style, versioned C ABI factory (`AbcCore_CreateInterface`). AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
 
 ## Build
 
@@ -39,9 +39,9 @@ cmake --build --preset win32-release --target dist
 ```
 
 Produces `AbcUi-<version>.zip` under `build/<preset>/dist/` (plugin DLL,
-`abc/abcui` assets, README). The shared gamedata catalog is provided by the
-aggregate `ABCEnchance-<tag>.zip` / `AbcCore-<version>.zip`, not by this module
-package. The archive contains `svencoop/` at its root: extract it directly into
+`abc/abcui` assets, README). `AbcCore.dll` and the shared gamedata catalog are
+provided by the aggregate `ABCEnchance-<tag>.zip` / `AbcCore-<version>.zip`,
+not by this module package. The archive contains `svencoop/` at its root: extract it directly into
 the Sven Co-op root, with no extra version folder to copy.
 
 ## Data-driven menu
@@ -97,9 +97,11 @@ AbcEssential.dll
 AbcUi.dll
 ```
 
-`abc_core` is linked statically into `AbcUi.dll`; there is no `AbcCore.dll` to
-place. The only runtime plugin dependencies are Renderer and VGUI2Extension in
-the list above.
+`AbcCore.dll` is a shared dependency, not a plugin: place it at
+`svencoop/metahook/dlls/AbcCore/AbcCore.dll` (the aggregate package does this).
+The Windows loader resolves it when `AbcUi.dll` loads; the plugin-facing
+contract is the versioned `AbcCore_CreateInterface` table, not exported C++
+symbols.
 
 ## Submodules
 
