@@ -38,8 +38,8 @@ namespace {
 // retuned to the Half-Life amber; the hue-shift path is unchanged.
 constexpr float kAccent[3] = {255.0f, 176.0f, 0.0f};
 constexpr float kRed[3] = {255.0f, 0.0f, 0.0f};
-// Bar geometry (old HealthPanel.res): 56dp full width.
-constexpr float kBarWidth = 56.0f;
+// Bar geometry (health.rcss meter): 92dp full width.
+constexpr float kBarWidth = 92.0f;
 
 } // namespace
 
@@ -143,8 +143,9 @@ void HealthPanel::applyDanger(const char *labelId, const char *barId,
   const Rml::String color = framework::ColorUtil::format(rgb);
   if (Rml::Element *label = element(labelId))
     label->SetProperty("color", color);
+  // The meter fill is a flat div (HL2-style), the icon stays a tinted sprite.
   if (Rml::Element *bar = element(barId))
-    bar->SetProperty("image-color", color);
+    bar->SetProperty("background-color", color);
   if (Rml::Element *icon = element(iconId))
     icon->SetProperty("image-color", color);
 }
