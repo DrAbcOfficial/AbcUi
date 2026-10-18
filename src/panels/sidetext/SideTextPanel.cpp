@@ -16,6 +16,7 @@
 
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
+#include "../../framework/GlyphText.h"
 
 namespace panels {
 
@@ -89,8 +90,13 @@ void SideTextPanel::onData(double frameTime) {
   replaceAll(text, "{SPEED}", std::to_string(static_cast<int>(speed)));
   if (text != LastText) {
     LastText = text;
-    if (Rml::Element *message = element("message"))
-      message->SetInnerRML(text);
+    if (Rml::Element *message = element("message")) {
+      // Additive glyph ink (framework::glyphs); a template with characters
+      // outside the glyph set falls back to plain text.
+      const std::string ink =
+          framework::glyphs::markup(text, framework::glyphs::kAccentTint);
+      message->SetInnerRML(ink.empty() ? text : ink);
+    }
   }
 }
 

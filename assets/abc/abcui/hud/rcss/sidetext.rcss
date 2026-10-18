@@ -1,8 +1,8 @@
 /* sidetext.rcss - SidePanel layout. Rebuilt from the old
    abcenchance/res/SideTextPanel.res 72x24 pill (ecco bg) into the HL2 readout
-   language: a small amber glyph plus the value, drawn straight on the scene
-   with no plate and no money prefix. The panel keeps the old anchors - the
-   readout still sits a little above the vertical centre on the left edge. */
+   language: the value alone, drawn straight on the scene with no plate, no
+   money prefix and no icon. The panel keeps the old anchors - the readout
+   still sits a little above the vertical centre on the left edge. */
 
 #sidetext {
 	position: absolute;
@@ -11,30 +11,15 @@
 	margin-top: -64dp;
 }
 
-#sidetext #readout {
-	display: flex;
-	flex-flow: row;
-	align-items: center;
-}
-
-/* Score glyph: white star art tinted by the HUD accent (same treatment as the
-   vitals icons). */
-#sidetext #score-icon {
-	width: 18dp;
-	height: 18dp;
-	margin-right: 6dp;
-	image-color: var(--abc-hud-accent);
-	opacity: var(--abc-hud-icon-opacity);
-}
-
-/* Value template ({SCORE}/{SPEED}/{MAXSPEED}); doubles as the old side text
-   label. */
+/* Value template ({SCORE}/{SPEED}/{MAXSPEED}) at the small side-readout size;
+   the panel writes it as additive glyph ink (framework::glyphs), so the font
+   below only drives the em sizing and the text fallback. */
 #sidetext #message {
 	font-family: Verdana;
 	font-weight: bold;
-	font-size: 18dp;
-	line-height: 22dp;
-	letter-spacing: 0.3dp;
+	font-size: 14dp;
+	line-height: 18dp;
+	letter-spacing: 0.2dp;
 	white-space: nowrap;
 	color: var(--abc-hud-accent);
 	opacity: var(--abc-hud-value-opacity);

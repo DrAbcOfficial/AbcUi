@@ -42,8 +42,9 @@
 	letter-spacing: 0.3dp;
 	line-height: 26dp;
 	color: var(--abc-hud-accent);
-	font-effect: outline(1px #000000b4);
-	/* Translucent readout: inks are a step stronger than the sprite/divider. */
+	/* The value is additive glyph ink now (framework::glyphs); its black
+	   outline is the stack's own layer, so no font-effect here. The colour
+	   and opacity style the text fallback. */
 	opacity: var(--abc-hud-value-opacity);
 }
 
@@ -65,7 +66,6 @@
 	letter-spacing: 0dp;
 	margin-left: 2dp;
 	color: var(--abc-hud-accent-dim);
-	font-effect: outline(1px #000000b4);
 }
 
 /* Pool divider: the old red "|" glyph becomes a flat amber hairline. It is

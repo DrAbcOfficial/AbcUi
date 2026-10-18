@@ -10,6 +10,7 @@
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
 #include "../../data/WeaponResource.h"
+#include "../../framework/GlyphText.h"
 
 namespace panels {
 
@@ -97,9 +98,21 @@ void AmmoBarPanel::updatePool(int pool,
     // a weapon without a usable ammo sprite cannot shift the line box.
     rml = "<img class=\"icon\" style=\"visibility:hidden\"/>";
   }
-  rml += std::format("<span class=\"clip\">{}</span>", clip);
-  if (!reserve.empty())
-    rml += std::format("<span class=\"reserve\">{}</span>", reserve);
+  // Additive glyph ink with the outline layer behind it (framework::glyphs);
+  // the span keeps the font size that drives the glyph cell, and stays as the
+  // text fallback for characters outside the glyph set.
+  const std::string clipInk =
+      framework::glyphs::markup(clip, framework::glyphs::kAccentTint);
+  if (clipInk.empty())
+    rml += std::format("<span class=\"clip\">{}</span>", clip);
+  else
+    rml += std::format("<span class=\"clip\">{}</span>", clipInk);
+  if (!reserve.empty()) {
+    const std::string reserveInk =
+        framework::glyphs::markup(reserve, framework::glyphs::kAccentDimTint);
+    rml += std::format("<span class=\"reserve\">{}</span>",
+                       reserveInk.empty() ? reserve : reserveInk);
+  }
   // AmmoX fires on every ammo change; skip the re-parse when the line is
   // already correct (same sprite, same numbers).
   if (rml == PoolRml[pool])
