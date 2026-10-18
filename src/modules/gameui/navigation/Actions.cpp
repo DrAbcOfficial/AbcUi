@@ -24,7 +24,7 @@ void GameUiModule::onMenuAction(const char *action) {
   else if (Kind == ActionKind::kCreateGame)
     Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kCreateGame));
   else if (Parsed.Domain == ActionDomain::kCreateGame) {
-    handleCreateGameAction(Kind);
+    Create->handleAction(Kind);
     return;
   } else if (Kind == ActionKind::kPlayerList)
     Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));

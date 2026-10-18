@@ -79,7 +79,7 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   Browser->setFavorites(services::serverbrowser::steamFavorites());
   // T19: the create-local-game page (was the kCreateGame stub).
   CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
-  CreateGamePage_->setModel(&CreateGame);
+  Create->setPage(CreateGamePage_.get());
   // T20: the player-list page (was the kPlayerList stub).
   PlayerListPage_ = std::make_unique<panels::playerlist::PlayerListPage>();
   PlayerListPage_->setModel(&PlayerList);
@@ -211,7 +211,7 @@ void GameUiModule::serviceEmergencyPages() {
   DirectConnectPresented = false;
   LoadingVisible = false;
   ServerBrowser.Presented = false;
-  CreateGamePresented = false;
+  Create->setPresented(false);
   Player->setPresented(false);
   Vote->setPresented(false);
   Command->setPresented(false);

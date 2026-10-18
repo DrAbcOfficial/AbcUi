@@ -37,6 +37,7 @@
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
 #include "commandmenu/CommandMenuFlow.h"
+#include "creategame/CreateGameFlow.h"
 #include "playerlist/PlayerListFlow.h"
 #include "settings/SprayMaker.h"
 #include "settings/VideoFlow.h"
@@ -81,11 +82,6 @@ private:
   void syncMenuPresentation();
   void presentSettingsPage();
   void presentServerBrowserPage();
-  void presentCreateGamePage();
-  void loadMapCatalog();
-  void applyCreateGame();
-  static const char *
-  hintTokenFor(const services::creategame::Validation &validation);
   void beginServerQuery(services::serverbrowser::QueryKind kind);
   void connectSelectedServer();
   void toggleSelectedFavorite();
@@ -96,7 +92,6 @@ private:
   void onMenuAction(const char *action);
   bool retryServerAttempt();
   void tickAutoRetry();
-  void handleCreateGameAction(navigation::ActionKind Kind);
   void handleConnectionAction(navigation::ActionKind Kind);
   void handleServerAction(navigation::ActionKind Kind);
   void onFriendJoin(uint64_t steamId, const char *address);
@@ -145,6 +140,7 @@ private:
   PlayerListHost MakePlayerListHost();
   VoteMenuHost MakeVoteMenuHost();
   CommandMenuHost MakeCommandMenuHost();
+  CreateGameHost MakeCreateGameHost();
   Rml::Context *Context = nullptr;
   gameui::menu::MenuController Controller;
   services::uiconfig::ConfigRepository UiConfig;
@@ -155,13 +151,9 @@ private:
   services::loading::LoadingModel LoadingModelState;
   services::serverbrowser::ServerBlacklist Blacklist;
   services::serverbrowser::ServerBrowserSession ServerBrowser;
-  services::creategame::CreateGameModel CreateGame;
-  services::creategame::Request PendingCreateGame;
-  bool PendingCreateGameValid = false;
   bool CurrentAttemptIsLocal = false;
   bool LastAttemptWasLocal = false;
   const char *PendingLaunchFailure = nullptr;
-  bool CreateGamePresented = false;
   services::playerlist::PlayerListModel PlayerList;
   uint32_t FriendsProjected = 0;
   // Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
@@ -193,6 +185,7 @@ private:
   std::unique_ptr<SprayMaker> Spray;
   std::unique_ptr<VoteMenuFlow> Vote;
   std::unique_ptr<CommandMenuFlow> Command;
+  std::unique_ptr<CreateGameFlow> Create;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;

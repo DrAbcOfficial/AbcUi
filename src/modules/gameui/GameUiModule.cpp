@@ -59,7 +59,9 @@ GameUiModule::GameUiModule()
           })),
       Vote(std::make_unique<VoteMenuFlow>(MakeVoteMenuHost(),
                                           voteMenuSeams())),
-      Command(std::make_unique<CommandMenuFlow>(MakeCommandMenuHost())) {
+      Command(std::make_unique<CommandMenuFlow>(MakeCommandMenuHost())),
+      Create(std::make_unique<CreateGameFlow>(MakeCreateGameHost(),
+                                              createGameSeams())) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -68,7 +70,6 @@ GameUiModule::GameUiModule()
   // command sequence) and its backend relay. The thunk reaches the
   // module's request value object through the Instance pointer, the
   // same shape the Debug diagnostics use.
-  CreateGame.setSeams(createGameSeams());
   menuBackend().setLocalGameLauncher(&GameUiModule::launchLocalGame);
   // T20: the player-list model's roster/mute seams (playerres + the
   // shipped GameClientExports001 probe).
@@ -188,6 +189,19 @@ CommandMenuHost GameUiModule::MakeCommandMenuHost() {
   return host;
 }
 
+CreateGameHost GameUiModule::MakeCreateGameHost() {
+  CreateGameHost host;
+  host.dispatchCreate = [this](const std::string &map) {
+    Controller.dispatch(menu::makeCreateGameRequest(map.c_str()));
+  };
+  host.dispatchBack = [this] {
+    Controller.dispatch(MenuEvent{EventKind::kBack});
+  };
+  host.finishDispatch = [this] { finishDispatch(); };
+  host.resetAutoRetry = [this] { AutoRetry.reset(); };
+  return host;
+}
+
 const char *GameUiModule::name() const {
   return "gameui";
 }
@@ -253,11 +267,11 @@ void GameUiModule::onInit() {
   std::string ServerScript = readModFile("settings.scr");
   if (ServerScript.empty())
     ServerScript = readModFile("abc/abcui/gameui/config/server_options.scr");
-  CreateGame.setOptions(services::creategame::parseServerOptions(ServerScript));
-  if (CreateGame.options().empty()) {
+  Create->setOptions(services::creategame::parseServerOptions(ServerScript));
+  if (Create->optionsEmpty()) {
     abc::ConsoleWarn("[AbcUi] settings.scr unavailable or malformed; using "
                      "shipped server option definitions\n");
-    CreateGame.setOptions(services::creategame::parseServerOptions(
+    Create->setOptions(services::creategame::parseServerOptions(
         readModFile("abc/abcui/gameui/config/server_options.scr")));
   }
   const auto Advanced = loadAdvancedScript();
@@ -326,7 +340,7 @@ void GameUiModule::onInit() {
   // same call here so content mounted from any search path is seen, not
   // just one disk directory. Unreadable/missing -> empty catalog (the
   // page then refuses every request fail-closed with CG_ErrorUnavailable).
-  loadMapCatalog();
+  Create->loadCatalog();
   // The old ABCEnchance hook swallowed the client-side "votemenu" command
   // and opened its own dialog. AbcUi now owns that command and page.
   if (!VoteMenuCommandBound) {
@@ -377,6 +391,27 @@ void GameUiModule::onVidInit() {
   Command->resetForWorld();
 }
 
+bool GameUiModule::launchLocalGame(const char *map,
+                                    const char **reasonToken) {
+  if (!Instance)
+    return false;
+  return Instance->Create->launchLocal(map, reasonToken);
+}
+
+bool GameUiModule::consumeLaunchFailure() {
+  if (!PendingLaunchFailure)
+    return false;
+  const char *reason = PendingLaunchFailure;
+  PendingLaunchFailure = nullptr;
+  const uint32_t live = LoadingModelState.generation();
+  if (live != 0) {
+    Controller.dispatch(menu::makeLoadingFinished(
+        live, menu::LoadingOutcome::kFailed, reason));
+    return true;
+  }
+  return false;
+}
+
 void GameUiModule::onShutdown() {
   rmlui::closeProbeDocument();
   // Context still alive here: every document closes and drops its
@@ -395,6 +430,7 @@ void GameUiModule::onShutdown() {
   Console.reset();
   Settings.reset();
   Browser.reset();
+  Create->shutdown();
   CreateGamePage_.reset();
   Player->shutdown();
   PlayerListPage_.reset();
@@ -418,7 +454,6 @@ void GameUiModule::onShutdown() {
   PasswordPresented = false;
   PasswordReprepare = false;
   DirectConnectPresented = false;
-  CreateGamePresented = false;
   LastStubPage = MenuPage::kMain;
 }
 

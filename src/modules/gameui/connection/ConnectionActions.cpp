@@ -10,9 +10,7 @@ using namespace navigation;
 // the dead one. T19: a failed LOCAL attempt replays its kept request through
 // the same typed path. False = nothing to retry (the overlay stays honest).
 bool GameUiModule::retryServerAttempt() {
-  if (PendingCreateGameValid && LastAttemptWasLocal) {
-    Controller.dispatch(
-        gameui::menu::makeCreateGameRequest(PendingCreateGame.Map.c_str()));
+  if (LastAttemptWasLocal && Create->replayPending()) {
     finishDispatch();
     return true;
   }

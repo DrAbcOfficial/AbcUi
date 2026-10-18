@@ -16,7 +16,7 @@ void DebugCommands::createGameUiCommand() {
     return;
   }
   GameUiModule &self = *GameUiModule::Instance;
-  const auto &catalog = self.CreateGame.catalog();
+  const auto &catalog = self.Create->model().catalog();
   abc::ConsolePrint("[AbcUi] create-game-ui: maps=%d first=%s\n",
                     static_cast<int>(catalog.size()),
                     catalog.size() > 0 ? catalog.nameAt(0).c_str() : "(none)");
@@ -27,9 +27,9 @@ void DebugCommands::createGameUiCommand() {
       self.CreateGamePage_->serverName().c_str(),
       self.CreateGamePage_->password().empty() ? 0 : 1);
   abc::ConsolePrint("[AbcUi] create-game-ui: pending=%d map=%s lastLocal=%d\n",
-                    self.PendingCreateGameValid ? 1 : 0,
-                    self.PendingCreateGameValid
-                        ? self.PendingCreateGame.Map.c_str()
+                    self.Create->pendingValid() ? 1 : 0,
+                    self.Create->pendingValid()
+                        ? self.Create->pending().Map.c_str()
                         : "(none)",
                     self.LastAttemptWasLocal ? 1 : 0);
 }
@@ -88,13 +88,13 @@ void DebugCommands::createGameApplyCommand() {
     return;
   }
   GameUiModule &self = *GameUiModule::Instance;
-  self.applyCreateGame();
+  self.Create->apply();
   abc::ConsolePrint(
       "[AbcUi] create-game apply issued: phase=%d gen=%u map=%s pending=%d\n",
       static_cast<int>(self.Controller.state().phase),
       self.Controller.state().connectGeneration,
       self.Controller.state().connectAddress.c_str(),
-      self.PendingCreateGameValid ? 1 : 0);
+      self.Create->pendingValid() ? 1 : 0);
 }
 
 void DebugCommands::createGameProbeCommand() {
@@ -121,17 +121,17 @@ void DebugCommands::createGameProbeCommand() {
   if (gEngfuncs.Cmd_Argc() >= 5)
     request.Password = gEngfuncs.Cmd_Argv(4);
   const auto validation = services::creategame::CreateGameModel::validate(
-      self.CreateGame.catalog(), request);
+      self.Create->model().catalog(), request);
   abc::ConsolePrint("[AbcUi] probe validate: ok=%d error=%d field=%d\n",
                     validation.ok() ? 1 : 0, static_cast<int>(validation.error),
                     static_cast<int>(validation.field));
   if (!validation.ok())
     return;
-  const auto outcome = self.CreateGame.launch(request);
+  const auto outcome = self.Create->model().launch(request);
   abc::ConsolePrint(
       "[AbcUi] probe launch: outcome=%d failIdx=%d restoreFailures=%d\n",
-      static_cast<int>(outcome), self.CreateGame.lastFailIndex(),
-      self.CreateGame.lastRestoreFailures());
+      static_cast<int>(outcome), self.Create->model().lastFailIndex(),
+      self.Create->model().lastRestoreFailures());
 }
 
 } // namespace gameui

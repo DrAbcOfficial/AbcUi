@@ -69,7 +69,7 @@ void GameUiModule::syncMenuPresentation() {
       break;
     case MenuPage::kCreateGame:
       // T19: the real create-game page replaced the T09 stub.
-      presentCreateGamePage();
+      Create->present();
       break;
     case MenuPage::kPlayerList:
       // T20: the real player list replaced the T09 stub. Fresh
@@ -141,12 +141,8 @@ void GameUiModule::syncMenuPresentation() {
       ServerBrowser.Presented = false;
     }
   }
-  if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame) {
-    if (CreateGamePage_) {
-      CreateGamePage_->hide();
-      CreateGamePresented = false;
-    }
-  }
+  if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame)
+    Create->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList)
     Player->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kVoteMenu)

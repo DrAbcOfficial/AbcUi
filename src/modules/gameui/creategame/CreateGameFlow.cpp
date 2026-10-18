@@ -1,26 +1,48 @@
-// Extracted from GameUiModule.cpp (UTF-8). Responsibility:
-// creategame/CreateGameFlow.
-#include "modules/gameui/GameUiModule.h"
-#include <abc/Plugin.h>
+// gameui::CreateGameFlow implementation - see CreateGameFlow.h.
+#include "CreateGameFlow.h"
+
+#include "../../../panels/creategame/CreateGamePage.h"
+
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
-#include <cstdio>
+#include <abc/Plugin.h>
+
 #include <utility>
-#include "modules/gameui/navigation/MenuAction.h"
+
 namespace gameui {
-using namespace navigation;
-void GameUiModule::presentCreateGamePage() {
-  if (!CreateGamePage_)
-    return;
-  if (!CreateGamePresented) {
-    const char *liveName = abc::CVAR_GET_STRING("hostname");
-    CreateGamePage_->prepare(CreateGame.catalog(), liveName ? liveName : "");
-    CreateGamePresented = true;
-  }
-  CreateGamePage_->show();
+
+CreateGameFlow::CreateGameFlow(
+    CreateGameHost host, services::creategame::CreateGameModel::Seams seams)
+    : Host(std::move(host)) {
+  Model.setSeams(seams);
 }
 
-void GameUiModule::loadMapCatalog() {
+void CreateGameFlow::setPage(panels::creategame::CreateGamePage *page) {
+  Page = page;
+  if (Page)
+    Page->setModel(&Model);
+}
+
+void CreateGameFlow::shutdown() {
+  Page = nullptr;
+  PendingValid = false;
+  Presented = false;
+}
+
+void CreateGameFlow::hide() {
+  if (Page)
+    Page->hide();
+  Presented = false;
+}
+
+void CreateGameFlow::setOptions(
+    std::vector<services::creategame::ServerOption> options) {
+  Model.setOptions(std::move(options));
+}
+
+bool CreateGameFlow::optionsEmpty() const { return Model.options().empty(); }
+
+void CreateGameFlow::loadCatalog() {
   services::creategame::MapCatalog catalog;
   if (abc::g_pFileSystem) {
     const char *pathIds[] = {nullptr, "GAMEDOWNLOAD"};
@@ -39,55 +61,66 @@ void GameUiModule::loadMapCatalog() {
     abc::ConsoleWarn("[AbcUi] map catalog: engine filesystem unavailable\n");
   }
   catalog.finalize();
-  CreateGame.setCatalog(std::move(catalog));
+  Model.setCatalog(std::move(catalog));
 #ifndef NDEBUG
   abc::ConsolePrint("[AbcUi] map catalog: %d maps\n",
-                    static_cast<int>(CreateGame.catalog().size()));
+                    static_cast<int>(Model.catalog().size()));
 #endif
 }
 
-void GameUiModule::applyCreateGame() {
-  if (!CreateGamePage_)
+void CreateGameFlow::present() {
+  if (!Page)
     return;
-  if (CreateGame.catalog().size() == 0) {
-    // No enumerated maps at all (filesystem unavailable): the request
-    // cannot be valid, name the real cause.
-    CreateGamePage_->showHint("#CG_ErrorUnavailable");
+  if (!Presented) {
+    const char *liveName = abc::CVAR_GET_STRING("hostname");
+    Page->prepare(Model.catalog(), liveName ? liveName : "");
+    Presented = true;
+  }
+  Page->show();
+}
+
+void CreateGameFlow::apply() {
+  if (!Page)
+    return;
+  if (Model.catalog().size() == 0) {
+    // No enumerated maps at all (filesystem unavailable): the request cannot
+    // be valid, name the real cause.
+    Page->showHint("#CG_ErrorUnavailable");
     return;
   }
   services::creategame::Request request;
-  request.Map = CreateGamePage_->selectedMap();
-  request.ServerName = CreateGamePage_->serverName();
-  request.Password = CreateGamePage_->password();
+  request.Map = Page->selectedMap();
+  request.ServerName = Page->serverName();
+  request.Password = Page->password();
   int players = 0;
   if (!services::creategame::CreateGameModel::parsePlayers(
-          CreateGamePage_->playersText().c_str(), players)) {
-    CreateGamePage_->showHint("#CG_ErrorPlayers");
+          Page->playersText().c_str(), players)) {
+    Page->showHint("#CG_ErrorPlayers");
     return; // nothing reaches the controller or the engine
   }
   request.MaxPlayers = players;
-  request.Lan = CreateGamePage_->lan();
-  request.Options = CreateGamePage_->optionValues();
-  if (!CreateGame.validOptions(request)) {
-    CreateGamePage_->showHint("#CG_ErrorOptions");
+  request.Lan = Page->lan();
+  request.Options = Page->optionValues();
+  if (!Model.validOptions(request)) {
+    Page->showHint("#CG_ErrorOptions");
     return;
   }
-  const auto validation = services::creategame::CreateGameModel::validate(
-      CreateGame.catalog(), request);
+  const auto validation =
+      services::creategame::CreateGameModel::validate(Model.catalog(), request);
   if (!validation.ok()) {
-    CreateGamePage_->showHint(hintTokenFor(validation));
+    Page->showHint(hintTokenFor(validation));
     return; // nothing reaches the controller or the engine
   }
-  PendingCreateGame = request;
-  PendingCreateGameValid = true;
+  Pending = request;
+  PendingValid = true;
   // A user-initiated local start begins a fresh auto-retry chain.
-  AutoRetry.reset();
-  Controller.dispatch(gameui::menu::makeCreateGameRequest(request.Map.c_str()));
-  finishDispatch();
+  Host.resetAutoRetry();
+  Host.dispatchCreate(request.Map);
+  Host.finishDispatch();
 }
 
-const char *
-GameUiModule::hintTokenFor(const services::creategame::Validation &validation) {
+const char *CreateGameFlow::hintTokenFor(
+    const services::creategame::Validation &validation) {
   using services::creategame::Error;
   using services::creategame::Field;
   switch (validation.error) {
@@ -106,37 +139,37 @@ GameUiModule::hintTokenFor(const services::creategame::Validation &validation) {
   }
 }
 
-bool GameUiModule::consumeLaunchFailure() {
-  if (!PendingLaunchFailure)
+bool CreateGameFlow::replayPending() {
+  if (!PendingValid)
     return false;
-  const char *reason = PendingLaunchFailure;
-  PendingLaunchFailure = nullptr;
-  const uint32_t live = LoadingModelState.generation();
-  if (live != 0) {
-    Controller.dispatch(gameui::menu::makeLoadingFinished(
-        live, gameui::menu::LoadingOutcome::kFailed, reason));
-    return true;
-  }
-  return false;
+  Host.dispatchCreate(Pending.Map);
+  return true;
 }
 
-bool GameUiModule::launchLocalGame(const char *map, const char **reasonToken) {
-  if (reasonToken)
-    *reasonToken = "#CG_ErrorInternal";
-  if (!Instance || !reasonToken)
+void CreateGameFlow::invalidatePending() { PendingValid = false; }
+
+std::vector<std::string> CreateGameFlow::settlePendingOptions() {
+  std::vector<std::string> failed;
+  if (!PendingValid)
+    return failed;
+  for (const auto &name : Model.settleOptions(Pending))
+    failed.push_back(name);
+  return failed;
+}
+
+bool CreateGameFlow::launchLocal(const char *map, const char **reasonToken) {
+  if (!reasonToken)
     return false;
-  GameUiModule &self = *Instance;
-  if (!self.PendingCreateGameValid || !map ||
-      self.PendingCreateGame.Map != map) {
+  *reasonToken = "#CG_ErrorInternal";
+  if (!PendingValid || !map || Pending.Map != map) {
     abc::ConsoleWarn("[AbcUi] local game launch mismatch (no kept request)\n");
     return false;
   }
-  switch (self.CreateGame.launch(self.PendingCreateGame)) {
+  switch (Model.launch(Pending)) {
   case services::creategame::CreateGameModel::Launch::kLaunched:
     return true;
   case services::creategame::CreateGameModel::Launch::kInvalid:
-    *reasonToken =
-        "#CG_ErrorInternal"; // validated before the dispatch; defensive
+    *reasonToken = "#CG_ErrorInternal"; // validated before the dispatch
     return false;
   case services::creategame::CreateGameModel::Launch::kWriteFailed:
     *reasonToken = "#CG_ErrorWrite";
@@ -148,21 +181,20 @@ bool GameUiModule::launchLocalGame(const char *map, const char **reasonToken) {
   return false;
 }
 
-void GameUiModule::handleCreateGameAction(ActionKind Kind) {
-  // T19 page-internal intents (fixed names only): Apply assembles
-  // and validates the request; Cancel is a plain back with zero
-  // engine writes (the page never held any).
-  if (Kind == ActionKind::kCgApply)
-    applyCreateGame();
-  else if (Kind == ActionKind::kCgCancel)
-    Controller.dispatch(MenuEvent{EventKind::kBack});
+void CreateGameFlow::handleAction(navigation::ActionKind kind) {
+  // Page-internal intents (fixed names only): Apply assembles and validates
+  // the request; Cancel is a plain back with zero engine writes (the page
+  // never held any).
+  if (kind == navigation::ActionKind::kCgApply)
+    apply();
+  else if (kind == navigation::ActionKind::kCgCancel)
+    Host.dispatchBack();
   else {
     abc::ConsoleWarn("[AbcUi] unknown create-game action \"%s\" dropped\n",
-                     actionName(Kind));
+                     navigation::actionName(kind));
     return;
   }
-  finishDispatch();
-  return;
+  Host.finishDispatch();
 }
 
 } // namespace gameui

@@ -17,8 +17,7 @@ void GameUiModule::syncAttemptState() {
     CurrentAttemptIsLocal =
         state.attemptKind == gameui::menu::AttemptKind::kLocalGame;
     if (!CurrentAttemptIsLocal)
-      PendingCreateGameValid =
-          false; // a stale local request can never retry here
+      Create->invalidatePending(); // a stale local request can never retry
     PasswordInvalid = false;
     PasswordPrompts = 0;
     PasswordReprepare = false;
@@ -110,14 +109,14 @@ void GameUiModule::drainLoadingFeed() {
         recordPendingHistory();
         // A confirmed join ends any auto-retry chain.
         AutoRetry.reset();
-        if (CurrentAttemptIsLocal && PendingCreateGameValid) {
-          for (const auto &Name : CreateGame.settleOptions(PendingCreateGame))
+        if (CurrentAttemptIsLocal) {
+          for (const auto &Name : Create->settlePendingOptions())
             abc::ConsoleWarn("[AbcUi] local server option did not apply: %s\n",
                              Name.c_str());
         }
         // T19: a confirmed local join consumes the kept request -
         // nothing left to retry once the server is up.
-        PendingCreateGameValid = false;
+        Create->invalidatePending();
         Controller.dispatch(gameui::menu::makeLoadingFinished(
             live, gameui::menu::LoadingOutcome::kSuccess, nullptr));
       }

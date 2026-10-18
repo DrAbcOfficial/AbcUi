@@ -109,10 +109,7 @@ void GameUiModule::hideAllMenuDocuments() {
     Browser->hide();
     ServerBrowser.Presented = false;
   }
-  if (CreateGamePage_) {
-    CreateGamePage_->hide();
-    CreateGamePresented = false;
-  }
+  Create->hide();
   Player->hide();
   Vote->hide();
   Command->hide();
