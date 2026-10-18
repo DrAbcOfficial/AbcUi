@@ -5,6 +5,8 @@
 
 namespace framework {
 
-const char *CurrentLanguage() { return vgui2ext::currentLanguage(); }
+const char *CurrentLanguage() {
+  return vgui2ext::currentLanguage();
+}
 
 } // namespace framework

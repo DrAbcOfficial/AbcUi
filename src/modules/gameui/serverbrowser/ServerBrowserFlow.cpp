@@ -50,8 +50,7 @@ void ServerBrowserFlow::present() {
   Session.Presented = true;
 }
 
-void ServerBrowserFlow::beginQuery(
-    services::serverbrowser::QueryKind kind) {
+void ServerBrowserFlow::beginQuery(services::serverbrowser::QueryKind kind) {
   if (Session.Query.closed())
     return;
   services::serverbrowser::FilterPair pairs[8];
@@ -68,8 +67,8 @@ void ServerBrowserFlow::connectSelected() {
     return;
   }
   if (Blacklist.contains(selected->ip, selected->connectionPort
-                                            ? selected->connectionPort
-                                            : selected->queryPort)) {
+                                           ? selected->connectionPort
+                                           : selected->queryPort)) {
     abc::ConsoleWarn("[AbcUi] blocked server must be removed from the "
                      "blacklist before connecting\n");
     return;

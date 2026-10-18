@@ -40,7 +40,9 @@ public:
   void setDefinition(services::commandmenu::Definition definition);
   void shutdown();
   bool consumeRequest();
-  void setPresented(bool presented) { Presented = presented; }
+  void setPresented(bool presented) {
+    Presented = presented;
+  }
   void cancelPending();
   void resetForWorld();
   void hide();

@@ -36,8 +36,12 @@ public:
 
   void setPage(panels::votemenu::VoteMenuPage *page);
   void shutdown();
-  bool presented() const { return Presented; }
-  void setPresented(bool presented) { Presented = presented; }
+  bool presented() const {
+    return Presented;
+  }
+  void setPresented(bool presented) {
+    Presented = presented;
+  }
   bool consumeRequest();
   void resetForWorld();
   void hide();
@@ -49,7 +53,9 @@ public:
                     const std::vector<std::string> &maps);
   void handleAction(navigation::ActionKind kind);
 
-  services::votemenu::VoteMenuModel &model() { return Model; }
+  services::votemenu::VoteMenuModel &model() {
+    return Model;
+  }
 
 private:
   VoteMenuHost Host;

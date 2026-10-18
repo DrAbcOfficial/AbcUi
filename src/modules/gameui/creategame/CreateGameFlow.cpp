@@ -40,7 +40,9 @@ void CreateGameFlow::setOptions(
   Model.setOptions(std::move(options));
 }
 
-bool CreateGameFlow::optionsEmpty() const { return Model.options().empty(); }
+bool CreateGameFlow::optionsEmpty() const {
+  return Model.options().empty();
+}
 
 void CreateGameFlow::loadCatalog() {
   services::creategame::MapCatalog catalog;
@@ -146,7 +148,9 @@ bool CreateGameFlow::replayPending() {
   return true;
 }
 
-void CreateGameFlow::invalidatePending() { PendingValid = false; }
+void CreateGameFlow::invalidatePending() {
+  PendingValid = false;
+}
 
 std::vector<std::string> CreateGameFlow::settlePendingOptions() {
   std::vector<std::string> failed;

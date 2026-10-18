@@ -35,8 +35,12 @@ public:
 
   void setPage(panels::creategame::CreateGamePage *page);
   void shutdown();
-  bool presented() const { return Presented; }
-  void setPresented(bool presented) { Presented = presented; }
+  bool presented() const {
+    return Presented;
+  }
+  void setPresented(bool presented) {
+    Presented = presented;
+  }
   void hide();
 
   void setOptions(std::vector<services::creategame::ServerOption> options);
@@ -49,15 +53,21 @@ public:
   // Local-retry seam: replay the kept request through the controller.
   bool replayPending();
   void invalidatePending();
-  const services::creategame::Request &pending() const { return Pending; }
-  bool pendingValid() const { return PendingValid; }
+  const services::creategame::Request &pending() const {
+    return Pending;
+  }
+  bool pendingValid() const {
+    return PendingValid;
+  }
   std::vector<std::string> settlePendingOptions();
 
   // Engine launch path used by the module's launchLocalGame shim.
   bool launchLocal(const char *map, const char **reasonToken);
 
   // Debug probe surface.
-  services::creategame::CreateGameModel &model() { return Model; }
+  services::creategame::CreateGameModel &model() {
+    return Model;
+  }
 
 private:
   static const char *

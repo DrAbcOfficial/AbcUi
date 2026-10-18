@@ -409,7 +409,8 @@ void init() {
                   VGUI2_EXTENSION_INTERFACE_VERSION);
     return;
   }
-  Surface2 = (decltype(Surface2))factory(VGUI_SURFACE2_INTERFACE_VERSION, nullptr);
+  Surface2 =
+      (decltype(Surface2))factory(VGUI_SURFACE2_INTERFACE_VERSION, nullptr);
   if (!Surface2) {
     abc::SysError("[AbcUi] Could not get interface \"%s\" from VGUI2Extension",
                   VGUI_SURFACE2_INTERFACE_VERSION);
@@ -751,8 +752,8 @@ bool hideGameUi() {
   static IBaseUI *BaseUi = nullptr;
   if (!BaseUi) {
     const auto factory = g_pMetaHookAPI->GetEngineFactory();
-    BaseUi =
-        factory ? (IBaseUI *)factory(BASEUI_INTERFACE_VERSION, nullptr) : nullptr;
+    BaseUi = factory ? (IBaseUI *)factory(BASEUI_INTERFACE_VERSION, nullptr)
+                     : nullptr;
   }
   if (!BaseUi) {
     abc::ConsoleWarn("[AbcUi] IBaseUI unavailable - resume cannot run the "

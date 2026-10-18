@@ -15,7 +15,8 @@
 
 namespace gameui {
 
-CommandMenuFlow::CommandMenuFlow(CommandMenuHost host) : Host(std::move(host)) {}
+CommandMenuFlow::CommandMenuFlow(CommandMenuHost host)
+    : Host(std::move(host)) {}
 
 void CommandMenuFlow::setPage(panels::commandmenu::CommandMenuPage *page) {
   Page = page;

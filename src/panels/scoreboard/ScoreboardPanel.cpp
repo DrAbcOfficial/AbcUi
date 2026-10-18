@@ -234,8 +234,7 @@ public:
       if (node->HasAttribute("data-action")) {
         if (type == "click" && button == 0) {
           if (const Rml::Variant *value = node->GetAttribute("data-action")) {
-            Panel->menuAction(
-                static_cast<ScoreboardAction>(value->Get<int>()));
+            Panel->menuAction(static_cast<ScoreboardAction>(value->Get<int>()));
             Panel->closeContextMenu();
             event.StopPropagation();
             return;
@@ -823,10 +822,10 @@ void ScoreboardPanel::openContextMenu(int clientIndex,
   const Entry entries[] = {
       {"menu-profile", ScoreboardAction::kOpenProfile,
        "Scores_MenuSteamProfile", "Open Steam Profile"},
-      {"menu-copy-url", ScoreboardAction::kCopyProfileUrl, "Scores_MenuSteamURL",
-       "Copy Profile URL"},
-      {"menu-copy-name", ScoreboardAction::kCopySteamName, "Scores_MenuCopyName",
-       "Copy Steam Name"},
+      {"menu-copy-url", ScoreboardAction::kCopyProfileUrl,
+       "Scores_MenuSteamURL", "Copy Profile URL"},
+      {"menu-copy-name", ScoreboardAction::kCopySteamName,
+       "Scores_MenuCopyName", "Copy Steam Name"},
       {"menu-copy-name-raw", ScoreboardAction::kCopyGameName,
        "Scores_MenuCopyNameRaw", "Copy Game Name"},
       {"menu-copy-steamid", ScoreboardAction::kCopySteamId,

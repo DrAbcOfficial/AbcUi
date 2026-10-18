@@ -28,8 +28,7 @@ Rml::ElementInstancerGeneric<ElementModel> Instancer;
 } // namespace
 
 ElementModel::ElementModel(const Rml::String &Tag)
-    : Element(Tag),
-      Config(std::make_unique<modelpreview::Options>()),
+    : Element(Tag), Config(std::make_unique<modelpreview::Options>()),
       Target(std::make_unique<modelpreview::Target>()), Listener(this) {
   auto Child = Rml::Factory::InstanceElement(this, "img", "img", {});
   Image = Child.get();
@@ -68,9 +67,13 @@ void ElementModel::OnAttributeChange(const Rml::ElementAttributes &Changed) {
   *Config = std::move(Updated);
 }
 
-unsigned int ElementModel::texture() const { return Target->texture(); }
+unsigned int ElementModel::texture() const {
+  return Target->texture();
+}
 
-unsigned int ElementModel::frames() const { return Target->frames(); }
+unsigned int ElementModel::frames() const {
+  return Target->frames();
+}
 
 void ElementModel::OnUpdate() {
   Element::OnUpdate();

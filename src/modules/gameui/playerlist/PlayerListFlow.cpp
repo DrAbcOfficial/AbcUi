@@ -35,8 +35,7 @@ void PlayerListFlow::present() {
   Presented = true;
 }
 
-void PlayerListFlow::selectRow(
-    const services::playerlist::SelectionKey &key) {
+void PlayerListFlow::selectRow(const services::playerlist::SelectionKey &key) {
   Model.refresh();
   Model.select(key);
   if (Page)
@@ -48,11 +47,10 @@ void PlayerListFlow::toggleMute() {
   const auto result = Model.toggleMuted(mutedAfter);
   switch (result) {
   case services::playerlist::ToggleError::kNone:
-    abc::ConsolePrint(
-        "[AbcUi] player mute %s: idx=%d now=%d\n",
-        mutedAfter ? "MUTED" : "UNMUTED",
-        Model.selectedEntry() ? Model.selectedEntry()->index : 0,
-        mutedAfter ? 1 : 0);
+    abc::ConsolePrint("[AbcUi] player mute %s: idx=%d now=%d\n",
+                      mutedAfter ? "MUTED" : "UNMUTED",
+                      Model.selectedEntry() ? Model.selectedEntry()->index : 0,
+                      mutedAfter ? 1 : 0);
     break;
   case services::playerlist::ToggleError::kUnavailable:
     abc::ConsoleWarn(

@@ -5,9 +5,13 @@
 
 namespace framework::texture {
 
-bool available() { return vgui2ext::available(); }
+bool available() {
+  return vgui2ext::available();
+}
 
-int create() { return vgui2ext::createTexture(); }
+int create() {
+  return vgui2ext::createTexture();
+}
 
 void upload(int id, const unsigned char *rgba, int width, int height) {
   if (id)

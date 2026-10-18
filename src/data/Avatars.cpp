@@ -48,7 +48,7 @@ bool loadDefaultAvatar() {
   if (!DefaultAvatarTexture)
     return false;
   framework::texture::upload(DefaultAvatarTexture, image.Pixels.data(),
-                          image.Width, image.Height);
+                             image.Width, image.Height);
   DefaultAvatarWidth = image.Width;
   DefaultAvatarHeight = image.Height;
   return true;
@@ -62,7 +62,7 @@ bool upload(Entry &entry) {
   if (!entry.textureId)
     return false;
   framework::texture::upload(entry.textureId, entry.rgba.data(), entry.width,
-                          entry.height);
+                             entry.height);
   return true;
 }
 

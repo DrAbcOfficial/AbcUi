@@ -190,8 +190,8 @@ bool Target::render(const Options &Config, int Width, int Height) {
       static_cast<std::size_t>(Header->numseq) * sizeof(mstudioseqdesc_t);
   if (SeqOffset > HeaderSize || SeqBytes > HeaderSize - SeqOffset)
     return false;
-  State.sequence = static_cast<short>(
-      std::clamp(Config.Sequence, 0, Header->numseq - 1));
+  State.sequence =
+      static_cast<short>(std::clamp(Config.Sequence, 0, Header->numseq - 1));
   State.skin = static_cast<short>(
       std::clamp(Config.Skin, 0, std::max(Header->numskinfamilies - 1, 0)));
   const auto *Sequence =

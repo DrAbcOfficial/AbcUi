@@ -36,27 +36,41 @@
 #include <vector>
 #include <string>
 namespace panels {
-namespace commandmenu { class CommandMenuPage; }
-namespace console { class ConsolePage; }
-namespace creategame { class CreateGamePage; }
+namespace commandmenu {
+class CommandMenuPage;
+}
+namespace console {
+class ConsolePage;
+}
+namespace creategame {
+class CreateGamePage;
+}
 namespace loading {
 class LoadingPage;
 class ConnectionErrorOverlay;
 class PasswordOverlay;
 class DirectConnectOverlay;
 } // namespace loading
-namespace mainmenu { class MainMenuPage; }
+namespace mainmenu {
+class MainMenuPage;
+}
 namespace menushared {
 class MenuStubPage;
 class ConfirmQuitOverlay;
 } // namespace menushared
-namespace playerlist { class PlayerListPage; }
-namespace serverbrowser { class ServerBrowserPage; }
+namespace playerlist {
+class PlayerListPage;
+}
+namespace serverbrowser {
+class ServerBrowserPage;
+}
 namespace settings {
 class SettingsPage;
 class VideoConfirmPage;
 } // namespace settings
-namespace votemenu { class VoteMenuPage; }
+namespace votemenu {
+class VoteMenuPage;
+}
 } // namespace panels
 
 namespace gameui {

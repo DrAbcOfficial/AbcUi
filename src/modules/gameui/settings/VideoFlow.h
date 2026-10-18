@@ -39,7 +39,9 @@ public:
   // before that and after shutdown.
   void setPage(panels::settings::VideoConfirmPage *page);
   void shutdown();
-  bool confirmPresented() const { return ConfirmPresented; }
+  bool confirmPresented() const {
+    return ConfirmPresented;
+  }
 
   void resolveRecovery();
   void applyChange();

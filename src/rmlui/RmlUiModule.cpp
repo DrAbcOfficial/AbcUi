@@ -44,7 +44,9 @@ namespace {
 LifecycleSink Sink;
 }
 
-void SetLifecycleSink(LifecycleSink sink) { Sink = std::move(sink); }
+void SetLifecycleSink(LifecycleSink sink) {
+  Sink = std::move(sink);
+}
 
 namespace {
 

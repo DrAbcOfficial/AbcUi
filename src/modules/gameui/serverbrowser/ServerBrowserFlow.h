@@ -35,8 +35,12 @@ public:
 
   void setPage(panels::serverbrowser::ServerBrowserPage *page);
   void shutdown();
-  bool presented() const { return Session.Presented; }
-  void setPresented(bool presented) { Session.Presented = presented; }
+  bool presented() const {
+    return Session.Presented;
+  }
+  void setPresented(bool presented) {
+    Session.Presented = presented;
+  }
   void hide();
 
   void present();

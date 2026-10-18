@@ -29,8 +29,8 @@ void MetaRendererInit() {
     SysError("Could not get factory from Renderer");
     return;
   }
-  g_pMetaRenderer =
-      (decltype(g_pMetaRenderer))factory(METARENDERER_INTERFACE_VERSION, nullptr);
+  g_pMetaRenderer = (decltype(g_pMetaRenderer))factory(
+      METARENDERER_INTERFACE_VERSION, nullptr);
   if (!g_pMetaRenderer) {
     SysError("Could not get interface from Renderer");
     return;

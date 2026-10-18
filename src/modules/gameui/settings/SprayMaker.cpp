@@ -32,9 +32,13 @@ std::string tokenText(const char *token) {
 
 SprayMaker::SprayMaker(Result result) : ResultSink(std::move(result)) {}
 
-SprayMaker::~SprayMaker() { shutdown(); }
+SprayMaker::~SprayMaker() {
+  shutdown();
+}
 
-void SprayMaker::shutdown() { Texture.reset(); }
+void SprayMaker::shutdown() {
+  Texture.reset();
+}
 
 void SprayMaker::run(const std::string &path) {
   const auto fail = [this](const char *token, const std::string &detail) {

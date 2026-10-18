@@ -62,21 +62,20 @@ bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
 GameUiModule::GameUiModule()
     : Controller(&menuBackend()), CaptureOwner(this),
       Video(std::make_unique<VideoFlow>(MakeVideoHost(), VideoModel)),
-      Player(std::make_unique<PlayerListFlow>(MakePlayerListHost(),
-                                              PlayerList)),
-      Spray(std::make_unique<SprayMaker>(
-          [this](bool ok, const std::string &message,
-                 const std::string &previewUri) {
-            if (Settings)
-              Settings->setSprayResult(ok, message, previewUri);
-          })),
-      Vote(std::make_unique<VoteMenuFlow>(MakeVoteMenuHost(),
-                                          voteMenuSeams())),
+      Player(
+          std::make_unique<PlayerListFlow>(MakePlayerListHost(), PlayerList)),
+      Spray(std::make_unique<SprayMaker>([this](bool ok,
+                                                const std::string &message,
+                                                const std::string &previewUri) {
+        if (Settings)
+          Settings->setSprayResult(ok, message, previewUri);
+      })),
+      Vote(std::make_unique<VoteMenuFlow>(MakeVoteMenuHost(), voteMenuSeams())),
       Command(std::make_unique<CommandMenuFlow>(MakeCommandMenuHost())),
       Create(std::make_unique<CreateGameFlow>(MakeCreateGameHost(),
                                               createGameSeams())),
-      Server(std::make_unique<ServerBrowserFlow>(
-          MakeServerBrowserHost(), ServerBrowser, Blacklist)),
+      Server(std::make_unique<ServerBrowserFlow>(MakeServerBrowserHost(),
+                                                 ServerBrowser, Blacklist)),
       SettingsView(std::make_unique<SettingsFlow>(SettingsModel, BindModel,
                                                   VideoModel, VoiceModel)) {
   SettingsModel.setSeams(settingsSeams());
@@ -179,7 +178,8 @@ CommandMenuHost GameUiModule::MakeCommandMenuHost() {
     return MenuPresented;
   };
   host.cancelRaisedMenu = [this] {
-    services::nativeUiBridge().requestMenuDown(services::NativeUiOrigin::kOwnUi);
+    services::nativeUiBridge().requestMenuDown(
+        services::NativeUiOrigin::kOwnUi);
   };
   host.reconcileInGame = [this] {
     reconcilePhase();
@@ -420,8 +420,7 @@ void GameUiModule::onVidInit() {
   Command->resetForWorld();
 }
 
-bool GameUiModule::launchLocalGame(const char *map,
-                                    const char **reasonToken) {
+bool GameUiModule::launchLocalGame(const char *map, const char **reasonToken) {
   if (!Instance)
     return false;
   return Instance->Create->launchLocal(map, reasonToken);
@@ -434,8 +433,8 @@ bool GameUiModule::consumeLaunchFailure() {
   PendingLaunchFailure = nullptr;
   const uint32_t live = LoadingModelState.generation();
   if (live != 0) {
-    Controller.dispatch(menu::makeLoadingFinished(
-        live, menu::LoadingOutcome::kFailed, reason));
+    Controller.dispatch(
+        menu::makeLoadingFinished(live, menu::LoadingOutcome::kFailed, reason));
     return true;
   }
   return false;

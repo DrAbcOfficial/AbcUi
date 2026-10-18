@@ -27,8 +27,12 @@ public:
 
   void setPage(panels::settings::SettingsPage *page);
   void shutdown();
-  bool presented() const { return Presented; }
-  void setPresented(bool presented) { Presented = presented; }
+  bool presented() const {
+    return Presented;
+  }
+  void setPresented(bool presented) {
+    Presented = presented;
+  }
   void hide();
 
   void present();

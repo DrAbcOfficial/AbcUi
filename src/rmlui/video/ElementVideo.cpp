@@ -73,7 +73,9 @@ const ::video::FrameView &ElementVideo::currentFrame() const {
   return Media->frame();
 }
 
-double ElementVideo::currentSeconds() const { return Media->lastSeconds(); }
+double ElementVideo::currentSeconds() const {
+  return Media->lastSeconds();
+}
 
 ElementVideo::~ElementVideo() {
   std::erase(elements(), this);
