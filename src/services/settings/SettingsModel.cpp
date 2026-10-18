@@ -577,12 +577,13 @@ std::vector<RowView> SettingsModel::rows() const {
 	return views;
 }
 
-const RowView* SettingsModel::find(const char* cvar) const {
-	// Convenience single-row lookup over the same projection.
-	static thread_local RowView view;
+std::optional<RowView> SettingsModel::find(const char* cvar) const {
+	// Convenience single-row lookup over the same projection. Returned by
+	// value: two finds must not alias one shared scratch object.
 	const RowRuntime* entry = runtime(cvar);
 	if (!entry)
-		return nullptr;
+		return std::nullopt;
+	RowView view;
 	view.row = entry->row;
 	view.engineValue = entry->engineValue;
 	view.engineText = entry->engineText;
@@ -592,7 +593,7 @@ const RowView* SettingsModel::find(const char* cvar) const {
 	view.missing = entry->missing;
 	view.options = &entry->options;
 	view.optionLabels = &entry->optionLabels;
-	return &view;
+	return view;
 }
 
 bool SettingsModel::isDirty() const {

@@ -10,11 +10,11 @@ void SettingsPage::renderPreviews() {
 	if (!document() || !Model)
 		return;
 	auto Text = [&](const char* Cvar) -> std::string {
-		const auto* View = Model->find(Cvar);
+		const auto View = Model->find(Cvar);
 		return View && !View->missing ? View->draftText : "";
 	};
 	auto Color = [&](const char* Cvar) {
-		const auto* View = Model->find(Cvar);
+		const auto View = Model->find(Cvar);
 		return View ? std::to_string(static_cast<int>(std::clamp(View->draftValue, 0.0f, 255.0f))) : "0";
 	};
 	auto Set = [&](const char* Id, const std::string& Uri) {

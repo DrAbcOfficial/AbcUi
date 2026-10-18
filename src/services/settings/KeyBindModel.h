@@ -40,6 +40,7 @@
 // binding table (05 doc evidence tier 1/2).
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -187,7 +188,7 @@ public:
 	bool hasQueued() const;
 
 	std::vector<BindRowView> rows() const;
-	const BindRowView* find(int actionIndex) const;
+	std::optional<BindRowView> find(int actionIndex) const;
 
 	// True while anything would change (or has failed to change): dirty,
 	// queued or apply-failed rows exist.

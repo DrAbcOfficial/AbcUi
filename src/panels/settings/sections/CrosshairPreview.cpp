@@ -86,7 +86,7 @@ void SettingsPage::renderCrosshairPreview() {
 	// Draft values with the shipped defaults as the fallback (a page is free
 	// to omit a row; the preview then shows the documented default).
 	const auto Value = [this](const char* Cvar, float fallback) {
-		const auto* View = Model->find(Cvar);
+		const auto View = Model->find(Cvar);
 		if (!View || View->missing)
 			return fallback;
 		return View->state == services::settings::RowState::kInvalid

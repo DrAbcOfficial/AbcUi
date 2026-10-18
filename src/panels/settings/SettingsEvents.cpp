@@ -77,7 +77,7 @@ void SettingsPage::handleClick(Rml::Event& event) {
 		hideLayers();
 	} else if (which == kActionToggle && !rowKey.empty()) {
 		if (Model) {
-			const auto* view = Model->find(rowKey.c_str());
+			const auto view = Model->find(rowKey.c_str());
 			if (view && !view->missing) {
 				// Toggle kinds: kBool threshold, kNegate sign view,
 				// kCommandToggle target state - all through setDraftBool.
@@ -234,7 +234,7 @@ void SettingsPage::handleChange(Rml::Event& event) {
 	// Select rows (kEnum/kStringEnum) commit through their value string and
 	// text rows (kText) through the validated string door; the model
 	// re-validates against the option set / charset either way.
-	const auto* view = Model->find(rowKey.c_str());
+	const auto view = Model->find(rowKey.c_str());
 	if (view && view->row->Kind == services::settings::SettingKind::kStringEnum) {
 		Model->setDraftString(rowKey.c_str(), text.c_str());
 	} else if (view && view->row->Kind == services::settings::SettingKind::kText) {

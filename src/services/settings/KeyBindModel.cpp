@@ -629,22 +629,21 @@ std::vector<BindRowView> KeyBindModel::rows() const {
 	return views;
 }
 
-const BindRowView* KeyBindModel::find(int actionIndex) const {
-	static thread_local BindRowView cached; // find() contract: single-threaded pages
+std::optional<BindRowView> KeyBindModel::find(int actionIndex) const {
 	if (actionIndex < 0 || actionIndex >= static_cast<int>(Rows_.size()))
-		return nullptr;
+		return std::nullopt;
 	const auto& row = Rows_[actionIndex];
-	cached.action = row.action;
-	cached.actionIndex = actionIndex;
-	cached.header = row.action && row.action->Header;
-	cached.state = row.state;
-	cached.draftKeyNames.clear();
+	BindRowView view;
+	view.action = row.action;
+	view.actionIndex = actionIndex;
+	view.header = row.action && row.action->Header;
+	view.state = row.state;
 	for (int keynum : row.draftKeys) {
 		std::string name = keyNameFor(Seams_, keynum);
 		if (!name.empty())
-			cached.draftKeyNames.push_back(std::move(name));
+			view.draftKeyNames.push_back(std::move(name));
 	}
-	return &cached;
+	return view;
 }
 
 bool KeyBindModel::isDirty() const {

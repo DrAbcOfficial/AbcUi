@@ -49,6 +49,7 @@
 // engine registers without FCVAR_ARCHIVE - the original behaves the same).
 
 #include <deque>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -248,7 +249,7 @@ public:
 	std::vector<ApplyResult> apply();
 
 	std::vector<RowView> rows() const;
-	const RowView* find(const char* cvar) const;
+	std::optional<RowView> find(const char* cvar) const;
 
 	// True while anything would change (or failed to change) on Apply:
 	// dirty, invalid, conflict, queued or apply-failed rows exist.
