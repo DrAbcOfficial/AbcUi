@@ -16,6 +16,7 @@
 #include "ScoreboardPanel.h"
 #include "../../data/HudState.h"
 #include "../../framework/ColorUtil.h"
+#include "../../framework/ShellActions.h"
 #include "../../framework/Theme.h"
 
 #include <RmlUi/Core/Context.h>
@@ -29,6 +30,7 @@
 #include <cstdarg>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <map>
 #include <vector>
 
@@ -232,7 +234,8 @@ public:
       if (node->HasAttribute("data-action")) {
         if (type == "click" && button == 0) {
           if (const Rml::Variant *value = node->GetAttribute("data-action")) {
-            Panel->menuAction(value->Get<int>());
+            Panel->menuAction(
+                static_cast<ScoreboardAction>(value->Get<int>()));
             Panel->closeContextMenu();
             event.StopPropagation();
             return;
@@ -810,28 +813,33 @@ void ScoreboardPanel::openContextMenu(int clientIndex,
   if (!menu)
     return;
 
-  char label[96];
-  sprintf_s(label, "%llu", static_cast<unsigned long long>(info->steamId64));
   const bool hasSteamId = info->steamId64 != 0;
   struct Entry {
     const char *id;
-    int action;
+    ScoreboardAction action;
     const char *token;
     const char *fallback;
   };
   const Entry entries[] = {
-      {"menu-profile", 0, "Scores_MenuSteamProfile", "Open Steam Profile"},
-      {"menu-copy-url", 1, "Scores_MenuSteamURL", "Copy Profile URL"},
-      {"menu-copy-name", 2, "Scores_MenuCopyName", "Copy Steam Name"},
-      {"menu-copy-name-raw", 3, "Scores_MenuCopyNameRaw", "Copy Game Name"},
-      {"menu-copy-steamid", 4, "Scores_MenuCopySteamID", "Copy SteamID"},
-      {"menu-copy-steamid64", 5, "Scores_MenuCopySteamID64", "Copy SteamID64"},
+      {"menu-profile", ScoreboardAction::kOpenProfile,
+       "Scores_MenuSteamProfile", "Open Steam Profile"},
+      {"menu-copy-url", ScoreboardAction::kCopyProfileUrl, "Scores_MenuSteamURL",
+       "Copy Profile URL"},
+      {"menu-copy-name", ScoreboardAction::kCopySteamName, "Scores_MenuCopyName",
+       "Copy Steam Name"},
+      {"menu-copy-name-raw", ScoreboardAction::kCopyGameName,
+       "Scores_MenuCopyNameRaw", "Copy Game Name"},
+      {"menu-copy-steamid", ScoreboardAction::kCopySteamId,
+       "Scores_MenuCopySteamID", "Copy SteamID"},
+      {"menu-copy-steamid64", ScoreboardAction::kCopySteamId64,
+       "Scores_MenuCopySteamID64", "Copy SteamID64"},
   };
   for (const Entry &entry : entries) {
     if (Rml::Element *item = element(entry.id)) {
       item->SetInnerRML(framework::TextUtil::escapeRml(
           localized(entry.token, entry.fallback)));
-      item->SetAttribute("data-action", std::to_string(entry.action));
+      item->SetAttribute("data-action",
+                         std::to_string(static_cast<int>(entry.action)));
     }
   }
   if (Rml::Element *item = element("menu-profile"))
@@ -880,7 +888,7 @@ void ScoreboardPanel::closeContextMenu() {
     menu->SetProperty("display", "none");
 }
 
-void ScoreboardPanel::menuAction(int action) {
+void ScoreboardPanel::menuAction(ScoreboardAction action) {
   const playerres::PlayerInfo *info = playerres::getPlayerInfo(MenuClient);
   if (!info || !info->isValid())
     return;
@@ -889,47 +897,32 @@ void ScoreboardPanel::menuAction(int action) {
     if (Rml::SystemInterface *system = Rml::GetSystemInterface())
       system->SetClipboardText(text);
   };
+  const std::string profileUrl =
+      std::format("http://steamcommunity.com/profiles/{}", info->steamId64);
   switch (action) {
-  case 0: { // steam profile (browser; the old overlay path needed
-    // SteamFriends - the steamapi backend serves the browser fall-back
-    // unconditionally, which the old code kept as its own fallback)
-    char url[96];
-    sprintf_s(url, "http://steamcommunity.com/profiles/%llu",
-              static_cast<unsigned long long>(info->steamId64));
-    ShellExecuteA(nullptr, "open", url, nullptr, nullptr, SW_SHOWNORMAL);
+  case ScoreboardAction::kOpenProfile:
+    // Old overlay path needed SteamFriends; the browser fallback is
+    // unconditional here.
+    framework::OpenExternalUrl(profileUrl);
     break;
-  }
-  case 1: {
-    char url[96];
-    sprintf_s(url, "http://steamcommunity.com/profiles/%llu",
-              static_cast<unsigned long long>(info->steamId64));
-    copy(url);
+  case ScoreboardAction::kCopyProfileUrl:
+    copy(profileUrl);
     break;
-  }
-  case 2:
+  case ScoreboardAction::kCopySteamName:
     copy(info->realName);
     break;
-  case 3:
+  case ScoreboardAction::kCopyGameName:
     copy(info->name);
     break;
-  case 4: {
-    char steamid[32];
+  case ScoreboardAction::kCopySteamId: {
     // Old m_pSteamId.Render(): STEAM_0:X:Y form from the 64-bit id.
-    const std::uint64_t id = info->steamId64;
     const std::uint32_t accountId =
-        static_cast<std::uint32_t>(id & 0xFFFFFFFFull);
-    sprintf_s(steamid, "STEAM_0:%u:%u", accountId & 1, accountId >> 1);
-    copy(steamid);
+        static_cast<std::uint32_t>(info->steamId64 & 0xFFFFFFFFull);
+    copy(std::format("STEAM_0:{}:{}", accountId & 1, accountId >> 1));
     break;
   }
-  case 5: {
-    char steamid[32];
-    sprintf_s(steamid, "%llu",
-              static_cast<unsigned long long>(info->steamId64));
-    copy(steamid);
-    break;
-  }
-  default:
+  case ScoreboardAction::kCopySteamId64:
+    copy(std::to_string(info->steamId64));
     break;
   }
 }

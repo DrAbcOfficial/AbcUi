@@ -46,6 +46,17 @@ void setPointerMode(bool enabled);
 void setIntermission(bool intermission);
 } // namespace scoreboard
 
+// Context-menu intents. The RML data-action attribute still carries the
+// integer, but the panel no longer switches on magic numbers.
+enum class ScoreboardAction : int {
+  kOpenProfile = 0,
+  kCopyProfileUrl,
+  kCopySteamName,
+  kCopyGameName,
+  kCopySteamId,
+  kCopySteamId64,
+};
+
 class ScoreboardPanel : public framework::HudPanel,
                         private framework::uiinput::Owner {
 public:
@@ -82,7 +93,7 @@ private:
   void openContextMenu(int clientIndex, const Rml::Vector2f &position);
   bool overMenu(const Rml::Vector2f &position);
   void closeContextMenu();
-  void menuAction(int action);
+  void menuAction(ScoreboardAction action);
   void setVisible(bool visible);
   void setMouseMode(bool enabled);
 
