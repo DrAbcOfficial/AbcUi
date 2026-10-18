@@ -20,6 +20,7 @@
 #include "../../data/NetworkMessages.h"
 #include "../../data/PlayerResource.h"
 #include "../../data/WeaponResource.h"
+#include "../../framework/PanelManager.h"
 #include "../../framework/Commands.h"
 
 // Windows.h min/max macros fight std::min/std::max (old repo precedent).
@@ -30,14 +31,20 @@ namespace panels {
 
 namespace weaponchoose {
 
-WeaponChoosePanel *PanelInstance = nullptr;
+namespace {
+WeaponChoosePanel *instance() {
+  return static_cast<WeaponChoosePanel *>(
+      framework::PanelManager::find("weaponchoose"));
+}
+} // namespace
 
 bool textmenuOpen() {
   return commands::textMenuOpen();
 }
 
 bool attackConfirm() {
-  return PanelInstance && PanelInstance->attackConfirm();
+  WeaponChoosePanel *panel = instance();
+  return panel && panel->attackConfirm();
 }
 
 // Old ctor default (persisted contract - never rename).
@@ -156,14 +163,9 @@ void rainbowShift(int counter, unsigned char &r, unsigned char &g,
 } // namespace
 
 WeaponChoosePanel::WeaponChoosePanel()
-    : HudPanel("weaponchoose", "abc/abcui/hud/rml/weaponchoose.rml") {
-  weaponchoose::PanelInstance = this;
-}
+    : HudPanel("weaponchoose", "abc/abcui/hud/rml/weaponchoose.rml") {}
 
-WeaponChoosePanel::~WeaponChoosePanel() {
-  if (weaponchoose::PanelInstance == this)
-    weaponchoose::PanelInstance = nullptr;
-}
+WeaponChoosePanel::~WeaponChoosePanel() = default;
 
 void WeaponChoosePanel::reset() {
   Visible = false;

@@ -16,6 +16,7 @@
 
 #include "../../data/NetworkMessages.h"
 #include "../../framework/Commands.h"
+#include "../../framework/PanelManager.h"
 #include "../../framework/ResourceFile.h"
 #include "../../framework/TextUtil.h"
 
@@ -24,7 +25,11 @@ namespace panels {
 namespace motd {
 // Old ctor cvar (persisted contract - never rename).
 cvar_t *HudMotd = nullptr;
-MotdPanel *PanelInstance = nullptr;
+namespace {
+MotdPanel *instance() {
+  return static_cast<MotdPanel *>(framework::PanelManager::find("motd"));
+}
+} // namespace
 
 void registerCvars() {
   // Old callback: re-typing hud_motd 1/-1 mid-game dismissed the open panel
@@ -34,8 +39,8 @@ void registerCvars() {
         switch (static_cast<int>(cvar->value)) {
         case 1:
         case -1:
-          if (PanelInstance)
-            PanelInstance->hide();
+          if (MotdPanel *panel = instance())
+            panel->hide();
           break;
         default:
           break;
@@ -46,7 +51,8 @@ void registerCvars() {
 // Wheel ownership: the open motd scrolls (old per-page auto-advance died
 // with the pagination - D-17 ledger).
 bool wantsWheel() {
-  return PanelInstance && PanelInstance->isVisible();
+  MotdPanel *panel = instance();
+  return panel && panel->isVisible();
 }
 
 // The old TFV_ShowVGUIMenu hook's gate: hud_motd != 0 keeps the vanilla MOTD
@@ -60,8 +66,8 @@ bool blocksVanillaWindow() {
 // gate rides inside showMotd like the old one (the hook only guarantees the
 // vanilla side stays down).
 void showMotd() {
-  if (PanelInstance)
-    PanelInstance->showMotd();
+  if (MotdPanel *panel = instance())
+    panel->showMotd();
 }
 } // namespace motd
 
@@ -121,14 +127,9 @@ std::string htmlToText(std::string html) {
   return out;
 }
 
-MotdPanel::MotdPanel() : HudPanel("motd", "abc/abcui/hud/rml/motd.rml") {
-  motd::PanelInstance = this;
-}
+MotdPanel::MotdPanel() : HudPanel("motd", "abc/abcui/hud/rml/motd.rml") {}
 
-MotdPanel::~MotdPanel() {
-  if (motd::PanelInstance == this)
-    motd::PanelInstance = nullptr;
-}
+MotdPanel::~MotdPanel() = default;
 
 void MotdPanel::reset() {
   Buffer.clear();

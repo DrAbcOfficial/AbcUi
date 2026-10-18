@@ -42,6 +42,16 @@ void PanelManager::vidInitAll() {
     panel->reset();
 }
 
+HudPanel *PanelManager::find(const char *name) {
+  if (!name)
+    return nullptr;
+  for (const auto &panel : Panels()) {
+    if (panel->getName() == name)
+      return panel.get();
+  }
+  return nullptr;
+}
+
 void PanelManager::shutdown() {
   Panels().clear();
   SessionActive = false;

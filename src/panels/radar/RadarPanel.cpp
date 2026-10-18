@@ -3,6 +3,7 @@
 #include <metahook.h>
 
 #include "RadarPanel.h"
+#include "../../framework/PanelManager.h"
 #include <unordered_set>
 
 #include <RmlUi/Core/Element.h>
@@ -42,7 +43,11 @@ cvar_t *Radar = nullptr;           // hud_radar (1 base, 2 round, 0 off)
 cvar_t *RadarZoom = nullptr;       // hud_radar_zoom
 cvar_t *RadarAvatar = nullptr;     // hud_radar_avatar
 cvar_t *RadarAvatarSize = nullptr; // hud_radar_avatarsize
-RadarPanel *PanelInstance = nullptr;
+namespace {
+RadarPanel *instance() {
+  return static_cast<RadarPanel *>(framework::PanelManager::find("radar"));
+}
+} // namespace
 
 void registerCvars() {
   Radar = abc::CREATE_CVAR("hud_radar", "1", abc::FCVAR_VALUE, nullptr);
@@ -278,11 +283,11 @@ bool CallbacksRegistered = false;
 void registerCommands() {
   // Old ADD_COMMAND pairs (HUD_Init time only - 08 §4.9).
   abc::ADD_COMMAND("+scale_radar", []() {
-    if (RadarPanel *panel = PanelInstance)
+    if (RadarPanel *panel = instance())
       panel->setScale(true);
   });
   abc::ADD_COMMAND("-scale_radar", []() {
-    if (RadarPanel *panel = PanelInstance)
+    if (RadarPanel *panel = instance())
       panel->setScale(false);
   });
 }
@@ -328,14 +333,10 @@ int debugFboTexture() {
 
 // Panel methods (radar namespace helpers above are TU-local via the unnamed
 // namespace; the panel drives them through the exported seams).
-RadarPanel::RadarPanel() : HudPanel("radar", "abc/abcui/hud/rml/radar.rml") {
-  radar::PanelInstance = this;
-}
+RadarPanel::RadarPanel() : HudPanel("radar", "abc/abcui/hud/rml/radar.rml") {}
 
 RadarPanel::~RadarPanel() {
   radar::stopProducer();
-  if (radar::PanelInstance == this)
-    radar::PanelInstance = nullptr;
 }
 
 void RadarPanel::onDocumentReady() {

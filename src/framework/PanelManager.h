@@ -39,6 +39,10 @@ public:
   static const std::vector<std::unique_ptr<HudPanel>> &panels() {
     return Panels();
   }
+  // Name lookup for the fixed seams that cannot capture a panel pointer
+  // (engine command callbacks / input router free functions). Null before
+  // install or after shutdown.
+  static HudPanel *find(const char *name);
 
 private:
   static bool SessionActive;

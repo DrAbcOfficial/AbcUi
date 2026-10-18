@@ -15,6 +15,7 @@
 #include <abc/Math.h>
 
 #include "../../../data/HudState.h"
+#include "../../../framework/PanelManager.h"
 #include "../../../data/Avatars.h"
 #include "../../../data/NetworkMessages.h"
 #include "../../../data/PlayerResource.h"
@@ -40,9 +41,7 @@
 
 #include <string_view>
 #include <vector>
-namespace panels::scoreboard {
-extern panels::ScoreboardPanel *PanelInstance;
-}
+namespace panels::scoreboard {}
 
 namespace hooks {
 int debugKeyEvent(int down, int keynum);
@@ -829,7 +828,8 @@ void domAtCommand() {
 
 void inputRegressionCommand() {
   auto *ctx = rmlui::context();
-  auto *panel = panels::scoreboard::PanelInstance;
+  auto *panel = static_cast<panels::ScoreboardPanel *>(
+      framework::PanelManager::find("scoreboard"));
   if (!ctx || !panel)
     return;
   int failures = 0;

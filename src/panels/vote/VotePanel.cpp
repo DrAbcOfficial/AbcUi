@@ -15,6 +15,7 @@
 #include <abc/Format.h>
 
 #include "../../data/NetworkMessages.h"
+#include "../../framework/PanelManager.h"
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
 #include "../../rmlui/VGUI2ExtensionImport.h"
@@ -27,7 +28,11 @@ namespace vote {
 cvar_t *HudVote = nullptr;
 cvar_t *KeyYes = nullptr;
 cvar_t *KeyNo = nullptr;
-VotePanel *PanelInstance = nullptr;
+namespace {
+VotePanel *instance() {
+  return static_cast<VotePanel *>(framework::PanelManager::find("vote"));
+}
+} // namespace
 
 void registerCvars() {
   HudVote = abc::CREATE_CVAR("hud_vote", "1", abc::FCVAR_VALUE, nullptr);
@@ -40,7 +45,8 @@ void registerCvars() {
 
 bool onKeyEvent(int down, int keynum) {
   // Old Viewport::KeyInput -> CVotePanel::KeyCodeTyped.
-  return PanelInstance && PanelInstance->answerKey(down, keynum);
+  VotePanel *panel = instance();
+  return panel && panel->answerKey(down, keynum);
 }
 
 } // namespace vote
@@ -54,14 +60,9 @@ std::string defaultCaption(const char *token, const char *fallback) {
 
 } // namespace
 
-VotePanel::VotePanel() : HudPanel("vote", "abc/abcui/hud/rml/vote.rml") {
-  vote::PanelInstance = this;
-}
+VotePanel::VotePanel() : HudPanel("vote", "abc/abcui/hud/rml/vote.rml") {}
 
-VotePanel::~VotePanel() {
-  if (vote::PanelInstance == this)
-    vote::PanelInstance = nullptr;
-}
+VotePanel::~VotePanel() = default;
 
 void VotePanel::reset() {
   setVisible(false);

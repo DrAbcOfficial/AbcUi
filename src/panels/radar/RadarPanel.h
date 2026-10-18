@@ -40,7 +40,6 @@ void registerCvars();
 void registerCommands();
 
 // Live panel for the command seams (old GetRadarPanel()).
-extern RadarPanel *PanelInstance;
 
 #ifndef NDEBUG
 // abc_ui_probe aid: FBO texture id (0 = not ready).

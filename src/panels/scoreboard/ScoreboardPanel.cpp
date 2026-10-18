@@ -16,6 +16,7 @@
 #include "ScoreboardPanel.h"
 #include "../../data/HudState.h"
 #include "../../framework/ColorUtil.h"
+#include "../../framework/PanelManager.h"
 #include "../../framework/ShellActions.h"
 #include "../../framework/Theme.h"
 
@@ -87,33 +88,41 @@ void registerCvars() {
                                     abc::FCVAR_VALUE, nullptr);
 }
 
-ScoreboardPanel *PanelInstance = nullptr;
+namespace {
+ScoreboardPanel *instance() {
+  return static_cast<ScoreboardPanel *>(
+      framework::PanelManager::find("scoreboard"));
+}
+} // namespace
 
 bool onKeyEvent(int down, int keynum) {
-  return PanelInstance && PanelInstance->answerKey(down, keynum);
+  ScoreboardPanel *panel = instance();
+  return panel && panel->answerKey(down, keynum);
 }
 
 void setIntermission(bool intermission) {
   // Edge-triggered: HUD_Redraw calls this every frame with the current
   // flag; only the 0->1/1->0 transitions drive the panel (old
   // SetInterMission was a state change, not a per-frame vote).
-  if (!PanelInstance || PanelInstance->Intermission == intermission)
+  ScoreboardPanel *panel = instance();
+  if (!panel || panel->Intermission == intermission)
     return;
-  PanelInstance->Intermission = intermission;
+  panel->Intermission = intermission;
   // Old SetInterMission -> ShowPanel(intermission > 0).
-  PanelInstance->setVisible(intermission);
+  panel->setVisible(intermission);
   // The pointer never auto-engages on the intermission board (old code kept
   // +/-showscores dead there; MOUSE2 stays live for players who want it).
 }
 
 bool wantsWheel() {
-  return PanelInstance && PanelInstance->isVisible() &&
-         PanelInstance->MouseMode;
+  ScoreboardPanel *panel = instance();
+  return panel && panel->isVisible() && panel->MouseMode;
 }
 
 void setPointerMode(bool enabled) {
-  if (PanelInstance && (!enabled || PanelInstance->isVisible()))
-    PanelInstance->setMouseMode(enabled);
+  ScoreboardPanel *panel = instance();
+  if (panel && (!enabled || panel->isVisible()))
+    panel->setMouseMode(enabled);
 }
 
 } // namespace scoreboard
@@ -262,14 +271,10 @@ public:
 };
 
 ScoreboardPanel::ScoreboardPanel()
-    : HudPanel("scoreboard", "abc/abcui/hud/rml/scoreboard.rml") {
-  scoreboard::PanelInstance = this;
-}
+    : HudPanel("scoreboard", "abc/abcui/hud/rml/scoreboard.rml") {}
 
 ScoreboardPanel::~ScoreboardPanel() {
   setMouseMode(false);
-  if (scoreboard::PanelInstance == this)
-    scoreboard::PanelInstance = nullptr;
   if (Listener) {
     if (auto *box = element("box")) {
       box->RemoveEventListener("mousedown", Listener, false);
