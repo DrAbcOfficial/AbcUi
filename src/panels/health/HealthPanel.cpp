@@ -15,7 +15,6 @@
 #include "../../data/HudState.h"
 #include "../../data/NetworkMessages.h"
 #include "../../framework/ColorUtil.h"
-#include "../../framework/GlyphText.h"
 
 namespace panels {
 
@@ -86,9 +85,9 @@ void HealthPanel::updateVisibility() {
     hide();
   // Old SetHealthVisible/SetArmorVisible element groups.
   const char *healthGroup[] = {"health-icon", "health-label", "health-bar-bg",
-                               "health-bar-wrap"};
+                               "health-bar"};
   const char *armorGroup[] = {"armor-icon", "armor-label", "armor-bar-bg",
-                              "armor-bar-wrap"};
+                              "armor-bar"};
   for (const char *id : healthGroup) {
     if (Rml::Element *el = element(id))
       el->SetProperty("visibility", hideHealth ? "hidden" : "visible");
@@ -107,14 +106,12 @@ void HealthPanel::setHealth(int health) {
     if (local && !hudstate::isSpectate())
       health = 1;
   }
-  applyVital("health-label", "health-bar", "health-icon", "health-bar-wrap",
-             health,
+  applyVital("health-label", "health-bar", "health-icon", health,
              health::DangerHealth ? health::DangerHealth->value : 45.0f);
 }
 
 void HealthPanel::setArmor(int armor) {
-  applyVital("armor-label", "armor-bar", "armor-icon", "armor-bar-wrap",
-             armor,
+  applyVital("armor-label", "armor-bar", "armor-icon", armor,
              health::DangerArmor ? health::DangerArmor->value : 45.0f);
 }
 
@@ -133,29 +130,26 @@ Rml::String HealthPanel::dangerColor(int value, float dangerValue) const {
 }
 
 void HealthPanel::applyVital(const char *labelId, const char *barId,
-                             const char *iconId, const char *wrapId, int value,
+                             const char *iconId, int value,
                              float dangerValue) {
   const Rml::String color = dangerColor(value, dangerValue);
   if (Rml::Element *label = element(labelId)) {
-    // Additive glyph ink (framework::glyphs): the texadd:// images are what
-    // make the value glow like the sprite icons, so no outline is needed.
-    // The text fallback keeps the readout visible if a glyph is missing.
-    const std::string text = std::to_string(value);
-    const std::string ink = framework::glyphs::markup(text, color.c_str());
-    label->SetInnerRML(ink.empty() ? text : ink);
+    // Plain type with the 1px outline from health.rcss: the additive glyph
+    // pass read worse here, so the value is text again (the glyph helper and
+    // .hud-glyph stay available for the readouts that use them).
+    label->SetInnerRML(std::to_string(value));
     label->SetProperty("color", color);
   }
-  // The meter fill is the additive strip, the icon a tinted sprite; the
-  // danger rule retints both through image-color.
-  if (Rml::Element *bar = element(barId))
-    bar->SetProperty("image-color", color);
+  // The meter is a flat rounded fill scaled by the value; the icon stays the
+  // additive sprite. The danger rule retints both.
+  if (Rml::Element *bar = element(barId)) {
+    const float pct = std::clamp(value / 100.0f, 0.0f, 1.0f);
+    bar->SetProperty("background-color", color);
+    bar->SetProperty("width",
+                     Rml::String(std::to_string(pct * kBarWidth)) + "dp");
+  }
   if (Rml::Element *icon = element(iconId))
     icon->SetProperty("image-color", color);
-  if (Rml::Element *wrap = element(wrapId)) {
-    const float pct = std::clamp(value / 100.0f, 0.0f, 1.0f);
-    wrap->SetProperty("width",
-                      Rml::String(std::to_string(pct * kBarWidth)) + "dp");
-  }
 }
 
 void HealthPanel::setLongJump(bool longJump) {

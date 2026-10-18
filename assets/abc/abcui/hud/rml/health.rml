@@ -4,22 +4,21 @@
 	<link type="text/rcss" href="../rcss/health.rcss"/>
 </head>
 <body id="health">
-	<!-- HL2-inspired vitals: amber icon + large amber value straight on the
-	     scene, with the vgui-era meter kept underneath each value. Icons and
-	     the meter fill are additive (texadd://); the value is the additive
-	     glyph stack from framework::glyphs, whose black outline layer is what
-	     keeps it readable on bright maps. -->
+	<!-- HL2-inspired vitals: the additive amber icon plus the large amber
+	     value straight on the scene, with the vgui-era meter kept underneath
+	     each value. The value stays RmlUi type with the black outline (it read
+	     best that way); the icons and the additive machinery
+	     (.hud-glyph/.hud-meter in base.rcss) are still there for the readouts
+	     that want them. -->
 	<img id="health-icon" class="icon" src="texadd://abc/abcui/hud/img/healthbar_icon.png"/>
 	<div id="health-label" class="font-vital">0</div>
 	<div id="health-bar-bg"></div>
-	<div id="health-bar-wrap"><img id="health-bar" class="hud-meter"
-		src="texadd://abc/abcui/hud/img/glyph/meter.png"/></div>
+	<div id="health-bar"></div>
 
 	<img id="armor-icon" class="icon" src="texadd://abc/abcui/hud/img/armorbar_icon.png"/>
 	<div id="armor-label" class="font-vital">0</div>
 	<div id="armor-bar-bg"></div>
-	<div id="armor-bar-wrap"><img id="armor-bar" class="hud-meter"
-		src="texadd://abc/abcui/hud/img/glyph/meter.png"/></div>
+	<div id="armor-bar"></div>
 
 	<img id="longjump" src="texadd://abc/abcui/hud/img/longjump.png"/>
 </body>

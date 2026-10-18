@@ -44,15 +44,14 @@ body {
 	--abc-hud-danger: #ff0000;
 	/* Meter well behind an additive fill. */
 	--abc-hud-track: #000000a0;
-	/* Readout brightness, a third below the previous pass (the additive ink
-	   read too bright on bright maps). The value ink sits on its own black
-	   outline layer, so 0.667 is exactly two thirds of the amber; the icons
-	   and the meter add straight onto the scene, hence the lower factors.
-	   Opacity is an inherited RmlUi property applied per element, so a panel
-	   can soften one part without fading the rest. */
-	--abc-hud-value-opacity: 0.667;
+	/* Readout brightness. Values and meters are type / flat fills again, so
+	   they sit at the opaque-readout levels; the icons stay additive and keep
+	   the softer factor they got in the additive pass. Opacity is an inherited
+	   RmlUi property applied per element, so a panel can soften one part
+	   without fading the rest. */
+	--abc-hud-value-opacity: 0.88;
 	--abc-hud-icon-opacity: 0.53;
-	--abc-hud-meter-opacity: 0.5;
+	--abc-hud-meter-opacity: 0.75;
 }
 
 /* Additive HUD ink (framework::glyphs): one glyph is a two-layer stack - a

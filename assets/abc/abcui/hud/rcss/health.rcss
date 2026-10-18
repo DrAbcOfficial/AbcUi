@@ -20,20 +20,17 @@
 }
 
 /* HL2-style vitals type: one big amber value per group. Verdana Bold stands
-   in for the old CompactaBold. The value ink is additive glyphs
-   (framework::glyphs), so there is no outline: black would add nothing
-   anyway, and the additive blend keeps the readout glowing over the scene. */
+   in for the old CompactaBold; the 1px black outline is what keeps the number
+   readable over bright floors (the additive glyph ink that replaced it read
+   too flat once outlined, so the value went back to type). */
 #health .font-vital {
 	font-family: Verdana;
 	font-weight: bold;
 	font-size: 20dp;
 	letter-spacing: 0.4dp;
 	white-space: nowrap;
+	font-effect: outline(1px #000000b4);
 }
-
-/* Additive glyph run: .hud-glyph (base.rcss) carries the cell sizing, the
-   black outline layer, the accent tint and the value opacity; the run
-   inherits the 20dp type above so the ink follows the value size. */
 
 #health-icon, #armor-icon {
 	position: absolute;
@@ -41,9 +38,8 @@
 	width: 20dp;
 	height: 20dp;
 	/* HUD accent (was scheme Default); applyDanger shifts the hue toward red
-	   below hud_danger_health / hud_danger_armor. */
+	   below hud_danger_health / hud_danger_armor. Additive texture. */
 	image-color: var(--abc-hud-accent);
-	/* Translucent readout: the sprite is a step softer than the value. */
 	opacity: var(--abc-hud-icon-opacity);
 }
 #health-icon { left: 0dp; }
@@ -65,42 +61,33 @@
 #health-label { left: 26dp; }
 #armor-label { left: 176dp; }
 
-#health-bar-wrap, #armor-bar-wrap {
-	position: absolute;
-	top: 32dp;
-	width: 92dp;
-	height: 5dp;
-	overflow: hidden;
-	border-radius: 2dp;
-	transition: width 0.15s linear-in;
-}
-#health-bar-wrap { left: 26dp; }
-#armor-bar-wrap { left: 176dp; }
-
-/* Meter well: the black track behind the additive fill (restored - the fill
-   is light on its own, the well gives it an edge on bright floors). The
-   elements stay in the tree because HealthPanel toggles them with the group
-   visibility. */
+/* Meter well: the black track behind the fill. */
 #health-bar-bg, #armor-bar-bg {
 	position: absolute;
 	top: 32dp;
 	width: 92dp;
 	height: 5dp;
 	background-color: var(--abc-hud-track);
-	border-radius: 2dp;
+	/* Pill: both ends rounded. */
+	border-radius: 2.5dp;
 }
 #health-bar-bg { left: 26dp; }
 #armor-bar-bg { left: 176dp; }
 
-/* In-flow (display:block) so overflow:hidden on the wrap clips the fill
-   reliably (RmlUi clipping of abs-positioned children is not guaranteed). */
-/* Additive meter strip (texadd:// in the document): .hud-meter carries the
-   tint and the meter opacity, the wrap clips it to the value. */
+/* The fill is its own rounded bar (no clipping wrapper): its width is the
+   value, so both ends stay round while it animates. */
 #health-bar, #armor-bar {
-	display: block;
+	position: absolute;
+	top: 32dp;
 	width: 92dp;
 	height: 5dp;
+	background-color: var(--abc-hud-accent);
+	border-radius: 2.5dp;
+	opacity: var(--abc-hud-meter-opacity);
+	transition: width 0.15s linear-in;
 }
+#health-bar { left: 26dp; }
+#armor-bar { left: 176dp; }
 
 #longjump {
 	position: absolute;
