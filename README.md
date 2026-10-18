@@ -1,10 +1,10 @@
 # AbcUi
 
-HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, rendering exclusively through IMetaRenderer with zero direct OpenGL. The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is consumed dynamically through `AbcCore.dll`; AbcUi no longer vendors AbcCore as a submodule. AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
+HUD and menu plugin for Sven Co-op / MetaHookSv (`AbcUi.dll`): rebuilds the entire ABCEnchance interface on RmlUi, drawing exclusively through IMetaRenderer with zero direct OpenGL (textures upload through the VGUI2 surface channel). The shared [AbcCore](https://github.com/DrAbcOfficial/AbcCore) library is built as a static `abc_core` from an external source tree (`ABC_CORE_DIR`, sibling `../AbcCore` by default); AbcUi no longer vendors AbcCore as a submodule, and no `AbcCore.dll` is required. AbcUi owns the direct Renderer interface dependency and its render bridge, so AbcCore stays renderer-free.
 
 ## Build
 
-Windows + MSVC + CMake >= 4.2, Win32 x86 only:
+Windows + MSVC + CMake >= 4.2, Win32 x86 only, C++20, dynamic CRT (/MD):
 
 ```bash
 git clone --recursive https://github.com/DrAbcOfficial/AbcUi.git
@@ -30,7 +30,7 @@ cmake --build --preset win32-release --target deploy
 
 - UI assets go to `<game>/svencoop/abc/abcui/`, split by surface: GameUI documents, page styles, config and menu media live under `gameui/`; HUD documents, sprites and page art live under `hud/`; the cross-surface stylesheets (`rcss/base.rcss`, `rcss/theme.rcss`), language tables and shared art stay at the `abcui/` root.
 - `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`.
-- `FreeImage.dll` and `Mile.FFmpeg.dll` are published by MetaHookSV/Renderer and are intentionally not installed or packaged by AbcUi.
+- `FreeImage.dll` and `Mile.FFmpeg.dll` are provided by MetaHookSV/Renderer; AbcUi does not install or package a second copy.
 
 ## Packaging
 
@@ -79,9 +79,9 @@ Limits: 1 MiB per file, 100 items per menu and 40 nested levels.
 
 ## Feature overview
 
-- HUD panels: Health / Flashlight / AmmoBar / AmmoStack / ItemStack / WeaponStack / Notice / DeadMsg / SideText / TextMenu / DamageTiles / PopNum / Indicator / player board / scoreboard / vote / MOTD / weapon choose / item highlight / Radar and more; data layer with NetworkMessages / WeaponResource / SpriteResource (GoldSrc .spr decode + hud.txt) / HudState / TextFeed; the original HUD is suppressed by sig-scan on the HUD_Redraw chain.
+- HUD panels: Health / Flashlight / AmmoBar / AmmoStack / ItemStack / WeaponStack / Notice / DeadMsg / SideText / TextMenu / DamageTiles / PopNum / Indicator / player board / scoreboard / vote / MOTD / weapon choose / item highlight / Radar and more; data layer with NetworkMessages / WeaponResource / HudState / TextFeed, and the resource layer under `src/rmlui/texture/` with SpriteResource (GoldSrc .spr decode + hud.txt); the original HUD list is resolved through gamedata and its visible flag is stripped in the chained HUD_Redraw thunk.
 - Resource files (sprites, images and RML documents) resolve through the engine `IFileSystem`, the same mounted view VGUI2Extension uses. Custom server content in `<mod>_downloads`, `<mod>_addon` and other engine search paths therefore participates without CWD-relative path guessing.
-- Menu: main menu, settings (general/input/mouse/video/audio/voice/captions/multiplayer/advanced), server browser, create game, player list, vote creation (ban/kick/kill/map with the server's map list), connect/loading/error pages, console, direct-connect/password dialogs, quit confirmation, and the nested in-game command menu; text input goes through the IME-aware input bridge. The pause menu's **Vote Menu** row and the original `votemenu` command both open the RmlUi page, replacing the legacy GameUI vote dialog. The original `+commandmenu` VGUI window is replaced by a translucent, left-anchored RmlUi menu that leaves the game view visible. The console wraps output to the current window width, supports mouse selection with Ctrl+C copy or a right-click Copy menu (no selection copies the visible output), and the console hotkey returns straight to gameplay from the in-game pause page (the no-map main menu stays open).
+- Menu: main menu, settings (general/input/mouse/video/audio/voice/captions/multiplayer/advanced/menu/renderer), server browser, create game, player list, vote creation (ban/kick/kill/map with the server's map list), connect/loading/error pages, console, direct-connect/password dialogs, quit confirmation, and the nested in-game command menu; text input goes through the IME-aware input bridge. The pause menu's **Vote Menu** row and the original `votemenu` command both open the RmlUi page, replacing the legacy GameUI vote dialog. The original `+commandmenu` VGUI window is replaced by a translucent, left-anchored RmlUi menu that leaves the game view visible. The console wraps output to the current window width, supports mouse selection with Ctrl+C copy or a right-click Copy menu (no selection copies the visible output), and the console hotkey returns straight to gameplay from the in-game pause page (the no-map main menu stays open).
 - Menu backdrop: `abc_ui_menu_video` picks the looping movie behind the no-map menu (blurred by `abc_ui_menu_backdrop_blur` gaussian rounds, 0..4, default 2; 0 shows the unblurred capture); in a level the pause menu blurs the live frame instead.
 - Retained cvars: `hud_danger_health`, `hud_danger_armor`, `hud_deathnotice(+_time/_count)`, `hud_sideinfo`; in-game diagnostics: `abc_ui_debugger` (RmlUi debugger) and `abc_ui_probe` (font/panel/element state dump).
 - Avatars and real names come from the dynamically bound game steam_api.dll (Bridge/Native backend abstraction, no steam_api.lib import dependency); fonts are loaded from the system font directory through `Rml::LoadFontFace`.
@@ -97,9 +97,9 @@ AbcEssential.dll
 AbcUi.dll
 ```
 
-`AbcCore.dll` is a dependency, not a plugin: place it at
-`svencoop/metahook/dlls/AbcCore/AbcCore.dll`. The Windows loader resolves it
-when `AbcUi.dll`/`AbcEssential.dll` load.
+`abc_core` is linked statically into `AbcUi.dll`; there is no `AbcCore.dll` to
+place. The only runtime plugin dependencies are Renderer and VGUI2Extension in
+the list above.
 
 ## Submodules
 
@@ -117,8 +117,8 @@ when `AbcUi.dll`/`AbcEssential.dll` load.
 AbcCore is managed by the aggregate
 [ABCEnchance](https://github.com/DrAbcOfficial/ABCEnchance) repository. Set
 `ABC_CORE_DIR` to its source tree when building AbcUi standalone; the default is
-`../AbcCore`. The aggregate build passes its root `AbcCore/` checkout
-explicitly.
+`../AbcCore`. When building from the aggregate repository, point
+`ABC_CORE_DIR` at its root `AbcCore/` checkout.
 
 ## License
 
