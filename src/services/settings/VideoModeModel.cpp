@@ -313,11 +313,11 @@ bool VideoModeModel::confirm() {
 }
 
 std::vector<std::string> VideoModeModel::pendingRevertCommands() {
-	(void)confirmKind(); // refresh the live actual mode first (same rule)
+	// Refresh the live actual mode once, then use that same answer.
+	const ConfirmKind kind = confirmKind();
 	std::vector<std::string> commands;
 	if (State_ != State::kAwaitingConfirm)
 		return commands;
-	const ConfirmKind kind = confirmKind();
 	const VideoMode oldMode = recordOld(Record);
 	if (kind == ConfirmKind::kApplied) {
 		// The old values are written back and the engine restarts into them.
