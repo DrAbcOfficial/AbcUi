@@ -432,6 +432,12 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
     }
     return handle;
   }
+  if (source.rfind("tex://", 0) == 0) {
+    // Mod-relative file, straight alpha: the non-additive twin of texadd://.
+    // The scheme keeps Rml from joining the document directory, so markup
+    // composed in code (the additive glyph stacks) resolves from anywhere.
+    return loadFileTexture(dimensions, source.substr(6));
+  }
   if (source.rfind("texadd://", 0) == 0) {
     // Mod-relative file loaded additive (old kRenderTransAdd TGA panels -
     // the pain indicator arc). Shares the FreeImage path below.

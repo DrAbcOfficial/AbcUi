@@ -31,11 +31,9 @@
 	white-space: nowrap;
 }
 
-/* Additive glyph run: .hud-glyph carries the em sizing, the accent tint and
-   the value opacity (base.rcss); the run inherits the 20dp type above. */
-#health .hud-glyph {
-	vertical-align: baseline;
-}
+/* Additive glyph run: .hud-glyph (base.rcss) carries the cell sizing, the
+   black outline layer, the accent tint and the value opacity; the run
+   inherits the 20dp type above so the ink follows the value size. */
 
 #health-icon, #armor-icon {
 	position: absolute;
@@ -79,14 +77,17 @@
 #health-bar-wrap { left: 26dp; }
 #armor-bar-wrap { left: 176dp; }
 
-/* No meter well: the additive fill is the whole indicator (the old black
-   track was the chrome this pass removes). The elements stay in the tree
-   because HealthPanel toggles them with the group visibility. */
+/* Meter well: the black track behind the additive fill (restored - the fill
+   is light on its own, the well gives it an edge on bright floors). The
+   elements stay in the tree because HealthPanel toggles them with the group
+   visibility. */
 #health-bar-bg, #armor-bar-bg {
 	position: absolute;
 	top: 32dp;
 	width: 92dp;
 	height: 5dp;
+	background-color: var(--abc-hud-track);
+	border-radius: 2dp;
 }
 #health-bar-bg { left: 26dp; }
 #armor-bar-bg { left: 176dp; }

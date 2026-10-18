@@ -42,27 +42,52 @@ body {
 	--abc-hud-accent-dim: #ffb0007d;
 	--abc-hud-accent-faint: #ffb0004d;
 	--abc-hud-danger: #ff0000;
-	--abc-hud-track: #00000080;
-	/* Translucent finish of the readouts: the value stays legible, icons and
-	   meters sit a step softer so the scene reads through them. Opacity is an
-	   inherited RmlUi property applied per element, so a panel can soften one
-	   part without fading the rest. */
-	--abc-hud-value-opacity: 0.88;
-	--abc-hud-icon-opacity: 0.8;
-	--abc-hud-meter-opacity: 0.75;
+	/* Meter well behind an additive fill. */
+	--abc-hud-track: #000000a0;
+	/* Readout brightness, a third below the previous pass (the additive ink
+	   read too bright on bright maps). The value ink sits on its own black
+	   outline layer, so 0.667 is exactly two thirds of the amber; the icons
+	   and the meter add straight onto the scene, hence the lower factors.
+	   Opacity is an inherited RmlUi property applied per element, so a panel
+	   can soften one part without fading the rest. */
+	--abc-hud-value-opacity: 0.667;
+	--abc-hud-icon-opacity: 0.53;
+	--abc-hud-meter-opacity: 0.5;
 }
 
-/* Additive HUD ink (framework::glyphs). A texadd:// texture is loaded with
-   the additive blend the sprite icons use, so its pixels are added to the
-   scene instead of covering it: black contributes nothing, which is why an
-   additive readout needs no outline. Sizing is per context (em, so the ink
-   follows the surrounding type); the value tint defaults to the HUD accent
-   and the danger rule overrides it inline. */
+/* Additive HUD ink (framework::glyphs): one glyph is a two-layer stack - a
+   black silhouette (tex://, source-over) under the additive core (texadd://,
+   added to the scene). Black adds nothing in the additive pass, so the
+   outline has to be its own straight-alpha layer; that pairing is what keeps
+   the glow readable without a plate.
+   The glyph cell is 82x128 source with the ink 96 tall on the baseline at
+   y=104, so the stack is 0.6833em wide and 1.0667em tall at 0.80em ink, and
+   the cell bottom sits 0.2em below the ink baseline (margin-bottom). Sizing
+   is in em, so the ink follows the surrounding type; the tint defaults to the
+   HUD accent and the danger rule overrides it inline. */
 .hud-glyph {
 	display: inline-block;
-	width: 0.64em;
-	height: 0.73em;
-	image-color: var(--abc-hud-accent);
+	position: relative;
+	width: 0.6833em;
+	height: 1.0667em;
+	margin-bottom: -0.2em;
+}
+
+.hud-glyph img {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
+
+/* The outline stays opaque black (it must not dim with the readout), the ink
+   carries the value opacity. */
+.hud-glyph .glyph-outline {
+	opacity: 1;
+}
+
+.hud-glyph .glyph-ink {
 	opacity: var(--abc-hud-value-opacity);
 }
 

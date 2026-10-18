@@ -47,8 +47,11 @@
 //   RenderManager identity reset whenever the next element is untransformed,
 //   so nothing lingers across the frame.
 // - Extra texture URIs handled here:
+//     tex://<mod-relative path>    -> file loaded straight-alpha. The scheme
+//     keeps Rml from joining the document directory, so markup composed in
+//     code resolves from any document (framework::glyphs outline layer).
 //     texadd://<mod-relative path> -> file loaded additive (old
-//     kRenderTransAdd TGA panels: the pain indicator).
+//     kRenderTransAdd TGA panels: the pain indicator; the additive glyph ink).
 
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/Types.h>

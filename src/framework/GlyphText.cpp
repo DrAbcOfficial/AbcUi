@@ -54,18 +54,25 @@ std::string glyph(char c, const char *tint) {
   const char *file = glyphFile(c);
   if (!file)
     return {};
-  std::string out = "<img class=\"hud-glyph\" src=\"texadd://";
+  // One inline-block cell: the black outline layer first (source-over), then
+  // the additive ink on top of it.
+  std::string out = "<span class=\"hud-glyph\">";
+  out += "<img class=\"glyph-outline\" src=\"tex://";
+  out += kOutlineRoot;
+  out += file;
+  out += ".png\"/>";
+  out += "<img class=\"glyph-ink\" src=\"texadd://";
   out += kGlyphRoot;
   out += file;
   out += ".png\" style=\"image-color: ";
   out += tint ? tint : "#ffb000";
-  out += "\"/>";
+  out += "\"/></span>";
   return out;
 }
 
 std::string markup(const std::string &text, const char *tint) {
   std::string out;
-  out.reserve(text.size() * 96);
+  out.reserve(text.size() * 240);
   for (const char c : text) {
     const std::string one = glyph(c, tint);
     if (one.empty())
