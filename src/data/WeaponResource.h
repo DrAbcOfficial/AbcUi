@@ -16,6 +16,7 @@
 // Sprite sources: sprites/<sprName>.txt parsed via SPR_GetList, atlas file +
 // rect stored per slot; panels build spricon:// URIs through data::sprites.
 
+#include <cstddef>
 #include <string>
 #include <unordered_map>
 #include <vector>

@@ -53,6 +53,7 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/Types.h>
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>

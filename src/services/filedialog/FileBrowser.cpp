@@ -1,6 +1,7 @@
 #include "services/filedialog/FileBrowser.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 #include <filesystem>
 
