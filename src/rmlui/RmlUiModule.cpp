@@ -30,6 +30,7 @@
 #include "AbcRenderInterface.h"
 #include "backdrop/ElementBackdrop.h"
 #include "../services/menubackdrop/Backdrop.h"
+#include "../services/modelpreview/Target.h"
 #include "model/ElementModel.h"
 #include "video/ElementVideo.h"
 #include "AbcSystemInterface.h"

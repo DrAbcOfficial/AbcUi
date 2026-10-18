@@ -1,6 +1,8 @@
 // New implementation; see ElementModel.h. Register before loading documents,
 // render once at the end-of-frame UI boundary, never inside Rml geometry draws.
 #include "ElementModel.h"
+#include "../../services/modelpreview/Options.h"
+#include "../../services/modelpreview/Target.h"
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>
@@ -26,7 +28,9 @@ Rml::ElementInstancerGeneric<ElementModel> Instancer;
 } // namespace
 
 ElementModel::ElementModel(const Rml::String &Tag)
-    : Element(Tag), Listener(this) {
+    : Element(Tag),
+      Config(std::make_unique<modelpreview::Options>()),
+      Target(std::make_unique<modelpreview::Target>()), Listener(this) {
   auto Child = Rml::Factory::InstanceElement(this, "img", "img", {});
   Image = Child.get();
   if (Image) {
@@ -61,8 +65,12 @@ void ElementModel::OnAttributeChange(const Rml::ElementAttributes &Changed) {
       abc::ConsoleWarn("[AbcUi model] invalid %s on #%s\n", Name.c_str(),
                        GetId().c_str());
   }
-  Config = std::move(Updated);
+  *Config = std::move(Updated);
 }
+
+unsigned int ElementModel::texture() const { return Target->texture(); }
+
+unsigned int ElementModel::frames() const { return Target->frames(); }
 
 void ElementModel::OnUpdate() {
   Element::OnUpdate();
@@ -77,7 +85,7 @@ void ElementModel::OnUpdate() {
     ListenedDocument->RemoveEventListener("mouseup", &Listener, false);
     ListenedDocument = nullptr;
   }
-  if (document && Config.DragRotate) {
+  if (document && Config->DragRotate) {
     // The element's own press starts the drag; the document keeps it alive
     // while the pointer wanders off the box.
     AddEventListener("mousedown", &Listener, false);
@@ -101,7 +109,7 @@ void ElementModel::DragListener::ProcessEvent(Rml::Event &event) {
 }
 
 void ElementModel::beginDrag(int x, int y) {
-  if (!Config.DragRotate)
+  if (!Config->DragRotate)
     return;
   Dragging = true;
   DragStartX = x;
@@ -134,19 +142,19 @@ bool ElementModel::renderPreview() {
     return false;
   // The drag offsets ride the entity's angles: the camera keeps its framing
   // and the model turns in place (an inspection gesture, not a camera move).
-  modelpreview::Options Effective = Config;
-  if (Config.DragRotate) {
-    Effective.Angles[1] = Config.Angles[1] + DragYaw;
-    Effective.Angles[0] = Config.Angles[0] + DragPitch;
+  modelpreview::Options Effective = *Config;
+  if (Config->DragRotate) {
+    Effective.Angles[1] = Config->Angles[1] + DragYaw;
+    Effective.Angles[0] = Config->Angles[0] + DragPitch;
   }
-  const bool Ready = Target.render(
+  const bool Ready = Target->render(
       Effective, static_cast<int>(std::min(std::ceil(Size.x), 2048.0f)),
       static_cast<int>(std::min(std::ceil(Size.y), 2048.0f)));
   if (ImageReady == Ready)
     return false;
   ImageReady = Ready;
   if (Ready) {
-    Image->SetAttribute("src", Target.uri());
+    Image->SetAttribute("src", Target->uri());
     Image->SetProperty("visibility", "visible");
   } else {
     Image->SetProperty("visibility", "hidden");

@@ -4,12 +4,18 @@
 // transforms and opacity through the ordinary Rml renderer.
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/EventListener.h>
-#include "../../services/modelpreview/Target.h"
+
+#include <memory>
 
 namespace Rml {
 class ElementDocument;
 class Event;
 } // namespace Rml
+
+namespace modelpreview {
+struct Options;
+class Target;
+} // namespace modelpreview
 
 namespace rmlui::model {
 class ElementModel : public Rml::Element {
@@ -17,12 +23,8 @@ public:
   explicit ElementModel(const Rml::String &Tag);
   ~ElementModel() override;
   bool renderPreview();
-  unsigned int texture() const {
-    return Target.texture();
-  }
-  unsigned int frames() const {
-    return Target.frames();
-  }
+  unsigned int texture() const;
+  unsigned int frames() const;
 
 protected:
   void OnAttributeChange(const Rml::ElementAttributes &Changed) override;
@@ -47,8 +49,9 @@ private:
     ElementModel *Owner;
   };
 
-  modelpreview::Options Config;
-  modelpreview::Target Target;
+  // PIMPL-ish: the element header must not pull the service headers in.
+  std::unique_ptr<modelpreview::Options> Config;
+  std::unique_ptr<modelpreview::Target> Target;
   DragListener Listener;
   Rml::Element *Image = nullptr;
   Rml::ElementDocument *ListenedDocument = nullptr;
