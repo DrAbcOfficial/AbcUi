@@ -66,9 +66,12 @@
 #ammostack .icon {
 	position: absolute;
 	left: 0dp;
-	top: 5dp;
+	top: 0dp;
+	/* Old CAmmoStackItem::PerformLayout: img = min(w * 0.25, h) = 20, and
+	   ImageSprPanel was sized img x img - a SQUARE icon box. 20x10 squashed
+	   the square HUD sprite (e.g. the 24x24 ammo crops) by half. */
 	width: 20dp;
-	height: 10dp;
+	height: 20dp;
 	/* Old AmmoStack.IconColor = scheme Default (additive tint). */
 	image-color: #00ff00;
 }
@@ -78,6 +81,10 @@
 	top: 0dp;
 	width: 60dp;
 	height: 20dp;
+	/* Old vgui Label a_west: left aligned, vertically centered in the
+	   20-tall item box (the icon is 20 tall too, so both share one line). */
+	line-height: 20dp;
+	white-space: nowrap;
 	color: #00ff00;
 }
 
