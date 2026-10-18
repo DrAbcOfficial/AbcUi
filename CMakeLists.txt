@@ -254,6 +254,7 @@ add_library(AbcUi MODULE
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )
 target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS)
+target_compile_options(AbcUi PRIVATE /W4)
 target_compile_options(AbcUi PRIVATE /FIabc/ForceImport.h)
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage imm32 abc_ui_config)

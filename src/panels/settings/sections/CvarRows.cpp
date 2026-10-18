@@ -338,15 +338,15 @@ void SettingsPage::renderRow(const services::settings::RowView &view,
         addOption(view.row->Options[i].Label,
                   StringLabel(view.row->Options[i].Label));
       if (view.options) {
-        const std::vector<std::string> *labels =
+        const std::vector<std::string> *optionLabels =
             view.optionLabels &&
                     view.optionLabels->size() == view.options->size()
                 ? view.optionLabels
                 : nullptr;
         for (size_t i = 0; i < view.options->size(); ++i) {
           const std::string &option = (*view.options)[i];
-          const std::string label = labels && !(*labels)[i].empty()
-                                        ? (*labels)[i]
+          const std::string label = optionLabels && !(*optionLabels)[i].empty()
+                                        ? (*optionLabels)[i]
                                         : StringLabel(option);
           addOption(option, label);
         }

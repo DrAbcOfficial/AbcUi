@@ -66,9 +66,9 @@ bool ServerBrowserPage::handleControls(Rml::Event &Event) {
     Reset.HideUnresponsive = List->filter().HideUnresponsive;
     List->setFilter(Reset);
     Projected = false;
-    const ActionSink Action = Sink;
-    if (Action)
-      Action("sb-filters-apply");
+    const ActionSink ApplyFilters = Sink;
+    if (ApplyFilters)
+      ApplyFilters("sb-filters-apply");
     return true;
   }
   if (Action == "sb-tab-blacklist") {

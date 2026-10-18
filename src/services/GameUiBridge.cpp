@@ -132,7 +132,7 @@ bool NativeUiBridge::requestConsoleOpen(NativeUiOrigin origin) {
   return transition;
 }
 
-bool NativeUiBridge::requestConsoleClose(NativeUiOrigin origin) {
+bool NativeUiBridge::requestConsoleClose(NativeUiOrigin) {
   if (!Armed) {
     PendingConsoleClose = true;
     return false;

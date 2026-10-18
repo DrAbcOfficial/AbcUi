@@ -230,7 +230,7 @@ void VoteMenuPage::handleClick(Rml::Event &event) {
     return;
 
   if (action == kActionKind) {
-    services::votemenu::Kind kind;
+    services::votemenu::Kind kind{};
     if (!Model ||
         !services::votemenu::parseKind(
             entry->GetAttribute<Rml::String>("data-kind", "").c_str(), kind))

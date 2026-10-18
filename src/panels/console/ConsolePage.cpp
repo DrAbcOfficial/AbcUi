@@ -425,7 +425,6 @@ void ConsolePage::handleClick(Rml::Event &event) {
     return;
   const Rml::String action =
       entry->GetAttribute<Rml::String>("data-action", "");
-  Rml::ElementDocument *doc = documentOrNull();
 
   if (action == "console-close") {
     const ActionSink Callback = Sink;

@@ -202,7 +202,6 @@ void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry,
   const BakedTexturedVertex *texturedVertices = source->Textured.data();
   const BakedFilledVertex *filledVertices = nullptr;
   const BakedTexturedVertex *scratchTextured = nullptr;
-  const BakedFilledVertex *scratchFilled = nullptr;
   if (TransformActive) {
     // Rare path (CSS-transformed elements): M·(v + translation) - the
     // GL2 sample order: translate first, then the loaded matrix - minus

@@ -151,8 +151,8 @@ bool Target::render(const Options &Config, int Width, int Height) {
   State.rendercolor = {static_cast<byte>(Config.RenderColor[0]),
                        static_cast<byte>(Config.RenderColor[1]),
                        static_cast<byte>(Config.RenderColor[2])};
-  State.sequence = Config.Sequence;
-  State.skin = Config.Skin;
+  State.sequence = static_cast<short>(std::clamp(Config.Sequence, 0, 32767));
+  State.skin = static_cast<short>(std::clamp(Config.Skin, 0, 32767));
   State.body = Config.Body;
   State.scale = Config.Scale;
   State.colormap = Config.ColorMap;
@@ -190,9 +190,10 @@ bool Target::render(const Options &Config, int Width, int Height) {
       static_cast<std::size_t>(Header->numseq) * sizeof(mstudioseqdesc_t);
   if (SeqOffset > HeaderSize || SeqBytes > HeaderSize - SeqOffset)
     return false;
-  State.sequence = std::clamp(Config.Sequence, 0, Header->numseq - 1);
-  State.skin =
-      std::clamp(Config.Skin, 0, std::max(Header->numskinfamilies - 1, 0));
+  State.sequence = static_cast<short>(
+      std::clamp(Config.Sequence, 0, Header->numseq - 1));
+  State.skin = static_cast<short>(
+      std::clamp(Config.Skin, 0, std::max(Header->numskinfamilies - 1, 0)));
   const auto *Sequence =
       reinterpret_cast<const mstudioseqdesc_t *>(
           reinterpret_cast<const byte *>(Header) + Header->seqindex) +
@@ -233,11 +234,12 @@ bool Target::render(const Options &Config, int Width, int Height) {
       bottom = Header->bbmin[2];
     }
     if (top > bottom) {
-      const float Height = (top - bottom) * Config.FrameMargin;
+      const float ModelHeight = (top - bottom) * Config.FrameMargin;
       const float Center = (top + bottom) * 0.5f;
       const float HalfFov =
           Config.View.VerticalFov * 0.5f * 3.14159265358979f / 180.0f;
-      const float Distance = std::max(Height * 0.5f / std::tan(HalfFov), 8.0f);
+      const float Distance =
+          std::max(ModelHeight * 0.5f / std::tan(HalfFov), 8.0f);
       View.origin[0] = Distance;
       View.origin[1] = 0.0f;
       View.origin[2] = Center;

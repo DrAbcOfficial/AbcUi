@@ -170,6 +170,7 @@ void PopNumPanel::reset() {
 }
 
 void PopNumPanel::onData(double frameTime) {
+  (void)frameTime;
   // The per-frame loop runs in onRedraw (world projection needs the live
   // view matrices; old OnThink ran in the same phase).
 }

@@ -123,7 +123,7 @@ void mix(std::size_t &hash, const void *data, std::size_t size) {
   const unsigned char *bytes = static_cast<const unsigned char *>(data);
   for (std::size_t i = 0; i < size; ++i) {
     hash ^= bytes[i];
-    hash *= 1099511628211ULL;
+    hash *= 16777619u;
   }
 }
 template <typename T> void mixValue(std::size_t &hash, const T &value) {
@@ -292,7 +292,7 @@ void ServerBrowserPage::tick() {
 }
 
 std::size_t ServerBrowserPage::projectionSignature() const {
-  std::size_t hash = 1469598103934665603ULL;
+  std::size_t hash = 2166136261u;
   const auto &query = *Query;
   const auto &list = *List;
   mixValue(hash, static_cast<int>(query.status()));
