@@ -33,9 +33,8 @@ void EngineUiBackend::connect(uint32_t generation, const char* address) {
 		abc::ConsoleWarn("[AbcUi] connect refused (invalid address), gen=%u\n", generation);
 		return;
 	}
-	char command[320];
-	_snprintf_s(command, sizeof(command), _TRUNCATE, "connect %s\n", address);
-	clientCmd(command);
+	const std::string command = std::string("connect ") + address + "\n";
+	clientCmd(command.c_str());
 }
 
 void EngineUiBackend::startLocalGame(uint32_t generation, const char* map) {
@@ -94,10 +93,9 @@ void EngineUiBackend::submitPassword(uint32_t generation, const char* password) 
 	}
 	// The vanilla ServerPasswordDialog Connect handler's verbatim command
 	// (GameUI.dll 0x1000bca0). Never stored, never logged: the password lives
-	// only inside this call and the command buffer it fills.
-	char command[96];
-	_snprintf_s(command, sizeof(command), _TRUNCATE, "password %s\nretry\n", password);
-	clientCmd(command);
+	// only inside this call and the std::string command it builds.
+	const std::string command = std::string("password ") + password + "\nretry\n";
+	clientCmd(command.c_str());
 }
 
 void EngineUiBackend::disconnectFromGame() {
