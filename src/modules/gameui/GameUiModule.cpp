@@ -302,6 +302,7 @@ void GameUiModule::onShutdown() {
   PlayerListPage_.reset();
   VoteMenuPage_.reset();
   CommandMenuPage_.reset();
+  Video->shutdown();
   VideoConfirm.reset();
   ConfirmQuit.reset();
   Loading.reset();
@@ -312,7 +313,6 @@ void GameUiModule::onShutdown() {
   MenuPresented = false;
   SettingsPresented = false;
   ConsolePresented = false;
-  Video->shutdown();
   LoadingVisible = false;
   ErrorPresented = false;
   PasswordPresented = false;
