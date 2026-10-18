@@ -42,6 +42,7 @@
 //   - Bounded everywhere: kMaxServers snapshot cap, kMaxPlayers lines,
 //     kMaxEventsPerPump per frame, provider-side queue cap, deadline timeout.
 
+#include <array>
 #include <cstdint>
 #include <map>
 #include <string>
@@ -262,6 +263,9 @@ private:
 	bool NoServersListed = false;
 	bool Closed = false;
 	std::vector<ServerEntry> Entries;
+	// Reused drain buffer: 256 QueryEvent values (~50 KB) no longer live on
+	// the per-frame stack.
+	std::array<QueryEvent, kMaxEventsPerPump> Events;
 
 	DetailKind Detail = DetailKind::None;
 	QueryStatus DetailStatus = QueryStatus::Idle;

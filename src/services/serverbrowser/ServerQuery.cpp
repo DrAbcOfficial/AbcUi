@@ -82,14 +82,13 @@ void ServerQuery::pump() {
 		else
 			++It;
 	}
-	QueryEvent events[kMaxEventsPerPump];
-	const int count = Provider->pollEvents(events, kMaxEventsPerPump);
+	const int count = Provider->pollEvents(Events.data(), static_cast<int>(Events.size()));
 	for (int i = 0; i < count; ++i) {
 		if (Closed) {
 			++StaleEvents;  // drain-and-discard after shutdown
 			continue;
 		}
-		apply(events[i]);
+		apply(Events[i]);
 	}
 	// Deadline enforcement: a query that never completes fails and is
 	// cancelled (the handle stays for the eventual release).
