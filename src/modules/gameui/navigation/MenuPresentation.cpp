@@ -114,10 +114,7 @@ void GameUiModule::hideAllMenuDocuments() {
     CreateGamePage_->hide();
     CreateGamePresented = false;
   }
-  if (PlayerListPage_) {
-    PlayerListPage_->hide();
-    PlayerListPresented = false;
-  }
+  Player->hide();
   if (VoteMenuPage_) {
     VoteMenuPage_->hide();
     VoteMenuPresented = false;

@@ -75,7 +75,7 @@ void GameUiModule::syncMenuPresentation() {
       // T20: the real player list replaced the T09 stub. Fresh
       // roster+mute read on every sync (read-through; the frame beat
       // re-reads while presented).
-      presentPlayerListPage();
+      Player->present();
       break;
     case MenuPage::kVoteMenu:
       presentVoteMenuPage();
@@ -147,12 +147,8 @@ void GameUiModule::syncMenuPresentation() {
       CreateGamePresented = false;
     }
   }
-  if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList) {
-    if (PlayerListPage_) {
-      PlayerListPage_->hide();
-      PlayerListPresented = false;
-    }
-  }
+  if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList)
+    Player->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kVoteMenu) {
     if (VoteMenuPage_) {
       VoteMenuPage_->hide();

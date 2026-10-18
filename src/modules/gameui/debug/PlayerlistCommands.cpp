@@ -80,7 +80,7 @@ void DebugCommands::playerListOpenCommand() {
   self.finishDispatch();
   abc::ConsolePrint("[AbcUi] playerlist open: pages=%d presented=%d doc=%s\n",
                     static_cast<int>(self.Controller.state().pages.size()),
-                    self.PlayerListPresented ? 1 : 0,
+                    self.Player->presented() ? 1 : 0,
                     (self.PlayerListPage_ && self.PlayerListPage_->document() &&
                      self.PlayerListPage_->document()->IsVisible())
                         ? "visible"
@@ -93,7 +93,7 @@ void DebugCommands::playerListMuteCommand() {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->togglePlayerMute();
+  GameUiModule::Instance->Player->toggleMute();
   playerListUiCommand();
 }
 

@@ -32,7 +32,7 @@ void GameUiModule::onMenuAction(const char *action) {
     openVoteMenuPage();
     return;
   } else if (Parsed.Domain == ActionDomain::kPlayerList) {
-    handlePlayerListAction(Kind);
+    Player->handleAction(Kind);
     return;
   } else if (Parsed.Domain == ActionDomain::kVoteMenu) {
     handleVoteMenuAction(Kind);

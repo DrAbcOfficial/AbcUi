@@ -48,7 +48,9 @@ bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
 
 GameUiModule::GameUiModule()
     : Controller(&menuBackend()), CaptureOwner(this),
-      Video(std::make_unique<VideoFlow>(MakeVideoHost(), VideoModel)) {
+      Video(std::make_unique<VideoFlow>(MakeVideoHost(), VideoModel)),
+      Player(std::make_unique<PlayerListFlow>(MakePlayerListHost(),
+                                              PlayerList)) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -93,6 +95,15 @@ VideoHost GameUiModule::MakeVideoHost() {
     if (Settings)
       Settings->render();
   };
+  return host;
+}
+
+PlayerListHost GameUiModule::MakePlayerListHost() {
+  PlayerListHost host;
+  host.dispatchBack = [this] {
+    Controller.dispatch(MenuEvent{EventKind::kBack});
+  };
+  host.finishDispatch = [this] { finishDispatch(); };
   return host;
 }
 
@@ -299,6 +310,7 @@ void GameUiModule::onShutdown() {
   Settings.reset();
   Browser.reset();
   CreateGamePage_.reset();
+  Player->shutdown();
   PlayerListPage_.reset();
   VoteMenuPage_.reset();
   CommandMenuPage_.reset();
@@ -319,7 +331,6 @@ void GameUiModule::onShutdown() {
   PasswordReprepare = false;
   DirectConnectPresented = false;
   CreateGamePresented = false;
-  PlayerListPresented = false;
   VoteMenuPresented = false;
   VoteMenuRequested = false;
   CommandMenuPresented = false;

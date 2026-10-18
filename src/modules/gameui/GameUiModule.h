@@ -37,6 +37,7 @@
 #include "navigation/MenuController.h"
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
+#include "playerlist/PlayerListFlow.h"
 #include "settings/VideoFlow.h"
 #include <memory>
 #include <vector>
@@ -88,9 +89,6 @@ private:
   void applyCreateGame();
   static const char *
   hintTokenFor(const services::creategame::Validation &validation);
-  void presentPlayerListPage();
-  void selectPlayerRow(const services::playerlist::SelectionKey &Key);
-  void togglePlayerMute();
   void openVoteMenuPage();
   void presentVoteMenuPage();
   void toggleCommandMenuPage();
@@ -110,7 +108,6 @@ private:
   bool retryServerAttempt();
   void tickAutoRetry();
   void handleCreateGameAction(navigation::ActionKind Kind);
-  void handlePlayerListAction(navigation::ActionKind Kind);
   void handleVoteMenuAction(navigation::ActionKind Kind);
   void handleConnectionAction(navigation::ActionKind Kind);
   void handleServerAction(navigation::ActionKind Kind);
@@ -157,6 +154,7 @@ private:
   };
   static GameUiModule *Instance;
   VideoHost MakeVideoHost();
+  PlayerListHost MakePlayerListHost();
   Rml::Context *Context = nullptr;
   gameui::menu::MenuController Controller;
   services::uiconfig::ConfigRepository UiConfig;
@@ -181,7 +179,6 @@ private:
   // Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
   // stalled pump is distinguishable from a stalled refresh.
   double LastFrameTime = 0.0;
-  bool PlayerListPresented = false;
   bool VoteMenuPresented = false;
   bool VoteMenuRequested = false;
   bool VoteMenuCommandBound = false;
@@ -209,6 +206,7 @@ private:
   std::unique_ptr<panels::commandmenu::CommandMenuPage> CommandMenuPage_;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;
+  std::unique_ptr<PlayerListFlow> Player;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;

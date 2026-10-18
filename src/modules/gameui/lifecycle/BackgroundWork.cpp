@@ -34,7 +34,7 @@ void GameUiModule::pumpBackgroundWork() {
   // shipped dialog refreshed on a timer; a read-through keeps the
   // displayed mute labels honest with zero cache). render() no-ops when
   // the model's revision did not move.
-  if (MenuPresented && PlayerListPresented && PlayerListPage_) {
+  if (MenuPresented && Player->presented() && PlayerListPage_) {
     if (PlayerList.refresh())
       PlayerListPage_->render();
   }

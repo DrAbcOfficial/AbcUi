@@ -83,9 +83,10 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   // T20: the player-list page (was the kPlayerList stub).
   PlayerListPage_ = std::make_unique<panels::playerlist::PlayerListPage>();
   PlayerListPage_->setModel(&PlayerList);
+  Player->setPage(PlayerListPage_.get());
   PlayerListPage_->setSelectionSink(
       [this](const services::playerlist::SelectionKey &Key) {
-        selectPlayerRow(Key);
+        Player->selectRow(Key);
       });
   VoteMenuPage_ = std::make_unique<panels::votemenu::VoteMenuPage>();
   VoteMenuPage_->setModel(&VoteMenu);
@@ -216,7 +217,7 @@ void GameUiModule::serviceEmergencyPages() {
   LoadingVisible = false;
   ServerBrowser.Presented = false;
   CreateGamePresented = false;
-  PlayerListPresented = false;
+  Player->setPresented(false);
   VoteMenuPresented = false;
   CommandMenuPresented = false;
   syncMenuPresentation();
