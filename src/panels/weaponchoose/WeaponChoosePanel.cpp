@@ -270,10 +270,13 @@ void WeaponChoosePanel::rebuild() {
   for (size_t slot = 0; slot < weaponres::kMaxWeaponSlot; slot++) {
     float y = 0.0f;
     // Slot icon row (old Slot1..Slot9, Slot0 order with the matching
-    // slotN_icon assets; the icons tint by scheme SlotColor).
+    // slotN_icon assets; the icons tint by scheme SlotColor). Additive
+    // (texadd://) like the rest of the HUD ink, so the digits glow over the
+    // scene instead of sitting on it.
     buffer = std::format("<div class='slot' style='left:{:.0f}dp; top:0dp;'>"
-                         "<img src='../img/weaponchoose/slot{}_icon.png' "
-                         "style='image-color: rgba(255, 176, 0, 125);'/></div>",
+                         "<img src='texadd://abc/abcui/hud/img/weaponchoose/"
+                         "slot{}_icon.png' "
+                         "style='image-color: rgba(255, 176, 0, 160);'/></div>",
                          x, (slot + 1) % 10);
     rml += buffer;
     y = kSlotIcon + kGap;
