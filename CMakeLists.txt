@@ -15,6 +15,12 @@ if(NOT EXISTS "${ABC_CORE_DIR}/CMakeLists.txt")
 endif()
 add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
 
+# AbcUi and the statically linked AbcCore must share one CRT heap. Pin the
+# core target explicitly so a sibling checkout and the older thirdparty copy
+# both build with the dynamic CRT (/MD).
+set_target_properties(abc_core PROPERTIES
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
 # Renderer public interfaces are a direct AbcUi dependency. AbcCore deliberately
 # stays renderer-free so non-UI consumers do not inherit the Renderer checkout.
 set(ABCUI_RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Renderer")
@@ -77,7 +83,6 @@ target_compile_features(abc_ui_config PUBLIC cxx_std_20)
 
 add_library(AbcUi MODULE
     src/plugins.cpp
-    src/CoreGlobals.cpp
     src/hooks.cpp
     src/render/Render.cpp
     src/rmlui/AbcRenderInterface.cpp

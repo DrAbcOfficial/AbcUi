@@ -2,8 +2,8 @@
 // derivation + EXPOSE_SINGLE_INTERFACE. All assembly lives in rmlui/ (RmlUi
 // integration) and framework/ (panel framework).
 //
-// The metahook globals are defined once per plugin in CoreGlobals.cpp.
-// CAbcPluginBase mirrors the host pointers into AbcCore.dll.
+// The metahook globals are defined once per plugin by AbcCore's Plugin.cpp
+// (CAbcPluginBase fills them from the host API).
 #include <metahook.h>
 
 #include <abc/Console.h>
