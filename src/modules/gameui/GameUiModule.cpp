@@ -12,6 +12,8 @@
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
+#include "modules/gameui/debug/ProbeCommand.h"
+#include "rmlui/RmlUiModule.h"
 #include <fstream>
 #include <sstream>
 namespace gameui {
@@ -75,6 +77,17 @@ const char *GameUiModule::name() const {
 }
 
 void GameUiModule::onInit() {
+  rmlui::registerProbeCommand();
+  // The RmlUi layer owns the context but does not include the module
+  // registry; the composition root supplies the lifecycle dispatch.
+  rmlui::SetLifecycleSink({
+      [](Rml::Context *context) {
+        modules::registry().contextReadyAll(context);
+      },
+      [] { modules::registry().shutdownAll(); },
+      [](double frameTime) { modules::registry().frameAll(frameTime); },
+      [] { modules::registry().vidInitAll(); },
+  });
   // T17: the server data provider. The Steam adapter resolves its
   // interface lazily (Steam may not be up yet at HUD_Init) and is a
   // process-lifetime singleton; the model owns the async lifecycle.
@@ -244,6 +257,7 @@ void GameUiModule::onInit() {
 }
 
 void GameUiModule::onShutdown() {
+  rmlui::closeProbeDocument();
   // Context still alive here: every document closes and drops its
   // listeners before the DOM dies (module contract). The tokens
   // release first - a stale no-op when the router already reset.

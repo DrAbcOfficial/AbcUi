@@ -13,6 +13,8 @@
 // micro-adjustment" the plan anticipated vs OnPostRenderView: the latter
 // fires per view render (water portals/mirrors would double-draw the UI).
 
+#include <functional>
+
 namespace Rml {
 class Context;
 }
@@ -20,6 +22,17 @@ class Context;
 namespace rmlui {
 
 class AbcRenderInterface;
+
+// Lifecycle callbacks supplied by the composition root (GameUiModule). The
+// RmlUi layer owns the context, but it must not include modules/Module.h and
+// walk the module registry itself: that made rmlui depend on the top layer.
+struct LifecycleSink {
+  std::function<void(Rml::Context *)> contextReady;
+  std::function<void()> shutdown;
+  std::function<void(double)> frame;
+  std::function<void()> vidInit;
+};
+void SetLifecycleSink(LifecycleSink sink);
 
 // Deferred assembly: the first HUD_Frame builds the Rml context (one-shot).
 // LoadClient only grabs the renderer/VGUI2 interfaces (both proven safe

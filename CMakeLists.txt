@@ -111,7 +111,7 @@ add_library(AbcUi MODULE
     src/rmlui/NativeEntryCallbacks.cpp
     src/rmlui/PaintGate.cpp
     src/rmlui/RmlUiModule.cpp
-    src/rmlui/ProbeCommand.cpp
+    src/modules/gameui/debug/ProbeCommand.cpp
     src/rmlui/TextInput.cpp
     src/rmlui/TextureChannel.cpp
     src/rmlui/LanguageChannel.cpp

@@ -18,8 +18,6 @@
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
 #include "../framework/Theme.h"
-#include "../modules/HudPanelCatalog.h"
-#include "../modules/Module.h"
 #include "../render/Render.h"
 #include "../data/Avatars.h"
 #include "../data/HudState.h"
@@ -36,12 +34,17 @@
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
 #include "PaintGate.h"
-#include "ProbeCommand.h"
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 #include "../services/GameUiBridge.h"
 
 namespace rmlui {
+
+namespace {
+LifecycleSink Sink;
+}
+
+void SetLifecycleSink(LifecycleSink sink) { Sink = std::move(sink); }
 
 namespace {
 
@@ -381,7 +384,6 @@ void init() {
   sprites::vidInit();
   avatars::init();
   framework::Assets::verifyInstalled();
-  modules::installHudPanels();
   framework::PanelManager::initAll(Context);
 
   Rml::Debugger::Initialise(Context);
@@ -394,7 +396,8 @@ void init() {
 
   // Last assembly step (see modules/Module.h): DOM writes are only legal
   // from here on, and the dispatch re-arms module shutdown for this cycle.
-  modules::registry().contextReadyAll(Context);
+  if (Sink.contextReady)
+    Sink.contextReady(Context);
 }
 
 void shutdown() {
@@ -410,7 +413,8 @@ void shutdown() {
   textInputShutdown();
   if (!Initialised) {
     // HUD_Init can arm modules before the first HUD_Frame creates a context.
-    modules::registry().shutdownAll();
+    if (Sink.shutdown)
+      Sink.shutdown();
     return;
   }
   Initialised = false;
@@ -418,8 +422,8 @@ void shutdown() {
     renderer->UnregisterRenderCallbacks(&Callbacks);
   // Modules release what they own while the context still exists (their
   // documents die with it, never after - see modules/Module.h).
-  modules::registry().shutdownAll();
-  closeProbeDocument();
+  if (Sink.shutdown)
+    Sink.shutdown();
   framework::PanelManager::shutdown();
 
   // Rml::Shutdown first releases per-load borrowed/owned records; cache IDs
@@ -445,7 +449,6 @@ void registerCommands() {
   abc::CREATE_CVAR("abc_ui_menu_video", menubackdrop::kDefaultVideoSource,
                    abc::FCVAR_VALUE, nullptr);
   abc::CREATE_CVAR("abc_ui_menu_backdrop_blur", "2", abc::FCVAR_VALUE, nullptr);
-  registerProbeCommand();
 }
 
 void onFrame(double frameTime) {
@@ -479,7 +482,8 @@ void onFrame(double frameTime) {
   suppressDebugBeacon();
   // Module frames precede the update pass so their DOM edits land in the
   // same Context::Update (order contract, modules/Module.h).
-  modules::registry().frameAll(frameTime);
+  if (Sink.frame)
+    Sink.frame(frameTime);
 #ifndef NDEBUG
   PerfTimer updateTimer;
 #endif
@@ -531,7 +535,8 @@ void onVidInit() {
       static_cast<int>(abc::MetaRenderer()->GetSwapChainWidth()),
       static_cast<int>(abc::MetaRenderer()->GetSwapChainHeight())));
   framework::PanelManager::vidInitAll();
-  modules::registry().vidInitAll();
+  if (Sink.vidInit)
+    Sink.vidInit();
 }
 
 void onKeyEvent(int down, int keynum) {

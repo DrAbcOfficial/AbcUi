@@ -99,6 +99,7 @@ static void H_HUD_Init() {
     weaponres::init();
     playerres::init();
     textfeed::init();
+    modules::installHudPanels();
     modules::registerHudPanelCvars();
     rmlui::registerCommands();
     modules::registry().initAll();
