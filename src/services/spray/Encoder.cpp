@@ -96,6 +96,11 @@ bool encode(const framework::ImageLoader::DecodedImage& source, EncodedSpray& ou
 	// quantizer keeps a slot close to it (the original's pre-quantize step).
 	const int width = sized.Width;
 	const int height = sized.Height;
+	if (!sized.valid()
+		|| sized.Pixels.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4) {
+		error = "unexpected decoded pixel size";
+		return false;
+	}
 	std::vector<unsigned char> mask(static_cast<std::size_t>(width) * height, 0);
 	bool hasTransparency = false;
 	for (std::size_t i = 0; i < mask.size(); ++i) {
@@ -128,6 +133,10 @@ bool encode(const framework::ImageLoader::DecodedImage& source, EncodedSpray& ou
 	// exact blue entry and shipped a broken palette when it did not.
 	std::vector<framework::ImageLoader::PaletteColor> palette(kPaletteSize,
 		{kTransparentRed, kTransparentGreen, kTransparentBlue});
+	if (indexed.Palette.size() > palette.size()) {
+		error = "quantized palette is larger than 256 entries";
+		return false;
+	}
 	std::copy(indexed.Palette.begin(), indexed.Palette.end(), palette.begin());
 	if (hasTransparency) {
 		// Every masked pixel becomes the reserved transparent index, whatever
