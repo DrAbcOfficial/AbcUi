@@ -46,7 +46,9 @@ bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
 
 } // namespace
 
-GameUiModule::GameUiModule() : Controller(&menuBackend()), CaptureOwner(this) {
+GameUiModule::GameUiModule()
+    : Controller(&menuBackend()), CaptureOwner(this),
+      Video(std::make_unique<VideoFlow>(MakeVideoHost(), VideoModel)) {
   SettingsModel.setSeams(settingsSeams());
   BindModel.setSeams(bindSeams());
   VideoModel.setSeams(videoSeams());
@@ -70,6 +72,28 @@ GameUiModule::GameUiModule() : Controller(&menuBackend()), CaptureOwner(this) {
   modules::registry().add(this);
   services::nativeUiBridge().setMenuSink(this);
   Instance = this;
+}
+
+VideoHost GameUiModule::MakeVideoHost() {
+  VideoHost host;
+  host.context = [this] { return Context; };
+  host.menuPresented = [this] { return MenuPresented; };
+  host.syncMenuPresentation = [this] { syncMenuPresentation(); };
+  host.hideMenuDocuments = [this] {
+    if (Shell)
+      Shell->hide();
+    if (SubStub)
+      SubStub->hide();
+    if (Console)
+      Console->hide();
+    if (Settings)
+      Settings->hide();
+  };
+  host.renderSettings = [this] {
+    if (Settings)
+      Settings->render();
+  };
+  return host;
 }
 
 const char *GameUiModule::name() const {
@@ -288,7 +312,7 @@ void GameUiModule::onShutdown() {
   MenuPresented = false;
   SettingsPresented = false;
   ConsolePresented = false;
-  VideoConfirmPresented = false;
+  Video->shutdown();
   LoadingVisible = false;
   ErrorPresented = false;
   PasswordPresented = false;

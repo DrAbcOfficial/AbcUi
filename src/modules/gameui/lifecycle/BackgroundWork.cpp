@@ -50,7 +50,7 @@ void GameUiModule::pumpBackgroundWork() {
   // drain (see the DeferredVideoConfirmRaise note): one frame apart.
   if (!restartDrained && DeferredVideoConfirmRaise && Context && VideoConfirm) {
     DeferredVideoConfirmRaise = false;
-    raiseVideoConfirmation();
+    Video->raiseConfirmation();
   }
   // T12 confirmation beat: the monotonic deadline runs on real time.
   // The tick fires the auto-revert even when the window is hidden or
@@ -58,9 +58,9 @@ void GameUiModule::pumpBackgroundWork() {
   // re-projects the dialog (or closes it) once.
   if (VideoModel.awaitingConfirm()) {
     const bool reverted = VideoModel.tick();
-    tickVideoTimeout();
+    Video->tickTimeout();
     if (reverted || !VideoModel.awaitingConfirm())
-      syncVideoConfirmPage();
+      Video->syncConfirmPage();
     else if (VideoConfirm)
       VideoConfirm->render();
   }

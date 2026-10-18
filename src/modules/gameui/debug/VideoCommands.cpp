@@ -89,7 +89,7 @@ void DebugCommands::videoApplyCommand() {
     abc::ConsoleWarn("[AbcUi] no module instance\n");
     return;
   }
-  GameUiModule::Instance->applyVideoChange();
+  GameUiModule::Instance->Video->applyChange();
   abc::ConsolePrint("[AbcUi] video apply issued (awaiting=%d)\n",
                     GameUiModule::Instance->VideoModel.awaitingConfirm() ? 1
                                                                          : 0);
@@ -106,11 +106,11 @@ void DebugCommands::videoKeepCommand() {
         "[AbcUi] video kept: %s\n",
         services::settings::VideoModeModel::describe(self.VideoModel.actual())
             .c_str());
-    self.syncVideoConfirmPage();
+    self.Video->syncConfirmPage();
   } else {
     abc::ConsoleWarn("[AbcUi] keep refused (kind=%d)\n",
                      static_cast<int>(self.VideoModel.confirmKind()));
-    self.syncVideoConfirmPage();
+    self.Video->syncConfirmPage();
   }
 }
 
@@ -138,7 +138,7 @@ void DebugCommands::videoRevertCommand() {
     abc::ConsolePrint("[AbcUi] video reverted\n");
   else
     abc::ConsoleWarn("[AbcUi] revert refused/failed\n");
-  self.syncVideoConfirmPage();
+  self.Video->syncConfirmPage();
 }
 
 } // namespace gameui

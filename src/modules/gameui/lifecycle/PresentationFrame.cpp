@@ -56,7 +56,7 @@ void GameUiModule::pumpVisibleWork() {
   // empty field - the live "password retyped, the connection never
   // continues" defect. Falling through re-focuses the editor instead.
   Rml::Element *inputEditor = nullptr;
-  if (!VideoConfirmPresented) {
+  if (!Video->confirmPresented()) {
     if (state.overlays.topIs(MenuOverlay::kPassword) && Password)
       inputEditor = Password->editor();
     else if (state.overlays.topIs(MenuOverlay::kDirectConnect) && DirectConnect)
@@ -86,7 +86,7 @@ void GameUiModule::pumpVisibleWork() {
   }
   // T12: the display-mode confirmation outranks every other surface -
   // it holds the safe default focus while it is up.
-  if (VideoConfirmPresented && VideoConfirm) {
+  if (Video->confirmPresented() && VideoConfirm) {
     VideoConfirm->refocusDefault();
     return;
   }

@@ -97,6 +97,7 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   CommandMenuPage_->setCloseSink([this]() { closeCommandMenuPage(); });
   VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
   VideoConfirm->setVideoModel(&VideoModel);
+  Video->setPage(VideoConfirm.get());
   ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
   // T14 connection surfaces.
   Loading = std::make_unique<panels::loading::LoadingPage>();
@@ -123,7 +124,7 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   // the first presentation (confirmation window on the actual mode, or
   // an automatic write-back of the old values). Runs once per engine
   // session, before any menu may be raised.
-  resolveVideoRecovery();
+  Video->resolveRecovery();
   // The takeover may have raised the menu before the context existed
   // (cold-start activation runs ~1.5s ahead of Rml assembly): the
   // pending show lands now, on the first context. A startup console

@@ -76,7 +76,7 @@ void GameUiModule::onMenuAction(const char *action) {
     handleServerAction(Kind);
     return;
   } else if (Parsed.Domain == ActionDomain::kVideo) {
-    handleVideoAction(Kind);
+    Video->handleAction(Kind);
     return;
   } else {
     abc::ConsoleWarn("[AbcUi] unknown menu action \"%s\" dropped\n",

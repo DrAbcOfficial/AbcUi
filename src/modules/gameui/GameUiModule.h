@@ -37,6 +37,7 @@
 #include "navigation/MenuController.h"
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
+#include "settings/VideoFlow.h"
 #include <memory>
 #include <vector>
 #include <string>
@@ -101,12 +102,6 @@ private:
   void beginServerQuery(services::serverbrowser::QueryKind kind);
   void connectSelectedServer();
   void toggleSelectedFavorite();
-  void resolveVideoRecovery();
-  void applyVideoChange();
-  void raiseVideoConfirmation();
-  void closeVideoConfirmation();
-  void syncVideoConfirmPage();
-  void tickVideoTimeout();
   void releaseServerPageQueries();
   void logServerQueryChange();
   void showStubPage(panels::menushared::MenuStubPage *stub, MenuPage page,
@@ -118,7 +113,6 @@ private:
   void handlePlayerListAction(navigation::ActionKind Kind);
   void handleVoteMenuAction(navigation::ActionKind Kind);
   void handleConnectionAction(navigation::ActionKind Kind);
-  void handleVideoAction(navigation::ActionKind Kind);
   void handleServerAction(navigation::ActionKind Kind);
   void onFriendJoin(uint64_t steamId, const char *address);
 
@@ -162,6 +156,7 @@ private:
     GameUiModule *Owner;
   };
   static GameUiModule *Instance;
+  VideoHost MakeVideoHost();
   Rml::Context *Context = nullptr;
   gameui::menu::MenuController Controller;
   services::uiconfig::ConfigRepository UiConfig;
@@ -213,6 +208,7 @@ private:
   std::unique_ptr<panels::votemenu::VoteMenuPage> VoteMenuPage_;
   std::unique_ptr<panels::commandmenu::CommandMenuPage> CommandMenuPage_;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
+  std::unique_ptr<VideoFlow> Video;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   std::unique_ptr<panels::loading::LoadingPage> Loading;
   std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;
@@ -224,7 +220,6 @@ private:
   bool MenuPresented = false;
   bool SettingsPresented = false;
   bool ConsolePresented = false;
-  bool VideoConfirmPresented = false;
   bool LoadingVisible = false;
   bool ErrorPresented = false;
   bool PasswordPresented = false;
@@ -233,7 +228,6 @@ private:
   int PasswordPrompts = 0;
   bool PasswordReprepare = false;
   std::string LastErrorReason;
-  int VideoCountdownShown = -1;
   uint32_t NextPhaseSession = 1;
   MenuPage LastStubPage = MenuPage::kMain;
 };

@@ -223,7 +223,7 @@ void GameUiModule::syncMenuPresentation() {
     ConfirmQuit->hide();
   // T12: the confirmation page is the top-most layer of all - a page
   // sync while it is up must not raise another document over it.
-  if (VideoConfirmPresented && VideoConfirm)
+  if (Video->confirmPresented() && VideoConfirm)
     VideoConfirm->show();
   // T16 single truth: whenever the projection no longer holds the
   // console (routed ESC popped it, a force-dismiss cleared it), the
