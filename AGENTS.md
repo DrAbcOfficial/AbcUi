@@ -51,6 +51,12 @@ cmake --build --preset win32-debug    # Release: win32-release
 
 ## Conventions
 
+- Naming: new code uses lowerCamel functions/variables, UpperCamel types and
+  k-prefixed constants. ABCEnchance-derived identifiers in AbcCore's public
+  API (UpperCamel functions, `C`-prefixed types, `m_` members) and the
+  UpperCamelCase framework namespaces (`Assets`, `ColorUtil`, `ImageLoader`,
+  `ResourceFile`, `TextUtil`, `Theme`) are legacy exceptions; do not mass-rename.
+
 - Naming follows the LLVM style; interface structure is orchestrated through the GameUI composition root, and page assets live under `assets/abc/abcui/` (rml/rcss/lang/config).
 - RmlUi 6.3 RCSS constraints: `font-family` accepts a single family name (CJK falls back through the fallback face), and transition easing names use the `linear-in` family.
 - Main-menu and settings page structure is driven by `assets/abc/abcui/config/*.json`; new pages are added through JSON rather than hard-coded.
