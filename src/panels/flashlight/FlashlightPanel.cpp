@@ -15,10 +15,11 @@
 namespace panels {
 
 namespace {
-// Old scheme FlashLight.IconFgColor = "DefaultTransparent" (0 255 0 125).
-// Grey input means the old hue *= ratio shift was a no-op-ish tint in the
-// shipped scheme - the colour path is ported anyway for custom schemes.
-constexpr float kIconColor[3] = {0.0f, 255.0f, 0.0f};
+// HUD accent amber (255 176 0, base.rcss --abc-hud-accent), the retuned
+// replacement for the old scheme FlashLight.IconFgColor "DefaultTransparent"
+// (0 255 0 125). The saturation/value of the tint drive the old hue *=
+// battery-ratio shift, so a draining battery still walks amber -> red.
+constexpr float kIconColor[3] = {255.0f, 176.0f, 0.0f};
 constexpr int kIconAlpha = 125;
 // Old FlashLightPanel.res: the power wrap's full width the battery ratio
 // scales into.
@@ -80,7 +81,7 @@ void FlashlightPanel::setFlashBattery(int battery) {
     wrap->SetProperty(
         "width", Rml::String(std::to_string(ratio * kPowerWrapWidth)) + "dp");
 
-  // Old SetFlashBattery: icon colour hue *= ratio (green -> red), the
+  // Old SetFlashBattery: icon colour hue *= ratio (amber -> red), the
   // scheme alpha rides along (old SetDrawColor Color(rgb, m_cIconColor.a())).
   float hsv[3];
   framework::ColorUtil::rgbToHsv(kIconColor, hsv);
