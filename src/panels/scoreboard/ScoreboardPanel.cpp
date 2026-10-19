@@ -114,6 +114,11 @@ void setIntermission(bool intermission) {
   // +/-showscores dead there; MOUSE2 stays live for players who want it).
 }
 
+bool inScore() {
+  ScoreboardPanel *panel = instance();
+  return panel && panel->InScore;
+}
+
 bool wantsWheel() {
   ScoreboardPanel *panel = instance();
   return panel && panel->isVisible() && panel->MouseMode;
@@ -287,6 +292,7 @@ ScoreboardPanel::~ScoreboardPanel() {
 
 void ScoreboardPanel::reset() {
   Intermission = false;
+  InScore = false;
   setVisible(false);
   ServerName.clear();
   NextMap.clear();
@@ -375,8 +381,13 @@ void ScoreboardPanel::onDocumentReady() {
   TimeEndBase = ClientTimeNow;
   if (abc::CChainedCommand *open = commands::get("+showscores")) {
     subscribe(open->Event(), [this]() {
-      if (!Intermission)
+      if (!Intermission) {
         setVisible(true);
+        // Old Viewport m_bInScore: the button state the usercmd stream
+        // reports (IN_SCORE) - the server streams ping/loss only to
+        // clients it believes hold the scoreboard (issue #9).
+        InScore = true;
+      }
       return false;
     });
   }
@@ -386,6 +397,7 @@ void ScoreboardPanel::onDocumentReady() {
         setVisible(false);
         setMouseMode(false);
       }
+      InScore = false;
       return false;
     });
   }

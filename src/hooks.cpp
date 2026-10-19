@@ -262,6 +262,12 @@ static void H_CL_CreateMove(float time, usercmd_s *cmd, int active) {
   if (owner)
     gEngfuncs.GetViewAngles(angles);
   gExportfuncs.CL_CreateMove(time, cmd, active);
+  // Old exportfuncs CL_CreateMove: the scoreboard latch rides the usercmd
+  // button stream as IN_SCORE - the server streams every player's
+  // ping/loss only to clients it believes hold the scoreboard (issue #9;
+  // without this the engine player tables sit at 0/0 the whole session).
+  if (panels::scoreboard::inScore())
+    cmd->buttons |= IN_SCORE;
   if (owner) {
     cmd->buttons &= ~(IN_ATTACK | IN_ATTACK2);
     for (int i = 0; i < 3; ++i)

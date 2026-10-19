@@ -44,6 +44,11 @@ void setPointerMode(bool enabled);
 // ShowPanel(intermission > 0)) and mutes +/-showscores (old !m_iInterMission
 // guards).
 void setIntermission(bool intermission);
+// Old CViewport::IsInScore - true while the +/-showscores state is held.
+// CL_CreateMove turns this into usercmd IN_SCORE, the only reliable way to
+// make the server stream every player's ping/loss (issue #9: the engine
+// player tables stay 0/0 the whole session otherwise).
+bool inScore();
 } // namespace scoreboard
 
 // Context-menu intents. The RML data-action attribute still carries the
@@ -74,6 +79,7 @@ private:
   friend void scoreboard::setIntermission(bool intermission);
   friend bool scoreboard::wantsWheel();
   friend void scoreboard::setPointerMode(bool enabled);
+  friend bool scoreboard::inScore();
   friend class TableListener;
   class TableListener;
 
@@ -117,6 +123,9 @@ private:
   bool Visible = false;
   bool MouseMode = false;
   bool Intermission = false;
+  // Old CViewport::m_bInScore: the +/-showscores latch (intermission does
+  // not set it); CL_CreateMove rides it into usercmd IN_SCORE.
+  bool InScore = false;
   long DataVersion = 0;
   long AppliedVersion = -1;
   int MenuClient = 0;

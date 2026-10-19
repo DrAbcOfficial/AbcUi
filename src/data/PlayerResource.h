@@ -90,7 +90,9 @@ struct PlayerInfo {
   // Issue #9: the periodic scoreboard path. Reads ONLY ping/packet_loss from
   // the same engine mirror - the full update() may reset identity/SteamID
   // state, which a 0.5 s refresh must never do. Null mirror / invalid slot
-  // keep the last known values; a negative engine value clamps to 0.
+  // keep the last known values; a negative engine value clamps to 0. The
+  // mirror carries non-zero pings only while the client reports the score
+  // state (ScoreboardPanel's usercmd IN_SCORE).
   void refreshPingLoss();
   void reset();
 };

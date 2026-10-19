@@ -121,6 +121,14 @@ void PlayerInfo::update() {
 // after the engine had the real values. This is deliberately NOT update():
 // identity, SteamID, name/model/colour and the donor/admin flags must all
 // survive a periodic refresh.
+//
+// The mirror only carries other players' ping/loss while the local client
+// reports the score state (ScoreboardPanel's usercmd IN_SCORE, the old
+// Viewport m_bInScore): the server streams pings solely to clients it
+// believes hold the scoreboard, and the values persist in the mirror after
+// the board closes. Verified live on 124.221.167.52:28347 (Sven Co-op
+// 5.26): without IN_SCORE every slot sits at 0/0 for the whole session;
+// with it, rows fill within the 0.5 s refresh.
 void PlayerInfo::refreshPingLoss() {
 #ifndef NDEBUG
   if (debugPinned)
