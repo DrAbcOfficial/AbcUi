@@ -52,6 +52,7 @@ services::EngineUiBackend &menuBackend() {
       abc::EngineClientCmd(command);
     };
     seams.hideGameUi = []() { return vgui2ext::hideGameUi(); };
+    seams.hideConsole = []() { return vgui2ext::hideConsole(); };
     seams.maxClients = []() { return gEngfuncs.GetMaxClients(); };
     seams.bridge = &services::nativeUiBridge();
     created.setSeams(seams);

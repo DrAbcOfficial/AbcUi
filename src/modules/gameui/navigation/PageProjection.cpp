@@ -154,6 +154,7 @@ void GameUiModule::syncMenuPresentation() {
   // carry higher tiers of their own (#4).
   // T16 replacement console: fresh projection on every sync (the
   // page appends only new lines; showLinesForTest analog = render).
+  bool consoleDropped = false;
   if (state.overlays.contains(MenuOverlay::kConsole) && Console) {
     if (!ConsolePresented) {
       Console->prepare(); // fresh open: clear editor, reseed view
@@ -163,6 +164,12 @@ void GameUiModule::syncMenuPresentation() {
     Console->show();
   } else if (Console) {
     Console->hide();
+    // Issue #5: the UI closed the console (routed ESC, the close button, a
+    // force-dismiss). ConsolePresented is the only witness left at this
+    // point - requestConsoleClose already lowered the bridge truth, so a
+    // consoleRequested() test would miss exactly this path. The engine-side
+    // `hideconsole` follows below.
+    consoleDropped = ConsolePresented;
     ConsolePresented = false;
   }
   // T14 overlays. Each "presented" latch means "projected at least
@@ -210,10 +217,15 @@ void GameUiModule::syncMenuPresentation() {
     VideoConfirm->show();
   // T16 single truth: whenever the projection no longer holds the
   // console (routed ESC popped it, a force-dismiss cleared it), the
-  // engine-facing answer must follow. noteConsoleDismissed never
-  // notifies the sink, so this cannot re-enter the sync.
-  if (!state.overlays.contains(MenuOverlay::kConsole) &&
-      services::nativeUiBridge().consoleRequested())
+  // engine-facing answer must follow. hideConsole never notifies the sink,
+  // so this cannot re-enter the sync; it also runs the engine-side
+  // `hideconsole` the suppressed CGameUI::HideGameUI used to issue (issue
+  // #5) - without it the engine's console flag outlived the close and the
+  // next ActivateGameUI re-opened the console.
+  if (consoleDropped)
+    menuBackend().hideConsole();
+  else if (!state.overlays.contains(MenuOverlay::kConsole) &&
+           services::nativeUiBridge().consoleRequested())
     services::nativeUiBridge().noteConsoleDismissed();
 }
 
