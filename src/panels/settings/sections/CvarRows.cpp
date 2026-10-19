@@ -110,11 +110,13 @@ void SettingsPage::buildRows() {
       // sitting in a fixed 150dp slot with dead space beside it. The
       // widget column closes the body in CloseCard.
       Markup += "<div class=\"settings-card-body\"><div "
-                "class=\"settings-card-items\">";
+                "class=\"settings-card-items\" id=\"" +
+                CardId + "-items\">";
     } else {
       Markup += "<div class=\"settings-card-widgets\" id=\"" + CardId +
                 "-widgets\"></div>";
-      Markup += "<div class=\"settings-card-items\">";
+      Markup +=
+          "<div class=\"settings-card-items\" id=\"" + CardId + "-items\">";
     }
   };
   auto CloseCard = [&](const std::string &CardId, bool HasPreview) {

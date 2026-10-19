@@ -116,7 +116,9 @@ void SettingsPage::projectWidgets() {
     return;
   const auto *Page = currentPage();
   // Each widget block is a singleton: home is the card of the section that
-  // declares its component, otherwise the (hidden) parking host.
+  // declares its component, otherwise the (hidden) parking host. Row-flow
+  // blocks join the rows column (after the last row); everything else goes
+  // to the card's widget column.
   for (int I = 0; I < detail::kWidgetBlockCount; ++I) {
     Rml::Element *Block = Doc->GetElementById(detail::kWidgetBlocks[I].Element);
     if (!Block)
@@ -125,8 +127,10 @@ void SettingsPage::projectWidgets() {
     if (Page) {
       if (const auto *Section =
               Page->sectionHaving(detail::kWidgetBlocks[I].Component)) {
+        const std::string Suffix =
+            detail::kWidgetBlocks[I].RowFlow ? "-items" : "-widgets";
         if (Rml::Element *Container = Doc->GetElementById(
-                ("settings-card-" + Page->Id + "-" + Section->Id + "-widgets")
+                ("settings-card-" + Page->Id + "-" + Section->Id + Suffix)
                     .c_str()))
           Target = Container;
       }
