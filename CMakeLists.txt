@@ -193,7 +193,6 @@ add_library(AbcUi MODULE
     src/services/creategame/ServerOptions.cpp
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
-    src/services/playerlist/ClientMuteApi.cpp
     src/services/votemenu/VoteMenuModel.cpp
     src/services/loading/LoadingModel.cpp
     src/services/loading/AutoRetryGate.cpp
