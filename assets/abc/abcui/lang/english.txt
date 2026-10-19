@@ -82,6 +82,8 @@ Scores_MenuCopyName = Copy Steam Name
 Scores_MenuCopyNameRaw = Copy Game Name
 Scores_MenuCopySteamID = Copy SteamID
 Scores_MenuCopySteamID64 = Copy SteamID64
+Scores_MenuMute = Mute Voice
+Scores_MenuUnmute = Unmute Voice
 
 # Item highlight (P7 itemhighlight panel); token names are the old
 # ABCEnchance localize keys (byte-matched against the old schinese.txt).

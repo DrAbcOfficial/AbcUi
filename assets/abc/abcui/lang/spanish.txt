@@ -82,6 +82,8 @@ Scores_MenuCopyName = Copiar nombre de Steam
 Scores_MenuCopyNameRaw = Copiar nombre de juego
 Scores_MenuCopySteamID = Copiar SteamID
 Scores_MenuCopySteamID64 = Copiar SteamID64
+Scores_MenuMute = Bloquear Voz
+Scores_MenuUnmute = Desbloquear Voz
 
 # Item highlight (P7 itemhighlight panel); token names are the old
 # ABCEnchance localize keys (byte-matched against the old schinese.txt).

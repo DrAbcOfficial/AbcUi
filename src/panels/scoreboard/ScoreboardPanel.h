@@ -8,9 +8,10 @@
 // table; MOUSE2 while visible unlocks the OS cursor (centered, old
 // EnableMousePointer) and Rml receives mouse input through the normal
 // InputBridge gate; right-click on a row opens the context menu (steam
-// profile / copy actions - the voice-mute entries died with voice_status,
-// D-04; the friend-icon overlay needs the steamapi backend's Friends
-// surface, deferred with it).
+// profile / copy actions and, since issue 17, the voice mute toggle - the
+// legacy entry died with voice_status, D-04, and is restored over
+// services::voice; the friend-icon overlay needs the steamapi backend's
+// Friends surface, still deferred).
 //
 // Ownership (T06): pointer mode is a router token at the interactive-HUD
 // tier - the panel implements framework::uiinput::Owner and the router is
@@ -60,6 +61,7 @@ enum class ScoreboardAction : int {
   kCopyGameName,
   kCopySteamId,
   kCopySteamId64,
+  kMute,
 };
 
 class ScoreboardPanel : public framework::HudPanel,

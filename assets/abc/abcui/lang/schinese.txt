@@ -82,6 +82,8 @@ Scores_MenuCopyName = 复制Steam名称
 Scores_MenuCopyNameRaw = 复制游戏名称
 Scores_MenuCopySteamID = 复制SteamID
 Scores_MenuCopySteamID64 = 复制64位SteamID
+Scores_MenuMute = 屏蔽语音
+Scores_MenuUnmute = 取消屏蔽
 
 # Item highlight (P7 itemhighlight panel); token names are the old
 # ABCEnchance localize keys (byte-matched against the old schinese.txt).
