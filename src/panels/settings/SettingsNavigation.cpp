@@ -75,6 +75,9 @@ bool SettingsPage::selectPage(const std::string &Id) {
 void SettingsPage::projectPage() {
   if (!document() || !Pages)
     return;
+  // A page switch strands the picker's right-click menu (it lives outside
+  // the scroll container): close it with the page it belongs to.
+  ModelPicker.closeContextMenu(document());
   for (const auto &Page : *Pages) {
     if (auto *Rows = document()->GetElementById("settings-rows-" + Page.Id))
       Rows->SetProperty("display", Page.Id == ActivePage ? "block" : "none");

@@ -988,3 +988,32 @@ input:disabled {
 	line-height: 14dp;
 	margin-bottom: 2dp;
 }
+
+/* The picker's right-click favorite menu: the console copy menu's recipe -
+   an absolutely positioned frame clamped to the viewport, sized by these
+   fixed dp (the opener clamps with the same numbers). */
+#model-picker-context-menu {
+	position: absolute;
+	display: none;
+	z-index: 20;
+	min-width: 96dp;
+	padding: 2dp;
+	background-color: #181d22f8;
+	border: 1dp var(--abc-line);
+	border-top: 2dp var(--abc-accent);
+}
+
+.model-picker-context-item {
+	display: block;
+	height: 20dp;
+	line-height: 20dp;
+	padding-left: 8dp;
+	padding-right: 8dp;
+	font-size: 9dp;
+	color: var(--abc-text);
+}
+
+.model-picker-context-item:hover {
+	background-color: var(--abc-accent);
+	color: var(--abc-accent-ink);
+}

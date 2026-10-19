@@ -41,6 +41,8 @@ inline constexpr const char *kActionSprayCancel = "spray-file-cancel";
 inline constexpr const char *kActionModelPick = "model-picker-pick";
 inline constexpr const char *kActionModelFav = "model-picker-fav";
 inline constexpr const char *kActionModelFavOnly = "model-picker-favonly";
+inline constexpr const char *kActionModelContextFav =
+    "model-picker-context-fav";
 inline constexpr const char *kLayerReset = "reset-confirm";
 inline constexpr const char *kLayerLeave = "leave-confirm";
 inline constexpr const char *kLayerBindConflict = "bind-conflict";

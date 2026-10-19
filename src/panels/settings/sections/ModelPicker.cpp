@@ -9,7 +9,9 @@
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
+#include <RmlUi/Core/ElementUtilities.h>
 #include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/Property.h>
 
 #include <abc/Format.h>
 
@@ -34,6 +36,16 @@ bool containsCaseInsensitive(const std::string &value,
       std::search(value.begin(), value.end(), filter.begin(), filter.end(),
                   [](char a, char b) { return lowerByte(a) == lowerByte(b); });
   return found != value.end();
+}
+
+// The console's ancestry walk: a press belongs to the menu when the target
+// is the frame itself or one of its items.
+bool insideNode(const Rml::Element *node, const Rml::Element *ancestor) {
+  for (const Rml::Element *it = node; it; it = it->GetParentNode()) {
+    if (it == ancestor)
+      return true;
+  }
+  return false;
 }
 } // namespace
 
@@ -138,8 +150,7 @@ bool ModelPicker::handleAction(const char *action, Rml::Element *entry,
     FavOnly = !FavOnly;
     return true;
   }
-  const std::string name =
-      entry->GetAttribute<Rml::String>("data-model", "").c_str();
+  const std::string name = entry->GetAttribute<Rml::String>("data-model", "");
   if (name.empty())
     return true; // picker intent without a payload: consumed, no-op
   if (which == detail::kActionModelFav) {
@@ -163,7 +174,7 @@ bool ModelPicker::handleFilterChange(Rml::Event &event,
   Rml::Element *target = event.GetTargetElement();
   if (!target || target->GetId() != "model-picker-filter")
     return false;
-  Filter = event.GetParameter<Rml::String>("value", Rml::String()).c_str();
+  Filter = event.GetParameter<Rml::String>("value", Rml::String());
   render(doc, model);
   return true;
 }
@@ -173,6 +184,102 @@ void ModelPicker::toggleFavorite(const std::string &model) {
     return; // read-only session: the status line explains why
   Favorites->setFavorite(model, !Favorites->isFavorite(model));
   ++FavGeneration; // same-signature rebuild with the new marks
+}
+
+bool ModelPicker::handleDblClick(Rml::Event &event) {
+  // The double-click pair's first click already selected the row; the
+  // legacy picker used the second press purely as a favorite toggle.
+  Rml::Element *entry = detail::actionNode(event.GetTargetElement());
+  if (!entry)
+    return false;
+  if (entry->GetAttribute<Rml::String>("data-action", "") !=
+      detail::kActionModelPick)
+    return false;
+  const std::string name = entry->GetAttribute<Rml::String>("data-model", "");
+  if (name.empty())
+    return true;
+  toggleFavorite(name);
+  return true;
+}
+
+bool ModelPicker::handlePointerDown(Rml::Event &event,
+                                    Rml::ElementDocument *doc) {
+  if (!doc)
+    return false;
+  const int button = event.GetParameter<int>("button", -1);
+  Rml::Element *menu = doc->GetElementById("model-picker-context-menu");
+  Rml::Element *target = event.GetTargetElement();
+  if (button == 1) {
+    // Right press over a picker row opens the favorite menu at the
+    // pointer; anywhere else an open menu just closes.
+    Rml::Element *entry = detail::actionNode(target);
+    if (entry && entry->GetAttribute<Rml::String>("data-action", "") ==
+                     detail::kActionModelPick) {
+      ContextModel = entry->GetAttribute<Rml::String>("data-model", "");
+      if (ContextModel.empty())
+        return false;
+      if (menu) {
+        // Viewport pixel coordinates (the same space as the mouse event),
+        // clamped so a click near an edge still shows the whole entry.
+        // The size mirrors model-picker-context-menu's fixed dp.
+        const float scale =
+            Rml::ElementUtilities::GetDensityIndependentPixelRatio(doc);
+        const float menuWidth = 104.0f * scale;
+        const float menuHeight = 31.0f * scale;
+        const Rml::Vector2f point(event.GetParameter<float>("mouse_x", 0.0f),
+                                  event.GetParameter<float>("mouse_y", 0.0f));
+        const float x = std::clamp(
+            point.x, 0.0f, std::max(0.0f, doc->GetClientWidth() - menuWidth));
+        const float y = std::clamp(
+            point.y, 0.0f, std::max(0.0f, doc->GetClientHeight() - menuHeight));
+        menu->SetProperty(Rml::PropertyId::Left,
+                          Rml::Property(x, Rml::Unit::PX));
+        menu->SetProperty(Rml::PropertyId::Top,
+                          Rml::Property(y, Rml::Unit::PX));
+        // The menu carries one fixed intent; its label flips with the
+        // target row's current state.
+        if (Rml::Element *item =
+                doc->GetElementById("model-picker-context-fav")) {
+          const char *token = Favorites && Favorites->isFavorite(ContextModel)
+                                  ? "#Settings_ModelFavRemove"
+                                  : "#Settings_ModelFavAdd";
+          item->SetInnerRML(
+              framework::TextUtil::escapeRml(detail::translated(token)));
+        }
+        menu->SetProperty("display", "block");
+        ContextOpen = true;
+      }
+      return false; // the press itself selects nothing
+    }
+    if (ContextOpen)
+      closeContextMenu(doc);
+    return false;
+  }
+  // Any left press outside the menu dismisses it (the menu item's own
+  // click path closes it after acting). A press on the menu falls through
+  // to the item's click handler, which owns the action + close.
+  if (ContextOpen && menu && !insideNode(target, menu))
+    closeContextMenu(doc);
+  return false;
+}
+
+bool ModelPicker::handleContextAction(const char *action,
+                                      Rml::ElementDocument *doc) {
+  if (!action || std::string(action) != detail::kActionModelContextFav)
+    return false;
+  if (!ContextModel.empty())
+    toggleFavorite(ContextModel);
+  closeContextMenu(doc);
+  return true;
+}
+
+void ModelPicker::closeContextMenu(Rml::ElementDocument *doc) {
+  ContextOpen = false;
+  ContextModel.clear();
+  if (!doc)
+    return;
+  if (Rml::Element *menu = doc->GetElementById("model-picker-context-menu"))
+    menu->SetProperty("display", "none");
 }
 
 } // namespace panels::settings::sections

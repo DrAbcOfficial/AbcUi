@@ -22,7 +22,13 @@ void SettingsPage::handleClick(Rml::Event &event) {
   const std::string which = action;
 
   // I16 model picker: its intents come first - the list rows are generic
-  // data-action nodes the chain below would drop.
+  // data-action nodes the chain below would drop. The context menu item
+  // acts and closes the menu itself.
+  if (ModelPicker.handleContextAction(which.c_str(), document())) {
+    if (!InRender_)
+      render();
+    return;
+  }
   if (ModelPicker.handleAction(which.c_str(), entry, document(), Model)) {
     if (!InRender_)
       render();

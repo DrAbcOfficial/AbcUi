@@ -197,5 +197,11 @@
 			<button id="spray-file-cancel" data-action="spray-file-cancel" autofocus="autofocus">#Settings_Cancel</button>
 		</div>
 	</div>
+	<!-- I16 model picker favorite menu: opened by right-click on a picker
+	     row, anchored to the pointer like the console's copy menu (outside
+	     the scroll container, so it never scrolls away with the rows). -->
+	<div id="model-picker-context-menu">
+		<div id="model-picker-context-fav" class="model-picker-context-item" data-action="model-picker-context-fav"></div>
+	</div>
 </body>
 </rml>

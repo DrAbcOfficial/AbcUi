@@ -52,6 +52,21 @@ public:
                     services::settings::SettingsModel *model);
   bool handleFilterChange(Rml::Event &event, Rml::ElementDocument *doc,
                           services::settings::SettingsModel *model);
+  // Double-click on a row is a favorite toggle (the legacy FavChange);
+  // the first click of the pair has already selected the row.
+  bool handleDblClick(Rml::Event &event);
+  // Right-button down over a row opens the favorite context menu at the
+  // pointer; any other press closes an open menu first.
+  bool handlePointerDown(Rml::Event &event, Rml::ElementDocument *doc);
+  // The context menu item's click: toggles the target row's favorite and
+  // closes the menu.
+  bool handleContextAction(const char *action, Rml::ElementDocument *doc);
+  // True while the right-click menu is up (the page's ESC path closes it
+  // before leaving, exactly like the spray browser layer).
+  bool contextOpen() const {
+    return ContextOpen;
+  }
+  void closeContextMenu(Rml::ElementDocument *doc);
 
 private:
   void toggleFavorite(const std::string &model);
@@ -63,6 +78,10 @@ private:
   // Favorites generation the last build saw (bumped by toggleFavorite).
   unsigned FavGeneration = 0;
   unsigned BuiltFavGeneration = 0;
+  // Right-click menu state: open flag + the row it targets (the menu
+  // lives outside the scroll container, so it never scrolls away).
+  bool ContextOpen = false;
+  std::string ContextModel;
 };
 
 } // namespace panels::settings::sections

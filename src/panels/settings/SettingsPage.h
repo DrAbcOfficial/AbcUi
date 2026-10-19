@@ -161,6 +161,10 @@ private:
 
   void handleClick(Rml::Event &event);
   void handleChange(Rml::Event &event);
+  // I16 model picker surfaces: a double-click toggles the row's favorite,
+  // a right press opens the row's favorite context menu.
+  void handleDblClick(Rml::Event &event);
+  void handlePointerDown(Rml::Event &event);
   void buildRows();
   void buildNavigation();
   void projectPage();
