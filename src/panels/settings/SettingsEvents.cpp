@@ -29,7 +29,7 @@ void SettingsPage::handleClick(Rml::Event &event) {
       render();
     return;
   }
-  if (ModelPicker.handleAction(which.c_str(), entry, document(), Model)) {
+  if (ModelPicker.handleAction(which.c_str(), entry, Model)) {
     if (!InRender_)
       render();
     return;

@@ -515,13 +515,15 @@ input:disabled {
 
 /* The player model preview fills its whole cell: the live FBO re-renders at
    the box's size, so it grows with the card instead of sitting in a 150dp
-   slot with dead space beside it. */
+   slot with dead space beside it. The min-height keeps a real viewport even
+   when the row column is short (RmlUi's flex does not reliably propagate a
+   stretched column height down to an auto-height custom element). */
 #model-preview {
 	display: block;
 	flex: 1 1 auto;
 	width: 100%;
 	height: auto;
-	min-height: 0dp;
+	min-height: 300dp;
 	background-color: var(--abc-inset);
 	border: 1dp var(--abc-line);
 	cursor: move;
@@ -902,7 +904,7 @@ input:disabled {
 	margin: 0dp;
 	padding: 0dp 6dp;
 	background-color: transparent;
-	border: none;
+	border: 0dp;
 	border-left: 2dp transparent;
 	color: var(--abc-text);
 	font-size: 9dp;
@@ -914,7 +916,7 @@ input:disabled {
 .model-picker-row:hover,
 .model-picker-row:focus {
 	background-color: var(--abc-surface-3);
-	border: none;
+	border: 0dp;
 	border-left: 2dp transparent;
 	color: var(--abc-text);
 }
@@ -941,7 +943,7 @@ input:disabled {
 	min-width: 0dp;
 	padding: 0dp 2dp 0dp 8dp;
 	background-color: transparent;
-	border: none;
+	border: 0dp;
 	color: var(--abc-text-dim);
 	font-size: 8dp;
 }

@@ -48,7 +48,6 @@ public:
   // Delegated page events. Each returns true when the event belonged to
   // the picker (the page re-renders); false leaves the event to the rows.
   bool handleAction(const char *action, Rml::Element *entry,
-                    Rml::ElementDocument *doc,
                     services::settings::SettingsModel *model);
   bool handleFilterChange(Rml::Event &event, Rml::ElementDocument *doc,
                           services::settings::SettingsModel *model);

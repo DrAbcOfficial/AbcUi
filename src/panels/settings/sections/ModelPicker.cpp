@@ -96,7 +96,7 @@ void ModelPicker::render(Rml::ElementDocument *doc,
           Markup += " selected";
         Markup += "\" data-action=\"";
         Markup += detail::kActionModelPick;
-        Markup += "\" data-model=\"";
+        Markup += "\" data-choice=\"";
         Markup += framework::TextUtil::escapeRmlAttribute(name);
         Markup += "\"><span class=\"model-picker-name\">";
         Markup += framework::TextUtil::escapeRml(name);
@@ -105,7 +105,7 @@ void ModelPicker::render(Rml::ElementDocument *doc,
           Markup += " on";
         Markup += "\" data-action=\"";
         Markup += detail::kActionModelFav;
-        Markup += "\" data-model=\"";
+        Markup += "\" data-choice=\"";
         Markup += framework::TextUtil::escapeRmlAttribute(name);
         Markup += "\">";
         Markup += framework::TextUtil::escapeRml(
@@ -140,7 +140,6 @@ void ModelPicker::render(Rml::ElementDocument *doc,
 }
 
 bool ModelPicker::handleAction(const char *action, Rml::Element *entry,
-                               Rml::ElementDocument *doc,
                                services::settings::SettingsModel *model) {
   const std::string which = action ? action : "";
   if (which != detail::kActionModelPick && which != detail::kActionModelFav &&
@@ -150,7 +149,7 @@ bool ModelPicker::handleAction(const char *action, Rml::Element *entry,
     FavOnly = !FavOnly;
     return true;
   }
-  const std::string name = entry->GetAttribute<Rml::String>("data-model", "");
+  const std::string name = entry->GetAttribute<Rml::String>("data-choice", "");
   if (name.empty())
     return true; // picker intent without a payload: consumed, no-op
   if (which == detail::kActionModelFav) {
@@ -195,7 +194,7 @@ bool ModelPicker::handleDblClick(Rml::Event &event) {
   if (entry->GetAttribute<Rml::String>("data-action", "") !=
       detail::kActionModelPick)
     return false;
-  const std::string name = entry->GetAttribute<Rml::String>("data-model", "");
+  const std::string name = entry->GetAttribute<Rml::String>("data-choice", "");
   if (name.empty())
     return true;
   toggleFavorite(name);
@@ -215,7 +214,7 @@ bool ModelPicker::handlePointerDown(Rml::Event &event,
     Rml::Element *entry = detail::actionNode(target);
     if (entry && entry->GetAttribute<Rml::String>("data-action", "") ==
                      detail::kActionModelPick) {
-      ContextModel = entry->GetAttribute<Rml::String>("data-model", "");
+      ContextModel = entry->GetAttribute<Rml::String>("data-choice", "");
       if (ContextModel.empty())
         return false;
       if (menu) {
