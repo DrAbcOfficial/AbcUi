@@ -88,6 +88,7 @@ add_library(AbcUi MODULE
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp
+    src/rmlui/colorpicker/ElementColorPicker.cpp
     src/rmlui/backdrop/ElementBackdrop.cpp
     src/rmlui/video/ElementVideo.cpp
     src/rmlui/backdrop/Backdrop.cpp
@@ -248,6 +249,7 @@ add_library(AbcUi MODULE
     src/panels/settings/SettingsEvents.cpp
     src/panels/settings/sections/CvarRows.cpp
     src/panels/settings/sections/ModelPicker.cpp
+    src/panels/settings/sections/ColorRows.cpp
     src/panels/settings/sections/BindingRows.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp

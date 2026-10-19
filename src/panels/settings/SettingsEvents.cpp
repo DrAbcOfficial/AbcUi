@@ -4,6 +4,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/Event.h>
+#include "panels/settings/sections/ColorRows.h"
 #include "services/settings/SettingsModel.h"
 #include "services/settings/KeyBindModel.h"
 #include "services/settings/VideoModeModel.h"
@@ -201,6 +202,16 @@ void SettingsPage::handleChange(Rml::Event &event) {
   Rml::Element *target = event.GetTargetElement();
   if (!target)
     return;
+  // RGBA colour pickers: one change carries four channel values, so the
+  // row-keyed commit below cannot express it. The section helper validates
+  // the element id and commits the four drafts; the full render then feeds
+  // the crosshair preview and mirrors the canonical value back.
+  if (sections::handleColorChange(
+          target->GetId().c_str(),
+          event.GetParameter<Rml::String>("value", "").c_str(), Model)) {
+    render();
+    return;
+  }
   // T12 resolution select: the value is "WxH" from the enumerated option
   // set; the model validates it again before staging.
   if (target->GetId() == "video-resolution") {

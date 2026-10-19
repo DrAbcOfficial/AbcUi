@@ -1,6 +1,7 @@
 // Extracted from SettingsPage.cpp (UTF-8). Responsibility: SettingsPage.
 #include "panels/settings/SettingsUi.h"
 #include "panels/settings/SettingsPage.h"
+#include "panels/settings/sections/ColorRows.h"
 #include "panels/settings/sections/VoiceSection.h"
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -74,6 +75,7 @@ void SettingsPage::render(const char *skipInputRow) {
   renderCrosshairPreview();
   renderSprayMaker();
   ModelPicker.render(document(), Model);
+  sections::renderColorRows(document(), Model);
   setStatusSummary();
   setBindStatusSummary();
   InRender_ = false;

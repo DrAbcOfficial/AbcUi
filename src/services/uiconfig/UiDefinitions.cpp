@@ -259,7 +259,7 @@ std::string componentName(const Value &V, const std::string &Path,
   const std::set<std::string> SectionComponents = {
       "bindings",      "video",         "voice",
       "model-picker",  "model-preview", "crosshair-preview",
-      "spray-preview", "spray-maker"};
+      "crosshair-color", "spray-preview", "spray-maker"};
   const auto &Allowed = PageLevel ? PageComponents : SectionComponents;
   require(Allowed.count(Name) != 0, Path,
           PageLevel

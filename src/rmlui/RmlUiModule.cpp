@@ -30,6 +30,7 @@
 #include "backdrop/Backdrop.h"
 #include "modelpreview/Target.h"
 #include "model/ElementModel.h"
+#include "colorpicker/ElementColorPicker.h"
 #include "video/ElementVideo.h"
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
@@ -361,6 +362,7 @@ void init() {
   if (!Rml::Initialise())
     framework::fatalExit("Rml::Initialise failed (Rml core unavailable)");
   model::registerElement();
+  colorpicker::registerElement();
   video::registerElement();
   backdrop::registerElement();
 

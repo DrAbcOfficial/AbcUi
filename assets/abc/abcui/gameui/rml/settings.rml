@@ -98,6 +98,20 @@
 					<div id="crosshair-preview-hint">#Settings_CrosshairPreviewHint</div>
 				</div>
 			</div>
+			<div class="settings-widget" id="widget-crosshair-color">
+				<!-- RGBA pickers: one element per colour edits all four channels
+				     (the eight per-channel rows stay declared in JSON as the
+				     transaction backbone but are not drawn as sliders). The
+				     widget stacks under the preview in the same column. -->
+				<div class="color-row">
+					<div class="row-label">#Settings_CrosshairColor</div>
+					<colorpicker id="crosshair-color" value="#32fa32c8"/>
+				</div>
+				<div class="color-row">
+					<div class="row-label">#Settings_CrosshairOutlineColor</div>
+					<colorpicker id="crosshair-outline-color" value="#000000ff"/>
+				</div>
+			</div>
 			<div class="settings-widget" id="widget-bindings">
 				<div id="bind-status"></div>
 				<div id="bindrows"></div>

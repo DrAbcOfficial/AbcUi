@@ -98,6 +98,7 @@ const WidgetBlock kWidgetBlocks[] = {
     {"model-picker", "widget-model-picker", false, true},
     {"spray-preview", "widget-spray-preview", true, false},
     {"crosshair-preview", "widget-crosshair-preview", true, false},
+    {"crosshair-color", "widget-crosshair-color", false, false},
     {"spray-maker", "widget-spray-maker", true, false},
     {"bindings", "widget-bindings", false, false},
     {"video", "widget-video", false, false},

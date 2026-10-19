@@ -69,10 +69,11 @@ std::string logoColorName(const std::string &value);
 // waits hidden in the widget host. user-script is a page behaviour and has
 // no block. The placement selects the column: a preview is a narrow box in
 // the card's right column (the rows keep a 232dp column beside it), a
-// plain block is a full-width band above the rows, and a row-flow block
-// joins the rows column itself (appended after the last row - the I16
-// model picker rides below the color rows while the model preview keeps
-// its full column).
+// plain block is a full-width band above the rows (or, on a card that
+// already has a preview, a second widget stacked under it in the same
+// column), and a row-flow block joins the rows column itself (appended
+// after the last row - the I16 model picker rides below the color rows
+// while the model preview keeps its full column).
 struct WidgetBlock {
   const char *Component;
   const char *Element;

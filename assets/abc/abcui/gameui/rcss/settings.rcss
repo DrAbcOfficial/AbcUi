@@ -215,6 +215,23 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	margin-bottom: 8dp;
 }
 
+/* Preview card with a second widget (the crosshair RGBA pickers): both
+   widgets share the preview column, stacked - the preview keeps the
+   remaining height above the pickers instead of the pickers sitting beside
+   it in the row. */
+.settings-card.has-preview.has-side-stack .settings-card-widgets {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+}
+.settings-card.has-preview.has-side-stack .settings-card-widgets .settings-widget {
+	flex: 0 0 auto;
+}
+.settings-card.has-preview.has-side-stack #widget-crosshair-preview {
+	flex: 1 1 auto;
+	min-height: 150dp;
+}
+
 /* ---- rows ---------------------------------------------------------------- */
 
 .row {
@@ -561,6 +578,34 @@ input:disabled {
 	left: 50%;
 	top: 50%;
 	background-color: rgba(0, 0, 0, 0);
+}
+
+/* ---- crosshair RGBA picker widget --------------------------------------- */
+
+/* One picker per colour, stacked under the preview. The element paints the
+   hue strip, the saturation/value square and the alpha strip itself; the
+   box only supplies the size and the inset frame. */
+#widget-crosshair-color {
+	display: block;
+	margin-top: 8dp;
+}
+
+.color-row {
+	display: block;
+	margin-bottom: 9dp;
+}
+
+.color-row .row-label {
+	margin-bottom: 3dp;
+}
+
+colorpicker {
+	display: block;
+	box-sizing: border-box;
+	width: 100%;
+	height: 64dp;
+	background-color: var(--abc-inset);
+	border: 1dp var(--abc-line);
 }
 
 /* ---- spray maker --------------------------------------------------------- */

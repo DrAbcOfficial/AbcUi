@@ -9,7 +9,8 @@
       "id": "crosshair",
       "label": "#Settings_SecCrosshair",
       "components": [
-        "crosshair-preview"
+        "crosshair-preview",
+        "crosshair-color"
       ]
     },
     {
