@@ -115,6 +115,31 @@ void PlayerInfo::update() {
   }
 }
 
+// Issue #9: the legacy per-row UpdatePing. The engine's player table is a
+// live mirror, but the replacement only re-read it on ScoreInfo/Spectator/
+// ClExtras events, so the scoreboard's ping/loss column could sit at 0 long
+// after the engine had the real values. This is deliberately NOT update():
+// identity, SteamID, name/model/colour and the donor/admin flags must all
+// survive a periodic refresh.
+void PlayerInfo::refreshPingLoss() {
+#ifndef NDEBUG
+  if (debugPinned)
+    return; // the board instrument owns every field of this slot
+#endif
+  if (index < 1 || index > kMaxPlayers)
+    return;
+  if (!hooks::EngineStudioApi)
+    return;
+  const auto *info = reinterpret_cast<const player_info_sc_t *>(
+      hooks::EngineStudioApi->PlayerInfo(index - 1));
+  if (!info)
+    return; // no mirror entry (disconnected slot): keep the last values
+  // Plain comparisons, not std::max: this translation unit is also compiled
+  // by the offline suite, where windows.h's max() macro is still live.
+  ping = info->ping > 0 ? info->ping : 0;
+  loss = info->packet_loss > 0 ? info->packet_loss : 0;
+}
+
 void PlayerInfo::reset() {
 #ifndef NDEBUG
   debugPinned = false;
@@ -182,6 +207,13 @@ void updateAll() {
   for (auto &info : infos()) {
     if (info.index >= 1)
       info.update();
+  }
+}
+
+void refreshPingLossAll() {
+  for (auto &info : infos()) {
+    if (info.index >= 1 && info.isValid())
+      info.refreshPingLoss();
   }
 }
 

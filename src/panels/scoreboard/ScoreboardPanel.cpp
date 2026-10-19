@@ -674,6 +674,12 @@ void ScoreboardPanel::rebuildTable() {
 
     for (const RowRef &row : rows) {
       const playerres::PlayerInfo &info = *row.info;
+      // Issue #9: ping/loss are a live engine mirror and are NOT carried by
+      // the ScoreInfo wire - re-read them for this row right before it is
+      // formatted (the legacy per-row UpdatePing). The 0.5 s rebuild is the
+      // only periodic read; without it the column kept whatever value the
+      // last ScoreInfo/Spectator/ClExtras event left behind.
+      row.info->refreshPingLoss();
       // Row fg/bg ride the client's per-player tint (old SetItemFgColor
       // GetPlayerColor; bg = same tint at alpha 80 unless this player).
       std::string rowOpen = "<div class='row";
