@@ -88,7 +88,7 @@ GameUiModule::GameUiModule()
   // same shape the Debug diagnostics use.
   menuBackend().setLocalGameLauncher(&GameUiModule::launchLocalGame);
   // T20: the player-list model's roster/mute seams (playerres + the
-  // shipped GameClientExports001 probe).
+  // voice service adapter, issue 17).
   PlayerList.setSeams(playerListSeams());
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
