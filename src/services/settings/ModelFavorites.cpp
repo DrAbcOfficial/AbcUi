@@ -70,8 +70,8 @@ bool ModelFavorites::isFavorite(const std::string &model) const {
 bool ModelFavorites::setFavorite(const std::string &model, bool favorite) {
   if (!entryTextValid(model))
     return false;
-  const auto itor = std::lower_bound(Favorites_.begin(), Favorites_.end(),
-                                     model);
+  const auto itor =
+      std::lower_bound(Favorites_.begin(), Favorites_.end(), model);
   const bool present = itor != Favorites_.end() && *itor == model;
   if (favorite == present)
     return true; // no state change; the store already matches
