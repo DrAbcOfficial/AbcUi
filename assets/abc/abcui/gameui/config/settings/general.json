@@ -11,7 +11,8 @@
       "components": [
         "crosshair-preview",
         "crosshair-color"
-      ]
+      ],
+      "layout": "two-up"
     },
     {
       "id": "hud_notify",

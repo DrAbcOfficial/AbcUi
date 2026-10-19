@@ -269,11 +269,16 @@ std::string componentName(const Value &V, const std::string &Path,
 }
 
 SectionDefinition section(const Value &Item, const std::string &P) {
-  fields(Item, {"id", "label", "components"}, P);
+  fields(Item, {"id", "label", "components", "layout"}, P);
   SectionDefinition Result;
   Result.Id = text(Item, "id", P);
   require(identifier(Result.Id), P + ".id", "invalid section identifier");
   Result.Label = text(Item, "label", P);
+  if (Item.HasMember("layout")) {
+    Result.Layout = text(Item, "layout", P);
+    require(Result.Layout == "two-up", P + ".layout",
+            "unknown section layout");
+  }
   if (Item.HasMember("components")) {
     array(Item["components"], P + ".components", 8);
     for (const auto &C : Item["components"].GetArray()) {

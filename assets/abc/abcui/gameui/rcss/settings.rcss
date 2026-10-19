@@ -232,6 +232,51 @@ body#menusettings #panel scrollbarvertical sliderbar:active,
 	min-height: 150dp;
 }
 
+/* Two-up section (the crosshair card): the widget band spans the card above
+   a two-column row grid. The preview and the RGBA pickers share the band, so
+   the preview is a compact fixed window instead of a full-height column, and
+   pairing the rows halves the card height. */
+.settings-card.layout-two-up .settings-card-widgets {
+	display: flex;
+	flex-direction: row;
+	align-items: stretch;
+	margin-bottom: 10dp;
+}
+.settings-card.layout-two-up .settings-card-widgets .settings-widget {
+	display: flex;
+	flex-direction: column;
+	min-width: 0dp;
+}
+.settings-card.layout-two-up #widget-crosshair-preview {
+	flex: 0 0 220dp;
+	width: 220dp;
+}
+.settings-card.layout-two-up #widget-crosshair-color {
+	flex: 1 1 0%;
+	margin: 0dp 0dp 0dp 12dp;
+}
+.settings-card.layout-two-up .row-pair {
+	display: flex;
+	align-items: flex-start;
+}
+.settings-card.layout-two-up .row-pair .row {
+	flex: 1 1 0%;
+	min-width: 0dp;
+	margin-right: 8dp;
+}
+.settings-card.layout-two-up .row-pair .row:last-child {
+	margin-right: 0dp;
+}
+.settings-card.layout-two-up .row-input,
+.settings-card.layout-two-up .row-select {
+	width: 100%;
+}
+/* The value readout takes 46dp of the paired row; a 150dp slider plus the
+   readout still fits the narrowest 640x480 card. */
+.settings-card.layout-two-up input.row-slider {
+	width: 150dp;
+}
+
 /* ---- rows ---------------------------------------------------------------- */
 
 .row {

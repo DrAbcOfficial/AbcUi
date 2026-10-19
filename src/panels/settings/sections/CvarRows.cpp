@@ -93,7 +93,8 @@ void SettingsPage::buildRows() {
               "class=\"row-status\"></div></div>";
   };
   auto OpenCard = [&](const std::string &CardId, const std::string &TitleToken,
-                      bool HasPreview, bool HasBlock, bool Stacked) {
+                      bool HasPreview, bool HasBlock, bool Stacked,
+                      bool TwoUp) {
     Markup += "<div class=\"settings-card";
     if (HasPreview)
       Markup += " has-preview";
@@ -104,6 +105,8 @@ void SettingsPage::buildRows() {
       Markup += " has-block";
     if (Stacked)
       Markup += " has-side-stack";
+    if (TwoUp)
+      Markup += " layout-two-up";
     Markup += "\" id=\"" + CardId + "\">";
     if (!TitleToken.empty())
       Markup += "<div class=\"settings-card-title section-header\">" +
@@ -185,13 +188,36 @@ void SettingsPage::buildRows() {
           // empty until a mod script appends entries there).
           if (RowCount == 0 && !HasWidget)
             continue;
-          const bool Stacked = HasPreview && HasBlock;
+          // Two-up sections put the widget band above a two-column row
+          // grid; the band keeps the preview and the RGBA pickers side by
+          // side, so the preview no longer owns a whole column.
+          const bool TwoUp = Section.Layout == "two-up";
+          const bool Stacked = !TwoUp && HasPreview && HasBlock;
           OpenCard("settings-card-" + Page->Id + "-" + Section.Id,
-                   Section.Label, HasPreview, HasBlock, Stacked);
-          for (const auto &View : Views)
-            if (VisibleRow(View))
+                   Section.Label, TwoUp ? false : HasPreview,
+                   TwoUp ? false : HasBlock, Stacked, TwoUp);
+          if (TwoUp) {
+            int InPair = 0;
+            for (const auto &View : Views) {
+              if (!VisibleRow(View))
+                continue;
+              if (InPair == 0)
+                Markup += "<div class=\"row-pair\">";
               AppendRow(View);
-          CloseCard("settings-card-" + Page->Id + "-" + Section.Id, HasPreview);
+              if (++InPair == 2) {
+                Markup += "</div>";
+                InPair = 0;
+              }
+            }
+            if (InPair != 0)
+              Markup += "</div>";
+          } else {
+            for (const auto &View : Views)
+              if (VisibleRow(View))
+                AppendRow(View);
+          }
+          CloseCard("settings-card-" + Page->Id + "-" + Section.Id,
+                    TwoUp ? false : HasPreview);
         }
         Markup += "</div>";
       };
@@ -203,7 +229,7 @@ void SettingsPage::buildRows() {
     int CardIndex = 0;
     auto OpenLegacyCard = [&](const std::string &Token) {
       OpenCard("settings-card-legacy-" + std::to_string(CardIndex++), Token,
-               false, false, false);
+               false, false, false, false);
       Open = true;
     };
     for (const auto &View : Views) {
