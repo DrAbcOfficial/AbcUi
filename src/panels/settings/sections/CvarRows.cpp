@@ -148,6 +148,13 @@ void SettingsPage::buildRows() {
             if (std::find(Page->Cvars.begin(), Page->Cvars.end(),
                           View.row->Cvar) == Page->Cvars.end())
               continue;
+            // I16: the model-picker widget owns the `model` cvar's
+            // presentation in its section - the plain select row would
+            // duplicate it. The row stays declared: the picker and the
+            // preview ride its drafts, options and status.
+            if (Section.hasComponent("model-picker") &&
+                std::string(View.row->Cvar) == "model")
+              continue;
             AppendRow(View);
           }
           CloseCard("settings-card-" + Page->Id + "-" + Section.Id, HasPreview);

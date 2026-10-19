@@ -21,6 +21,13 @@ void SettingsPage::handleClick(Rml::Event &event) {
   const Rml::String rowKey = entry->GetAttribute<Rml::String>("data-row", "");
   const std::string which = action;
 
+  // I16 model picker: its intents come first - the list rows are generic
+  // data-action nodes the chain below would drop.
+  if (ModelPicker.handleAction(which.c_str(), entry, document(), Model)) {
+    if (!InRender_)
+      render();
+    return;
+  }
   if (which == "settings-page") {
     selectPage(entry->GetAttribute<Rml::String>("data-page", ""));
     return;
@@ -210,6 +217,12 @@ void SettingsPage::handleChange(Rml::Event &event) {
     }
     if (!InRender_)
       render();
+    return;
+  }
+  if (target->GetId() == "model-picker-filter") {
+    // The filter commits on the control's change (Enter/focus loss, like
+    // every text row); the picker re-projects its own list only.
+    ModelPicker.handleFilterChange(event, document(), Model);
     return;
   }
   if (target->GetId() == "voice-mic-volume") {

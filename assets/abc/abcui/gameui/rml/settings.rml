@@ -43,6 +43,21 @@
 					<div id="model-preview-hint">#Settings_PlayerModelHint</div>
 				</div>
 			</div>
+			<div class="settings-widget" id="widget-model-picker">
+				<!-- I16 model picker: the models/player list with favorites and
+				     text filtering (legacy ABCEnchance parity). Rows are
+				     injected by sections::ModelPicker; a click selects and
+				     writes the `model` cvar (the preview follows), the star
+				     toggles the favorite. The section renderer keeps the
+				     current engine model selected. -->
+				<div id="model-picker">
+					<div class="model-picker-label">#Settings_ModelFilter</div>
+					<input class="row-input model-picker-filter" id="model-picker-filter" type="text"/>
+					<button class="row-toggle model-picker-favonly" id="model-picker-favonly" data-action="model-picker-favonly">#Settings_ModelFavOnly</button>
+					<div id="model-picker-list"></div>
+					<div id="model-picker-status"></div>
+				</div>
+			</div>
 			<div class="settings-widget" id="widget-spray-preview">
 				<div class="preview-box preview-box-square">
 					<img id="spray-preview"/>

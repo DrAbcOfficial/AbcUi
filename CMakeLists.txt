@@ -246,6 +246,7 @@ add_library(AbcUi MODULE
     src/panels/settings/SettingsNavigation.cpp
     src/panels/settings/SettingsEvents.cpp
     src/panels/settings/sections/CvarRows.cpp
+    src/panels/settings/sections/ModelPicker.cpp
     src/panels/settings/sections/BindingRows.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp

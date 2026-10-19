@@ -257,8 +257,9 @@ std::string componentName(const Value &V, const std::string &Path,
   // belongs to the section that shows it (page -> sections -> widgets).
   const std::set<std::string> PageComponents = {"user-script"};
   const std::set<std::string> SectionComponents = {
-      "bindings",          "video",         "voice",      "model-preview",
-      "crosshair-preview", "spray-preview", "spray-maker"};
+      "bindings",      "video",         "voice",
+      "model-picker",  "model-preview", "crosshair-preview",
+      "spray-preview", "spray-maker"};
   const auto &Allowed = PageLevel ? PageComponents : SectionComponents;
   require(Allowed.count(Name) != 0, Path,
           PageLevel

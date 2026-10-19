@@ -95,6 +95,7 @@ const char *safeFocusForLayer(const char *id) {
 // would be a schema/asset mismatch the page test catches.
 const WidgetBlock kWidgetBlocks[] = {
     {"model-preview", "widget-model-preview", true},
+    {"model-picker", "widget-model-picker", false},
     {"spray-preview", "widget-spray-preview", true},
     {"crosshair-preview", "widget-crosshair-preview", true},
     {"spray-maker", "widget-spray-maker", true},

@@ -29,6 +29,7 @@
 
 #include "../../framework/InteractiveDocument.h"
 #include "sections/CrosshairPreview.h"
+#include "sections/ModelPicker.h"
 #include "sections/SpraySection.h"
 #include "sections/VideoSection.h"
 #include "services/uiconfig/UiDefinitions.h"
@@ -96,6 +97,11 @@ public:
   // rows (mic volume/boost/test) ride this model.
   void setVoiceModel(services::settings::VoiceModel *model) {
     VoiceModel_ = model;
+  }
+  // I16 model picker: the persisted favorite set (store-owned, read and
+  // toggled through it; every change persists immediately).
+  void setFavorites(services::settings::ModelFavorites *favorites) {
+    ModelPicker.setFavorites(favorites);
   }
   // Spray maker: the module owns decode/encode/write, so a confirmed pick
   // travels out through this sink and the answer comes back through
@@ -210,6 +216,7 @@ private:
   sections::VideoSection VideoView;
   sections::CrosshairPreviewState CrosshairPreview;
   sections::SpraySection Spray;
+  sections::ModelPicker ModelPicker;
   std::map<std::string, std::vector<std::string>> SelectValuesShown;
   // The hue colour last painted on one row's drag thumb (cvar -> "rgb(...)"):
   // the swatch is rewritten only when it changed, so the render that follows

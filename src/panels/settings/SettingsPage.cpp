@@ -70,6 +70,7 @@ void SettingsPage::render(const char *skipInputRow) {
   renderPreviews();
   renderCrosshairPreview();
   renderSprayMaker();
+  ModelPicker.render(document(), Model);
   setStatusSummary();
   setBindStatusSummary();
   InRender_ = false;
