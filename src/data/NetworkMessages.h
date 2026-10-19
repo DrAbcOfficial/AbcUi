@@ -57,6 +57,15 @@ struct PopNumData {
   int color[4] = {};
 };
 
+// VoiceMask: the server's voice state ack (issue 17). Two 32-slot bitmask
+// words - who the server says is audible, and what it believes we banned -
+// plus its own voice_modenable (absent = 0, the legacy read rule).
+struct VoiceMaskData {
+  unsigned long audible = 0;
+  unsigned long serverBanned = 0;
+  int modEnable = 0;
+};
+
 extern abc::CallbackList<void(int, int)> AmmoX; // (ammoIndex, count)
 extern abc::CallbackList<void(const WeaponListData &)> WeaponList;
 extern abc::CallbackList<void()> InitHud;
@@ -112,6 +121,10 @@ extern abc::CallbackList<void(const VoteMenuData &)> VoteMenu;
 extern abc::CallbackList<void()> EndVote;
 extern abc::CallbackList<void(const MapListData &)> MapList;
 extern abc::CallbackList<void()> ClExtrasInfo;
+// Issue 17: the voice state feed. ReqState means "send your vban/VModEnable
+// now" (right after connect); VoiceMask is the server's ack of that state.
+extern abc::CallbackList<void(const VoiceMaskData &)> VoiceMask;
+extern abc::CallbackList<void()> ReqState;
 
 // HUD_Init: installs the HookUserMsg chain. Idempotent.
 void init();

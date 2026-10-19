@@ -43,6 +43,8 @@ abc::CallbackList<void(const VoteMenuData &)> VoteMenu;
 abc::CallbackList<void()> EndVote;
 abc::CallbackList<void(const MapListData &)> MapList;
 abc::CallbackList<void()> ClExtrasInfo;
+abc::CallbackList<void(const VoiceMaskData &)> VoiceMask;
+abc::CallbackList<void()> ReqState;
 #pragma endregion
 
 namespace {
@@ -83,6 +85,8 @@ pfnUserMsgHook original_VoteMenu = nullptr;
 pfnUserMsgHook original_EndVote = nullptr;
 pfnUserMsgHook original_MapList = nullptr;
 pfnUserMsgHook original_ClExtrasInfo = nullptr;
+pfnUserMsgHook original_VoiceMask = nullptr;
+pfnUserMsgHook original_ReqState = nullptr;
 
 int __MsgFunc_AmmoX(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
@@ -436,6 +440,29 @@ int __MsgFunc_ClExtrasInfo(const char *pszName, int iSize, void *pbuf) {
   return result;
 }
 
+// Issue 17: the server's voice state (long audible, long serverBanned,
+// byte modEnable; the trailing byte absent = 0 - the legacy read rule).
+// The service owns the semantics; this is parse + chain like every hook.
+int __MsgFunc_VoiceMask(const char *pszName, int iSize, void *pbuf) {
+  abc::MsgReader msg(pbuf, iSize);
+  VoiceMaskData data;
+  data.audible = static_cast<unsigned long>(msg.readLong());
+  data.serverBanned = static_cast<unsigned long>(msg.readLong());
+  if (!msg.ok())
+    return original_VoiceMask(pszName, iSize, pbuf);
+  data.modEnable = msg.readByte();
+  if (!msg.ok())
+    data.modEnable = 0;
+  VoiceMask(data);
+  return original_VoiceMask(pszName, iSize, pbuf);
+}
+
+int __MsgFunc_ReqState(const char *pszName, int iSize, void *pbuf) {
+  // Empty payload: the server wants our vban/VModEnable now.
+  ReqState();
+  return original_ReqState(pszName, iSize, pbuf);
+}
+
 int __MsgFunc_MetaHook(const char *pszName, int iSize, void *pbuf) {
   // The old plugin-to-plugin usermsg carrier (registered by the user's
   // server-side addon; absent on vanilla servers - original may be null).
@@ -512,6 +539,8 @@ void init() {
   original_EndVote = HOOK_MESSAGE(EndVote);
   original_MapList = HOOK_MESSAGE(MapList);
   original_ClExtrasInfo = HOOK_MESSAGE(ClExtrasInfo);
+  original_VoiceMask = HOOK_MESSAGE(VoiceMask);
+  original_ReqState = HOOK_MESSAGE(ReqState);
 }
 
 void setVoteGate(cvar_t *cvar) {

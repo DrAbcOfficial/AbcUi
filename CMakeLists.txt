@@ -204,6 +204,8 @@ add_library(AbcUi MODULE
     src/services/settings/VideoModeModel.cpp
     src/services/settings/VideoPendingStore.cpp
     src/services/settings/VoiceModel.cpp
+    src/services/voice/VoiceBanStore.cpp
+    src/services/voice/VoiceStatus.cpp
     src/services/crosshair/Geometry.cpp
     src/framework/PanelManager.cpp
     src/framework/PanelManagerLifecycle.cpp
