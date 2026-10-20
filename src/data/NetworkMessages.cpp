@@ -31,6 +31,7 @@ abc::CallbackList<void(int, int, int, const std::string &)> ShowMenu;
 abc::CallbackList<void(int)> FlashBat;
 abc::CallbackList<void(bool, int)> Flashlight;
 abc::CallbackList<TextMsgCallback> TextMsg;
+abc::CallbackList<SayTextCallback> SayText;
 abc::CallbackList<void(const DamageData &)> Damage;
 abc::CallbackList<void(const PopNumData &)> PopNum;
 // Batch C additions.
@@ -70,6 +71,7 @@ pfnUserMsgHook original_ShowMenu = nullptr;
 pfnUserMsgHook original_FlashBat = nullptr;
 pfnUserMsgHook original_Flashlight = nullptr;
 pfnUserMsgHook original_TextMsg = nullptr;
+pfnUserMsgHook original_SayText = nullptr;
 pfnUserMsgHook original_Damage = nullptr;
 pfnUserMsgHook original_MetaHook = nullptr;
 // hud_vote gate for the VoteMenu consumer (set by panels/vote at HUD_Init -
@@ -309,6 +311,30 @@ int __MsgFunc_TextMsg(const char *pszName, int iSize, void *pbuf) {
   return chain ? original_TextMsg(pszName, iSize, pbuf) : 1;
 }
 
+// SayText (issue 13): sender index + one composed line. Sven Co-op ships
+// exactly those two fields; the HLSDK shape appends up to four substitution
+// strings, so whatever remains on the wire is read as parameters and a short
+// message still parses (no field is required past the line itself).
+int __MsgFunc_SayText(const char *pszName, int iSize, void *pbuf) {
+  abc::MsgReader msg(pbuf, iSize);
+  SayTextData data;
+  data.client = msg.readByte();
+  data.text = msg.readString();
+  if (!msg.ok())
+    return original_SayText(pszName, iSize, pbuf);
+  for (int i = 0; i < 4 && msg.remaining() > 0; i++)
+    data.params[i] = msg.readString();
+  // A subscriber that cannot draw the line must not eat it: `chain` mirrors
+  // the TextMsg rule, so the native CHudSayText stays the fallback.
+  bool chain = true;
+  SayText.forEach(
+      [&](const abc::CallbackList<SayTextCallback>::Handle &,
+          const abc::CallbackList<SayTextCallback>::Callback &callback) {
+        chain &= callback(data);
+      });
+  return chain ? original_SayText(pszName, iSize, pbuf) : 1;
+}
+
 int __MsgFunc_Damage(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
   DamageData data;
@@ -525,6 +551,7 @@ void init() {
   original_FlashBat = HOOK_MESSAGE(FlashBat);
   original_Flashlight = HOOK_MESSAGE(Flashlight);
   original_TextMsg = HOOK_MESSAGE(TextMsg);
+  original_SayText = HOOK_MESSAGE(SayText);
   original_Damage = HOOK_MESSAGE(Damage);
   // The MetaHook carrier is addon-registered; a null chain (vanilla servers)
   // leaves every read a no-op passthrough (see __MsgFunc_MetaHook).

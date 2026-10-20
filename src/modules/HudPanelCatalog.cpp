@@ -8,6 +8,7 @@
 #include "../data/TextFeed.h"
 #include "../panels/ammobar/AmmoBarPanel.h"
 #include "../panels/ammostack/AmmoStackPanel.h"
+#include "../panels/chat/ChatPanel.h"
 #include "../panels/crosshair/CrosshairPanel.h"
 #include "../panels/deadmsg/DeadMsgPanel.h"
 #include "../panels/dmgtiles/DmgTilesPanel.h"
@@ -69,6 +70,8 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   // Batch D (render depth).
   panels.push_back(std::make_unique<panels::ItemHighlightPanel>());
   panels.push_back(std::make_unique<panels::RadarPanel>());
+  // Issue 13: chat last, so its log/input paints over the readouts.
+  panels.push_back(std::make_unique<panels::ChatPanel>());
   return panels;
 }
 
@@ -100,6 +103,9 @@ void registerHudPanelCvars() {
   panels::itemhighlight::registerCvars();
   panels::radar::registerCvars();
   panels::radar::registerCommands();
+  // Issue 13: after the client's HUD_Init ran (the hud_saytext_* pointers
+  // are the client's own cvars).
+  panels::chat::registerCvars();
 }
 
 } // namespace modules

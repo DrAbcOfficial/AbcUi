@@ -719,6 +719,10 @@ Settings_SecScripted=更多设置
 CommandMenu_Title=指令菜单
 CommandMenu_Empty=当前地图没有可用指令。
 
+# 聊天（issue 13）：RmlUi 聊天输入行的频道提示
+Chat_Say = 说：
+Chat_Team = 队伍：
+
 # 指令菜单条目
 0=0
 1 gib=1 个碎块

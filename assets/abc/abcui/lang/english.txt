@@ -719,3 +719,7 @@ Settings_SecScripted=More settings
 # In-game command menu
 CommandMenu_Title=Command Menu
 CommandMenu_Empty=No commands available for this map.
+
+# Chat (issue 13): the message-mode prompt of the RmlUi chat input line.
+Chat_Say = Say:
+Chat_Team = Team:

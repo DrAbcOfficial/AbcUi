@@ -507,6 +507,10 @@ Settings_MenuModel=Modelo del jugador del menú (ruta)
 CommandMenu_Title=Menú de comandos
 CommandMenu_Empty=No hay comandos disponibles para este mapa.
 
+# Chat (issue 13): el indicador de canal de la línea de entrada de chat.
+Chat_Say = Decir:
+Chat_Team = Equipo:
+
 # Entradas del menú de comandos
 1 gib=1 fragmento
 2 gibs=2 fragmentos

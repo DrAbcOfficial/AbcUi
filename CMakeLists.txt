@@ -255,6 +255,8 @@ add_library(AbcUi MODULE
     src/framework/Projection.cpp
     src/panels/ammostack/AmmoStackPanel.cpp
     src/panels/ammobar/AmmoBarPanel.cpp
+    src/panels/chat/ChatMessage.cpp
+    src/panels/chat/ChatPanel.cpp
     src/panels/crosshair/CrosshairPanel.cpp
     src/panels/deadmsg/DeadMsgPanel.cpp
     src/panels/dmgtiles/DmgTilesPanel.cpp
