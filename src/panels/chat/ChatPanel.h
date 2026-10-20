@@ -92,6 +92,10 @@ private:
   void closeInput();
   void submit();
   void setPrompt(Mode mode);
+  // Input-method badge at the end of the input row ("CN"/"JP"/...); empty
+  // hides it. Re-read every frame while the line is open so switching IMEs
+  // while typing updates the badge.
+  void updateImeBadge();
   // Push/pop the send history into the editor (Up/Down).
   void recallHistory(int step);
 
@@ -151,6 +155,8 @@ private:
   // Frames left that still pull the log to the tail. A row's height is only
   // known after the next layout pass, so an append arms a couple of frames.
   int ScrollFrames = 0;
+  // Last badge text written to the DOM (change-gated like the other writes).
+  std::string ImeBadge;
   // Last block opacity written (percent), -1 = not written yet.
   int FadeOpacity = -1;
 };

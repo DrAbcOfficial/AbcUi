@@ -36,6 +36,7 @@
 #include "AbcSystemInterface.h"
 #include "InputBridge.h"
 #include "PaintGate.h"
+#include "ImeOverlay.h"
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 #include "../services/GameUiBridge.h"
@@ -403,6 +404,9 @@ void init() {
 
   Rml::Debugger::Initialise(Context);
   Rml::Debugger::SetVisible(false);
+  // IME composition/candidate overlay: a plain document on this context, so
+  // it serves the HUD, the menus and the console alike.
+  ime::init(Context);
 
   abc::MetaRenderer()->RegisterRenderCallbacks(&Callbacks);
   Initialised = true;
@@ -440,6 +444,7 @@ void shutdown() {
   if (Sink.shutdown)
     Sink.shutdown();
   framework::PanelManager::shutdown();
+  ime::shutdown();
 
   // Rml::Shutdown first releases per-load borrowed/owned records; cache IDs
   // are deleted only afterwards, including never-delivered avatar uploads.

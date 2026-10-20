@@ -133,7 +133,7 @@
 #chat-input {
 	position: absolute;
 	left: 44dp;
-	right: 6dp;
+	right: 25dp;
 	top: 0dp;
 	height: 15dp;
 	padding: 0dp;
@@ -143,4 +143,19 @@
 	background-color: transparent;
 	border-width: 0dp;
 	caret-color: var(--abc-hud-accent);
+}
+
+/* Input-method badge at the end of the row: the active layout's short tag
+   ("CN"/"TW"/"JP"/"KR"), set by the panel and hidden while the layout has no
+   IME. Amber-dim so it reads as HUD ink, not as another prompt. */
+#chat-ime {
+	position: absolute;
+	right: 4dp;
+	top: 0dp;
+	height: 15dp;
+	line-height: 15dp;
+	font-size: 7.6dp;
+	font-weight: bold;
+	white-space: nowrap;
+	color: var(--abc-hud-accent-dim);
 }

@@ -30,6 +30,7 @@
 #include "../../framework/Localization.h"
 #include "../../framework/TextUtil.h"
 #include "../../hooks.h"
+#include "../../rmlui/ImeOverlay.h"
 #include "../../rmlui/InputBridge.h"
 #include "../../rmlui/TextInput.h"
 #include "../../services/GameUiBridge.h"
@@ -443,6 +444,7 @@ void ChatPanel::openInput(Mode mode) {
   ScrollFrames = 2;
   HistoryCursor = -1;
   HistoryDraft.clear();
+  updateImeBadge();
   updateFade();
   updateVisibility();
 }
@@ -483,6 +485,20 @@ void ChatPanel::setPrompt(Mode mode) {
     return;
   prompt->SetInnerRML(framework::TextUtil::escapeRml(
       translated(mode == Mode::kTeam ? "Chat_Team" : "Chat_Say")));
+}
+
+void ChatPanel::updateImeBadge() {
+  if (!Document)
+    return;
+  Rml::Element *badge = Document->GetElementById("chat-ime");
+  if (!badge)
+    return;
+  const std::string tag = rmlui::ime::inputLanguageTag();
+  if (tag == ImeBadge)
+    return;
+  ImeBadge = tag;
+  badge->SetInnerRML(framework::TextUtil::escapeRml(tag));
+  badge->SetProperty("display", tag.empty() ? "none" : "block");
 }
 
 void ChatPanel::submit() {
@@ -637,6 +653,8 @@ void ChatPanel::onData(double frameTime) {
     scrollLogToBottom();
     ScrollFrames--;
   }
+  if (Mode_ != Mode::kNone)
+    updateImeBadge();
   updateFade();
   updateVisibility();
 }
