@@ -401,6 +401,8 @@ Settings_Unset = （未设置）
 # T14 connection surfaces (loading page / error / password / direct connect)
 Loading_Title = 正在连接
 Loading_Connecting = 正在联系服务器……
+Loading_MapTitle = 正在加载
+Loading_MapStatus = 正在加载地图……
 Loading_Cancel = 取消
 Loading_Return = 返回
 Loading_Retry = 重试

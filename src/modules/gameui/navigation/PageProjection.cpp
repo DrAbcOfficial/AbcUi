@@ -87,9 +87,17 @@ void GameUiModule::syncMenuPresentation() {
     case MenuPage::kLoading:
       // Fresh projection on every sync: the attempt's values moved
       // since the last frame (the frame drain re-renders too). T19:
-      // a local-server start carries its own loading title.
+      // a local-server start carries its own loading title; an engine
+      // changelevel gets the map-load title/status instead of the connect
+      // wording (there is no server address to contact).
       if (Loading) {
-        Loading->setTitleToken(CurrentAttemptIsLocal ? "#CG_LoadingTitle" : "");
+        const auto kind = state.attemptKind;
+        const bool mapLoad = kind == menu::AttemptKind::kMapLoad;
+        Loading->setTitleToken(
+            kind == menu::AttemptKind::kLocalGame
+                ? "#CG_LoadingTitle"
+                : (mapLoad ? "#Loading_MapTitle" : ""));
+        Loading->setStatusToken(mapLoad ? "#Loading_MapStatus" : "");
         Loading->render();
         Loading->show();
         loadingVisible = true;

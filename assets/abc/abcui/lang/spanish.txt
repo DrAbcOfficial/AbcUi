@@ -371,6 +371,8 @@ Settings_Unset = (sin definir)
 # T14 connection surfaces (loading page / error / password / direct connect)
 Loading_Title = Conectando
 Loading_Connecting = Contactando con el servidor...
+Loading_MapTitle = Cargando
+Loading_MapStatus = Cargando el mapa...
 Loading_Cancel = Cancelar
 Loading_Return = Volver
 Loading_Retry = Reintentar
