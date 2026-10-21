@@ -13,6 +13,7 @@
 #include <RmlUi/Core/Elements/ElementFormControl.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/Elements/ElementFormControlSelect.h>
+#include <RmlUi/Core/Elements/ElementProgress.h>
 #include <RmlUi/Core/ElementText.h>
 #include <RmlUi/Core/ElementUtilities.h>
 #include <RmlUi/Core/Input.h>
@@ -588,6 +589,12 @@ int32_t apiElementTextPrefixWidth(AbcUiElement *element, const char *value,
       text, Rml::StringView(value, value + bytesLength));
 }
 
+void apiElementProgressValue(AbcUiElement *element, float value) {
+  Rml::Element *target = elementOf(element);
+  if (auto *progress = rmlui_dynamic_cast<Rml::ElementProgress *>(target))
+    progress->SetValue(value);
+}
+
 int32_t apiElementPseudoClassSet(AbcUiElement *element, const char *name) {
   Rml::Element *target = elementOf(element);
   return target && name && *name && target->IsPseudoClassSet(name) ? 1 : 0;
@@ -809,6 +816,7 @@ const AbcUiUiApi kUiApi = {
     apiElementTextPrefixWidth,
     apiDocumentScale,
     apiElementPseudoClassSet,
+    apiElementProgressValue,
 };
 
 } // namespace

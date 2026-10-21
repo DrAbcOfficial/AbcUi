@@ -1,8 +1,9 @@
 # abcui.gameui - the replacement game-menu pages (see sdk/abcui/abi.h for the
-# module build contract). The menu shell and the vote creation, player
-# list, command menu and inventory pages are moved out so far; the
-# remaining pages follow in their own commits. PageShared.h carries the
-# borrowed api table and the shared text/DOM helpers.
+# module build contract). The menu shell, the console, the server browser,
+# the connection surfaces and the vote creation, player list, command menu,
+# inventory and create-game pages are moved out so far; the settings page
+# follows as the final page commit. PageShared.h carries the borrowed api
+# table and the shared text/DOM helpers.
 add_library(abcui_mod_gameui MODULE
             src/GameUiModule.cpp
             src/MainMenuPage.cpp
@@ -11,7 +12,9 @@ add_library(abcui_mod_gameui MODULE
             src/CommandMenuPage.cpp
             src/InventoryPage.cpp
             src/CreateGamePage.cpp
-            src/ConsolePage.cpp)
+            src/ConsolePage.cpp
+            src/ServerBrowserPage.cpp
+            src/ConnectionPage.cpp)
 target_include_directories(abcui_mod_gameui PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../sdk")
 set_target_properties(abcui_mod_gameui PROPERTIES OUTPUT_NAME "abcui_gameui")

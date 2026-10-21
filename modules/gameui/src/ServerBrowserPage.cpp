@@ -52,6 +52,19 @@ AbcUiElement *node(const char *id) {
   return Page ? Api->ui->querySelector(Page, id) : nullptr;
 }
 
+std::string inputValue(const char *id) {
+  AbcUiElement *control = node(id);
+  if (!control)
+    return {};
+  const int needed = Api->ui->elementValue(control, nullptr, 0);
+  if (needed <= 0)
+    return {};
+  std::string out(static_cast<size_t>(needed) + 1, '\0');
+  Api->ui->elementValue(control, out.data(), static_cast<uint32_t>(out.size()));
+  out.resize(static_cast<size_t>(needed));
+  return out;
+}
+
 void setInnerRml(const char *id, const std::string &rml) {
   if (AbcUiElement *element = node(id))
     Api->ui->elementSetInnerRML(element, rml.c_str());
@@ -647,6 +660,14 @@ void openContextMenu(float pointX, float pointY) {
   std::snprintf(buffer, sizeof(buffer), "%dpx", top);
   Api->ui->elementSetProperty(menu, "top", buffer);
   Api->ui->elementSetClass(menu, "sb-open", 1);
+}
+
+bool insideNode(AbcUiElement *nodeElement, AbcUiElement *container) {
+  for (AbcUiElement *it = nodeElement; it; it = Api->ui->elementParent(it)) {
+    if (it == container)
+      return true;
+  }
+  return false;
 }
 
 // The nearest row element (the right-click path needs the row under the

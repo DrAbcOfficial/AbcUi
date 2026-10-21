@@ -1,10 +1,10 @@
 // abcui.gameui - the replacement game-menu pages, one document per page.
 // The entry validates the framework's table once and fans the module
-// lifecycle out to the page projections (the vote creation menu and the
-// player list so far; the shell and the remaining pages follow in their own
-// commits). A page owns its DOM, its local gestures and its model-section
-// calls; the framework keeps the models, the seams and the navigation
-// state machine.
+// lifecycle out to the page projections (the shell, the console, the
+// server browser, the connection surfaces and the vote creation / player
+// list / command menu / inventory / create-game pages so far). A page owns
+// its DOM, its local gestures and its model-section calls; the framework
+// keeps the models, the seams and the navigation state machine.
 #include "PageShared.h"
 
 namespace votepage {
@@ -49,6 +49,18 @@ void shutdown();
 void unload();
 } // namespace consolepage
 
+namespace serverbrowserpage {
+void load();
+void shutdown();
+void unload();
+} // namespace serverbrowserpage
+
+namespace connectionpage {
+void load();
+void shutdown();
+void unload();
+} // namespace connectionpage
+
 namespace {
 
 void onModuleLoad() {
@@ -59,6 +71,8 @@ void onModuleLoad() {
   inventorypage::load();
   creategamepage::load();
   consolepage::load();
+  serverbrowserpage::load();
+  connectionpage::load();
 }
 
 void onModuleShutdown() {
@@ -70,6 +84,8 @@ void onModuleShutdown() {
   inventorypage::shutdown();
   creategamepage::shutdown();
   consolepage::shutdown();
+  serverbrowserpage::shutdown();
+  connectionpage::shutdown();
 }
 
 void onModuleUnload() {
@@ -80,6 +96,8 @@ void onModuleUnload() {
   inventorypage::unload();
   creategamepage::unload();
   consolepage::unload();
+  serverbrowserpage::unload();
+  connectionpage::unload();
   Api = nullptr;
 }
 
@@ -96,7 +114,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       !api->ui || !api->console || !api->documents || !api->menu ||
       !api->votemenu || !api->playerlist || !api->commandmenu ||
       !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
-      !api->consolepage || !api->input || !api->shell || !api->serverbrowser)
+      !api->consolepage || !api->input || !api->shell || !api->serverbrowser ||
+      !api->connection)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
@@ -109,7 +128,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       api->inventory->structSize < sizeof(AbcUiInventoryApi) ||
       api->creategame->structSize < sizeof(AbcUiCreateGameApi) ||
       api->consolepage->structSize < sizeof(AbcUiConsolePageApi) ||
-      api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi))
+      api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi) ||
+      api->connection->structSize < sizeof(AbcUiConnectionApi))
     return 0;
   Api = api;
 

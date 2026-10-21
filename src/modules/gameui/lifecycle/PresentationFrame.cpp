@@ -46,14 +46,15 @@ void GameUiModule::pumpVisibleWork() {
   // afterwards is dropped and the next Connect click would submit an
   // empty field - the live "password retyped, the connection never
   // continues" defect. Falling through re-focuses the editor instead.
-  Rml::Element *inputEditor = nullptr;
-  if (!Video->confirmPresented()) {
-    if (state.overlays.topIs(MenuOverlay::kPassword) && Password)
-      inputEditor = Password->editor();
-    else if (state.overlays.topIs(MenuOverlay::kDirectConnect) && DirectConnect)
-      inputEditor = DirectConnect->editor();
-  }
-  if (focus && (!inputEditor || focus == inputEditor)) {
+  // The T14 dialogs own their editors (module documents): a click on a
+  // dialog button focuses the button and the next keystroke would drop -
+  // the bitmask test defers the guard to that layer without reaching into
+  // its DOM.
+  const bool inputDialogUp =
+      !Video->confirmPresented() &&
+      (state.overlays.topIs(MenuOverlay::kPassword) ||
+       state.overlays.topIs(MenuOverlay::kDirectConnect));
+  if (focus && !inputDialogUp) {
     Rml::ElementDocument *owner = focus->GetOwnerDocument();
     // Only a VISIBLE menu document holds legitimate focus - a hidden
     // one (stub/overlay just dismissed) is exactly the stale state
@@ -63,11 +64,7 @@ void GameUiModule::pumpVisibleWork() {
          owner == (SubStub ? SubStub->document() : nullptr) ||
          owner == (Settings ? Settings->document() : nullptr) ||
          owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
-         owner == (VideoConfirm ? VideoConfirm->document() : nullptr) ||
-         owner == (Loading ? Loading->document() : nullptr) ||
-         owner == (ConnError ? ConnError->document() : nullptr) ||
-         owner == (Password ? Password->document() : nullptr) ||
-         owner == (DirectConnect ? DirectConnect->document() : nullptr)))
+         owner == (VideoConfirm ? VideoConfirm->document() : nullptr)))
       return;
   }
   // T12: the display-mode confirmation outranks every other surface -
@@ -79,14 +76,12 @@ void GameUiModule::pumpVisibleWork() {
   // T14 surfaces, top-most first (the same order the sync shows them).
   if (state.overlays.contains(MenuOverlay::kConfirmQuit) && ConfirmQuit)
     ConfirmQuit->refocusDefault();
-  else if (state.overlays.contains(MenuOverlay::kDirectConnect) &&
-           DirectConnect)
-    DirectConnect->refocusDefault();
-  else if (state.overlays.contains(MenuOverlay::kPassword) && Password)
-    Password->refocusDefault();
-  else if (state.overlays.contains(MenuOverlay::kConnectionError) && ConnError)
-    ConnError->refocusDefault();
-  else if (state.overlays.contains(MenuOverlay::kConsole)) {
+  else if (state.overlays.contains(MenuOverlay::kDirectConnect) ||
+           state.overlays.contains(MenuOverlay::kPassword) ||
+           state.overlays.contains(MenuOverlay::kConnectionError)) {
+    // The connection dialogs are module documents: each owns its field
+    // focus (the guard leaves a visible module document alone above).
+  } else if (state.overlays.contains(MenuOverlay::kConsole)) {
     // The console page is a module document: it owns its editor focus.
   } else if (!state.pages.empty()) {
     if (state.pages.top() == MenuPage::kMain ||
@@ -97,8 +92,8 @@ void GameUiModule::pumpVisibleWork() {
       Settings->refocusDefault();
     } else if (state.pages.top() == MenuPage::kServers) {
       // The browser page is a module document: it owns its focus.
-    } else if (state.pages.top() == MenuPage::kLoading && Loading) {
-      Loading->refocusDefault();
+    } else if (state.pages.top() == MenuPage::kLoading) {
+      // The loading page is a module document: it owns its Cancel focus.
     } else if (SubStub) {
       SubStub->refocusDefault();
     }

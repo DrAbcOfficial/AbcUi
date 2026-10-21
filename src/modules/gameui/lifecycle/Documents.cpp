@@ -60,20 +60,13 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   VideoConfirm->setVideoModel(&VideoModel);
   Video->setPage(VideoConfirm.get());
   ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
-  // T14 connection surfaces.
-  Loading = std::make_unique<panels::loading::LoadingPage>();
-  Loading->setModel(&LoadingModelState);
-  ConnError = std::make_unique<panels::loading::ConnectionErrorOverlay>();
-  Password = std::make_unique<panels::loading::PasswordOverlay>();
-  DirectConnect = std::make_unique<panels::loading::DirectConnectOverlay>();
+  // The loading page and the three connection dialogs are module documents
+  // now (abcui.gameui): the drained attempt model and the controller's
+  // typed edges reach them through the sdk connection section.
   wire(SubStub);
   wire(Settings);
   wire(VideoConfirm);
   wire(ConfirmQuit);
-  wire(Loading);
-  wire(ConnError);
-  wire(Password);
-  wire(DirectConnect);
   // T12 startup recovery: a persisted unconfirmed-switch record drives
   // the first presentation (confirmation window on the actual mode, or
   // an automatic write-back of the old values). Runs once per engine
@@ -127,8 +120,10 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      SubStub.get(), Settings.get(),  VideoConfirm.get(), ConfirmQuit.get(),
-      Loading.get(), ConnError.get(), Password.get(),     DirectConnect.get(),
+      SubStub.get(),
+      Settings.get(),
+      VideoConfirm.get(),
+      ConfirmQuit.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {
@@ -155,10 +150,6 @@ void GameUiModule::serviceEmergencyPages() {
   // every "projected for this opening" latch and let the sync re-run
   // the fresh-open projections from the models.
   SettingsView->setPresented(false);
-  ErrorPresented = false;
-  PasswordPresented = false;
-  DirectConnectPresented = false;
-  LoadingVisible = false;
   Server->setPresented(false);
   syncMenuPresentation();
 }

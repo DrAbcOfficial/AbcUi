@@ -117,21 +117,9 @@ void GameUiModule::hideAllMenuDocuments() {
   Server->hide();
   if (ConfirmQuit)
     ConfirmQuit->hide();
-  // T14 connection surfaces: hidden with the menu; a later present
-  // re-projects from the state (the latches reset here).
-  if (Loading)
-    Loading->hide();
-  if (ConnError)
-    ConnError->hide();
-  if (Password)
-    Password->hide();
-  if (DirectConnect)
-    DirectConnect->hide();
-  ErrorPresented = false;
-  PasswordPresented = false;
-  PasswordReprepare = false;
-  DirectConnectPresented = false;
-  LoadingVisible = false;
+  // T14 connection surfaces: module documents hidden with the menu (the
+  // ABCUI_DOC_FLAG_MENU layer); a later present re-projects from the
+  // state.
   // The video confirmation is NOT hidden by a generic hide: it must
   // stay up until confirmed/reverted (a dismissal cannot silently
   // abandon a mode the user has not confirmed). dismissMenu() calls
@@ -211,6 +199,20 @@ services::menu::Snapshot GameUiModule::menuSnapshot() const {
     snapshot.overlays |= ABCUI_MENU_OVERLAY_CONNECTION_ERROR;
   if (state.overlays.contains(MenuOverlay::kDirectConnect))
     snapshot.overlays |= ABCUI_MENU_OVERLAY_DIRECT_CONNECT;
+  switch (state.attemptKind) {
+  case menu::AttemptKind::kConnect:
+    snapshot.attemptKind = ABCUI_MENU_ATTEMPT_CONNECT;
+    break;
+  case menu::AttemptKind::kLocalGame:
+    snapshot.attemptKind = ABCUI_MENU_ATTEMPT_LOCAL_GAME;
+    break;
+  case menu::AttemptKind::kMapLoad:
+    snapshot.attemptKind = ABCUI_MENU_ATTEMPT_MAP_LOAD;
+    break;
+  default:
+    snapshot.attemptKind = ABCUI_MENU_ATTEMPT_NONE;
+    break;
+  }
   return snapshot;
 }
 

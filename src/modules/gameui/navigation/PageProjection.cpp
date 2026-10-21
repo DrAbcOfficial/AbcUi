@@ -25,7 +25,6 @@ void GameUiModule::projectMenuPresentation() {
   // the defensive default for a page without a registered projection;
   // it never reopens a native window.
   bool shellTop = false;
-  bool loadingVisible = false;
   if (!state.pages.empty()) {
     switch (state.pages.top()) {
     case MenuPage::kMain:
@@ -64,23 +63,9 @@ void GameUiModule::projectMenuPresentation() {
       // from menu.state once the page is on top.
       break;
     case MenuPage::kLoading:
-      // Fresh projection on every sync: the attempt's values moved
-      // since the last frame (the frame drain re-renders too). T19:
-      // a local-server start carries its own loading title; an engine
-      // changelevel gets the map-load title/status instead of the connect
-      // wording (there is no server address to contact).
-      if (Loading) {
-        const auto kind = state.attemptKind;
-        const bool mapLoad = kind == menu::AttemptKind::kMapLoad;
-        Loading->setTitleToken(kind == menu::AttemptKind::kLocalGame
-                                   ? "#CG_LoadingTitle"
-                                   : (mapLoad ? "#Loading_MapTitle" : ""));
-        Loading->setStatusToken(mapLoad ? "#Loading_MapStatus" : "");
-        Loading->render();
-        Loading->show();
-        loadingVisible = true;
-        LoadingVisible = true;
-      }
+      // The page is a module document (abcui.gameui): it presents itself
+      // from menu.state (the attempt kind rides the payload) and renders
+      // the drained model on the paint beat.
       break;
     default:
       showStubPage(SubStub.get(), state.pages.top(), false);
@@ -107,10 +92,6 @@ void GameUiModule::projectMenuPresentation() {
   ServerBrowser.Open = serverPageOpen;
   if (shellTop)
     SubStub->hide();
-  if (!loadingVisible && Loading) {
-    Loading->hide();
-    LoadingVisible = false;
-  }
   if (state.pages.empty() || state.pages.top() != MenuPage::kSettings) {
     SettingsView->hide();
     // T13b: the mic test is a page-scoped device session - leaving
@@ -121,53 +102,19 @@ void GameUiModule::projectMenuPresentation() {
   if (state.pages.empty() || state.pages.top() != MenuPage::kServers)
     Server->hide();
 
-  // Overlay layer, top-most last (each show pulls to the context
-  // front); idempotent shows neither re-focus nor re-order. The loading
-  // page (shown in the page switch above) is NOT ordered by this block:
-  // its document z-index tier (InteractiveDocument::kLoadingZIndex) keeps
-  // it above the page shells and the console even though the console
-  // shows later, while the connection dialogs and the quit confirmation
-  // carry higher tiers of their own (#4).
+  // Overlay layer, top-most last. The loading page and the three
+  // connection dialogs are module documents now (abcui.gameui): they
+  // present from the state's overlay bitmask, and their document z-index
+  // tiers (loading above the page shells and the console, the connection
+  // dialogs above it) ride the descriptor (#4).
   // T16 replacement console: the page is a module document (abcui.gameui);
   // it presents from the state's consoleOpen fact and renders on the paint
   // beat. A close through its own surfaces (close button, routed ESC)
   // lowers the engine-facing answer through the section's close funnel, so
   // the sync only re-asserts it when the overlay dropped without one.
-  // T14 overlays. Each "presented" latch means "projected at least
-  // once for this opening" - the prepare() clears the fields exactly
-  // once per open, repeated syncs are idempotent shows.
-  if (state.overlays.contains(MenuOverlay::kConnectionError) && ConnError) {
-    if (!ErrorPresented || LastErrorReason != state.errorReason) {
-      ConnError->showFor(state.errorReason.c_str());
-      LastErrorReason = state.errorReason;
-      ErrorPresented = true;
-    }
-    ConnError->show();
-  } else if (ConnError) {
-    ConnError->hide();
-    ErrorPresented = false;
-  }
-  if (state.overlays.contains(MenuOverlay::kPassword) && Password) {
-    if (!PasswordPresented || PasswordReprepare) {
-      Password->prepare(PasswordInvalid);
-      PasswordPresented = true;
-      PasswordReprepare = false;
-    }
-    Password->show();
-  } else if (Password) {
-    Password->hide();
-    PasswordPresented = false;
-  }
-  if (state.overlays.contains(MenuOverlay::kDirectConnect) && DirectConnect) {
-    if (!DirectConnectPresented) {
-      DirectConnect->prepare();
-      DirectConnectPresented = true;
-    }
-    DirectConnect->show();
-  } else if (DirectConnect) {
-    DirectConnect->hide();
-    DirectConnectPresented = false;
-  }
+  // T14 overlays: the connection dialogs present from the bitmask; the
+  // password dialog's re-prepare (a rejected retry clears the field) keys
+  // on the model's per-generation prompt count.
   if (state.overlays.contains(MenuOverlay::kConfirmQuit))
     ConfirmQuit->show();
   else

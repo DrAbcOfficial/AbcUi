@@ -36,6 +36,8 @@ struct Snapshot {
   uint32_t generation = 0;
   // ABCUI_MENU_OVERLAY_* bitmask of the overlays holding the screen.
   int32_t overlays = 0;
+  // The live attempt's kind (ABCUI_MENU_ATTEMPT_*).
+  int32_t attemptKind = ABCUI_MENU_ATTEMPT_NONE;
 };
 
 struct Host {

@@ -103,15 +103,15 @@ implemented rules the transition must keep:
   Sections: core, console, events, vfs, panels, documents, data, ui, commands,
   weapons, players, radar, shell, voice, score, input, menu, votemenu,
   playerlist, commandmenu, menuconfig, social, inventory, creategame,
-  consolepage, serverbrowser. Adding a function
+  consolepage, serverbrowser, connection. Adding a function
   means appending it to the section end (and its initializer in
   `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
   `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
   `ApiPlayerList.cpp` / `ApiCommandMenu.cpp` / `ApiMenuConfig.cpp` /
   `ApiSocial.cpp` / `ApiInventory.cpp` / `ApiCreateGame.cpp` /
-  `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` - a missing initializer is
-  silently a null pointer; the table audit in `ApiTable::get` catches it
-  at boot), and
+  `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` / `ApiConnection.cpp` -
+  a missing initializer is silently a null pointer; the table audit in
+  `ApiTable::get` catches it at boot), and
   appending to snapshot structs means the writer must honor the caller's
   `structSize`.
 - Module packages are zip files at `svencoop/abc/abcui/modules/` (real files,

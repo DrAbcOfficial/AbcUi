@@ -452,6 +452,8 @@ typedef struct AbcUiUiApi {
   // Pseudo-class read (":focus" on a text control: a projection must not
   // clobber what the user is typing).
   int32_t (*elementPseudoClassSet)(AbcUiElement *element, const char *name);
+  // Writes a <progress> element's value (0..max).
+  void (*elementProgressValue)(AbcUiElement *element, float value);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -827,6 +829,8 @@ typedef struct AbcUiMenuState {
   // Overlays holding the screen, ABCUI_MENU_OVERLAY_* bitmask. A page
   // module must not steal keyboard focus onto itself while one is up.
   int32_t overlays;
+  // The live attempt's kind (the loading page's title/status wording).
+  int32_t attemptKind;
 } AbcUiMenuState;
 
 #define ABCUI_MENU_OVERLAY_CONSOLE 0x1
@@ -834,6 +838,11 @@ typedef struct AbcUiMenuState {
 #define ABCUI_MENU_OVERLAY_PASSWORD 0x4
 #define ABCUI_MENU_OVERLAY_CONNECTION_ERROR 0x8
 #define ABCUI_MENU_OVERLAY_DIRECT_CONNECT 0x10
+
+#define ABCUI_MENU_ATTEMPT_NONE 0
+#define ABCUI_MENU_ATTEMPT_CONNECT 1
+#define ABCUI_MENU_ATTEMPT_LOCAL_GAME 2
+#define ABCUI_MENU_ATTEMPT_MAP_LOAD 3
 
 typedef struct AbcUiMenuApi {
   uint32_t structSize;
@@ -1438,6 +1447,47 @@ typedef struct AbcUiServerBrowserApi {
   void (*noteEscapeClaim)(void);
 } AbcUiServerBrowserApi;
 
+// ------------------------------------------------------------ connection ----
+
+// The T14 connection surfaces' data and intents: the loading attempt's
+// stream facts (the framework drains the engine feed into the model), the
+// error overlay's controller-owned reason, and the typed intents (cancel,
+// retry, return, the password submit, the validated direct connect). The
+// presentation latches are page-side.
+typedef struct AbcUiConnectionApi {
+  uint32_t structSize;
+  // The attempt model's facts (a retired generation keeps answering until
+  // the next start; the page renders whatever the model holds).
+  uint32_t (*generation)(void);
+  int32_t (*canceled)(void); // the once-only cancel latch (visual state)
+  int32_t (*address)(char *out, uint32_t outSize);
+  // The engine's streamed status text (empty before the first callback).
+  int32_t (*statusText)(char *out, uint32_t outSize);
+  int32_t (*resourceText)(char *out, uint32_t outSize);
+  int32_t (*secondaryText)(char *out, uint32_t outSize);
+  float (*secondaryFraction)(void);
+  int32_t (*primaryKnown)(void);
+  float (*primaryFraction)(void);
+  // The connection-error overlay's reason (the controller's owned copy;
+  // empty when none).
+  int32_t (*errorReason)(char *out, uint32_t outSize);
+  // The password dialog's lead-line state (the second prompt of a
+  // generation means the previous password was rejected).
+  int32_t (*passwordInvalid)(void);
+  // Intents.
+  int32_t (*cancelLoading)(void); // the model latch; 0 when already latched
+  void (*retryFailed)(void);      // a NEW attempt generation (typed retry)
+  void (*returnHome)(void);       // back to the no-map home
+  // Hands the typed password to the controller (never stored, never
+  // logged); 0 for an empty submission.
+  int32_t (*submitPassword)(const char *password);
+  void (*passwordCancel)(void); // the attempt survives (vanilla parity)
+  // Validates the address with the model's grammar, then dispatches the
+  // attempt; 0 refused with the hint token in `error`.
+  int32_t (*connectAddress)(const char *address, char *error,
+                            uint32_t errorSize);
+} AbcUiConnectionApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -1494,6 +1544,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiCreateGameApi *creategame;
   const AbcUiConsolePageApi *consolepage;
   const AbcUiServerBrowserApi *serverbrowser;
+  const AbcUiConnectionApi *connection;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

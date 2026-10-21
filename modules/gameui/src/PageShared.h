@@ -49,6 +49,10 @@ inline std::string escapeText(const std::string &text) {
 }
 
 // Attribute-value variant (data-* payloads carry server-derived text).
+inline std::string escapeAttribute(const std::string &text) {
+  return escapeAttribute(text.c_str());
+}
+
 inline std::string escapeAttribute(const char *text) {
   const int needed = Api->ui->escapeRmlAttribute(text ? text : "", nullptr, 0);
   if (needed <= 0)

@@ -1,7 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
 #include "modules/gameui/GameUiPages.h"
-#include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
@@ -16,6 +15,7 @@
 #include "services/commandmenu/CommandMenuService.h"
 #include "services/creategame/CreateGameService.h"
 #include "services/console/ConsolePageService.h"
+#include "services/loading/ConnectionService.h"
 #include "services/friends/FriendsService.h"
 #include "services/inventory/InventoryService.h"
 #include "services/serverbrowser/BlacklistFileStore.h"
@@ -216,6 +216,46 @@ GameUiModule::GameUiModule()
     }
   };
   services::console::setPageAccess(consolePageAccess);
+  // The connection pages module reads the drained attempt model and acts
+  // through these typed edges (the controller layer's decisions stay in the
+  // connectionXxx methods). The seams are bare function pointers: they
+  // resolve the module through the registry (the launcher-thunk shape).
+  services::loading::ConnectionAccess connectionAccess;
+  connectionAccess.model = &LoadingModelState;
+  connectionAccess.errorReason = [] {
+    if (GameUiModule *module = currentModule())
+      return module->Controller.state().errorReason;
+    return std::string();
+  };
+  connectionAccess.cancelLoading = [] {
+    if (GameUiModule *module = currentModule())
+      return module->connectionCancelLoading();
+    return false;
+  };
+  connectionAccess.retryFailed = [] {
+    if (GameUiModule *module = currentModule())
+      module->connectionRetryFailed();
+  };
+  connectionAccess.returnHome = [] {
+    if (GameUiModule *module = currentModule())
+      module->connectionReturnHome();
+  };
+  connectionAccess.submitPassword = [](const char *password) {
+    if (GameUiModule *module = currentModule())
+      return module->connectionSubmitPassword(password);
+    return false;
+  };
+  connectionAccess.passwordCancel = [] {
+    if (GameUiModule *module = currentModule())
+      module->connectionPasswordCancel();
+  };
+  connectionAccess.connectAddress = [](const char *address,
+                                       std::string &errorToken) {
+    if (GameUiModule *module = currentModule())
+      return module->connectionConnectAddress(address, errorToken);
+    return false;
+  };
+  services::loading::setConnectionAccess(connectionAccess);
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
@@ -696,17 +736,8 @@ void GameUiModule::onShutdown() {
   Video->shutdown();
   VideoConfirm.reset();
   ConfirmQuit.reset();
-  Loading.reset();
-  ConnError.reset();
-  Password.reset();
-  DirectConnect.reset();
   Context = nullptr;
   MenuPresented = false;
-  LoadingVisible = false;
-  ErrorPresented = false;
-  PasswordPresented = false;
-  PasswordReprepare = false;
-  DirectConnectPresented = false;
   LastStubPage = MenuPage::kMain;
 }
 

@@ -100,4 +100,8 @@ const AbcUiServerBrowserApi *get();
 bool consumeEscapeClaim();
 } // namespace ServerBrowserApi
 
+namespace ConnectionApi {
+const AbcUiConnectionApi *get();
+} // namespace ConnectionApi
+
 } // namespace framework

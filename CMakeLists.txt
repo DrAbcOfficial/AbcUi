@@ -177,6 +177,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiCreateGame.cpp
     src/modsys/ApiConsolePage.cpp
     src/modsys/ApiServerBrowser.cpp
+    src/modsys/ApiConnection.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -307,6 +308,7 @@ add_library(AbcUi MODULE
     src/services/inventory/InventoryService.cpp
     src/services/loading/LoadingModel.cpp
     src/services/loading/AutoRetryGate.cpp
+    src/services/loading/ConnectionService.cpp
     src/services/settings/SettingsModel.cpp
     src/services/settings/UserScrParser.cpp
     src/services/settings/ModelFavorites.cpp
@@ -323,7 +325,6 @@ add_library(AbcUi MODULE
     src/framework/GlyphText.cpp
     src/framework/Projection.cpp
     src/panels/menushared/MenuShellWindows.cpp
-    src/panels/loading/LoadingWindows.cpp
     src/panels/settings/SettingsUi.cpp
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp

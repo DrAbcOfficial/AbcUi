@@ -39,12 +39,6 @@
 #include <vector>
 #include <string>
 namespace panels {
-namespace loading {
-class LoadingPage;
-class ConnectionErrorOverlay;
-class PasswordOverlay;
-class DirectConnectOverlay;
-} // namespace loading
 namespace menushared {
 class MenuStubPage;
 class ConfirmQuitOverlay;
@@ -107,6 +101,13 @@ private:
   bool retryServerAttempt();
   void tickAutoRetry();
   void handleConnectionAction(navigation::ActionKind Kind);
+  // The sdk connection section's intent boundaries (registry-resolved).
+  bool connectionCancelLoading();
+  void connectionRetryFailed();
+  void connectionReturnHome();
+  bool connectionSubmitPassword(const char *password);
+  void connectionPasswordCancel();
+  bool connectionConnectAddress(const char *address, std::string &errorToken);
   void onFriendJoin(uint64_t steamId, const char *address);
 
   void finishDispatch();
@@ -192,22 +193,10 @@ private:
   std::unique_ptr<ServerBrowserFlow> Server;
   std::unique_ptr<SettingsFlow> SettingsView;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
-  std::unique_ptr<panels::loading::LoadingPage> Loading;
-  std::unique_ptr<panels::loading::ConnectionErrorOverlay> ConnError;
-  std::unique_ptr<panels::loading::PasswordOverlay> Password;
-  std::unique_ptr<panels::loading::DirectConnectOverlay> DirectConnect;
   framework::uiinput::Token PageToken;
   KeyCaptureOwner CaptureOwner;
   framework::uiinput::Token CaptureToken;
   bool MenuPresented = false;
-  bool LoadingVisible = false;
-  bool ErrorPresented = false;
-  bool PasswordPresented = false;
-  bool DirectConnectPresented = false;
-  bool PasswordInvalid = false;
-  int PasswordPrompts = 0;
-  bool PasswordReprepare = false;
-  std::string LastErrorReason;
   uint32_t NextPhaseSession = 1;
   MenuPage LastStubPage = MenuPage::kMain;
 };
