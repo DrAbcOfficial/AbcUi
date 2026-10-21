@@ -27,7 +27,9 @@ bool GameUiModule::retryServerAttempt() {
 // the toggle's truth; AutoRetryGate owns the bounded, paced policy and fires
 // only while the connection-error overlay is actually up.
 void GameUiModule::tickAutoRetry() {
-  const bool enabled = Browser && Browser->autoRetryJoin();
+  // The toggle's truth lives in the session (the page module publishes
+  // it through the sdk serverbrowser section).
+  const bool enabled = ServerBrowser.AutoRetryJoin;
   if (!enabled) {
     AutoRetry.reset(); // the player switched it off: the chain ends
     return;

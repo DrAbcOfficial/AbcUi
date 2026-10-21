@@ -588,6 +588,11 @@ int32_t apiElementTextPrefixWidth(AbcUiElement *element, const char *value,
       text, Rml::StringView(value, value + bytesLength));
 }
 
+int32_t apiElementPseudoClassSet(AbcUiElement *element, const char *name) {
+  Rml::Element *target = elementOf(element);
+  return target && name && *name && target->IsPseudoClassSet(name) ? 1 : 0;
+}
+
 int32_t apiDocumentScale(AbcUiDocument *doc, float *scale) {
   Rml::ElementDocument *document = documentOf(doc);
   if (!document || !scale)
@@ -803,6 +808,7 @@ const AbcUiUiApi kUiApi = {
     apiElementTextLayout,
     apiElementTextPrefixWidth,
     apiDocumentScale,
+    apiElementPseudoClassSet,
 };
 
 } // namespace

@@ -24,6 +24,7 @@
 #include "../../services/settings/VideoModeModel.h"
 #include "../../services/settings/VoiceModel.h"
 #include "navigation/MenuController.h"
+#include "../../services/serverbrowser/ServerBrowserService.h"
 #include "../../services/serverbrowser/ServerBrowserSession.h"
 #include "settings/SettingsResources.h"
 #include "commandmenu/CommandMenuFlow.h"
@@ -48,9 +49,6 @@ namespace menushared {
 class MenuStubPage;
 class ConfirmQuitOverlay;
 } // namespace menushared
-namespace serverbrowser {
-class ServerBrowserPage;
-}
 namespace settings {
 class SettingsPage;
 class VideoConfirmPage;
@@ -184,7 +182,6 @@ private:
   services::loading::AutoRetryGate AutoRetry;
   std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
   std::unique_ptr<panels::settings::SettingsPage> Settings;
-  std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;
   std::unique_ptr<SprayMaker> Spray;

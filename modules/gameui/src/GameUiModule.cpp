@@ -96,7 +96,7 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       !api->ui || !api->console || !api->documents || !api->menu ||
       !api->votemenu || !api->playerlist || !api->commandmenu ||
       !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
-      !api->consolepage || !api->input || !api->shell)
+      !api->consolepage || !api->input || !api->shell || !api->serverbrowser)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
@@ -108,7 +108,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       api->social->structSize < sizeof(AbcUiSocialApi) ||
       api->inventory->structSize < sizeof(AbcUiInventoryApi) ||
       api->creategame->structSize < sizeof(AbcUiCreateGameApi) ||
-      api->consolepage->structSize < sizeof(AbcUiConsolePageApi))
+      api->consolepage->structSize < sizeof(AbcUiConsolePageApi) ||
+      api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi))
     return 0;
   Api = api;
 

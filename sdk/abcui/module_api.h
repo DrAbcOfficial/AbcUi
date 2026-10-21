@@ -449,6 +449,9 @@ typedef struct AbcUiUiApi {
                                     uint32_t bytes);
   // The document's density-independent pixel ratio (dp -> context pixels).
   int32_t (*documentScale)(AbcUiDocument *doc, float *scale);
+  // Pseudo-class read (":focus" on a text control: a projection must not
+  // clobber what the user is typing).
+  int32_t (*elementPseudoClassSet)(AbcUiElement *element, const char *name);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -1272,6 +1275,169 @@ typedef struct AbcUiConsolePageApi {
   void (*noteEscapeClaim)(void);
 } AbcUiConsolePageApi;
 
+// -------------------------------------------------------- serverbrowser ----
+
+// The find-servers page's data (the query snapshot through the filter/sort/
+// paging view model) and its intents. The query session, the Steam
+// favorites/history stores and the blacklist (with its save sink) stay in
+// the framework; the page projects the bounded page window and reports the
+// fixed intents. Read-through rules: an entry without a response shows its
+// unknown facts as such (the module formats "?" / "-"), and the selected
+// server's favorite state is Steam's own truth.
+#define ABCUI_SB_TAB_INTERNET 0
+#define ABCUI_SB_TAB_LAN 1
+#define ABCUI_SB_TAB_FAVORITES 2
+#define ABCUI_SB_TAB_HISTORY 3
+#define ABCUI_SB_TAB_FRIENDS 4
+
+#define ABCUI_SB_STATUS_IDLE 0
+#define ABCUI_SB_STATUS_QUERYING 1
+#define ABCUI_SB_STATUS_COMPLETED 2
+#define ABCUI_SB_STATUS_CANCELLED 3
+#define ABCUI_SB_STATUS_FAILED 4
+
+#define ABCUI_SB_FAILURE_UNAVAILABLE 0
+#define ABCUI_SB_FAILURE_REJECTED 1
+#define ABCUI_SB_FAILURE_TIMED_OUT 2
+#define ABCUI_SB_FAILURE_MASTER_NO_RESPONSE 3
+
+#define ABCUI_SB_DETAIL_OFF 0
+#define ABCUI_SB_DETAIL_PLAYERS 1
+
+#define ABCUI_SB_SORT_NAME 0
+#define ABCUI_SB_SORT_MAP 1
+#define ABCUI_SB_SORT_PLAYERS 2
+#define ABCUI_SB_SORT_PING 3
+
+// The bounded page window (one render page of the list).
+#define ABCUI_SB_PAGE_SIZE 64
+
+#define ABCUI_SB_TEXT_MAX 128
+#define ABCUI_SB_MAP_MAX 64
+
+typedef struct AbcUiSbEntry {
+  uint32_t structSize;
+  int32_t responded;
+  int32_t secure;
+  int32_t password;
+  int32_t players;
+  int32_t maxPlayers;
+  int32_t botPlayers;
+  int32_t pingMs; // negative = unknown
+  uint32_t ip;    // host byte order, 0 = unknown
+  int32_t connectionPort;
+  int32_t queryPort;
+  char name[ABCUI_SB_TEXT_MAX];
+  char map[ABCUI_SB_MAP_MAX];
+  char gameDir[ABCUI_SB_MAP_MAX];
+} AbcUiSbEntry;
+
+typedef struct AbcUiSbPlayer {
+  uint32_t structSize;
+  int32_t score;
+  int32_t seconds; // truncated play time (the page formats h:mm:ss)
+  char name[ABCUI_SB_TEXT_MAX];
+} AbcUiSbPlayer;
+
+typedef struct AbcUiSbFilter {
+  uint32_t structSize;
+  int32_t hideEmpty;
+  int32_t hideFull;
+  int32_t secureOnly;
+  int32_t noPassword;
+  int32_t insecureOnly;
+  int32_t hideUnresponsive; // cvar-owned; the framework re-samples per open
+  int32_t maxPing;          // 0 = any
+  char gameDir[ABCUI_SB_MAP_MAX];
+  char name[ABCUI_SB_TEXT_MAX];
+  char map[ABCUI_SB_TEXT_MAX];
+} AbcUiSbFilter;
+
+// One blacklist rule: the blocked server, its address and the moment it was
+// blocked (0 = unknown - never fabricated).
+typedef struct AbcUiSbRule {
+  uint32_t structSize;
+  uint64_t blockedAt;
+  char name[ABCUI_SB_TEXT_MAX];
+  char address[ABCUI_SB_MAP_MAX];
+} AbcUiSbRule;
+
+typedef struct AbcUiServerBrowserApi {
+  uint32_t structSize;
+  // Query snapshot facts.
+  int32_t (*status)(void);  // ABCUI_SB_STATUS_*
+  int32_t (*failure)(void); // ABCUI_SB_FAILURE_* (meaningful when failed)
+  int32_t (*kind)(void);    // ABCUI_SB_TAB_*
+  uint32_t (*generation)(void);
+  int32_t (*serverCount)(void);
+  int32_t (*noServersListed)(void);
+  int32_t (*detailKind)(void);   // ABCUI_SB_DETAIL_*
+  int32_t (*detailStatus)(void); // ABCUI_SB_STATUS_*
+  int32_t (*detailFailed)(void);
+  int32_t (*playerCount)(void);
+  // View-model beat: re-syncs the filter/sort/paging view from the
+  // snapshot; 1 when the view moved (the page rebuilds once).
+  int32_t (*sync)(void);
+  // The bounded page window (the list view; the blacklist view counts
+  // rules through ruleCount instead).
+  int32_t (*rowCount)(void);
+  int32_t (*page)(void);
+  int32_t (*pageCount)(void);
+  int32_t (*sortColumn)(void); // ABCUI_SB_SORT_*
+  int32_t (*sortAscending)(void);
+  int32_t (*blockedOnly)(void);
+  // Copies the entry shown at page row `row`; 0 when the row is empty.
+  int32_t (*entryAt)(int32_t row, AbcUiSbEntry *out);
+  // Copies detail player `index`; 0 out of range.
+  int32_t (*playerAt)(int32_t index, AbcUiSbPlayer *out);
+  int32_t (*selectedRow)(void); // -1 when nothing is selected
+  // The selected server's favorite state (Steam read-through); -1 when
+  // nothing is selected or the address is unrepresentable.
+  int32_t (*selectedFavorite)(void);
+  // The favorites store is reachable (the row menu's favorite entry dims
+  // when it is not).
+  int32_t (*favoritesAvailable)(void);
+  int32_t (*filter)(AbcUiSbFilter *out);
+  // View actions (the page's own state through the model).
+  // Selects a page row; `requestPlayers` issues the single-slot players
+  // query (the left click opens the detail window; a right click stays a
+  // view action). Either way the selection replaces the previous detail
+  // request and the view syncs.
+  void (*selectRow)(int32_t row, int32_t requestPlayers);
+  void (*setSort)(int32_t column, int32_t ascending);
+  int32_t (*pagePrev)(void);
+  int32_t (*pageNext)(void);
+  void (*setFilter)(const AbcUiSbFilter *filter);
+  // Restore the filter defaults (the game identity and the cvar-owned
+  // unresponsive rule stay); 1 = the master pairs moved, re-issue the
+  // query.
+  int32_t (*resetFilters)(void);
+  void (*setBlockedOnly)(int32_t blocked); // cancels the detail slot
+  // Blacklist rules.
+  int32_t (*ruleCount)(void);
+  uint32_t (*ruleRevision)(void);
+  int32_t (*ruleAt)(int32_t index, AbcUiSbRule *out);
+  int32_t (*blockSelected)(int32_t entireIp);   // 1 saved, 0 refused
+  int32_t (*blockAddress)(const char *address); // 1 saved, 0 refused
+  int32_t (*removeRule)(const char *address);   // 1 saved, 0 refused
+  // Intents (the query lifecycle and the Steam mutations, framework-side).
+  void (*setTab)(int32_t kind);
+  void (*refresh)(void);
+  void (*stop)(void);
+  void (*connect)(void);
+  void (*toggleFavorite)(void);
+  void (*applyFilters)(void); // the master pairs moved: re-issue the query
+  void (*closeDetail)(void);  // the window is the only slot consumer
+  // The join auto-retry toggle's truth (the framework's retry path reads
+  // its copy when a join fails).
+  void (*setAutoRetryJoin)(int32_t enabled);
+  // ESC layering: the page claims an ESC press it spent on one of its
+  // subpages (row menu / detail window); the menu owner's routed ESC
+  // reads-and-clears it so one press never leaves the page AND closes a
+  // subpage.
+  void (*noteEscapeClaim)(void);
+} AbcUiServerBrowserApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -1327,6 +1493,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiInventoryApi *inventory;
   const AbcUiCreateGameApi *creategame;
   const AbcUiConsolePageApi *consolepage;
+  const AbcUiServerBrowserApi *serverbrowser;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

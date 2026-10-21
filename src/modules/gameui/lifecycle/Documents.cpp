@@ -50,15 +50,9 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   Settings->setFavorites(&ModelFavorites);
   SettingsView->setPage(Settings.get());
   Settings->setSpraySink([this](const std::string &path) { Spray->run(path); });
-  // T18: the server browser page (was the kServers stub). The query is
-  // the module's T17 member; the list model is the module-owned view;
-  // the favorites store is Steam's authoritative one (T18b).
-  Browser = std::make_unique<panels::serverbrowser::ServerBrowserPage>();
-  Browser->setQuery(&ServerBrowser.Query);
-  Browser->setListModel(&ServerBrowser.List);
-  Browser->setBlacklist(&Blacklist);
-  Browser->setFavorites(services::serverbrowser::steamFavorites());
-  Server->setPage(Browser.get());
+  // The browser page is a module document now (abcui.gameui): the query
+  // session reaches it through the sdk serverbrowser section, the Steam
+  // stores and the blacklist stay here.
   // The create-game page and the inventory window are module documents
   // now (abcui.gameui): the catalog/options reach the page through the sdk
   // creategame section, the item stream feeds the model.
@@ -74,7 +68,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   DirectConnect = std::make_unique<panels::loading::DirectConnectOverlay>();
   wire(SubStub);
   wire(Settings);
-  wire(Browser);
   wire(VideoConfirm);
   wire(ConfirmQuit);
   wire(Loading);
@@ -134,9 +127,8 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      SubStub.get(),      Settings.get(),    Browser.get(),
-      VideoConfirm.get(), ConfirmQuit.get(), Loading.get(),
-      ConnError.get(),    Password.get(),    DirectConnect.get(),
+      SubStub.get(), Settings.get(),  VideoConfirm.get(), ConfirmQuit.get(),
+      Loading.get(), ConnError.get(), Password.get(),     DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {

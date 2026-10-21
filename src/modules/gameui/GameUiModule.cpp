@@ -3,7 +3,6 @@
 #include "modules/gameui/GameUiPages.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
-#include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
 
@@ -690,7 +689,6 @@ void GameUiModule::onShutdown() {
   SettingsView->shutdown();
   Settings.reset();
   Server->shutdown();
-  Browser.reset();
   Create->shutdown();
   Vote->shutdown();
   Command->shutdown();

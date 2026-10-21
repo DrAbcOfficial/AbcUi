@@ -26,10 +26,6 @@ void GameUiModule::pumpBackgroundWork() {
   // browser page's toggle is the enable bit). Runs before the page
   // projections so a fired retry re-projects through the same frame.
   tickAutoRetry();
-  // T18: the browser page's projection beat (sync + bounded re-render on
-  // change). Runs on the presented latch like the other pages.
-  if (MenuPresented && Server->presented() && Browser)
-    Browser->tick();
   // T12: drain the deferred video restart FIRST and independently of
   // menu presentation - the transaction owns it, not the page (see the
   // DeferredVideoRestart note above).

@@ -117,8 +117,8 @@ void GameUiModule::onClaimedKeyDown(int keynum) {
   // unsaved-changes prompt (second press dismisses it = stay) - the
   // controller's plain pop would silently discard the drafts.
   if (Controller.state().overlays.empty() &&
-      Controller.state().pages.topIs(MenuPage::kServers) && Browser &&
-      Browser->closeSubpage())
+      Controller.state().pages.topIs(MenuPage::kServers) &&
+      framework::ServerBrowserApi::consumeEscapeClaim())
     return;
   if (Controller.state().overlays.empty() &&
       Controller.state().pages.topIs(MenuPage::kSettings) && Settings &&

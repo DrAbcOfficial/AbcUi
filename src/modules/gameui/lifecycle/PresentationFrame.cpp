@@ -62,7 +62,6 @@ void GameUiModule::pumpVisibleWork() {
         (framework::module_documents::ownsVisible(owner) ||
          owner == (SubStub ? SubStub->document() : nullptr) ||
          owner == (Settings ? Settings->document() : nullptr) ||
-         owner == (Browser ? Browser->document() : nullptr) ||
          owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
          owner == (VideoConfirm ? VideoConfirm->document() : nullptr) ||
          owner == (Loading ? Loading->document() : nullptr) ||
@@ -96,8 +95,8 @@ void GameUiModule::pumpVisibleWork() {
       // guard leaves a visible module document alone above).
     } else if (state.pages.top() == MenuPage::kSettings && Settings) {
       Settings->refocusDefault();
-    } else if (state.pages.top() == MenuPage::kServers && Browser) {
-      Browser->refocusDefault();
+    } else if (state.pages.top() == MenuPage::kServers) {
+      // The browser page is a module document: it owns its focus.
     } else if (state.pages.top() == MenuPage::kLoading && Loading) {
       Loading->refocusDefault();
     } else if (SubStub) {

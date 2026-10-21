@@ -7,6 +7,5 @@
 
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
-#include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"

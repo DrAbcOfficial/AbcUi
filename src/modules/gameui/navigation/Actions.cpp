@@ -79,7 +79,10 @@ void GameUiModule::onMenuAction(const char *action) {
     startKeyCapture();
     return; // no controller transition - the page state already moved
   } else if (Parsed.Domain == ActionDomain::kServers) {
-    Server->handleAction(Kind);
+    // The browser page is a module document: it handles its own row/sort/
+    // paging/filter state and sends only the fixed intents (tabs, refresh/
+    // stop, connect, favorite) through the sdk serverbrowser section, so
+    // nothing arrives here.
     return;
   } else if (Parsed.Domain == ActionDomain::kVideo) {
     Video->handleAction(Kind);

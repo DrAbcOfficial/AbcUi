@@ -93,4 +93,11 @@ const AbcUiConsolePageApi *get();
 bool consumeEscapeClaim();
 } // namespace ConsolePageApi
 
+namespace ServerBrowserApi {
+const AbcUiServerBrowserApi *get();
+// framework-internal (the menu owner's routed ESC): reads-and-clears the
+// browser page's one-subpage ESC claim.
+bool consumeEscapeClaim();
+} // namespace ServerBrowserApi
+
 } // namespace framework
