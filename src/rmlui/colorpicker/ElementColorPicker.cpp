@@ -48,8 +48,7 @@ Rml::ColourbPremultiplied premultiplied(int red, int green, int blue,
   const auto channel = [alpha](int value) {
     return static_cast<Rml::byte>((std::clamp(value, 0, 255) * alpha) / 255);
   };
-  return Rml::ColourbPremultiplied(channel(red), channel(green),
-                                   channel(blue),
+  return Rml::ColourbPremultiplied(channel(red), channel(green), channel(blue),
                                    static_cast<Rml::byte>(alpha));
 }
 
@@ -175,8 +174,7 @@ void ElementColorPicker::parseValue(const Rml::String &text) {
   setFromRgba(rgba[0], rgba[1], rgba[2], rgba[3]);
 }
 
-void ElementColorPicker::setFromRgba(int red, int green, int blue,
-                                     int alpha) {
+void ElementColorPicker::setFromRgba(int red, int green, int blue, int alpha) {
   float hue = 0.0f, saturation = 0.0f, value = 0.0f;
   abc::math::RGBToHSV(red, green, blue, hue, saturation, value);
   // A grey has no hue of its own and black has no saturation: keep the
@@ -288,8 +286,8 @@ void ElementColorPicker::updateDrag(const Layout &area, float x, float y,
     Value = 1.0f - unit(y - area.SvY, area.SvH);
     break;
   case Region::Alpha:
-    Alpha = static_cast<int>(std::lround(unit(x - area.AlphaX, area.AlphaW) *
-                                         255.0f));
+    Alpha = static_cast<int>(
+        std::lround(unit(x - area.AlphaX, area.AlphaW) * 255.0f));
     break;
   case Region::None:
     return;
@@ -375,8 +373,7 @@ void ElementColorPicker::rebuildGeometry(Rml::Vector2f size) {
   MeshBuilder mesh;
 
   mesh.addGradient(area.HueX, area.HueY, area.HueW, area.HueH,
-                   static_cast<int>(kHueSegments), 1,
-                   [](float s, float) {
+                   static_cast<int>(kHueSegments), 1, [](float s, float) {
                      int red = 0, green = 0, blue = 0;
                      abc::math::HSVToRGB(s * 359.999f, 1.0f, 1.0f, red, green,
                                          blue);
@@ -395,10 +392,9 @@ void ElementColorPicker::rebuildGeometry(Rml::Vector2f size) {
   // Alpha strip: a checkerboard proves the transparency, the gradient
   // over it carries the colour.
   const float cell = std::max(3.0f, 4.0f * ratio);
-  const int columns = std::max(
-      1, static_cast<int>(std::ceil(area.AlphaW / cell)));
-  const int rows = std::max(
-      1, static_cast<int>(std::ceil(area.AlphaH / cell)));
+  const int columns =
+      std::max(1, static_cast<int>(std::ceil(area.AlphaW / cell)));
+  const int rows = std::max(1, static_cast<int>(std::ceil(area.AlphaH / cell)));
   for (int row = 0; row < rows; ++row) {
     for (int column = 0; column < columns; ++column) {
       const float x = area.AlphaX + column * cell;
@@ -413,18 +409,17 @@ void ElementColorPicker::rebuildGeometry(Rml::Vector2f size) {
   }
   int red = 0, green = 0, blue = 0;
   abc::math::HSVToRGB(Hue, Saturation, Value, red, green, blue);
-  mesh.addGradient(area.AlphaX, area.AlphaY, area.AlphaW, area.AlphaH,
-                   static_cast<int>(kAlphaSegments), 1,
-                   [red, green, blue](float s, float) {
-                     const int alpha =
-                         static_cast<int>(std::lround(s * 255.0f));
-                     return premultiplied(red, green, blue, alpha);
-                   });
+  mesh.addGradient(
+      area.AlphaX, area.AlphaY, area.AlphaW, area.AlphaH,
+      static_cast<int>(kAlphaSegments), 1, [red, green, blue](float s, float) {
+        const int alpha = static_cast<int>(std::lround(s * 255.0f));
+        return premultiplied(red, green, blue, alpha);
+      });
 
   // Markers. A black/white sandwich stays readable on every colour.
   const float marker = std::max(2.0f, kMarkerDp * ratio);
-  const float hueX = area.HueX +
-                     std::clamp(Hue / 359.999f, 0.0f, 1.0f) * area.HueW;
+  const float hueX =
+      area.HueX + std::clamp(Hue / 359.999f, 0.0f, 1.0f) * area.HueW;
   mesh.addQuad(hueX - marker, area.HueY, marker * 2.0f, area.HueH,
                premultiplied(0, 0, 0, 255));
   mesh.addQuad(hueX - marker * 0.5f, area.HueY, marker, area.HueH,

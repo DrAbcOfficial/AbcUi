@@ -36,9 +36,9 @@ void ItemStackPanel::onDocumentReady() {
     // The name is server data; the hud.txt lookup is the real gate, but the
     // markup boundary still escapes it (a future lookup change must not
     // turn this into a DOM injection point).
-    const std::string item = std::format(
-        "<img class=\"icon\" src=\"spr://{}\"/>",
-        framework::TextUtil::escapeRmlAttribute(name));
+    const std::string item =
+        std::format("<img class=\"icon\" src=\"spr://{}\"/>",
+                    framework::TextUtil::escapeRmlAttribute(name));
     appendItem("item", item.c_str());
   });
 }

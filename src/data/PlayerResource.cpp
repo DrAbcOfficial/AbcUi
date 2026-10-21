@@ -69,9 +69,9 @@ void PlayerInfo::update() {
   // is also a new occupant (otherwise the previous human's Steam identity and
   // avatar stuck to the bot). The local slot is exempt: its engine column is
   // a placeholder and the real id comes from SteamAPI below.
-  const bool identityChanged =
-      connected && steamId64 != 0 && info->m_nSteamID != steamId64 &&
-      (info->m_nSteamID != 0 || !localSlot);
+  const bool identityChanged = connected && steamId64 != 0 &&
+                               info->m_nSteamID != steamId64 &&
+                               (info->m_nSteamID != 0 || !localSlot);
   if (identityChanged) {
     // The ScoreInfo handler refreshes the identity first and applies its wire
     // values afterwards, so this reset cannot discard the stats from the

@@ -164,7 +164,7 @@ FIBITMAP *toBitmap(const DecodedImage &Image) {
   // this boundary too (it copies Width*Height*4 bytes unconditionally).
   if (Image.Width <= 0 || Image.Height <= 0 ||
       Image.Pixels.size() != static_cast<std::size_t>(Image.Width) *
-                                static_cast<std::size_t>(Image.Height) * 4)
+                                 static_cast<std::size_t>(Image.Height) * 4)
     return nullptr;
   FIBITMAP *Bitmap =
       FreeImage_Allocate(Image.Width, Image.Height, 32, FI_RGBA_RED_MASK,

@@ -22,7 +22,7 @@ class ElementModel : public Rml::Element {
 public:
   RMLUI_RTTI_DeclareWithParent(ElementModel, Rml::Element)
 
-  explicit ElementModel(const Rml::String &Tag);
+      explicit ElementModel(const Rml::String &Tag);
   ~ElementModel() override;
   bool renderPreview();
   unsigned int texture() const;

@@ -383,8 +383,7 @@ void hookVanillaMenuRoute() {
   // Fail fast like locateNativeHudPanelInfo: without this hook the vanilla
   // mission brief/MOTD windows stay reachable and silently shadow the panels.
   if (!ShowVguiMenuHook)
-    abc::SysError(
-        "[AbcUi] Failed to hook TeamFortressViewport_ShowVGUIMenu");
+    abc::SysError("[AbcUi] Failed to hook TeamFortressViewport_ShowVGUIMenu");
 }
 
 void unhookVanillaMenuRoute() {

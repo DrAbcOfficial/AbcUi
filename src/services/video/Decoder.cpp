@@ -217,9 +217,9 @@ struct Decoder::State {
 
   // Converts Frame into the RGBA output buffer. Returns false on error.
   bool convertPending() {
-    if (Sws && (SwsSourceWidth != Frame->width ||
-                SwsSourceHeight != Frame->height ||
-                SwsSourceFormat != Frame->format)) {
+    if (Sws &&
+        (SwsSourceWidth != Frame->width || SwsSourceHeight != Frame->height ||
+         SwsSourceFormat != Frame->format)) {
       Api.sws_freeContext(Sws);
       Sws = nullptr;
     }
