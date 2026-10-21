@@ -99,7 +99,6 @@ private:
   // `slot` addresses the applied-string cache; returns true when written.
   bool setHeaderRml(int slot, const char *id, const std::string &rml);
   void openContextMenu(int clientIndex, const Rml::Vector2f &position);
-  bool overMenu(const Rml::Vector2f &position);
   void closeContextMenu();
   void menuAction(ScoreboardAction action);
   void setVisible(bool visible);

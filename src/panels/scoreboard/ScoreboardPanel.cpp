@@ -917,16 +917,6 @@ void ScoreboardPanel::openContextMenu(int clientIndex,
   menu->SetProperty("display", "block");
 }
 
-bool ScoreboardPanel::overMenu(const Rml::Vector2f &position) {
-  Rml::Element *menu = element("menu");
-  if (!menu || MenuClient == 0)
-    return false;
-  const Rml::Vector2f origin = menu->GetAbsoluteOffset();
-  const Rml::Vector2f size = menu->GetBox().GetSize(Rml::BoxArea::Content);
-  return position.x >= origin.x && position.x <= origin.x + size.x &&
-         position.y >= origin.y && position.y <= origin.y + size.y;
-}
-
 void ScoreboardPanel::closeContextMenu() {
   MenuClient = 0;
   if (Rml::Element *menu = element("menu"))
