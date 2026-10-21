@@ -21,7 +21,6 @@
 #include "../../../data/PlayerResource.h"
 #include "../../../rmlui/texture/SpriteResource.h"
 #include "../../../data/WeaponResource.h"
-#include "../../../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../../../panels/radar/RadarPanel.h"
 #include "../../../panels/scoreboard/ScoreboardPanel.h"
 
@@ -403,8 +402,7 @@ void probeCommand() {
       }
     }
     abc::ConsolePrint(
-        "[AbcUi] probe: itemhighlight tracked=%d markers=%d doc-visible=%d\n",
-        panels::itemhighlight::debugTrackedCount(), markers,
+        "[AbcUi] probe: itemhighlight markers=%d doc-visible=%d\n", markers,
         ih->IsVisible() ? 1 : 0);
   }
   // Radar ground truth (batch D): FBO readiness + plate state + live

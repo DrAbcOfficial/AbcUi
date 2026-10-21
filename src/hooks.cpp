@@ -25,7 +25,6 @@
 #include "modsys/ModuleManager.h"
 #include "modules/HudPanelCatalog.h"
 #include "modules/Module.h"
-#include "panels/itemhighlight/ItemHighlightPanel.h"
 #include "panels/scoreboard/ScoreboardPanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
@@ -195,6 +194,8 @@ static int H_HUD_AddEntity(int type, struct cl_entity_s *ent,
     entity.modelType = ent->model ? static_cast<int32_t>(ent->model->type) : 0;
     entity.messageNum = ent->curstate.messagenum;
     entity.effects = ent->curstate.effects;
+    entity.modelIndex = ent->curstate.modelindex;
+    entity.moveType = ent->baseline.movetype;
     entity.origin[0] = ent->curstate.origin[0];
     entity.origin[1] = ent->curstate.origin[1];
     entity.origin[2] = ent->curstate.origin[2];
@@ -206,8 +207,6 @@ static int H_HUD_AddEntity(int type, struct cl_entity_s *ent,
     entity.model[i] = '\0';
   }
   framework::eventBus().publish(ABCUI_CHANNEL_HUD_ADD_ENTITY, entity);
-  // Built-in consumer until its own module migration lands.
-  panels::itemhighlight::onAddEntity(ent, modelname);
   return gExportfuncs.HUD_AddEntity(type, ent, modelname);
 }
 

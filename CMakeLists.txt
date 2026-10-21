@@ -298,7 +298,6 @@ add_library(AbcUi MODULE
     src/framework/Projection.cpp
     src/panels/chat/ChatMessage.cpp
     src/panels/chat/ChatPanel.cpp
-    src/panels/itemhighlight/ItemHighlightPanel.cpp
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
@@ -352,6 +351,7 @@ add_subdirectory(modules/crosshair)
 add_subdirectory(modules/damage)
 add_subdirectory(modules/health)
 add_subdirectory(modules/hudeffects)
+add_subdirectory(modules/itemhighlight)
 add_subdirectory(modules/killfeed)
 add_subdirectory(modules/motd)
 add_subdirectory(modules/sidetext)

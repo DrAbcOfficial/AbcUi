@@ -7,6 +7,8 @@
 #include <string>
 
 #include <RmlUi/Core/Element.h>
+
+#include <event_api.h>
 #include <RmlUi/Core/ElementDocument.h>
 
 #include "../data/HudState.h"
@@ -210,6 +212,13 @@ float apiScale() {
   return Theme::scale();
 }
 
+AbcUiElement *apiElementChild(AbcUiElement *element, int32_t index) {
+  Rml::Element *target = elementOf(element);
+  if (!target || index < 0 || index >= target->GetNumChildren())
+    return nullptr;
+  return reinterpret_cast<AbcUiElement *>(target->GetChild(index));
+}
+
 void apiCrosshairLayout(const AbcUiCrosshairLayout *layout, float core[5][4],
                         float outline[5][4], int32_t visible[5]) {
   if (!layout)
@@ -335,6 +344,7 @@ const AbcUiUiApi kUiApi = {
     apiDocumentSize,
     apiCrosshairLayout,
     apiScale,
+    apiElementChild,
 };
 
 } // namespace
@@ -425,6 +435,22 @@ void apiPlayerState(AbcUiPlayerState *out) {
     gEngfuncs.GetViewAngles(state.angles);
   }
   std::memcpy(out, &state, bytes);
+}
+
+int32_t apiModelIndex(const char *path) {
+  if (!path || !*path || !gEngfuncs.pEventAPI)
+    return 0;
+  return gEngfuncs.pEventAPI->EV_FindModelIndex(path);
+}
+
+void apiViewHeight(float out[3]) {
+  if (!out)
+    return;
+  out[0] = 0.0f;
+  out[1] = 0.0f;
+  out[2] = 0.0f;
+  if (gEngfuncs.pEventAPI)
+    gEngfuncs.pEventAPI->EV_LocalPlayerViewheight(out);
 }
 
 int32_t apiThirdPerson() {

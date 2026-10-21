@@ -220,6 +220,9 @@ typedef struct AbcUiPopNumEvent {
 #define ABCUI_MODEL_STUDIO 3
 // Entity effects bit that hides the entity from the HUD (EF_NODRAW).
 #define ABCUI_EF_NODRAW 128
+// movetype_t value of an attachment that follows another entity
+// (baseline.movetype; never a highlight target).
+#define ABCUI_MOVETYPE_FOLLOW 12
 
 // hud.addentity - one HUD_AddEntity pass, published before the engine's own
 // handler (models/origins are dispatch-scoped copies; nothing borrows the
@@ -230,8 +233,10 @@ typedef struct AbcUiAddEntityEvent {
   int32_t index;     // entity index
   int32_t modelType; // mod_studio / mod_sprite / ... (engine model_t type)
   int32_t messageNum;
-  int32_t effects; // entity effects bits (ABCUI_EF_NODRAW)
-  char model[96];  // model name as passed to HUD_AddEntity
+  int32_t effects;    // entity effects bits (ABCUI_EF_NODRAW)
+  int32_t modelIndex; // curstate.modelindex (engine model registry index)
+  int32_t moveType;   // baseline.movetype (ABCUI_MOVETYPE_*)
+  char model[96];     // model name as passed to HUD_AddEntity
   float origin[3];
 } AbcUiAddEntityEvent;
 

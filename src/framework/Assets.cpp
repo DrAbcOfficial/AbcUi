@@ -32,10 +32,6 @@ void verifyInstalled() {
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},
       // Batch B (feedback panels).
       // Batch D (render depth panels).
-      {"abc/abcui/hud/rml/itemhighlight.rml", "item highlight document"},
-      {"abc/abcui/hud/ItemHighLightList.txt", "item highlight list"},
-      {"abc/abcui/hud/img/itemhighlight/marker.png",
-       "item highlight marker art"},
       {"abc/abcui/hud/rml/radar.rml", "radar document"},
       {"abc/abcui/hud/img/radar/radar_background.png", "radar plate art"},
       {"abc/abcui/hud/img/radar/radar_mask.png", "radar square mask"},

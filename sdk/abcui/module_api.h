@@ -93,6 +93,12 @@ typedef struct AbcUiConsoleApi {
   // Looks up an already-registered cvar by name (null when absent) - shared
   // settings such as hud_danger_health or the engine's default_fov.
   AbcUiCvarHandle (*findCvar)(const char *name);
+  // Engine key binding for a command name ("use"); "" when unbound. Same
+  // measure-then-copy contract as ui->escapeRml.
+  int32_t (*keyBinding)(const char *name, char *out, uint32_t outSize);
+  // Writes a cvar's float value (the old clamp-style cvar callbacks did this
+  // directly; registerCvarWatch's callback has no cvar argument).
+  void (*setCvarValue)(AbcUiCvarHandle cvar, float value);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -211,6 +217,11 @@ typedef struct AbcUiDataApi {
   // Cached player trace end position (the same traces the HUD projects);
   // 1 on success. `type` is one of ABCUI_TRACE_*.
   int32_t (*traceEndPos)(int32_t type, float out[3]);
+  // Engine model index for a model path (EV_FindModelIndex); 0 when the
+  // engine does not know the model.
+  int32_t (*modelIndex)(const char *path);
+  // Local player view height offset (EV_LocalPlayerViewheight).
+  void (*viewHeight)(float out[3]);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----
@@ -315,6 +326,9 @@ typedef struct AbcUiUiApi {
   // HUD density scale (framework::Theme::scale) - the old GetWide/GetTall
   // proportional scale pixel geometry multiplies by.
   float (*scale)(void);
+  // Nth child element (0-based); null when out of range. Stable for children
+  // appended through elementAppendRml until one is removed.
+  AbcUiElement *(*elementChild)(AbcUiElement *element, int32_t index);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

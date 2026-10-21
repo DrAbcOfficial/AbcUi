@@ -199,6 +199,25 @@ AbcUiCvarHandle apiFindCvar(const char *name) {
              : nullptr;
 }
 
+void apiSetCvarValue(AbcUiCvarHandle cvar, float value) {
+  auto *target = static_cast<cvar_t *>(cvar);
+  if (target)
+    target->value = value;
+}
+
+int32_t apiKeyBinding(const char *name, char *out, uint32_t outSize) {
+  const char *binding =
+      (name && *name) ? gEngfuncs.Key_LookupBinding(name) : nullptr;
+  const std::string text = binding ? binding : "";
+  if (out && outSize > 0) {
+    uint32_t i = 0;
+    for (; i + 1 < outSize && i < text.size(); ++i)
+      out[i] = text[i];
+    out[i] = 0;
+  }
+  return static_cast<int32_t>(text.size());
+}
+
 // Keep one initializer per member, in declaration order: a missing entry is
 // not a compile error (remaining pointers are zero-initialized) and only
 // shows up as a null call at runtime.
