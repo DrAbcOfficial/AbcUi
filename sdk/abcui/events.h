@@ -41,6 +41,19 @@ typedef struct AbcUiBoolEvent {
   int32_t value;
 } AbcUiBoolEvent;
 
+// hud.longjump - longjump module possession changed (physinfo "slj").
+#define ABCUI_CHANNEL_HUD_LONG_JUMP "hud.longjump"
+
+// hud.spectate - the local player entered/left observer mode.
+#define ABCUI_CHANNEL_HUD_SPECTATE "hud.spectate"
+
+// netmsg.health - the server Health value (predicted health rides the hud
+// state snapshot; this is the message-fed value).
+#define ABCUI_CHANNEL_NETMSG_HEALTH "netmsg.health"
+
+// netmsg.battery - the server Battery value (armor).
+#define ABCUI_CHANNEL_NETMSG_BATTERY "netmsg.battery"
+
 // hud.hideToken - raw HideWeapon/HideHUD token, last write wins. Bits:
 #define ABCUI_CHANNEL_HUD_HIDE_TOKEN "hud.hideToken"
 typedef struct AbcUiIntEvent {

@@ -14,7 +14,6 @@
 #include "../panels/dmgtiles/DmgTilesPanel.h"
 #include "../panels/effect/EffectPanel.h"
 #include "../panels/gindicator/GIndicatorPanel.h"
-#include "../panels/health/HealthPanel.h"
 #include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
@@ -33,7 +32,6 @@ namespace {
 
 std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
-  panels.push_back(std::make_unique<panels::HealthPanel>());
   panels.push_back(std::make_unique<panels::AmmoBarPanel>());
   panels.push_back(std::make_unique<panels::AmmoStackPanel>());
   panels.push_back(std::make_unique<panels::ItemStackPanel>());
@@ -68,7 +66,6 @@ void installHudPanels() {
 }
 
 void registerHudPanelCvars() {
-  panels::health::registerCvars();
   commands::registerAll();
   // Batch B.
   panels::crosshair::registerCvars();

@@ -11,6 +11,7 @@
 
 #include "../data/HudState.h"
 #include "../data/NetworkMessages.h"
+#include "../framework/ColorUtil.h"
 #include "../framework/GlyphText.h"
 #include "../framework/HudPanel.h"
 #include "../framework/Localization.h"
@@ -134,6 +135,21 @@ int apiKeyNameForKey(int keynum, char *out, uint32_t outSize) {
   return static_cast<int>(text.size());
 }
 
+void apiFormatColor(const float rgb[3], char *out, uint32_t outSize) {
+  if (!rgb || !out || outSize == 0)
+    return;
+  copyOut(ColorUtil::format(rgb), out, outSize);
+}
+
+void apiDifferColor(const float base[3], const float danger[3], float ratio,
+                    char *out, uint32_t outSize) {
+  if (!base || !danger || !out || outSize == 0)
+    return;
+  float rgb[3];
+  ColorUtil::differColor(base, danger, ratio, rgb);
+  copyOut(ColorUtil::format(rgb), out, outSize);
+}
+
 int apiDocumentVisible(AbcUiDocument *doc) {
   const HudPanel *panel = panelOf(doc);
   return panel && panel->isVisible() ? 1 : 0;
@@ -182,7 +198,7 @@ const AbcUiUiApi kUiApi = {
     apiElementSetProperty, apiElementSetInnerRML,  apiInkMarkup,
     apiTranslate,          apiEscapeRml,           apiKeyNameForKey,
     apiDocumentVisible,    apiElementAppendRml,    apiElementRemove,
-    apiElementInnerRml,
+    apiElementInnerRml,    apiFormatColor,         apiDifferColor,
 };
 
 } // namespace

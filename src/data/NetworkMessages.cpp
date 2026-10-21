@@ -232,6 +232,8 @@ int __MsgFunc_Battery(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_Battery(pszName, iSize, pbuf);
   Battery(armor);
+  const AbcUiIntEvent armEvent{armor};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_BATTERY, armEvent);
   return original_Battery(pszName, iSize, pbuf);
 }
 
@@ -241,6 +243,8 @@ int __MsgFunc_Health(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_Health(pszName, iSize, pbuf);
   Health(health);
+  const AbcUiIntEvent healthEvent{health};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_HEALTH, healthEvent);
   return original_Health(pszName, iSize, pbuf);
 }
 

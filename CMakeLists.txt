@@ -338,7 +338,6 @@ add_library(AbcUi MODULE
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/popnum/PopNumPanel.cpp
     src/panels/radar/RadarPanel.cpp
-    src/panels/health/HealthPanel.cpp
     src/panels/itemstack/ItemStackPanel.cpp
     src/panels/weaponstack/WeaponStackPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
@@ -359,6 +358,7 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
 add_subdirectory(modules/demo)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
+add_subdirectory(modules/health)
 add_subdirectory(modules/killfeed)
 add_subdirectory(modules/motd)
 add_subdirectory(modules/sidetext)

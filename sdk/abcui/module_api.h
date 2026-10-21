@@ -252,6 +252,14 @@ typedef struct AbcUiUiApi {
   // Reads an element's inner RML; same measure-then-copy contract as
   // escapeRml.
   int (*elementInnerRML)(AbcUiElement *element, char *out, uint32_t outSize);
+  // Writes the RCSS "rgb(r, g, b)" text for a 0..255 RGB triple
+  // (ColorUtil::format).
+  void (*formatColor)(const float rgb[3], char *out, uint32_t outSize);
+  // Old ColorUtil::differColor: the hue of `base` pulled toward `danger` by
+  // `ratio` (1 = base, 0 = danger; saturation/value stay base's), written as
+  // RCSS text. Both inputs are 0..255 RGB triples.
+  void (*differColor)(const float base[3], const float danger[3], float ratio,
+                      char *out, uint32_t outSize);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

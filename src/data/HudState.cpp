@@ -90,6 +90,8 @@ void onUpdateClientData(const client_data_s *cdata) {
   if (longJump != LongJump) {
     LongJump = longJump;
     LongJumpChanged(longJump);
+    const AbcUiBoolEvent moduleEvent{longJump ? 1 : 0};
+    framework::eventBus().publish(ABCUI_CHANNEL_HUD_LONG_JUMP, moduleEvent);
   }
 
   // Spectate: local player iuser1 (old SetSpectate check).
@@ -98,6 +100,8 @@ void onUpdateClientData(const client_data_s *cdata) {
   if (spectate != Spectate) {
     Spectate = spectate;
     SpectateChanged(spectate);
+    const AbcUiBoolEvent moduleEvent{spectate ? 1 : 0};
+    framework::eventBus().publish(ABCUI_CHANNEL_HUD_SPECTATE, moduleEvent);
   }
 }
 
