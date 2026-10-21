@@ -123,8 +123,11 @@ static libraries, and must avoid static TLS and delay-loaded imports.
 
 First-party modules in this repository: flashlight, textmenu, vote, motd,
 weaponchoose, killfeed, textfeed, sidetext, health, ammo, hudeffects,
-crosshair, damage, itemhighlight and playerboard; `demo` is the minimal
-example. `tools/pack.py` validates each manifest and writes the archives.
+crosshair, damage, itemhighlight, playerboard, radar, scoreboard and chat;
+`demo` is the minimal example. `tools/pack.py` validates each manifest and
+writes the archives. The remaining built-in UI (the game/menu pages of the
+GameUI composition root) still ships in `AbcUi.dll`; each page moves out in
+its own module commit.
 
 ## Feature overview
 
