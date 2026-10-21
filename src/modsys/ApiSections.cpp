@@ -10,6 +10,7 @@
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementUtilities.h>
+#include <RmlUi/Core/Elements/ElementFormControl.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/EventListener.h>
 
@@ -300,6 +301,34 @@ int32_t apiElementClassSet(AbcUiElement *element, const char *name) {
   return target && name && *name && target->IsClassSet(name) ? 1 : 0;
 }
 
+void apiElementFocus(AbcUiElement *element) {
+  if (Rml::Element *target = elementOf(element))
+    target->Focus();
+}
+
+void apiElementBlur(AbcUiElement *element) {
+  if (Rml::Element *target = elementOf(element))
+    target->Blur();
+}
+
+int32_t apiElementValue(AbcUiElement *element, char *out, uint32_t outSize) {
+  Rml::Element *target = elementOf(element);
+  auto *control =
+      target ? rmlui_dynamic_cast<Rml::ElementFormControl *>(target) : nullptr;
+  const std::string value = control ? control->GetValue().c_str() : "";
+  if (out && outSize > 0)
+    copyOut(value, out, outSize);
+  return static_cast<int32_t>(value.size());
+}
+
+void apiElementSetValue(AbcUiElement *element, const char *text) {
+  Rml::Element *target = elementOf(element);
+  auto *control =
+      target ? rmlui_dynamic_cast<Rml::ElementFormControl *>(target) : nullptr;
+  if (control)
+    control->SetValue(text ? text : "");
+}
+
 const char *apiElementId(AbcUiElement *element) {
   Rml::Element *target = elementOf(element);
   return target ? target->GetId().c_str() : "";
@@ -453,6 +482,10 @@ const AbcUiUiApi kUiApi = {
     apiElementParent,
     apiElementClassSet,
     apiElementId,
+    apiElementFocus,
+    apiElementBlur,
+    apiElementValue,
+    apiElementSetValue,
 };
 
 } // namespace

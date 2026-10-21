@@ -369,7 +369,17 @@ int __MsgFunc_SayText(const char *pszName, int iSize, void *pbuf) {
           const abc::CallbackList<SayTextCallback>::Callback &callback) {
         chain &= callback(data);
       });
-  return chain ? original_SayText(pszName, iSize, pbuf) : 1;
+  // Module-facing mirror: the same veto semantics (nonzero = the module drew
+  // the line, the native handler is skipped).
+  const AbcUiSayTextEvent moduleEvent{
+      data.client,
+      data.text.c_str(),
+      {data.params[0].c_str(), data.params[1].c_str(), data.params[2].c_str(),
+       data.params[3].c_str()}};
+  const bool moduleConsumed = framework::eventBus().publishVeto(
+      ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, moduleEvent);
+  return (chain && !moduleConsumed) ? original_SayText(pszName, iSize, pbuf)
+                                    : 1;
 }
 
 int __MsgFunc_Damage(const char *pszName, int iSize, void *pbuf) {

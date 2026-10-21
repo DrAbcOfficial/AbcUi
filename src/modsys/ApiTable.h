@@ -38,6 +38,10 @@ namespace ScoreApi {
 const AbcUiScoreApi *get();
 } // namespace ScoreApi
 
+namespace InputApi {
+const AbcUiInputApi *get();
+} // namespace InputApi
+
 namespace ShellApi {
 const AbcUiShellApi *get();
 } // namespace ShellApi

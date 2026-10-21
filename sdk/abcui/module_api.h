@@ -364,6 +364,12 @@ typedef struct AbcUiUiApi {
   AbcUiElement *(*elementParent)(AbcUiElement *element);
   int32_t (*elementClassSet)(AbcUiElement *element, const char *name);
   const char *(*elementId)(AbcUiElement *element);
+  // Text entry (the RmlUi form control the module focuses): focus/blur and
+  // the UTF-8 value. elementValue follows the measure-then-copy contract.
+  void (*elementFocus)(AbcUiElement *element);
+  void (*elementBlur)(AbcUiElement *element);
+  int32_t (*elementValue)(AbcUiElement *element, char *out, uint32_t outSize);
+  void (*elementSetValue)(AbcUiElement *element, const char *text);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -565,6 +571,45 @@ typedef struct AbcUiScoreApi {
   int32_t (*intermission)(void);
 } AbcUiScoreApi;
 
+// --------------------------------------------------------------- input ----
+
+// One ownership claim on the UI input router (the framework's single input
+// truth). The callbacks run on the engine main thread while the token is
+// top-of-stack; a null callback behaves like the default (no claim / no
+// block / nothing to do).
+typedef struct AbcUiInputCallbacks {
+  uint32_t structSize;
+  void *userdata;
+  // Swallow the edge from the engine bindings and feed it to the UI.
+  int32_t (*claimsKey)(void *userdata, int32_t down, int32_t keynum);
+  int32_t (*claimsWheel)(void *userdata);
+  // The game must not act on its own input state this frame (a text field
+  // owns the keyboard: the chat line keeps the player standing still).
+  int32_t (*blocksGameplay)(void *userdata);
+  // Exactly once per physical press of a claimed key.
+  void (*onClaimedKeyDown)(void *userdata, int32_t keynum);
+  // A claimed wheel pulse offered before the scroll claim (key capture).
+  int32_t (*onClaimedWheelPulse)(void *userdata, int32_t keynum);
+  // Force-release (focus loss / reset): the token is already stale.
+  void (*onOwnershipLost)(void *userdata);
+} AbcUiInputCallbacks;
+
+typedef uint64_t AbcUiInputToken; // 0 is never issued.
+
+typedef struct AbcUiInputApi {
+  uint32_t structSize;
+  // Takes an interactive-HUD token. Callbacks are copied; the module keeps
+  // the userdata alive until release.
+  AbcUiInputToken (*takeToken)(const AbcUiInputCallbacks *callbacks);
+  void (*releaseToken)(AbcUiInputToken token);
+  int32_t (*tokenHeld)(AbcUiInputToken token);
+  // True while some owner holds UI input (the engine must not act on keys).
+  int32_t (*exclusive)(void);
+  // Active input-method short tag (CN/TW/HK/JP/KR), "" when none. Same
+  // measure-then-copy contract as ui->escapeRml.
+  int32_t (*imeLanguageTag)(char *out, uint32_t outSize);
+} AbcUiInputApi;
+
 // --------------------------------------------------------------- shell ----
 
 // OS-shell seams the interactive panels need (profile links, copy actions).
@@ -634,6 +679,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiShellApi *shell;
   const AbcUiVoiceApi *voice;
   const AbcUiScoreApi *score;
+  const AbcUiInputApi *input;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

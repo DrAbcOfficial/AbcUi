@@ -248,6 +248,18 @@ typedef struct AbcUiAddEntityEvent {
   float origin[3];
 } AbcUiAddEntityEvent;
 
+// textfeed.saytext - one chat line (SayText usermsg). Veto channel: a sink
+// returning nonzero swallows the native CHudSayText draw, which is how
+// exactly one chat log stays on screen (every sink passes = the native
+// handler chains, keeping chat alive while the Rml log is disabled).
+// `text` and the four parameters are dispatch-scoped pointers.
+#define ABCUI_CHANNEL_TEXTFEED_SAY_TEXT "textfeed.saytext"
+typedef struct AbcUiSayTextEvent {
+  int32_t client; // sender entity index
+  const char *text;
+  const char *params[4];
+} AbcUiSayTextEvent;
+
 // textfeed.killfeed - one routed kill line. All three strings are
 // dispatch-scoped pointers; `attacker` is empty for a suicide. `inflictor`
 // is the localized weapon phrase (the old kill feed's bracket text).

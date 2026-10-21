@@ -164,6 +164,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiWeapons.cpp
     src/modsys/ApiPlayers.cpp
     src/modsys/ApiServices.cpp
+    src/modsys/ApiInput.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
     src/render/ScreenMetrics.cpp
