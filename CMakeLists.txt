@@ -329,7 +329,6 @@ add_library(AbcUi MODULE
     src/panels/settings/sections/ColorRows.cpp
     src/panels/settings/sections/BindingRows.cpp
     src/panels/settings/VideoConfirmPage.cpp
-    src/panels/scoreboard/ScoreboardPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )
@@ -356,6 +355,7 @@ add_subdirectory(modules/hudeffects)
 add_subdirectory(modules/itemhighlight)
 add_subdirectory(modules/playerboard)
 add_subdirectory(modules/radar)
+add_subdirectory(modules/scoreboard)
 add_subdirectory(modules/killfeed)
 add_subdirectory(modules/motd)
 add_subdirectory(modules/sidetext)

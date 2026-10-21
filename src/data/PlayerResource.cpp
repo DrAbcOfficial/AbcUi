@@ -131,7 +131,7 @@ void PlayerInfo::update() {
 // survive a periodic refresh.
 //
 // The mirror only carries other players' ping/loss while the local client
-// reports the score state (ScoreboardPanel's usercmd IN_SCORE, the old
+// reports the score state (the score seat's usercmd IN_SCORE, the old
 // Viewport m_bInScore): the server streams pings solely to clients it
 // believes hold the scoreboard, and the values persist in the mirror after
 // the board closes. Verified live on 124.221.167.52:28347 (Sven Co-op

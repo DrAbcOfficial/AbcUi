@@ -51,6 +51,8 @@ void fill(const playerres::PlayerInfo &info, AbcUiPlayerInfo &out) {
   full.steamId64 = info.steamId64;
   copyField(info.name, full.name, sizeof(full.name));
   copyField(info.model, full.model, sizeof(full.model));
+  full.deaths = info.deaths;
+  copyField(info.realName, full.realName, sizeof(full.realName));
   copyOut(full, out);
 }
 
@@ -113,6 +115,26 @@ int32_t apiClientColor(int32_t index, float out[3]) {
   out[1] = std::clamp(tint[1], 0.0f, 1.0f);
   out[2] = std::clamp(tint[2], 0.0f, 1.0f);
   return 1;
+}
+
+int32_t apiTeamNameToken(int32_t team, char *out, uint32_t outSize) {
+  const char *token =
+      teamres::teamNameToken(static_cast<teamres::TeamId>(team));
+  const std::string text = token ? token : "";
+  if (out && outSize > 0) {
+    size_t i = 0;
+    for (; i + 1 < outSize && i < text.size(); ++i)
+      out[i] = text[i];
+    out[i] = 0;
+  }
+  return static_cast<int32_t>(text.size());
+}
+
+void apiRefresh(int32_t full) {
+  if (full)
+    playerres::updateAll();
+  else
+    playerres::refreshPingLossAll();
 }
 
 const AbcUiPlayersApi kPlayersApi = {

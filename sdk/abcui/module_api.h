@@ -222,6 +222,11 @@ typedef struct AbcUiDataApi {
   int32_t (*modelIndex)(const char *path);
   // Local player view height offset (EV_LocalPlayerViewheight).
   void (*viewHeight)(float out[3]);
+  // Scoreboard header data: server name, next map and the time limit the
+  // server announced (0 = none). Strings use the measure-then-copy contract
+  // (out == null to measure); either string may be null when not needed.
+  void (*serverInfo)(char *serverName, uint32_t serverNameSize, char *nextMap,
+                     uint32_t nextMapSize, int32_t *timeEnd);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----
@@ -477,6 +482,8 @@ typedef struct AbcUiPlayerInfo {
   uint64_t steamId64;
   char name[64];
   char model[96];
+  int32_t deaths;
+  char realName[64];
 } AbcUiPlayerInfo;
 
 // Engine entity snapshot (GetEntityByIndex + curstate/baseline fields the HUD
@@ -506,6 +513,12 @@ typedef struct AbcUiPlayersApi {
   // Avatar cache-bust generation for a SteamID64 (append to the avatar://
   // uri as "?gen=N"); 0 when the avatar service has no entry yet.
   int32_t (*avatarGeneration)(uint64_t steamId64);
+  // Localization token for a team id ("Team_Red", ...); same
+  // measure-then-copy contract as ui->escapeRml.
+  int32_t (*teamNameToken)(int32_t team, char *out, uint32_t outSize);
+  // Re-reads the engine mirrors (identity + live ping/loss). `full` = the
+  // heavy identity pass (old per-row update()); 0 = ping/loss only.
+  void (*refresh)(int32_t full);
 } AbcUiPlayersApi;
 
 // ---------------------------------------------------------------- radar ----

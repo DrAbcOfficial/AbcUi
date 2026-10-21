@@ -8,7 +8,6 @@
 #include "../data/TextFeed.h"
 #include "../modsys/ModuleManager.h"
 #include "../panels/chat/ChatPanel.h"
-#include "../panels/scoreboard/ScoreboardPanel.h"
 
 #include <memory>
 #include <utility>
@@ -21,7 +20,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
   // Batch B (feedback panels).
   // Batch C (interaction + big data).
-  panels.push_back(std::make_unique<panels::ScoreboardPanel>());
   // Batch D (render depth).
   // Issue 13: chat last, so its log/input paints over the readouts.
   panels.push_back(std::make_unique<panels::ChatPanel>());
@@ -43,7 +41,6 @@ void registerHudPanelCvars() {
   commands::registerAll();
   // Batch B.
   // Batch C.
-  panels::scoreboard::registerCvars();
   // Batch D.
   // Issue 13: after the client's HUD_Init ran (the hud_saytext_* pointers
   // are the client's own cvars).

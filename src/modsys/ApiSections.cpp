@@ -589,6 +589,17 @@ int32_t apiTraceEndPos(int32_t type, float out[3]) {
   return 1;
 }
 
+void apiServerInfo(char *serverName, uint32_t serverNameSize, char *nextMap,
+                   uint32_t nextMapSize, int32_t *timeEnd) {
+  const hudstate::MessageSnapshot &messages = hudstate::messages();
+  if (serverName && serverNameSize > 0)
+    copyOut(messages.ServerName, serverName, serverNameSize);
+  if (nextMap && nextMapSize > 0)
+    copyOut(messages.NextMap, nextMap, nextMapSize);
+  if (timeEnd)
+    *timeEnd = messages.TimeEnd;
+}
+
 int apiLevelName(char *out, uint32_t outSize) {
   const char *name = gEngfuncs.pfnGetLevelName();
   const std::string text = name ? name : "";
