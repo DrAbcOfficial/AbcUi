@@ -262,9 +262,13 @@ void onAmmoX(int index, int count) {
 }
 
 void onWeaponList(const netmsg::WeaponListData &data) {
+  // The name is server-controlled and is later sent verbatim to the engine
+  // console by WeaponChoosePanel::confirmSelection; it is also the sprite
+  // base name. Accept only a command-safe identifier (AbcEssential applies
+  // the same rule to its signal feed).
   if (data.id <= 0 || data.slot < 0 ||
       data.slot >= static_cast<int>(kMaxWeaponSlot) || data.slotPos < 0 ||
-      !framework::ResourceLimits::resourceName(data.name))
+      !framework::ResourceLimits::identifierName(data.name))
     return;
   if (const auto itor = RegistryState.byId.find(data.id);
       itor != RegistryState.byId.end()) {

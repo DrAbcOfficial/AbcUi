@@ -22,6 +22,7 @@
 #include "../../data/WeaponResource.h"
 #include "../../framework/PanelManager.h"
 #include "../../framework/Commands.h"
+#include "../../framework/ResourceLimits.h"
 
 // Windows.h min/max macros fight std::min/std::max (old repo precedent).
 #undef max
@@ -372,6 +373,11 @@ bool WeaponChoosePanel::confirmSelection() {
     return false;
   if (!(weapon->flags & weaponres::kItemFlagSelectOnEmpty) &&
       !weaponres::hasAmmo(weapon))
+    return false;
+  // The name originates in the server's WeaponList message; WeaponResource
+  // already rejects non-identifiers, and this second gate keeps the console
+  // token safe even if a future producer bypasses that path.
+  if (!framework::ResourceLimits::identifierName(weapon->name))
     return false;
   gEngfuncs.pfnServerCmd(weapon->name.c_str());
   gEngfuncs.pfnPlaySoundByName("common/wpn_select.wav", 1.0f);
