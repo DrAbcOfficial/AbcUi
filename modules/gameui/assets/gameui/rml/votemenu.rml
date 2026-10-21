@@ -1,17 +1,20 @@
 <rml>
 <head>
-	<link type="text/rcss" href="../../rcss/base.rcss"/>
-	<link type="text/rcss" href="../../rcss/theme.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/base.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/theme.rcss"/>
 	<link type="text/rcss" href="../rcss/votemenu.rcss"/>
 </head>
 <!-- Vote creation menu: the AbcUi replacement for ABCEnchance's VGUI
-     CVoteMenuDialog and the original GameUI vote dialog. The module opens it
-     from the pause menu ("Votemenu") or the chained `votemenu` command.
+     CVoteMenuDialog and the original GameUI vote dialog. The framework opens
+     the page from the pause menu ("Votemenu") or the chained `votemenu`
+     command; the abcui.gameui module presents this document while the vote
+     page is on top of the menu stack.
 
      Tabs, list rows, the selected line and the primary button are projected
-     by panels::votemenu::VoteMenuPage from the server map list plus the live
-     player roster. Every server/player-derived string is escaped there. The
-     row/tab choices stay page-local; only Submit/Cancel reach the module. -->
+     by modules/gameui/src/GameUiModule.cpp from the framework's vote model
+     (server map list plus the live player roster). Every server/player-derived
+     string is escaped before it reaches the DOM. The row/tab choices stay
+     page-local; only Submit/Cancel cross the page boundary. -->
 <body id="menuvotemenu">
 	<!-- Same two-column composition as Settings: the vote types form the
 	     left navigation rail, while the filtered list and its feedback live

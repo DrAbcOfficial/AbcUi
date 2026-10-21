@@ -58,4 +58,8 @@ namespace MenuApi {
 const AbcUiMenuApi *get();
 } // namespace MenuApi
 
+namespace VoteMenuApi {
+const AbcUiVoteMenuApi *get();
+} // namespace VoteMenuApi
+
 } // namespace framework

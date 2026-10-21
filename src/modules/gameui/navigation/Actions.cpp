@@ -36,7 +36,8 @@ void GameUiModule::onMenuAction(const char *action) {
     Player->handleAction(Kind);
     return;
   } else if (Parsed.Domain == ActionDomain::kVoteMenu) {
-    Vote->handleAction(Kind);
+    // The vote page is a module document: it handles its own row actions and
+    // sends only menu.back after a submit/cancel, so nothing arrives here.
     return;
   } else if (Kind == ActionKind::kConsole ||
              Kind == ActionKind::kConsoleClose) {

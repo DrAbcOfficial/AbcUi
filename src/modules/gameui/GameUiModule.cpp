@@ -12,7 +12,6 @@
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
-#include "../../panels/votemenu/VoteMenuPage.h"
 
 #include "../../data/WeaponResource.h"
 #include "../../framework/ResourceLimits.h"
@@ -22,6 +21,7 @@
 #include <abc/Paths.h>
 #include <abc/CvarCmd.h>
 #include "services/serverbrowser/BlacklistFileStore.h"
+#include "services/votemenu/VoteMenuService.h"
 #include "framework/Commands.h"
 #include "data/NetworkMessages.h"
 #include "modules/gameui/engine/MenuBindings.h"
@@ -139,6 +139,8 @@ GameUiModule::GameUiModule()
       services::friends::steamFriendsProvider());
   modules::registry().add(this);
   services::nativeUiBridge().setMenuSink(this);
+  // The vote page module reads this model through the sdk votemenu section.
+  services::votemenu::setModel(&Vote->model());
   // Menu section backing: the page modules act through these four entry
   // points and read the settled state from menu.state/menu.paint. Bound once
   // (the module object is process-lifetime).
@@ -151,6 +153,7 @@ GameUiModule::GameUiModule()
   menuHost.quit = [this] { menuQuit(); };
   menuHost.disconnect = [this] { menuDisconnect(); };
   menuHost.toggleConsole = [this] { menuToggleConsole(); };
+  menuHost.quitNow = [this] { menuBackend().quitGame(); };
 }
 
 VideoHost GameUiModule::MakeVideoHost() {
@@ -201,14 +204,8 @@ VoteMenuHost GameUiModule::MakeVoteMenuHost() {
     reconcilePhase();
     return Controller.state().phase == menu::BackendPhase::kInGame;
   };
-  host.pageOnTop = [this] {
-    return Controller.state().pages.topIs(MenuPage::kVoteMenu);
-  };
   host.dispatchOpen = [this] {
     Controller.dispatch(menu::makeOpenPage(MenuPage::kVoteMenu));
-  };
-  host.dispatchBack = [this] {
-    Controller.dispatch(MenuEvent{EventKind::kBack});
   };
   host.finishDispatch = [this] { finishDispatch(); };
   return host;
@@ -618,7 +615,6 @@ void GameUiModule::onShutdown() {
   Player->shutdown();
   PlayerListPage_.reset();
   Vote->shutdown();
-  VoteMenuPage_.reset();
   Command->shutdown();
   CommandMenuPage_.reset();
   Inventory->shutdown();

@@ -133,6 +133,17 @@ void apiDocumentFocus(AbcUiDocument *doc) {
     document->Focus();
 }
 
+int apiElementAttribute(AbcUiElement *element, const char *name, char *out,
+                        uint32_t outSize) {
+  Rml::Element *target = elementOf(element);
+  if (!target || !name || !*name)
+    return 0;
+  const Rml::String value = target->GetAttribute<Rml::String>(name, "");
+  if (out && outSize > 0)
+    copyOut(value, out, outSize);
+  return static_cast<int>(value.size());
+}
+
 void apiDocumentBlur(AbcUiDocument *doc) {
   Rml::ElementDocument *document = documentOf(doc);
   if (!document)
@@ -568,6 +579,7 @@ const AbcUiUiApi kUiApi = {
     apiElementSetSelection,
     apiDocumentFocus,
     apiDocumentBlur,
+    apiElementAttribute,
 };
 
 } // namespace

@@ -5,11 +5,13 @@
 
 #include <RmlUi/Core/Context.h>
 
+#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include "../framework/InteractiveDocument.h"
+#include "../services/menu/MenuHost.h"
 
 namespace framework {
 namespace module_documents {
@@ -33,7 +35,19 @@ public:
       : InteractiveDocument(desc.name, desc.path,
                             (desc.flags & ABCUI_DOC_FLAG_BACKDROP) != 0,
                             desc.zIndex),
-        Desc(desc) {}
+        Desc(desc) {
+    // The built-in emergency page's two affordances: Quit exits through the
+    // menu host's confirmed path (a fault-time exit cannot depend on a page
+    // that may be the broken one); Retry is acted on by pump().
+    setEmergencySink([](const char *intent) {
+      if (intent &&
+          std::strcmp(intent, InteractiveDocument::kEmergencyQuitIntent) == 0) {
+        const services::menu::Host &seam = services::menu::host();
+        if (seam.quitNow)
+          seam.quitNow();
+      }
+    });
+  }
 
   // Show/hide report transitions only: a repeated sync must not re-dispatch
   // page callbacks (InteractiveDocument::show/hide are idempotent for the
@@ -199,6 +213,17 @@ void contextReady(Rml::Context *context) {
     return;
   for (const auto &doc : documents())
     doc->load(context);
+}
+
+void pump() {
+  Rml::Context *context = liveContext();
+  if (!context)
+    return;
+  for (const auto &doc : documents()) {
+    if (!doc->retryRequested())
+      continue;
+    doc->retry(context);
+  }
 }
 
 void shutdown() {

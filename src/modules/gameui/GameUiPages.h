@@ -16,4 +16,3 @@
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
-#include "../../panels/votemenu/VoteMenuPage.h"

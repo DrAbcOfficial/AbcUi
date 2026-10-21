@@ -384,6 +384,11 @@ typedef struct AbcUiUiApi {
   // context's focus history). Safe on panel and page handles.
   void (*documentFocus)(AbcUiDocument *doc);
   void (*documentBlur)(AbcUiDocument *doc);
+  // Attribute reader (delegated rows carry their intent in data-* values).
+  // Same measure-then-copy contract as escapeRml; an absent attribute is
+  // empty (0 bytes).
+  int32_t (*elementAttribute)(AbcUiElement *element, const char *name,
+                              char *out, uint32_t outSize);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -778,6 +783,58 @@ typedef struct AbcUiMenuApi {
   void (*toggleConsole)(void);
 } AbcUiMenuApi;
 
+// ------------------------------------------------------------- votemenu ----
+
+// The vote-creation page's model (ban / kick / kill / map, the filtered list
+// and the validated submit). The model, the roster seam and the server map
+// list stay in the framework; a page module projects it and sends the
+// returned command through console->serverCommand.
+#define ABCUI_VOTE_KIND_BAN 0
+#define ABCUI_VOTE_KIND_KICK 1
+#define ABCUI_VOTE_KIND_KILL 2
+#define ABCUI_VOTE_KIND_MAP 3
+
+#define ABCUI_VOTE_NAME_MAX 64
+#define ABCUI_VOTE_ID_MAX 24
+
+// One visible row. `selected` is computed against the model's selection, so
+// the page never keeps a second selection truth. `steamId` is the decimal
+// SteamID64 (empty when unavailable); map rows carry `name` only.
+typedef struct AbcUiVoteCandidate {
+  uint32_t structSize;
+  int32_t kind; // ABCUI_VOTE_KIND_*
+  int32_t slot; // player slot (players only; 0 for maps)
+  int32_t selected;
+  char name[ABCUI_VOTE_NAME_MAX];     // game name / map token
+  char realName[ABCUI_VOTE_NAME_MAX]; // Steam persona
+  char steamId[ABCUI_VOTE_ID_MAX];
+} AbcUiVoteCandidate;
+
+typedef struct AbcUiVoteMenuApi {
+  uint32_t structSize;
+  // Fresh opening: Ban page, empty filter, no selection, live roster.
+  void (*prepare)(void);
+  // Re-reads the live roster (no-op when the change gate says unchanged).
+  void (*refresh)(void);
+  // Model revision; the page re-projects only when it moved.
+  uint32_t (*revision)(void);
+  int32_t (*kind)(void);
+  void (*setKind)(int32_t kind);
+  void (*setFilter)(const char *filter);
+  int32_t (*visibleCount)(void);
+  // Copies row `index`; 0 when out of range (structSize honored on write).
+  int32_t (*visibleAt)(int32_t index, AbcUiVoteCandidate *out);
+  // Index of the selected visible row, -1 when nothing is selected.
+  int32_t (*selectedIndex)(void);
+  void (*select)(int32_t index);
+  // Revalidates the selection against the live roster and writes the exact
+  // server command (e.g. "voteban <name>"). Returns 1; on refusal returns 0
+  // and writes a localization token (or text) into `error`. Both buffers
+  // follow the measure-then-copy contract; either may be null/0.
+  int32_t (*submit)(char *command, uint32_t commandSize, char *error,
+                    uint32_t errorSize);
+} AbcUiVoteMenuApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -825,6 +882,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiInputApi *input;
   const AbcUiDocumentsApi *documents;
   const AbcUiMenuApi *menu;
+  const AbcUiVoteMenuApi *votemenu;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

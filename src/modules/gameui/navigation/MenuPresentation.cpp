@@ -121,7 +121,6 @@ void GameUiModule::hideAllMenuDocuments() {
   Server->hide();
   Create->hide();
   Player->hide();
-  Vote->hide();
   Command->hide();
   Inventory->hide();
   if (ConfirmQuit)

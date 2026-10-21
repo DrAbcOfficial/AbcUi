@@ -1,0 +1,12 @@
+{
+  "id": "abcui.gameui",
+  "name": "GameUI",
+  "description": "The replacement game-menu pages; the vote creation page ships first and the shell follows.",
+  "author": "DrAbc",
+  "version": "1.0.0",
+  "abi": 1,
+  "minAbcUi": "0.8.0",
+  "entry": "entry/abcui_gameui.dll",
+  "dependencies": [],
+  "conflicts": []
+}

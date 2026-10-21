@@ -45,6 +45,9 @@ struct Host {
   std::function<void()> quit;
   std::function<void()> disconnect;
   std::function<void()> toggleConsole;
+  // Confirmed exit without the dialog (the emergency page's Quit button: a
+  // fault-time exit must not depend on a page that may be the broken one).
+  std::function<void()> quitNow;
 };
 
 Host &host();

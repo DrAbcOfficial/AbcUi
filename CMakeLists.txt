@@ -167,6 +167,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiInput.cpp
     src/modsys/ApiDocuments.cpp
     src/modsys/ApiMenu.cpp
+    src/modsys/ApiVoteMenu.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -273,6 +274,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/navigation/MenuController.cpp
     src/services/GameUiBridge.cpp
     src/services/menu/MenuHost.cpp
+    src/services/votemenu/VoteMenuService.cpp
     src/services/steam/RuntimeAccess.cpp
     src/services/EngineUiBackend.cpp
     src/services/console/ConsoleBuffer.cpp
@@ -315,7 +317,6 @@ add_library(AbcUi MODULE
     src/panels/creategame/CreateGamePage.cpp
     src/panels/creategame/CreateGameOptions.cpp
     src/panels/playerlist/PlayerListPage.cpp
-    src/panels/votemenu/VoteMenuPage.cpp
     src/panels/commandmenu/CommandMenuPage.cpp
     src/panels/inventory/InventoryPage.cpp
     src/panels/settings/SettingsUi.cpp
@@ -366,6 +367,7 @@ add_subdirectory(modules/sidetext)
 add_subdirectory(modules/textfeed)
 add_subdirectory(modules/weaponchoose)
 add_subdirectory(modules/vote)
+add_subdirectory(modules/gameui)
 
 # --- Module packages ---------------------------------------------------------
 # Every modules/<id>/ CMakeLists registers one MODULE target. Collect them so

@@ -298,6 +298,8 @@ void contextReadyAll(Rml::Context *context) {
 }
 
 void frameAll(double frameTime) {
+  // A degraded page's recovery click is honored before the modules project.
+  module_documents::pump();
   for (LoadedModule &module : loaded()) {
     if (module.descriptor.onFrame)
       guarded(module.manifest.id.c_str(), "onFrame",

@@ -33,9 +33,6 @@ void GameUiModule::pumpVisibleWork() {
   // projection; no-op when nothing new arrived).
   if (ConsolePresented && Console)
     Console->render();
-  // Vote page: the server roster can change while the page is up. The page
-  // rebuilds only when the model revision moved.
-  Vote->tick();
   // Per-frame focus guard (T09 step 5): while the menu is presented,
   // the context focus must stay inside one of the menu documents.
   // Foreign holders exist (the Rml debug hook document grabs the focus
@@ -75,7 +72,6 @@ void GameUiModule::pumpVisibleWork() {
          owner == (Browser ? Browser->document() : nullptr) ||
          owner == (CreateGamePage_ ? CreateGamePage_->document() : nullptr) ||
          owner == (PlayerListPage_ ? PlayerListPage_->document() : nullptr) ||
-         owner == (VoteMenuPage_ ? VoteMenuPage_->document() : nullptr) ||
          owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
          owner == (VideoConfirm ? VideoConfirm->document() : nullptr) ||
          owner == (Loading ? Loading->document() : nullptr) ||
@@ -117,8 +113,6 @@ void GameUiModule::pumpVisibleWork() {
       CreateGamePage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kPlayerList && PlayerListPage_) {
       PlayerListPage_->refocusDefault();
-    } else if (state.pages.top() == MenuPage::kVoteMenu && VoteMenuPage_) {
-      VoteMenuPage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kInventory && InventoryPage_) {
       InventoryPage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kLoading && Loading) {

@@ -91,8 +91,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
       [this](const services::playerlist::SelectionKey &Key) {
         Player->selectRow(Key);
       });
-  VoteMenuPage_ = std::make_unique<panels::votemenu::VoteMenuPage>();
-  Vote->setPage(VoteMenuPage_.get());
   CommandMenuPage_ = std::make_unique<panels::commandmenu::CommandMenuPage>();
   Command->setPage(CommandMenuPage_.get());
   CommandMenuPage_->setCommandSink(
@@ -126,7 +124,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   wire(Browser);
   wire(CreateGamePage_);
   wire(PlayerListPage_);
-  wire(VoteMenuPage_);
   wire(CommandMenuPage_);
   wire(VideoConfirm);
   wire(ConfirmQuit);
@@ -187,14 +184,11 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      Shell.get(),           SubStub.get(),
-      Console.get(),         Settings.get(),
-      Browser.get(),         CreateGamePage_.get(),
-      PlayerListPage_.get(), VoteMenuPage_.get(),
-      VideoConfirm.get(),    CommandMenuPage_.get(),
-      InventoryPage_.get(),  ConfirmQuit.get(),
-      Loading.get(),         ConnError.get(),
-      Password.get(),        DirectConnect.get(),
+      Shell.get(),           SubStub.get(),      Console.get(),
+      Settings.get(),        Browser.get(),      CreateGamePage_.get(),
+      PlayerListPage_.get(), VideoConfirm.get(), CommandMenuPage_.get(),
+      InventoryPage_.get(),  ConfirmQuit.get(),  Loading.get(),
+      ConnError.get(),       Password.get(),     DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {
@@ -229,7 +223,6 @@ void GameUiModule::serviceEmergencyPages() {
   Server->setPresented(false);
   Create->setPresented(false);
   Player->setPresented(false);
-  Vote->setPresented(false);
   Command->setPresented(false);
   Inventory->setPresented(false);
   syncMenuPresentation();

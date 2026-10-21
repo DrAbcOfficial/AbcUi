@@ -74,9 +74,6 @@ namespace settings {
 class SettingsPage;
 class VideoConfirmPage;
 } // namespace settings
-namespace votemenu {
-class VoteMenuPage;
-}
 } // namespace panels
 
 namespace gameui {
@@ -215,7 +212,6 @@ private:
       CreateGamePage_; // T19 page
   std::unique_ptr<panels::playerlist::PlayerListPage>
       PlayerListPage_; // T20 page
-  std::unique_ptr<panels::votemenu::VoteMenuPage> VoteMenuPage_;
   std::unique_ptr<panels::commandmenu::CommandMenuPage> CommandMenuPage_;
   std::unique_ptr<panels::inventory::InventoryPage> InventoryPage_;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
