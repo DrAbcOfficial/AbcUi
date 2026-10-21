@@ -241,6 +241,20 @@ typedef struct AbcUiDocument AbcUiDocument; // opaque panel-backed document
 // again per event (the built-ins do the same).
 typedef struct AbcUiElement AbcUiElement;
 
+// One DOM event delivered to a module listener. Mouse coordinates are in
+// context pixels; `button` is -1 for non-mouse events.
+typedef struct AbcUiElementEvent {
+  uint32_t structSize;
+  const char *type; // "click", "mousedown", ...
+  int32_t button;
+  float mouseX;
+  float mouseY;
+} AbcUiElementEvent;
+
+// Returns nonzero to stop propagation (the module handled the event).
+typedef int32_t (*AbcUiElementListener)(void *userdata, AbcUiElement *target,
+                                        const AbcUiElementEvent *event);
+
 typedef struct AbcUiUiApi {
   uint32_t structSize;
   // The document of one of this module's registered panels, by name.
@@ -332,6 +346,19 @@ typedef struct AbcUiUiApi {
   // Subtree-scoped id lookup (document-scoped lookups would collapse
   // repeated per-tile ids into the first tile).
   AbcUiElement *(*elementFind)(AbcUiElement *element, const char *id);
+  // DOM listener on one element; the callback receives the event's TARGET
+  // element (walk up with elementParent to find the owning row). Returns a
+  // non-zero id, 0 on failure; remove it in onShutdown/onUnload.
+  uint64_t (*elementAddListener)(AbcUiElement *element, const char *type,
+                                 AbcUiElementListener listener, void *userdata);
+  void (*elementRemoveListener)(AbcUiElement *element, const char *type,
+                                uint64_t id);
+  // Attribute readers/helpers for the delegated-row pattern.
+  int32_t (*elementAttributeInt)(AbcUiElement *element, const char *name,
+                                 int32_t fallback);
+  AbcUiElement *(*elementParent)(AbcUiElement *element);
+  int32_t (*elementClassSet)(AbcUiElement *element, const char *name);
+  const char *(*elementId)(AbcUiElement *element);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

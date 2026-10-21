@@ -4,10 +4,14 @@
 
 #include <cmath>
 #include <cstring>
+#include <map>
+#include <new>
 #include <string>
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementUtilities.h>
+#include <RmlUi/Core/Event.h>
+#include <RmlUi/Core/EventListener.h>
 
 #include <event_api.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -213,6 +217,94 @@ float apiScale() {
   return Theme::scale();
 }
 
+// Module DOM listeners: RmlUi does not own them, so the registry below owns
+// the objects until the module removes them (documented: remove in
+// onShutdown, while the document is still alive).
+struct ModuleElementListener final : Rml::EventListener {
+  AbcUiElementListener callback = nullptr;
+  void *userdata = nullptr;
+  uint64_t id = 0;
+
+  void ProcessEvent(Rml::Event &event) override {
+    if (!callback)
+      return;
+    AbcUiElementEvent payload{};
+    payload.structSize = sizeof(AbcUiElementEvent);
+    const Rml::String type = event.GetType();
+    payload.type = type.c_str();
+    payload.button = event.GetParameter<int>("button", -1);
+    payload.mouseX = event.GetParameter("mouse_x", 0.0f);
+    payload.mouseY = event.GetParameter("mouse_y", 0.0f);
+    if (callback(userdata,
+                 reinterpret_cast<AbcUiElement *>(event.GetTargetElement()),
+                 &payload))
+      event.StopPropagation();
+  }
+};
+
+std::map<uint64_t, ModuleElementListener *> &elementListeners() {
+  static std::map<uint64_t, ModuleElementListener *> instance;
+  return instance;
+}
+
+uint64_t NextListenerId = 1;
+
+uint64_t apiElementAddListener(AbcUiElement *element, const char *type,
+                               AbcUiElementListener listener, void *userdata) {
+  Rml::Element *target = elementOf(element);
+  if (!target || !type || !*type || !listener)
+    return 0;
+  auto *entry = new (std::nothrow) ModuleElementListener();
+  if (!entry)
+    return 0;
+  const uint64_t id = NextListenerId++;
+  entry->callback = listener;
+  entry->userdata = userdata;
+  entry->id = id;
+  target->AddEventListener(type, entry, false);
+  elementListeners()[id] = entry;
+  return id;
+}
+
+void apiElementRemoveListener(AbcUiElement *element, const char *type,
+                              uint64_t id) {
+  const auto itor = elementListeners().find(id);
+  if (itor == elementListeners().end())
+    return;
+  ModuleElementListener *entry = itor->second;
+  elementListeners().erase(itor);
+  if (Rml::Element *target = elementOf(element)) {
+    if (type && *type)
+      target->RemoveEventListener(type, entry, false);
+  }
+  delete entry;
+}
+
+int32_t apiElementAttributeInt(AbcUiElement *element, const char *name,
+                               int32_t fallback) {
+  Rml::Element *target = elementOf(element);
+  if (!target || !name || !*name)
+    return fallback;
+  const Rml::Variant *value = target->GetAttribute(name);
+  return value ? value->Get<int>() : fallback;
+}
+
+AbcUiElement *apiElementParent(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  return target ? reinterpret_cast<AbcUiElement *>(target->GetParentNode())
+                : nullptr;
+}
+
+int32_t apiElementClassSet(AbcUiElement *element, const char *name) {
+  Rml::Element *target = elementOf(element);
+  return target && name && *name && target->IsClassSet(name) ? 1 : 0;
+}
+
+const char *apiElementId(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  return target ? target->GetId().c_str() : "";
+}
+
 AbcUiElement *apiElementFind(AbcUiElement *element, const char *id) {
   Rml::Element *root = elementOf(element);
   if (!root || !id || !*id)
@@ -355,6 +447,12 @@ const AbcUiUiApi kUiApi = {
     apiScale,
     apiElementChild,
     apiElementFind,
+    apiElementAddListener,
+    apiElementRemoveListener,
+    apiElementAttributeInt,
+    apiElementParent,
+    apiElementClassSet,
+    apiElementId,
 };
 
 } // namespace
