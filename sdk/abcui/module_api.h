@@ -67,6 +67,9 @@ typedef struct AbcUiConsoleApi {
   // Registers a console command. Registering the same name twice updates
   // the handler without touching the engine table.
   void (*registerCommand)(const char *name, AbcUiCommandFn fn, void *userdata);
+  // Runs a client command through the engine command path (menus send
+  // "menuselect 3" and friends through this).
+  void (*engineCommand)(const char *command);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -83,6 +86,11 @@ typedef struct AbcUiEventsApi {
   AbcUiSubscription (*subscribeVeto)(const char *channel, int priority,
                                      AbcUiEventVeto sink, void *userdata);
   void (*unsubscribe)(AbcUiSubscription subscription);
+  // Aggregate veto variant: every sink runs in priority order regardless of
+  // the other sinks' results; the return of any sink consumes the event.
+  AbcUiSubscription (*subscribeVetoAggregate)(const char *channel, int priority,
+                                              AbcUiEventVeto sink,
+                                              void *userdata);
 } AbcUiEventsApi;
 
 // ----------------------------------------------------------------- vfs ----
@@ -178,6 +186,25 @@ typedef struct AbcUiUiApi {
                    uint32_t outSize);
 } AbcUiUiApi;
 
+// ------------------------------------------------------------- commands ----
+
+typedef struct AbcUiCommandsApi {
+  uint32_t structSize;
+  // Subscribes a chained console command from the framework bus
+  // ("slot1".."slot10", "missionbriefing", "invnext", "invprev",
+  // "+/-showscores", "votemenu", "+attack", "+/-commandmenu",
+  // "messagemode", "messagemode2", "inventory", "+/-inventory"). Every sink
+  // runs in priority order regardless of the other sinks' results;
+  // returning nonzero consumes the command (the engine's original path is
+  // skipped).
+  AbcUiSubscription (*subscribeCommand)(const char *name, int priority,
+                                        AbcUiEventVeto sink, void *userdata);
+  // The shared number-menu-open flag: the text-menu module writes it, other
+  // modules and the framework gate on it.
+  int (*textMenuOpen)(void);
+  void (*setTextMenuOpen)(int open);
+} AbcUiCommandsApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -215,6 +242,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiPanelsApi *panels;
   const AbcUiDataApi *data;
   const AbcUiUiApi *ui;
+  const AbcUiCommandsApi *commands;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

@@ -9,6 +9,7 @@
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
 
+#include "../../framework/Commands.h"
 #include "EventBus.h"
 #include "FrameworkVersion.h"
 #include "ModuleManager.h"
@@ -107,7 +108,7 @@ struct ModuleCommand {
   void *userdata = nullptr;
 };
 
-std::map<std::string, ModuleCommand> &commands() {
+std::map<std::string, ModuleCommand> &moduleCommands() {
   static std::map<std::string, ModuleCommand> instance;
   return instance;
 }
@@ -116,7 +117,7 @@ std::map<std::string, ModuleCommand> &commands() {
 // userdata slot, so the thunk recovers the name through argv(0).
 void moduleCommandThunk() {
   const char *name = gEngfuncs.pfnCmd_Argv(0);
-  const auto &table = commands();
+  const auto &table = moduleCommands();
   const auto it = table.find(name ? name : "");
   if (it != table.end() && it->second.fn)
     it->second.fn(it->second.userdata);
@@ -125,16 +126,21 @@ void moduleCommandThunk() {
 void apiRegisterCommand(const char *name, AbcUiCommandFn fn, void *userdata) {
   if (!name || !fn)
     return;
-  auto &table = commands();
+  auto &table = moduleCommands();
   const bool fresh = table.find(name) == table.end();
   table[name] = ModuleCommand{fn, userdata};
   if (fresh)
     abc::ADD_COMMAND(name, &moduleCommandThunk);
 }
 
+void apiEngineCommand(const char *command) {
+  if (command && *command)
+    abc::EngineClientCmd(command);
+}
+
 const AbcUiConsoleApi kConsoleApi = {
     sizeof(AbcUiConsoleApi), apiRegisterCvar,    apiCvarValue,
-    apiCvarString,           apiRegisterCommand,
+    apiCvarString,           apiRegisterCommand, apiEngineCommand,
 };
 
 // -------------------------------------------------------------- events ----
@@ -151,15 +157,20 @@ AbcUiSubscription apiSubscribeVeto(const char *channel, int priority,
       channel, priority, reinterpret_cast<EventVetoFn>(sink), userdata);
 }
 
+AbcUiSubscription apiSubscribeVetoAggregate(const char *channel, int priority,
+                                            AbcUiEventVeto sink,
+                                            void *userdata) {
+  return eventBus().subscribeVetoAggregate(
+      channel, priority, reinterpret_cast<EventVetoFn>(sink), userdata);
+}
+
 void apiUnsubscribe(AbcUiSubscription subscription) {
   eventBus().unsubscribe(subscription);
 }
 
 const AbcUiEventsApi kEventsApi = {
-    sizeof(AbcUiEventsApi),
-    apiSubscribe,
-    apiSubscribeVeto,
-    apiUnsubscribe,
+    sizeof(AbcUiEventsApi),    apiSubscribe, apiSubscribeVeto, apiUnsubscribe,
+    apiSubscribeVetoAggregate,
 };
 
 // ----------------------------------------------------------------- vfs ----
@@ -215,6 +226,34 @@ const AbcUiPanelsApi kPanelsApi = {
     apiRegisterPanel,
 };
 
+// ------------------------------------------------------------- commands ----
+
+AbcUiSubscription apiSubscribeCommand(const char *name, int priority,
+                                      AbcUiEventVeto sink, void *userdata) {
+  if (!name)
+    return 0;
+  // The chained-command bus bridges every hooked command onto an aggregate
+  // veto channel ("command.<name>"); see framework/Commands.cpp.
+  const std::string channel = std::string("command.") + name;
+  return eventBus().subscribeVetoAggregate(
+      channel.c_str(), priority, reinterpret_cast<EventVetoFn>(sink), userdata);
+}
+
+int apiTextMenuOpen() {
+  return ::commands::textMenuOpen() ? 1 : 0;
+}
+
+void apiSetTextMenuOpen(int open) {
+  ::commands::setTextMenuOpen(open != 0);
+}
+
+const AbcUiCommandsApi kCommandsApi = {
+    sizeof(AbcUiCommandsApi),
+    apiSubscribeCommand,
+    apiTextMenuOpen,
+    apiSetTextMenuOpen,
+};
+
 } // namespace
 
 namespace ApiTable {
@@ -230,6 +269,7 @@ const AbcUiModuleApi *get() {
       &kPanelsApi,
       DataApi::get(),
       UiApi::get(),
+      &kCommandsApi,
   };
   return &kApi;
 }

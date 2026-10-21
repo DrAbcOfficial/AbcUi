@@ -67,3 +67,18 @@ typedef struct AbcUiFrameEvent {
 typedef struct AbcUiRedrawEvent {
   double frameTime;
 } AbcUiRedrawEvent;
+
+// netmsg.showmenu - vanilla ShowMenu (number-key menu stream). `text` is a
+// dispatch-scoped pointer: copy before the sink returns. Chunked menus
+// arrive as several events (bits & 0x7f = more chunks pending, bit 7 =
+// ammo-selection menu).
+#define ABCUI_CHANNEL_NETMSG_SHOW_MENU "netmsg.showmenu"
+typedef struct AbcUiShowMenuEvent {
+  int32_t validSlots;
+  int32_t displaySeconds;
+  int32_t bits;
+  const char *text;
+} AbcUiShowMenuEvent;
+
+// netmsg.inithud - the client re-ran its HUD init (payload is null).
+#define ABCUI_CHANNEL_NETMSG_INIT_HUD "netmsg.inithud"

@@ -29,7 +29,6 @@ void verifyInstalled() {
       {"abc/abcui/gameui/scence/audio/opfor.mp3", "menu music"},
       {"abc/abcui/hud/rml/health.rml", "health document"},
       {"abc/abcui/hud/rml/ammobar.rml", "ammo document"},
-      {"abc/abcui/hud/rml/textmenu.rml", "textmenu document"},
       {"abc/abcui/hud/img/healthpanel_background.png", "health panel art"},
       {"abc/abcui/hud/img/ammobar_background.png", "ammo panel art"},
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},

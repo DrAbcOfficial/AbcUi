@@ -26,7 +26,6 @@
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
-#include "../panels/textmenu/TextMenuPanel.h"
 #include "../panels/vote/VotePanel.h"
 #include "../panels/weaponchoose/WeaponChoosePanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
@@ -52,7 +51,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
       "notice-center", "abc/abcui/hud/rml/notice_center.rml",
       textfeed::kPrintCenter));
   panels.push_back(std::make_unique<panels::SideTextPanel>());
-  panels.push_back(std::make_unique<panels::TextMenuPanel>());
   // Batch B (feedback panels).
   panels.push_back(std::make_unique<panels::CrosshairPanel>());
   panels.push_back(std::make_unique<panels::IndicatorPanel>());

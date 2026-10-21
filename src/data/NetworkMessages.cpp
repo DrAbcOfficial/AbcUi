@@ -141,6 +141,7 @@ int __MsgFunc_WeaponList(const char *pszName, int iSize, void *pbuf) {
 
 int __MsgFunc_InitHUD(const char *pszName, int iSize, void *pbuf) {
   InitHud();
+  framework::eventBus().publishRaw(ABCUI_CHANNEL_NETMSG_INIT_HUD, nullptr);
   return original_InitHUD(pszName, iSize, pbuf);
 }
 
@@ -279,6 +280,9 @@ int __MsgFunc_ShowMenu(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_ShowMenu(pszName, iSize, pbuf);
   ShowMenu(validSlots, displaySeconds, bits, text);
+  const AbcUiShowMenuEvent moduleEvent{validSlots, displaySeconds, bits,
+                                       text.c_str()};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, moduleEvent);
   // The old hook unconditionally swallowed ShowMenu so the vanilla VGUI
   // menu never flashes - the TextMenu panel owns this message.
   return 1;

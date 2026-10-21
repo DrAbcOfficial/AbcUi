@@ -32,7 +32,7 @@ EventSubscription EventBus::subscribe(const char *channel,
   Record &record = Records[token];
   record.channel = channel;
   record.priority = priority;
-  record.isVeto = false;
+  record.mode = kModeData;
   record.dataHandle = handle;
   return token;
 }
@@ -52,8 +52,29 @@ EventSubscription EventBus::subscribeVeto(const char *channel,
   Record &record = Records[token];
   record.channel = channel;
   record.priority = priority;
-  record.isVeto = true;
+  record.mode = kModeVeto;
   record.vetoHandle = handle;
+  return token;
+}
+
+EventSubscription EventBus::subscribeVetoAggregate(const char *channel,
+                                                   EventPriority priority,
+                                                   EventVetoFn sink,
+                                                   void *userdata) {
+  if (!channel || !sink)
+    return kNoSubscription;
+  Channel &target = Channels[channel];
+  VetoList &list = target.vetoAggregate[priority];
+  const auto handle = list.append([sink, userdata](const void *payload) {
+    return sink(userdata, payload);
+  });
+  ++target.count;
+  const EventSubscription token = NextToken++;
+  Record &record = Records[token];
+  record.channel = channel;
+  record.priority = priority;
+  record.mode = kModeVetoAggregate;
+  record.vetoAggregateHandle = handle;
   return token;
 }
 
@@ -66,14 +87,25 @@ void EventBus::unsubscribe(EventSubscription subscription) {
   Record &record = it->second;
   if (Channel *target = find(record.channel.c_str())) {
     --target->count;
-    if (record.isVeto) {
+    switch (record.mode) {
+    case kModeVeto: {
       const auto bucket = target->veto.find(record.priority);
       if (bucket != target->veto.end())
         bucket->second.remove(record.vetoHandle);
-    } else {
+      break;
+    }
+    case kModeVetoAggregate: {
+      const auto bucket = target->vetoAggregate.find(record.priority);
+      if (bucket != target->vetoAggregate.end())
+        bucket->second.remove(record.vetoAggregateHandle);
+      break;
+    }
+    default: {
       const auto bucket = target->data.find(record.priority);
       if (bucket != target->data.end())
         bucket->second.remove(record.dataHandle);
+      break;
+    }
     }
   }
   delete record.wrapper;
@@ -118,6 +150,23 @@ bool EventBus::publishVetoRaw(const char *channel, const void *payload) {
             return false;
           }
           return true;
+        });
+  }
+  return vetoed;
+}
+
+bool EventBus::publishVetoAggregateRaw(const char *channel,
+                                       const void *payload) {
+  const Channel *target = find(channel);
+  if (!target)
+    return false;
+  bool vetoed = false;
+  for (const auto &bucket : target->vetoAggregate) {
+    const VetoList &list = bucket.second;
+    list.forEach(
+        [&](const VetoList::Handle &, const VetoList::Callback &callback) {
+          if (callback(payload))
+            vetoed = true;
         });
   }
   return vetoed;

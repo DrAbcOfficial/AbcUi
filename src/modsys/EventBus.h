@@ -54,6 +54,12 @@ public:
   // a true result stops the dispatch at this sink.
   EventSubscription subscribeVeto(const char *channel, EventPriority priority,
                                   EventVetoFn sink, void *userdata);
+  // Aggregate veto variant: every sink runs in priority order regardless of
+  // the other sinks' results (the chained-command semantics - each
+  // subscriber independently decides whether the engine's original runs).
+  EventSubscription subscribeVetoAggregate(const char *channel,
+                                           EventPriority priority,
+                                           EventVetoFn sink, void *userdata);
   // Idempotent; unknown tokens are ignored.
   void unsubscribe(EventSubscription subscription);
 
@@ -83,6 +89,15 @@ public:
   }
   bool publishVetoRaw(const char *channel, const void *payload);
 
+  // Dispatches an aggregate veto channel; true when any sink returned true
+  // (all sinks ran).
+  template <typename T>
+  bool publishVetoAggregate(const char *channel, const T &payload) {
+    return publishVetoAggregateRaw(channel,
+                                   static_cast<const void *>(&payload));
+  }
+  bool publishVetoAggregateRaw(const char *channel, const void *payload);
+
   // Debug/introspection helper: total sinks registered on a channel.
   size_t subscriberCount(const char *channel) const;
 
@@ -110,15 +125,25 @@ private:
     // Descending priority order.
     std::map<EventPriority, DataList, std::greater<EventPriority>> data;
     std::map<EventPriority, VetoList, std::greater<EventPriority>> veto;
+    std::map<EventPriority, VetoList, std::greater<EventPriority>>
+        vetoAggregate;
     size_t count = 0;
+  };
+
+  // Dispatch modes for a subscription (Record::mode).
+  enum {
+    kModeData = 0,
+    kModeVeto = 1,
+    kModeVetoAggregate = 2,
   };
 
   struct Record {
     std::string channel;
     EventPriority priority = 0;
-    bool isVeto = false;
+    int mode = kModeData;
     DataList::Handle dataHandle;
     VetoList::Handle vetoHandle;
+    VetoList::Handle vetoAggregateHandle;
     FnWrapperBase *wrapper = nullptr; // owned; set through ownWrapper
   };
 
