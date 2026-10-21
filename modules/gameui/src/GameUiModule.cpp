@@ -25,12 +25,19 @@ void shutdown();
 void unload();
 } // namespace commandmenupage
 
+namespace menupage {
+void load();
+void shutdown();
+void unload();
+} // namespace menupage
+
 namespace {
 
 void onModuleLoad() {
   votepage::load();
   playerlistpage::load();
   commandmenupage::load();
+  menupage::load();
 }
 
 void onModuleShutdown() {
@@ -38,12 +45,14 @@ void onModuleShutdown() {
   votepage::shutdown();
   playerlistpage::shutdown();
   commandmenupage::shutdown();
+  menupage::shutdown();
 }
 
 void onModuleUnload() {
   votepage::unload();
   playerlistpage::unload();
   commandmenupage::unload();
+  menupage::unload();
   Api = nullptr;
 }
 
@@ -58,14 +67,17 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
   // sources for which calls each one makes).
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->events ||
       !api->ui || !api->console || !api->documents || !api->menu ||
-      !api->votemenu || !api->playerlist || !api->commandmenu)
+      !api->votemenu || !api->playerlist || !api->commandmenu ||
+      !api->menuconfig || !api->social)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
       api->menu->structSize < sizeof(AbcUiMenuApi) ||
       api->votemenu->structSize < sizeof(AbcUiVoteMenuApi) ||
       api->playerlist->structSize < sizeof(AbcUiPlayerListApi) ||
-      api->commandmenu->structSize < sizeof(AbcUiCommandMenuApi))
+      api->commandmenu->structSize < sizeof(AbcUiCommandMenuApi) ||
+      api->menuconfig->structSize < sizeof(AbcUiMenuConfigApi) ||
+      api->social->structSize < sizeof(AbcUiSocialApi))
     return 0;
   Api = api;
 

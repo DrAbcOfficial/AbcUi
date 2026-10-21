@@ -70,4 +70,12 @@ namespace CommandMenuApi {
 const AbcUiCommandMenuApi *get();
 } // namespace CommandMenuApi
 
+namespace MenuConfigApi {
+const AbcUiMenuConfigApi *get();
+} // namespace MenuConfigApi
+
+namespace SocialApi {
+const AbcUiSocialApi *get();
+} // namespace SocialApi
+
 } // namespace framework

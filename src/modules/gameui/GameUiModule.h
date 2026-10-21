@@ -53,9 +53,6 @@ class ConnectionErrorOverlay;
 class PasswordOverlay;
 class DirectConnectOverlay;
 } // namespace loading
-namespace mainmenu {
-class MainMenuPage;
-}
 namespace menushared {
 class MenuStubPage;
 class ConfirmQuitOverlay;
@@ -182,7 +179,6 @@ private:
   bool LastAttemptWasLocal = false;
   const char *PendingLaunchFailure = nullptr;
   services::playerlist::PlayerListModel PlayerList;
-  uint32_t FriendsProjected = 0;
   // Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
   // stalled pump is distinguishable from a stalled refresh.
   double LastFrameTime = 0.0;
@@ -195,7 +191,6 @@ private:
   // existing typed retry path, bounded per failure chain. The page owns the
   // toggle's truth; the gate owns the run policy.
   services::loading::AutoRetryGate AutoRetry;
-  std::unique_ptr<panels::mainmenu::MainMenuPage> Shell;
   std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
   std::unique_ptr<panels::console::ConsolePage> Console;
   std::unique_ptr<panels::settings::SettingsPage> Settings;

@@ -62,10 +62,16 @@ void apiToggleConsole(void) {
     seam.toggleConsole();
 }
 
+void apiDirectConnect(void) {
+  const services::menu::Host &seam = services::menu::host();
+  if (seam.directConnect)
+    seam.directConnect();
+}
+
 const AbcUiMenuApi kMenuApi = {
-    sizeof(AbcUiMenuApi), apiState,  apiOpenPage, apiBack,
-    apiEnsureUp,          apiResume, apiQuit,     apiDisconnect,
-    apiToggleConsole,
+    sizeof(AbcUiMenuApi), apiState,         apiOpenPage, apiBack,
+    apiEnsureUp,          apiResume,        apiQuit,     apiDisconnect,
+    apiToggleConsole,     apiDirectConnect,
 };
 
 } // namespace

@@ -65,7 +65,6 @@ void GameUiModule::pumpVisibleWork() {
     // this guard exists to repair.
     if (owner && owner->IsVisible() &&
         (framework::module_documents::ownsVisible(owner) ||
-         owner == Shell->document() ||
          owner == (SubStub ? SubStub->document() : nullptr) ||
          owner == (Console ? Console->document() : nullptr) ||
          owner == (Settings ? Settings->document() : nullptr) ||
@@ -97,13 +96,11 @@ void GameUiModule::pumpVisibleWork() {
     ConnError->refocusDefault();
   else if (state.overlays.contains(MenuOverlay::kConsole) && Console)
     Console->refocusDefault();
-  else if (!state.pages.empty() && Shell) {
+  else if (!state.pages.empty()) {
     if (state.pages.top() == MenuPage::kMain ||
         state.pages.top() == MenuPage::kPause) {
-      Shell->showSection(state.pages.top() == MenuPage::kMain
-                             ? panels::mainmenu::MainMenuPage::Section::kMain
-                             : panels::mainmenu::MainMenuPage::Section::kPause,
-                         true);
+      // The menu home is a module document: it owns its entry focus (the
+      // guard leaves a visible module document alone above).
     } else if (state.pages.top() == MenuPage::kSettings && Settings) {
       Settings->refocusDefault();
     } else if (state.pages.top() == MenuPage::kServers && Browser) {

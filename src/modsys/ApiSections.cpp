@@ -442,6 +442,11 @@ AbcUiElement *apiElementChild(AbcUiElement *element, int32_t index) {
   return reinterpret_cast<AbcUiElement *>(target->GetChild(index));
 }
 
+int32_t apiElementChildCount(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  return target ? static_cast<int32_t>(target->GetNumChildren()) : 0;
+}
+
 void apiCrosshairLayout(const AbcUiCrosshairLayout *layout, float core[5][4],
                         float outline[5][4], int32_t visible[5]) {
   if (!layout)
@@ -590,6 +595,7 @@ const AbcUiUiApi kUiApi = {
     apiDocumentBlur,
     apiElementAttribute,
     apiEscapeRmlAttribute,
+    apiElementChildCount,
 };
 
 } // namespace

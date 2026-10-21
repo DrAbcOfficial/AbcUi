@@ -7,7 +7,7 @@
 namespace gameui {
 using namespace engine;
 void GameUiModule::projectMenuPresentation() {
-  if (!Shell || !Context)
+  if (!Context)
     return;
   const auto &state = Controller.state();
   if (!Controller.isMenuActive()) {
@@ -16,49 +16,24 @@ void GameUiModule::projectMenuPresentation() {
       Server->releaseQueries();
     return;
   }
-  // GameMenu.res conditions, verified against the shipped GameUI
-  // (CGameMenu::UpdateMenu 0x1000dbe0): "notsingle" rows hide only
-  // in-game+singleplayer - the no-map home always shows them, and the
-  // in-game half of the condition IS the page split (Main vs Pause).
-  // The player list row (OnlyInGame + notsingle) therefore keys on the
-  // maxplayers fact alone on the pause page.
-  const bool multiplayer = menuBackend().maxClientsFact() > 1;
-  Shell->setMultiplayer(multiplayer);
-  // Character card + footer facts: engine cvar values the player edits in
-  // Settings > Multiplayer; the page only projects them.
-  {
-    const auto Facts = engine::playerCardFacts();
-    Shell->setPlayerCard(Facts.PlayerName.c_str(), Facts.ModelPath.c_str(),
-                         Facts.ModelName.c_str());
-    char build[64];
-    _snprintf_s(build, sizeof(build), _TRUNCATE, "Sven Co-op build %u",
-                abc::g_dwEngineBuildnum);
-    Shell->setFooterNote(build);
-  }
+  // The menu home (kMain/kPause) is a module document (abcui.gameui): it
+  // presents its section from menu.state and projects the entry conditions,
+  // the character card, the footer and the friends board from the sdk
+  // menuconfig/social sections.
 
   // Project each implemented page from navigation state. The stub is only
   // the defensive default for a page without a registered projection;
   // it never reopens a native window.
-  bool shellVisible = false;
+  bool shellTop = false;
   bool loadingVisible = false;
   if (!state.pages.empty()) {
-    const bool overlaysHoldFocus = !state.overlays.empty();
     switch (state.pages.top()) {
     case MenuPage::kMain:
-    case MenuPage::kPause: {
-      shellVisible = true;
-      // Show before the section focus pass: Focus() needs the
-      // document visible (first presentation has no frame between).
-      // The per-frame focus guard (onFrame) re-takes the section
-      // default against focus thieves.
-      Shell->show();
-      const auto section =
-          state.pages.top() == MenuPage::kMain
-              ? panels::mainmenu::MainMenuPage::Section::kMain
-              : panels::mainmenu::MainMenuPage::Section::kPause;
-      Shell->showSection(section, !overlaysHoldFocus);
+    case MenuPage::kPause:
+      // The page is a module document: it presents itself from menu.state
+      // once the page is on top (the entry focus defers to overlays).
+      shellTop = true;
       break;
-    }
     case MenuPage::kSettings:
       SettingsView->present();
       break;
@@ -129,10 +104,8 @@ void GameUiModule::projectMenuPresentation() {
     Server->logQueryChange();
   }
   ServerBrowser.Open = serverPageOpen;
-  if (shellVisible)
+  if (shellTop)
     SubStub->hide();
-  else
-    Shell->hide();
   if (!loadingVisible && Loading) {
     Loading->hide();
     LoadingVisible = false;

@@ -32,8 +32,9 @@ void verifyInstalled() {
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},
       // Batch B (feedback panels).
       // Batch D (render depth panels).
-      // T05 interactive documents.
-      {"abc/abcui/gameui/rml/mainmenu.rml", "main menu document"},
+      // T05 interactive documents. The main menu document moved into the
+      // abcui.gameui package; its stylesheet stays until the last menu page
+      // moves (the built-in documents share it).
       {"abc/abcui/gameui/rcss/mainmenu.rcss", "main menu stylesheet"},
       // T10 settings page.
       {"abc/abcui/gameui/rml/settings.rml", "settings document"},
@@ -41,9 +42,8 @@ void verifyInstalled() {
       // T12 video confirmation dialog.
       {"abc/abcui/gameui/rml/videoconfirm.rml", "video confirm document"},
       {"abc/abcui/gameui/rcss/videoconfirm.rcss", "video confirm stylesheet"},
-      // In-game Rml command menu (+commandmenu replacement).
-      {"abc/abcui/gameui/rml/commandmenu.rml", "command menu document"},
-      {"abc/abcui/gameui/rcss/commandmenu.rcss", "command menu stylesheet"},
+      // The command menu (+commandmenu replacement) moved into the
+      // abcui.gameui package with its page.
   };
   for (const auto &check : checks) {
     if (!fileExists(check.Path))

@@ -1,10 +1,11 @@
 # abcui.gameui - the replacement game-menu pages (see sdk/abcui/abi.h for the
-# module build contract). The vote creation, player list and command menu
-# pages are moved out so far; the menu shell and the remaining pages follow
-# in their own commits. PageShared.h carries the borrowed api table and the
+# module build contract). The menu shell, vote creation, player list and
+# command menu pages are moved out so far; the remaining pages follow in
+# their own commits. PageShared.h carries the borrowed api table and the
 # shared text/DOM helpers.
 add_library(abcui_mod_gameui MODULE
             src/GameUiModule.cpp
+            src/MainMenuPage.cpp
             src/VoteMenuPage.cpp
             src/PlayerListPage.cpp
             src/CommandMenuPage.cpp)

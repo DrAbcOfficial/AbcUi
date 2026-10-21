@@ -34,6 +34,8 @@ struct Snapshot {
   int32_t hasLevel = 0;
   int32_t canClose = 0;
   uint32_t generation = 0;
+  // ABCUI_MENU_OVERLAY_* bitmask of the overlays holding the screen.
+  int32_t overlays = 0;
 };
 
 struct Host {
@@ -45,6 +47,8 @@ struct Host {
   std::function<void()> quit;
   std::function<void()> disconnect;
   std::function<void()> toggleConsole;
+  // Toggles the direct-connect overlay (the shell's entry when declared).
+  std::function<void()> directConnect;
   // Confirmed exit without the dialog (the emergency page's Quit button: a
   // fault-time exit must not depend on a page that may be the broken one).
   std::function<void()> quitNow;

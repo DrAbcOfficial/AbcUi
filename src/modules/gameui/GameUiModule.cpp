@@ -5,7 +5,6 @@
 #include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/inventory/InventoryPage.h"
 #include "../../panels/loading/LoadingWindows.h"
-#include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
@@ -19,11 +18,14 @@
 #include <abc/Paths.h>
 #include <abc/CvarCmd.h>
 #include "services/commandmenu/CommandMenuService.h"
+#include "services/friends/FriendsService.h"
 #include "services/serverbrowser/BlacklistFileStore.h"
 #include "services/playerlist/PlayerListService.h"
+#include "services/uiconfig/MenuShellService.h"
 #include "services/votemenu/VoteMenuService.h"
 #include "framework/Commands.h"
 #include "data/NetworkMessages.h"
+#include "modsys/ModuleDocuments.h"
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
@@ -148,6 +150,36 @@ GameUiModule::GameUiModule()
       module->Command->close();
   };
   services::commandmenu::setAccess(commandAccess);
+  // The menu-shell page module reads the definition and its engine facts
+  // through the sdk menuconfig section (the composition root owns the
+  // ConfigRepository and the engine reads).
+  services::uiconfig::MenuShellAccess shellAccess;
+  shellAccess.definition = &UiConfig.menu();
+  shellAccess.multiplayer = [] {
+    return engine::menuBackend().maxClientsFact() > 1;
+  };
+  shellAccess.playerCard = [](std::string &playerName, std::string &modelPath,
+                              std::string &modelLabel) {
+    const engine::PlayerCardFacts facts = engine::playerCardFacts();
+    playerName = facts.PlayerName;
+    modelPath = facts.ModelPath;
+    modelLabel = facts.ModelName;
+  };
+  shellAccess.buildNote = [](std::string &note) {
+    char build[64];
+    _snprintf_s(build, sizeof(build), _TRUNCATE, "Sven Co-op build %u",
+                abc::g_dwEngineBuildnum);
+    note = build;
+  };
+  services::uiconfig::setShellAccess(shellAccess);
+  // The shell's friends board join intent: validated here (the address
+  // grammar is the direct-connect one) before it becomes an attempt.
+  services::friends::JoinSeam joinSeam;
+  joinSeam.join = [](uint64_t steamId, const char *address) {
+    if (GameUiModule *module = currentModule())
+      module->onFriendJoin(steamId, address);
+  };
+  services::friends::setJoinSeam(joinSeam);
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
@@ -170,6 +202,10 @@ GameUiModule::GameUiModule()
   menuHost.quit = [this] { menuQuit(); };
   menuHost.disconnect = [this] { menuDisconnect(); };
   menuHost.toggleConsole = [this] { menuToggleConsole(); };
+  menuHost.directConnect = [this] {
+    handleConnectionAction(navigation::ActionKind::kDirectConnect);
+    finishDispatch();
+  };
   menuHost.quitNow = [this] { menuBackend().quitGame(); };
 }
 
@@ -179,8 +215,9 @@ VideoHost GameUiModule::MakeVideoHost() {
   host.menuPresented = [this] { return MenuPresented; };
   host.syncMenuPresentation = [this] { syncMenuPresentation(); };
   host.hideMenuDocuments = [this] {
-    if (Shell)
-      Shell->hide();
+    // The home pages are module documents now; the console and the settings
+    // page stay built-in until their own migration.
+    framework::module_documents::hideMenu();
     if (SubStub)
       SubStub->hide();
     if (Console)
@@ -197,7 +234,7 @@ VideoHost GameUiModule::MakeVideoHost() {
 
 VoteMenuHost GameUiModule::MakeVoteMenuHost() {
   VoteMenuHost host;
-  host.shellReady = [this] { return Shell && Context; };
+  host.shellReady = [this] { return Context != nullptr; };
   host.ensureMenu = [this] {
     if (!MenuPresented) {
       if (!services::nativeUiBridge().menuUp())
@@ -221,7 +258,7 @@ VoteMenuHost GameUiModule::MakeVoteMenuHost() {
 
 CommandMenuHost GameUiModule::MakeCommandMenuHost() {
   CommandMenuHost host;
-  host.shellReady = [this] { return Shell && Context; };
+  host.shellReady = [this] { return Context != nullptr; };
   host.pageOnTop = [this] {
     return Controller.state().pages.topIs(MenuPage::kCommandMenu);
   };
@@ -268,7 +305,7 @@ CommandMenuHost GameUiModule::MakeCommandMenuHost() {
 
 InventoryHost GameUiModule::MakeInventoryHost() {
   InventoryHost host;
-  host.shellReady = [this] { return Shell && Context; };
+  host.shellReady = [this] { return Context != nullptr; };
   host.ensureMenu = [this](bool &raisedMenu) {
     const bool menuWasUp = MenuPresented;
     if (!menuWasUp) {
@@ -614,7 +651,6 @@ void GameUiModule::onShutdown() {
   PageToken.release();
   // Stop callbacks and release queries before any observing document dies.
   ServerBrowser.closeContext();
-  Shell.reset();
   SubStub.reset();
   Console.reset();
   SettingsView->shutdown();

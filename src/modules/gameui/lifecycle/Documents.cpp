@@ -33,13 +33,9 @@ void GameUiModule::onContextReady(Rml::Context *context) {
     page->setEmergencySink(emergencySink);
     logLoadOutcome(page->load(context));
   };
-  Shell = std::make_unique<panels::mainmenu::MainMenuPage>();
-  Shell->setDefinition(UiConfig.menu());
-  // Friends board join: the page reports the chosen row, the module owns the
-  // validation and the typed connect intent (same path the browser uses).
-  Shell->setFriendJoinSink([this](uint64_t steamId, const char *address) {
-    onFriendJoin(steamId, address);
-  });
+  // The menu home is a module document now (abcui.gameui): the definition
+  // and the join intent reach it through the sdk menuconfig/social
+  // sections.
   SubStub = std::make_unique<panels::menushared::MenuStubPage>(
       "menusub", "abc/abcui/gameui/rml/menustub.rml");
   // T16: the replacement console (was the menuconsole stub).
@@ -104,7 +100,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   ConnError = std::make_unique<panels::loading::ConnectionErrorOverlay>();
   Password = std::make_unique<panels::loading::PasswordOverlay>();
   DirectConnect = std::make_unique<panels::loading::DirectConnectOverlay>();
-  wire(Shell);
   wire(SubStub);
   wire(Console);
   wire(Settings);
@@ -169,11 +164,10 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      Shell.get(),         SubStub.get(),        Console.get(),
-      Settings.get(),      Browser.get(),        CreateGamePage_.get(),
-      VideoConfirm.get(),  InventoryPage_.get(), ConfirmQuit.get(),
-      Loading.get(),       ConnError.get(),      Password.get(),
-      DirectConnect.get(),
+      SubStub.get(),        Console.get(),         Settings.get(),
+      Browser.get(),        CreateGamePage_.get(), VideoConfirm.get(),
+      InventoryPage_.get(), ConfirmQuit.get(),     Loading.get(),
+      ConnError.get(),      Password.get(),        DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {

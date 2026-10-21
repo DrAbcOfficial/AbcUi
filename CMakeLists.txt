@@ -171,6 +171,8 @@ add_library(AbcUi MODULE
     src/modsys/ApiVoteMenu.cpp
     src/modsys/ApiPlayerList.cpp
     src/modsys/ApiCommandMenu.cpp
+    src/modsys/ApiMenuConfig.cpp
+    src/modsys/ApiSocial.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -276,6 +278,8 @@ add_library(AbcUi MODULE
     src/modules/gameui/navigation/MenuController.cpp
     src/services/GameUiBridge.cpp
     src/services/menu/MenuHost.cpp
+    src/services/uiconfig/MenuShellService.cpp
+    src/services/friends/FriendsService.cpp
     src/services/votemenu/VoteMenuService.cpp
     src/services/steam/RuntimeAccess.cpp
     src/services/EngineUiBackend.cpp
@@ -310,7 +314,6 @@ add_library(AbcUi MODULE
     src/framework/Theme.cpp
     src/framework/GlyphText.cpp
     src/framework/Projection.cpp
-    src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
     src/panels/loading/LoadingWindows.cpp
     src/panels/console/ConsolePage.cpp

@@ -125,10 +125,10 @@ static libraries, and must avoid static TLS and delay-loaded imports.
 First-party modules in this repository: flashlight, textmenu, vote, motd,
 weaponchoose, killfeed, textfeed, sidetext, health, ammo, hudeffects,
 crosshair, damage, itemhighlight, playerboard, radar, scoreboard, chat and
-`abcui.gameui` (the replacement game-menu pages: the vote creation, player
-list and command menu pages have moved so far); `demo` is the minimal
-example. `tools/pack.py` validates each manifest and writes the archives.
-The remaining menu pages (the shell, settings, server browser, create game,
+`abcui.gameui` (the replacement game-menu pages: the shell and the vote
+creation, player list and command menu pages have moved so far); `demo` is
+the minimal example. `tools/pack.py` validates each manifest and writes the
+archives. The remaining menu pages (settings, server browser, create game,
 inventory, console and loading) still ship in `AbcUi.dll` and move into the
 same `abcui.gameui` package one page per commit.
 

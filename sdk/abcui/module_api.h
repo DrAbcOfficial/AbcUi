@@ -394,6 +394,8 @@ typedef struct AbcUiUiApi {
   // string placed inside an attribute (data-*, title, value) needs this one,
   // or a quote in the text escapes its attribute and injects markup.
   int32_t (*escapeRmlAttribute)(const char *text, char *out, uint32_t outSize);
+  // Child count for DOM walks (elementChild indexes into it).
+  int32_t (*elementChildCount)(AbcUiElement *element);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -762,7 +764,16 @@ typedef struct AbcUiMenuState {
   int32_t hasLevel;    // a level is loaded
   int32_t canClose;    // closing the menu resumes gameplay
   uint32_t generation; // live connect/local attempt id, 0 = none
+  // Overlays holding the screen, ABCUI_MENU_OVERLAY_* bitmask. A page
+  // module must not steal keyboard focus onto itself while one is up.
+  int32_t overlays;
 } AbcUiMenuState;
+
+#define ABCUI_MENU_OVERLAY_CONSOLE 0x1
+#define ABCUI_MENU_OVERLAY_CONFIRM_QUIT 0x2
+#define ABCUI_MENU_OVERLAY_PASSWORD 0x4
+#define ABCUI_MENU_OVERLAY_CONNECTION_ERROR 0x8
+#define ABCUI_MENU_OVERLAY_DIRECT_CONNECT 0x10
 
 typedef struct AbcUiMenuApi {
   uint32_t structSize;
@@ -786,6 +797,9 @@ typedef struct AbcUiMenuApi {
   void (*quit)(void);
   void (*disconnect)(void);
   void (*toggleConsole)(void);
+  // Toggles the direct-connect overlay (the shell's direct-connect entry,
+  // when a definition declares it).
+  void (*directConnect)(void);
 } AbcUiMenuApi;
 
 // ------------------------------------------------------------- votemenu ----
@@ -952,6 +966,87 @@ typedef struct AbcUiCommandMenuApi {
   void (*dismiss)(void);
 } AbcUiCommandMenuApi;
 
+// ----------------------------------------------------------- menuconfig ----
+
+// The menu shell's definition (uiconfig's mainmenu.json: the title and the
+// main/pause entry lists) plus the engine facts the shell projects. The
+// JSON and its parser stay in the framework; a shell module builds the
+// entry buttons from this section and resolves the fixed action names
+// through the menu section's typed intents.
+#define ABCUI_MENU_SECTION_MAIN 0
+#define ABCUI_MENU_SECTION_PAUSE 1
+
+// The parser bounds ids at 96 bytes and free text at 1024.
+#define ABCUI_MENU_ID_MAX 96
+#define ABCUI_MENU_LABEL_MAX 1024
+
+// The character card: the player name line and the Studio model the live
+// <model> element renders (an empty model path hides the preview box).
+typedef struct AbcUiPlayerCard {
+  uint32_t structSize;
+  char playerName[ABCUI_MENU_LABEL_MAX];
+  char modelPath[ABCUI_MENU_LABEL_MAX];
+  char modelLabel[ABCUI_MENU_LABEL_MAX];
+} AbcUiPlayerCard;
+
+typedef struct AbcUiMenuConfigEntry {
+  uint32_t structSize;
+  char id[ABCUI_MENU_ID_MAX];        // anchors the DOM node
+  char label[ABCUI_MENU_LABEL_MAX];  // "#token" or literal text
+  char action[ABCUI_MENU_ID_MAX];    // fixed intent name (menu section)
+  char condition[ABCUI_MENU_ID_MAX]; // always | multiplayer | singleplayer
+} AbcUiMenuConfigEntry;
+
+typedef struct AbcUiMenuConfigApi {
+  uint32_t structSize;
+  // Definition title token (may be empty; the shell falls back to its own).
+  const char *(*title)(void);
+  int32_t (*entryCount)(int32_t section); // ABCUI_MENU_SECTION_*
+  // Copies entry `index`; 0 out of range (structSize honored on write).
+  int32_t (*entryAt)(int32_t section, int32_t index, AbcUiMenuConfigEntry *out);
+  // Backend facts the shell projects (re-read per presentation beat):
+  // the maxclients split (Main vs Pause rows and their conditions), the
+  // character card (engine cvars; empty strings when unregistered) and
+  // the footer build note.
+  int32_t (*multiplayer)(void);
+  int32_t (*playerCard)(AbcUiPlayerCard *out);
+  int32_t (*buildNote)(char *out, uint32_t outSize);
+} AbcUiMenuConfigApi;
+
+// --------------------------------------------------------------- social ----
+
+// The shell's friends board (services::friends): a bounded, sorted top list
+// with the local player first, refreshed on the model's throttle. `join`
+// hands one row's intent back to the framework, which validates the
+// address with the direct-connect grammar before it becomes an attempt.
+#define ABCUI_SOCIAL_TEXT_MAX 128
+#define ABCUI_SOCIAL_CONNECT_MAX 64
+
+typedef struct AbcUiFriendRow {
+  uint32_t structSize;
+  uint64_t steamId; // 0 = no Steam id (avatar omitted)
+  int32_t self;     // row 0 is the local player (the model's row order)
+  int32_t inGame;
+  // The friend plays a game that is not this one; the board names that
+  // fact instead of printing the other game's AppID.
+  int32_t otherGame;
+  char name[ABCUI_SOCIAL_TEXT_MAX];
+  char game[ABCUI_SOCIAL_TEXT_MAX]; // joinable friends carry this game's name
+  char connect[ABCUI_SOCIAL_CONNECT_MAX]; // "ip:port" when joinable
+} AbcUiFriendRow;
+
+typedef struct AbcUiSocialApi {
+  uint32_t structSize;
+  // The model's generation; the page re-projects only when it moved.
+  uint32_t (*generation)(void);
+  int32_t (*steamAvailable)(void);
+  int32_t (*rowCount)(void);
+  // Copies row `index`; 0 out of range (structSize honored on write).
+  int32_t (*rowAt)(int32_t index, AbcUiFriendRow *out);
+  // One friend row's join intent (validated framework-side).
+  void (*join)(uint64_t steamId, const char *address);
+} AbcUiSocialApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -1002,6 +1097,8 @@ typedef struct AbcUiModuleApi {
   const AbcUiVoteMenuApi *votemenu;
   const AbcUiPlayerListApi *playerlist;
   const AbcUiCommandMenuApi *commandmenu;
+  const AbcUiMenuConfigApi *menuconfig;
+  const AbcUiSocialApi *social;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

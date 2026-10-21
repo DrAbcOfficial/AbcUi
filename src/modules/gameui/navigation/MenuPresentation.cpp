@@ -35,8 +35,10 @@ void GameUiModule::onNativeConsoleClose() {
     syncMenuPresentation();
 }
 
+// The home pages are module documents; Rml assembly (the context) is the
+// readiness fact the takeover and every page flow's shellReady seam use.
 void GameUiModule::presentMenu() {
-  if (!Shell || !Context || MenuPresented)
+  if (!Context || MenuPresented)
     return;
   MenuPresented = true;
   // Real ownership token (T06): the menu claims keys/wheel; mouse
@@ -108,8 +110,6 @@ void GameUiModule::hideAllMenuDocuments() {
   // Module pages join the layer (ABCUI_DOC_FLAG_MENU): the framework hides
   // them with the built-in ones, so no page can outlive a lowered menu.
   framework::module_documents::hideMenu();
-  if (Shell)
-    Shell->hide();
   if (SubStub)
     SubStub->hide();
   if (Console) {
@@ -207,11 +207,21 @@ services::menu::Snapshot GameUiModule::menuSnapshot() const {
   snapshot.hasLevel = services::nativeUiBridge().hasLevel() ? 1 : 0;
   snapshot.canClose = state.canCloseMenu() ? 1 : 0;
   snapshot.generation = state.connectGeneration;
+  if (state.overlays.contains(MenuOverlay::kConsole))
+    snapshot.overlays |= ABCUI_MENU_OVERLAY_CONSOLE;
+  if (state.overlays.contains(MenuOverlay::kConfirmQuit))
+    snapshot.overlays |= ABCUI_MENU_OVERLAY_CONFIRM_QUIT;
+  if (state.overlays.contains(MenuOverlay::kPassword))
+    snapshot.overlays |= ABCUI_MENU_OVERLAY_PASSWORD;
+  if (state.overlays.contains(MenuOverlay::kConnectionError))
+    snapshot.overlays |= ABCUI_MENU_OVERLAY_CONNECTION_ERROR;
+  if (state.overlays.contains(MenuOverlay::kDirectConnect))
+    snapshot.overlays |= ABCUI_MENU_OVERLAY_DIRECT_CONNECT;
   return snapshot;
 }
 
 int32_t GameUiModule::ensureMenuUp() {
-  if (!Shell || !Context)
+  if (!Context)
     return 0; // the command landed before Rml assembly
   if (!MenuPresented) {
     if (!services::nativeUiBridge().menuUp())

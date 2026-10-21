@@ -13,7 +13,7 @@ bool sameState(const Snapshot &a, const Snapshot &b) {
   return a.phase == b.phase && a.page == b.page && a.up == b.up &&
          a.loading == b.loading && a.consoleOpen == b.consoleOpen &&
          a.hasLevel == b.hasLevel && a.canClose == b.canClose &&
-         a.generation == b.generation;
+         a.generation == b.generation && a.overlays == b.overlays;
 }
 
 void toAbi(const Snapshot &snapshot, AbcUiMenuState &out) {
@@ -26,6 +26,7 @@ void toAbi(const Snapshot &snapshot, AbcUiMenuState &out) {
   out.hasLevel = snapshot.hasLevel;
   out.canClose = snapshot.canClose;
   out.generation = snapshot.generation;
+  out.overlays = snapshot.overlays;
 }
 
 } // namespace
