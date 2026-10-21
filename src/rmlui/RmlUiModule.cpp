@@ -137,6 +137,10 @@ public:
   void OnBeginRenderingPost(int *, int *, int *, int *) override {}
   void OnFreeFrameBuffers() override {
     modelpreview::invalidateAll();
+    // The menu backdrop owns three engine FBOs (down/ping/pong); they die
+    // with the renderer's targets in the same event, so drop their handles
+    // too or render() keeps binding released attachments.
+    backdrop::invalidateTargets();
   }
   void OnGenerateFrameBuffers() override {}
   void OnPreRenderView() override {}
