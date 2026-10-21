@@ -155,6 +155,7 @@ add_library(AbcUi MODULE
     src/modsys/PackageFile.cpp
     src/modsys/PackageImage.cpp
     src/modsys/ModuleVfs.cpp
+    src/modsys/MemoryDll.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
