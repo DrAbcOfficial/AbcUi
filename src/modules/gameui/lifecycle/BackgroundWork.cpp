@@ -30,15 +30,6 @@ void GameUiModule::pumpBackgroundWork() {
   // change). Runs on the presented latch like the other pages.
   if (MenuPresented && Server->presented() && Browser)
     Browser->tick();
-  // T20: the player list's frame beat. The roster and every muted state
-  // are read through the backend per frame while the page is up (the
-  // shipped dialog refreshed on a timer; a read-through keeps the
-  // displayed mute labels honest with zero cache). render() no-ops when
-  // the model's revision did not move.
-  if (MenuPresented && Player->presented() && PlayerListPage_) {
-    if (PlayerList.refresh())
-      PlayerListPage_->render();
-  }
   // T12: drain the deferred video restart FIRST and independently of
   // menu presentation - the transaction owns it, not the page (see the
   // DeferredVideoRestart note above).

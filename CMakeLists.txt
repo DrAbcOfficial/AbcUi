@@ -168,6 +168,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiDocuments.cpp
     src/modsys/ApiMenu.cpp
     src/modsys/ApiVoteMenu.cpp
+    src/modsys/ApiPlayerList.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -252,7 +253,6 @@ add_library(AbcUi MODULE
     src/modules/gameui/settings/VideoFlow.cpp
     src/modules/gameui/serverbrowser/ServerBrowserFlow.cpp
     src/modules/gameui/creategame/CreateGameFlow.cpp
-    src/modules/gameui/playerlist/PlayerListFlow.cpp
     src/modules/gameui/votemenu/VoteMenuFlow.cpp
     src/modules/gameui/commandmenu/CommandMenuFlow.cpp
     src/modules/gameui/inventory/InventoryFlow.cpp
@@ -288,6 +288,7 @@ add_library(AbcUi MODULE
     src/services/creategame/ServerOptions.cpp
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
+    src/services/playerlist/PlayerListService.cpp
     src/services/votemenu/VoteMenuModel.cpp
     src/services/inventory/InventoryModel.cpp
     src/services/loading/LoadingModel.cpp
@@ -316,7 +317,6 @@ add_library(AbcUi MODULE
     src/panels/serverbrowser/ServerBrowserControls.cpp
     src/panels/creategame/CreateGamePage.cpp
     src/panels/creategame/CreateGameOptions.cpp
-    src/panels/playerlist/PlayerListPage.cpp
     src/panels/commandmenu/CommandMenuPage.cpp
     src/panels/inventory/InventoryPage.cpp
     src/panels/settings/SettingsUi.cpp

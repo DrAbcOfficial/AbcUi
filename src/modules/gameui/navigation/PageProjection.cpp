@@ -73,10 +73,8 @@ void GameUiModule::projectMenuPresentation() {
       Create->present();
       break;
     case MenuPage::kPlayerList:
-      // T20: the real player list replaced the T09 stub. Fresh
-      // roster+mute read on every sync (read-through; the frame beat
-      // re-reads while presented).
-      Player->present();
+      // The page is a module document (abcui.gameui): it presents itself
+      // from menu.state once the page is on top.
       break;
     case MenuPage::kVoteMenu:
       // The page is a module document (abcui.gameui): it presents itself
@@ -149,8 +147,6 @@ void GameUiModule::projectMenuPresentation() {
     Server->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame)
     Create->hide();
-  if (state.pages.empty() || state.pages.top() != MenuPage::kPlayerList)
-    Player->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kCommandMenu)
     Command->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kInventory)

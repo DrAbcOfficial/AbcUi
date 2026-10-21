@@ -62,4 +62,8 @@ namespace VoteMenuApi {
 const AbcUiVoteMenuApi *get();
 } // namespace VoteMenuApi
 
+namespace PlayerListApi {
+const AbcUiPlayerListApi *get();
+} // namespace PlayerListApi
+
 } // namespace framework

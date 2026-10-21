@@ -71,7 +71,6 @@ void GameUiModule::pumpVisibleWork() {
          owner == (Settings ? Settings->document() : nullptr) ||
          owner == (Browser ? Browser->document() : nullptr) ||
          owner == (CreateGamePage_ ? CreateGamePage_->document() : nullptr) ||
-         owner == (PlayerListPage_ ? PlayerListPage_->document() : nullptr) ||
          owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
          owner == (VideoConfirm ? VideoConfirm->document() : nullptr) ||
          owner == (Loading ? Loading->document() : nullptr) ||
@@ -111,8 +110,6 @@ void GameUiModule::pumpVisibleWork() {
       Browser->refocusDefault();
     } else if (state.pages.top() == MenuPage::kCreateGame && CreateGamePage_) {
       CreateGamePage_->refocusDefault();
-    } else if (state.pages.top() == MenuPage::kPlayerList && PlayerListPage_) {
-      PlayerListPage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kInventory && InventoryPage_) {
       InventoryPage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kLoading && Loading) {

@@ -389,6 +389,11 @@ typedef struct AbcUiUiApi {
   // empty (0 bytes).
   int32_t (*elementAttribute)(AbcUiElement *element, const char *name,
                               char *out, uint32_t outSize);
+  // Attribute-value variant of escapeRml: additionally escapes the quote
+  // characters that would close a double-quoted attribute. A server-derived
+  // string placed inside an attribute (data-*, title, value) needs this one,
+  // or a quote in the text escapes its attribute and injects markup.
+  int32_t (*escapeRmlAttribute)(const char *text, char *out, uint32_t outSize);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -835,6 +840,64 @@ typedef struct AbcUiVoteMenuApi {
                     uint32_t errorSize);
 } AbcUiVoteMenuApi;
 
+// ----------------------------------------------------------- playerlist ----
+
+// The player-list page's model (roster snapshot, identity-keyed selection
+// and the read-back mute toggle). The roster seam and the voice mute
+// backend stay in the framework; a page module projects the snapshot and
+// reports the select/toggle/back intents. Selection is keyed by the row's
+// identity (SteamID64 when present, slot+name otherwise), so "same slot,
+// new player" invalidates the selection instead of retargeting the action.
+#define ABCUI_PL_FLAG_LOCAL 0x1
+#define ABCUI_PL_FLAG_SPECTATING 0x2
+#define ABCUI_PL_FLAG_BOT 0x4
+#define ABCUI_PL_FLAG_MUTED 0x8
+
+#define ABCUI_PL_NAME_MAX 64
+
+// One roster row. `selected` is computed against the model's selection, so
+// the page never keeps a second selection truth. `steamId64` is 0 for bots
+// and LAN placeholders (their key is slot+name).
+typedef struct AbcUiPlayerRow {
+  uint32_t structSize;
+  int32_t slot;       // 1..32 entity slot
+  int32_t selected;   // computed against the model's selection
+  uint32_t flags;     // ABCUI_PL_FLAG_*
+  uint64_t steamId64; // 0 = no SteamID (bot / LAN placeholder)
+  char name[ABCUI_PL_NAME_MAX];
+} AbcUiPlayerRow;
+
+// toggleMute outcomes (the model's revalidated toggle discipline: success
+// only when the immediate backend read-back agrees with the request).
+#define ABCUI_PL_TOGGLE_OK 0
+#define ABCUI_PL_TOGGLE_UNAVAILABLE 1
+#define ABCUI_PL_TOGGLE_NO_SELECTION 2
+#define ABCUI_PL_TOGGLE_STALE 3
+#define ABCUI_PL_TOGGLE_IDENTITY_CHANGED 4
+#define ABCUI_PL_TOGGLE_LOCAL_PLAYER 5
+#define ABCUI_PL_TOGGLE_READBACK_FAILED 6
+
+typedef struct AbcUiPlayerListApi {
+  uint32_t structSize;
+  // Re-reads the live roster and revalidates the selection (idempotent per
+  // frame; the page calls it before projecting).
+  void (*refresh)(void);
+  // Model revision; the page re-projects only when it moved.
+  uint32_t (*revision)(void);
+  int32_t (*rosterCount)(void);
+  // Copies row `index`; 0 when out of range (structSize honored on write).
+  int32_t (*rosterAt)(int32_t index, AbcUiPlayerRow *out);
+  // Selects by the row's identity (the same values the row carried: a
+  // SteamID64, or slot+name when the id is 0). A key without a live
+  // occupant is refused, not remembered.
+  void (*select)(uint64_t steamId64, int32_t slot, const char *name);
+  int32_t (*muteAvailable)(void);
+  // Revalidated toggle for the current selection. Returns an
+  // ABCUI_PL_TOGGLE_* code and writes the read-back state on OK (either
+  // argument may be null/absent).
+  int32_t (*toggleMute)(int32_t *mutedAfter);
+} AbcUiPlayerListApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -883,6 +946,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiDocumentsApi *documents;
   const AbcUiMenuApi *menu;
   const AbcUiVoteMenuApi *votemenu;
+  const AbcUiPlayerListApi *playerlist;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

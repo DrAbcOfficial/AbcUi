@@ -83,14 +83,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   // T19: the create-local-game page (was the kCreateGame stub).
   CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
   Create->setPage(CreateGamePage_.get());
-  // T20: the player-list page (was the kPlayerList stub).
-  PlayerListPage_ = std::make_unique<panels::playerlist::PlayerListPage>();
-  PlayerListPage_->setModel(&PlayerList);
-  Player->setPage(PlayerListPage_.get());
-  PlayerListPage_->setSelectionSink(
-      [this](const services::playerlist::SelectionKey &Key) {
-        Player->selectRow(Key);
-      });
   CommandMenuPage_ = std::make_unique<panels::commandmenu::CommandMenuPage>();
   Command->setPage(CommandMenuPage_.get());
   CommandMenuPage_->setCommandSink(
@@ -123,7 +115,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   wire(Settings);
   wire(Browser);
   wire(CreateGamePage_);
-  wire(PlayerListPage_);
   wire(CommandMenuPage_);
   wire(VideoConfirm);
   wire(ConfirmQuit);
@@ -184,11 +175,11 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      Shell.get(),           SubStub.get(),      Console.get(),
-      Settings.get(),        Browser.get(),      CreateGamePage_.get(),
-      PlayerListPage_.get(), VideoConfirm.get(), CommandMenuPage_.get(),
-      InventoryPage_.get(),  ConfirmQuit.get(),  Loading.get(),
-      ConnError.get(),       Password.get(),     DirectConnect.get(),
+      Shell.get(),        SubStub.get(),          Console.get(),
+      Settings.get(),     Browser.get(),          CreateGamePage_.get(),
+      VideoConfirm.get(), CommandMenuPage_.get(), InventoryPage_.get(),
+      ConfirmQuit.get(),  Loading.get(),          ConnError.get(),
+      Password.get(),     DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {
@@ -222,7 +213,6 @@ void GameUiModule::serviceEmergencyPages() {
   LoadingVisible = false;
   Server->setPresented(false);
   Create->setPresented(false);
-  Player->setPresented(false);
   Command->setPresented(false);
   Inventory->setPresented(false);
   syncMenuPresentation();

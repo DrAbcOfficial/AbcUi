@@ -29,7 +29,6 @@
 #include "commandmenu/CommandMenuFlow.h"
 #include "creategame/CreateGameFlow.h"
 #include "inventory/InventoryFlow.h"
-#include "playerlist/PlayerListFlow.h"
 #include "settings/SprayMaker.h"
 #include "serverbrowser/ServerBrowserFlow.h"
 #include "settings/SettingsFlow.h"
@@ -64,9 +63,6 @@ namespace menushared {
 class MenuStubPage;
 class ConfirmQuitOverlay;
 } // namespace menushared
-namespace playerlist {
-class PlayerListPage;
-}
 namespace serverbrowser {
 class ServerBrowserPage;
 }
@@ -169,7 +165,6 @@ private:
     GameUiModule *Owner;
   };
   VideoHost MakeVideoHost();
-  PlayerListHost MakePlayerListHost();
   VoteMenuHost MakeVoteMenuHost();
   CommandMenuHost MakeCommandMenuHost();
   InventoryHost MakeInventoryHost();
@@ -210,13 +205,10 @@ private:
   std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
   std::unique_ptr<panels::creategame::CreateGamePage>
       CreateGamePage_; // T19 page
-  std::unique_ptr<panels::playerlist::PlayerListPage>
-      PlayerListPage_; // T20 page
   std::unique_ptr<panels::commandmenu::CommandMenuPage> CommandMenuPage_;
   std::unique_ptr<panels::inventory::InventoryPage> InventoryPage_;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;
-  std::unique_ptr<PlayerListFlow> Player;
   std::unique_ptr<SprayMaker> Spray;
   std::unique_ptr<VoteMenuFlow> Vote;
   std::unique_ptr<CommandMenuFlow> Command;

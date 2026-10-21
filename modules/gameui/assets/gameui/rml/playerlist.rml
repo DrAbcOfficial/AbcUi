@@ -1,16 +1,16 @@
 <rml>
 <head>
-	<link type="text/rcss" href="../../rcss/base.rcss"/>
-	<link type="text/rcss" href="../../rcss/theme.rcss"/>
-	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/base.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/theme.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/gameui/rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/playerlist.rcss"/>
 </head>
 <!-- T20 player list (kPlayerList): the replacement of the shipped
      Resource/PlayerListDialog.res (ListPanel + Mute button + Close). Rows,
-     selection highlight, mute label and the empty state are injected by
-     panels::playerlist::PlayerListPage (escaped); the mute control reports a
-     fixed toggle intent and is disabled exactly when the shipped button was
-     (no backend / nothing mutable selected). -->
+     selection highlight, mute label and the empty state are injected by the
+     abcui.gameui module (escaped); the mute control reports a fixed toggle
+     intent and is disabled exactly when the shipped button was (no backend /
+     nothing mutable selected). -->
 <body id="menuplayerlist">
 	<div id="pl-panel">
 		<h1 id="pl-title">#PL_Title</h1>

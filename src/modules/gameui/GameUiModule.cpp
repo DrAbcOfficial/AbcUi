@@ -8,7 +8,6 @@
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/mainmenu/MainMenuPage.h"
 #include "../../panels/menushared/MenuShellWindows.h"
-#include "../../panels/playerlist/PlayerListPage.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
 #include "../../panels/settings/SettingsPage.h"
 #include "../../panels/settings/VideoConfirmPage.h"
@@ -21,6 +20,7 @@
 #include <abc/Paths.h>
 #include <abc/CvarCmd.h>
 #include "services/serverbrowser/BlacklistFileStore.h"
+#include "services/playerlist/PlayerListService.h"
 #include "services/votemenu/VoteMenuService.h"
 #include "framework/Commands.h"
 #include "data/NetworkMessages.h"
@@ -102,8 +102,6 @@ bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
 GameUiModule::GameUiModule()
     : Controller(&menuBackend()), CaptureOwner(this),
       Video(std::make_unique<VideoFlow>(MakeVideoHost(), VideoModel)),
-      Player(
-          std::make_unique<PlayerListFlow>(MakePlayerListHost(), PlayerList)),
       Spray(std::make_unique<SprayMaker>([this](bool ok,
                                                 const std::string &message,
                                                 const std::string &previewUri) {
@@ -131,6 +129,9 @@ GameUiModule::GameUiModule()
   // T20: the player-list model's roster/mute seams (playerres + the
   // voice service adapter, issue 17).
   PlayerList.setSeams(playerListSeams());
+  // The player-list page module reads this model through the sdk
+  // playerlist section.
+  services::playerlist::setModel(&PlayerList);
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
@@ -175,15 +176,6 @@ VideoHost GameUiModule::MakeVideoHost() {
     if (Settings)
       Settings->render();
   };
-  return host;
-}
-
-PlayerListHost GameUiModule::MakePlayerListHost() {
-  PlayerListHost host;
-  host.dispatchBack = [this] {
-    Controller.dispatch(MenuEvent{EventKind::kBack});
-  };
-  host.finishDispatch = [this] { finishDispatch(); };
   return host;
 }
 
@@ -612,8 +604,6 @@ void GameUiModule::onShutdown() {
   Browser.reset();
   Create->shutdown();
   CreateGamePage_.reset();
-  Player->shutdown();
-  PlayerListPage_.reset();
   Vote->shutdown();
   Command->shutdown();
   CommandMenuPage_.reset();

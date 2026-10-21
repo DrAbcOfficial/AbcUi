@@ -144,6 +144,15 @@ int apiElementAttribute(AbcUiElement *element, const char *name, char *out,
   return static_cast<int>(value.size());
 }
 
+int apiEscapeRmlAttribute(const char *text, char *out, uint32_t outSize) {
+  if (!text)
+    return 0;
+  const std::string escaped = TextUtil::escapeRmlAttribute(text);
+  if (out && outSize > 0)
+    copyOut(escaped, out, outSize);
+  return static_cast<int>(escaped.size());
+}
+
 void apiDocumentBlur(AbcUiDocument *doc) {
   Rml::ElementDocument *document = documentOf(doc);
   if (!document)
@@ -580,6 +589,7 @@ const AbcUiUiApi kUiApi = {
     apiDocumentFocus,
     apiDocumentBlur,
     apiElementAttribute,
+    apiEscapeRmlAttribute,
 };
 
 } // namespace

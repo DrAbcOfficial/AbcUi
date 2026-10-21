@@ -33,7 +33,9 @@ void GameUiModule::onMenuAction(const char *action) {
     Vote->open();
     return;
   } else if (Parsed.Domain == ActionDomain::kPlayerList) {
-    Player->handleAction(Kind);
+    // The player-list page is a module document: it handles its own row /
+    // mute actions and sends only menu.back on close, so nothing arrives
+    // here.
     return;
   } else if (Parsed.Domain == ActionDomain::kVoteMenu) {
     // The vote page is a module document: it handles its own row actions and
