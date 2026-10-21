@@ -5,10 +5,23 @@
 #include <RmlUi/Core/Elements/ElementFormControl.h>
 #include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 #include <RmlUi/Core/Event.h>
+#include <algorithm>
 #include <cstdio>
 
 namespace panels::creategame {
 namespace {
+// Option names become element ids ("cg-option-<name>") in the generated
+// markup and in the later id lookups. settings.scr is local data, but a quote
+// or space would still break the markup; accept only the identifier shape the
+// shipped script uses.
+bool validOptionName(const std::string &Name) {
+  if (Name.empty() || Name.size() > 64)
+    return false;
+  return std::all_of(Name.begin(), Name.end(), [](unsigned char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_' || c == '-';
+  });
+}
 std::string number(float Value) {
   char Text[48];
   std::snprintf(Text, sizeof(Text), "%.9g", static_cast<double>(Value));
@@ -27,6 +40,8 @@ void CreateGamePage::buildOptions() {
     return;
   std::string Markup;
   for (const auto &Option : Model->options()) {
+    if (!validOptionName(Option.Name))
+      continue;
     // One row per option on the page's 96dp label grid (the typed rows
     // above use the same column), so every control lines up.
     Markup += "<div class=\"cg-row\"><div class=\"cg-row-label\">" +
@@ -54,6 +69,8 @@ void CreateGamePage::buildOptions() {
   // nothing (the shipped script always fills it, a stripped install may not).
   Host->SetProperty("display", Markup.empty() ? "none" : "block");
   for (const auto &Option : Model->options()) {
+    if (!validOptionName(Option.Name))
+      continue;
     auto *Select = rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(
         node(("cg-option-" + Option.Name).c_str()));
     if (!Select)
