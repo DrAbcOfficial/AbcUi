@@ -46,19 +46,19 @@ jobs:
           token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
           submodules: recursive
 
-      # The runner image ships an older CMake than the project requires; the
-      # newest release number is resolved at run time through the GitHub CLI.
-      - name: Install the latest CMake (resolved through gh)
+      # The runner image ships an older CMake than the project requires. Pin
+      # one release and verify the official SHA-256 before extracting: a
+      # replaced release asset would otherwise become a build binary.
+      - name: Install CMake 4.4.4
         shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = gh api repos/Kitware/CMake/releases/latest --jq .tag_name
-          if (-not $tag) { $tag = 'v4.4.4' }
-          $version = $tag.TrimStart('v')
-          $url = "https://github.com/Kitware/CMake/releases/download/$tag/cmake-$version-windows-x86_64.zip"
+          $version = '4.4.4'
+          $sha256 = 'bace36e94b31c68ab6fa295f26dfa11219e0701cf7c94b0284a7d1cb13dac536'
+          $url = "https://github.com/Kitware/CMake/releases/download/v$version/cmake-$version-windows-x86_64.zip"
           Write-Host "Installing CMake $version from $url"
           Invoke-WebRequest -Uri $url -OutFile "$env:RUNNER_TEMP\cmake.zip"
+          $actual = (Get-FileHash -Algorithm SHA256 "$env:RUNNER_TEMP\cmake.zip").Hash.ToLower()
+          if ($actual -ne $sha256) { throw "CMake zip checksum mismatch: $actual" }
           Expand-Archive -Path "$env:RUNNER_TEMP\cmake.zip" -DestinationPath "$env:RUNNER_TEMP\cmake" -Force
           "$env:RUNNER_TEMP\cmake\cmake-$version-windows-x86_64\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
 
