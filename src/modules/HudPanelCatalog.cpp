@@ -25,7 +25,6 @@
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
-#include "../panels/weaponchoose/WeaponChoosePanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
 
 #include <memory>
@@ -59,7 +58,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   // Batch C (interaction + big data).
   panels.push_back(std::make_unique<panels::PlayerBoardPanel>());
   panels.push_back(std::make_unique<panels::ScoreboardPanel>());
-  panels.push_back(std::make_unique<panels::WeaponChoosePanel>());
   // Batch D (render depth).
   panels.push_back(std::make_unique<panels::ItemHighlightPanel>());
   panels.push_back(std::make_unique<panels::RadarPanel>());
@@ -93,8 +91,6 @@ void registerHudPanelCvars() {
   // Batch C.
   panels::playerboard::registerCvars();
   panels::scoreboard::registerCvars();
-  panels::weaponchoose::registerCvars();
-  panels::weaponchoose::registerCommands();
   // Batch D.
   panels::itemhighlight::registerCvars();
   panels::radar::registerCvars();

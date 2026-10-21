@@ -1,0 +1,121 @@
+// framework::WeaponsApi - the sdk weapons section (registry snapshots and the
+// selection action). See ApiTable.h for how it joins the module table.
+#include "ApiTable.h"
+
+#include <string>
+
+#include "../data/WeaponResource.h"
+#include "../framework/ResourceLimits.h"
+
+namespace framework {
+namespace WeaponsApi {
+namespace {
+
+// Copies a string into a fixed field, always terminating.
+void copyField(const std::string &text, char *out, size_t outSize) {
+  if (!out || outSize == 0)
+    return;
+  size_t i = 0;
+  for (; i + 1 < outSize && i < text.size(); ++i)
+    out[i] = text[i];
+  out[i] = '\0';
+}
+
+void copySprite(const weaponres::Weapon::SpriteSource &source,
+                AbcUiWeaponSprite &out) {
+  out.valid = source.valid ? 1 : 0;
+  out.atlas[0] = '\0';
+  if (source.valid)
+    copyField(source.atlas, out.atlas, sizeof(out.atlas));
+  out.rect[0] = source.rect.left;
+  out.rect[1] = source.rect.top;
+  out.rect[2] = source.rect.right;
+  out.rect[3] = source.rect.bottom;
+}
+
+void fill(const weaponres::Weapon &weapon, AbcUiWeaponInfo &out) {
+  out.structSize = sizeof(AbcUiWeaponInfo);
+  out.slot = weapon.slot;
+  out.slotPos = weapon.slotPos;
+  out.ammoType = weapon.ammoType;
+  out.ammo2Type = weapon.ammo2Type;
+  out.max1 = weapon.max1;
+  out.max2 = weapon.max2;
+  out.flags = weapon.flags;
+  out.owned = weaponres::isOwned(&weapon) ? 1 : 0;
+  out.hasAmmo = weaponres::hasAmmo(&weapon) ? 1 : 0;
+  copyField(weapon.name, out.name, sizeof(out.name));
+  copySprite(weapon.active, out.active);
+  copySprite(weapon.inactive, out.inactive);
+}
+
+int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {
+  const std::vector<const weaponres::Weapon *> weapons =
+      weaponres::allWeapons();
+  const int32_t total = static_cast<int32_t>(weapons.size());
+  if (!out || capacity <= 0)
+    return total;
+  const int32_t count = total < capacity ? total : capacity;
+  for (int32_t i = 0; i < count; ++i) {
+    out[i] = AbcUiWeaponInfo{};
+    fill(*weapons[static_cast<size_t>(i)], out[i]);
+  }
+  return total;
+}
+
+int32_t apiGet(int32_t slot, int32_t slotPos, AbcUiWeaponInfo *out) {
+  if (!out)
+    return 0;
+  const weaponres::Weapon *weapon = weaponres::getWeapon(slot, slotPos);
+  if (!weapon)
+    return 0;
+  *out = AbcUiWeaponInfo{};
+  fill(*weapon, *out);
+  return 1;
+}
+
+int32_t apiSelectedSlot() {
+  return weaponres::selectedSlot();
+}
+
+int32_t apiSelected(AbcUiWeaponInfo *out) {
+  if (!out)
+    return 0;
+  const weaponres::Weapon *weapon = weaponres::selectedWeapon();
+  if (!weapon)
+    return 0;
+  *out = AbcUiWeaponInfo{};
+  fill(*weapon, *out);
+  return 1;
+}
+
+int32_t apiCountAmmo(int32_t ammoType) {
+  return weaponres::countAmmo(ammoType);
+}
+
+int32_t apiFastSwitch() {
+  return weaponres::fastSwitchOn() ? 1 : 0;
+}
+
+void apiSelectSlot(int32_t slot, int32_t advance, int32_t wheel) {
+  weaponres::selectSlot(slot, advance, wheel != 0);
+}
+
+int32_t apiValidCommandName(const char *name) {
+  return name && ResourceLimits::weaponCommandName(name) ? 1 : 0;
+}
+
+const AbcUiWeaponsApi kWeaponsApi = {
+    sizeof(AbcUiWeaponsApi), apiList,       apiGet,
+    apiSelectedSlot,         apiSelected,   apiCountAmmo,
+    apiFastSwitch,           apiSelectSlot, apiValidCommandName,
+};
+
+} // namespace
+
+const AbcUiWeaponsApi *get() {
+  return &kWeaponsApi;
+}
+
+} // namespace WeaponsApi
+} // namespace framework

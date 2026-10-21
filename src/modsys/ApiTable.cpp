@@ -188,10 +188,15 @@ AbcUiCvarHandle apiRegisterCvarWatch(const char *name, const char *value,
   return static_cast<AbcUiCvarHandle>(cvar);
 }
 
+void apiPlaySound(const char *path, float volume) {
+  if (path && *path)
+    gEngfuncs.pfnPlaySoundByName(path, volume);
+}
+
 const AbcUiConsoleApi kConsoleApi = {
-    sizeof(AbcUiConsoleApi), apiRegisterCvar,    apiCvarValue,
-    apiCvarString,           apiRegisterCommand, apiEngineCommand,
-    apiServerCommand,        apiSetVoteGate,     apiRegisterCvarWatch,
+    sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
+    apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,
+    apiRegisterCvarWatch,    apiPlaySound,
 };
 
 // -------------------------------------------------------------- events ----
@@ -333,6 +338,7 @@ const AbcUiModuleApi *get() {
       DataApi::get(),
       UiApi::get(),
       &kCommandsApi,
+      WeaponsApi::get(),
   };
   return &kApi;
 }

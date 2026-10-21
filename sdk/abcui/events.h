@@ -56,6 +56,24 @@ typedef struct AbcUiIntEvent {
 #define ABCUI_HIDEBIT_CUSTOM1 (1 << 6)
 #define ABCUI_HIDEBIT_CUSTOM2 (1 << 7)
 
+// hud.chooseWeapon - the weapon-selection highlight moved (slot keys /
+// invnext / invprev). The payload is the registry identity (slot, slotPos);
+// slot < 0 means "nothing selected" (the highlight walked off the owned
+// list).
+#define ABCUI_CHANNEL_HUD_CHOOSE_WEAPON "hud.chooseWeapon"
+typedef struct AbcUiWeaponEvent {
+  int32_t slot;
+  int32_t slotPos;
+} AbcUiWeaponEvent;
+
+// hud.pickupWeapon / hud.dropWeapon - one registry weapon changed ownership.
+// Same payload as hud.chooseWeapon.
+#define ABCUI_CHANNEL_HUD_PICKUP_WEAPON "hud.pickupWeapon"
+#define ABCUI_CHANNEL_HUD_DROP_WEAPON "hud.dropWeapon"
+
+// hud.dropAllWeapons - every owned weapon went away (payload is null).
+#define ABCUI_CHANNEL_HUD_DROP_ALL_WEAPONS "hud.dropAllWeapons"
+
 // HUD_Frame pump payload; also the "module ran this frame" heartbeat.
 #define ABCUI_CHANNEL_FRAME "client.frame"
 typedef struct AbcUiFrameEvent {

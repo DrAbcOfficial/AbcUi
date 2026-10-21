@@ -88,6 +88,8 @@ typedef struct AbcUiConsoleApi {
   AbcUiCvarHandle (*registerCvarWatch)(const char *name, const char *value,
                                        int flags, AbcUiCommandFn fn,
                                        void *userdata);
+  // Plays an engine sound by path (gEngfuncs.pfnPlaySoundByName).
+  void (*playSound)(const char *path, float volume);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -248,6 +250,65 @@ typedef struct AbcUiCommandsApi {
   void (*setTextMenuOpen)(int open);
 } AbcUiCommandsApi;
 
+// -------------------------------------------------------------- weapons ----
+
+#define ABCUI_WEAPON_NAME_MAX 64
+#define ABCUI_WEAPON_ATLAS_MAX 96
+// Registry slot count (old MAX_WEAPON_SLOT / weaponres::kMaxWeaponSlot).
+#define ABCUI_WEAPON_SLOT_COUNT 10
+
+// Old ITEM_FLAGS bits the selection logic keys on.
+#define ABCUI_ITEM_FLAG_SELECT_ON_EMPTY (1 << 0)
+#define ABCUI_ITEM_FLAG_EXHAUSTIBLE (1 << 4)
+
+// One sprite crop ("sprites/<atlas>.txt" entry). invalid means the weapon's
+// sprite list had no matching entry, so the caller falls back to plain text.
+typedef struct AbcUiWeaponSprite {
+  int32_t valid;
+  char atlas[ABCUI_WEAPON_ATLAS_MAX];
+  int32_t rect[4]; // left, top, right, bottom
+} AbcUiWeaponSprite;
+
+// Point-in-time snapshot of one registry weapon. Identity is (slot, slotPos):
+// the server's WeaponList assigns both and the registry keeps them stable.
+typedef struct AbcUiWeaponInfo {
+  uint32_t structSize;
+  int32_t slot;
+  int32_t slotPos;
+  int32_t ammoType;
+  int32_t ammo2Type;
+  int32_t max1;
+  int32_t max2;
+  int32_t flags;   // ABCUI_ITEM_FLAG_*
+  int32_t owned;   // owned by the local player right now
+  int32_t hasAmmo; // usable right now (unlimited weapons always true)
+  char name[ABCUI_WEAPON_NAME_MAX];
+  AbcUiWeaponSprite active;   // "weapon_s" sprite (highlighted item)
+  AbcUiWeaponSprite inactive; // "weapon" sprite
+} AbcUiWeaponInfo;
+
+typedef struct AbcUiWeaponsApi {
+  uint32_t structSize;
+  // Fills up to `capacity` snapshots of every registered weapon; returns the
+  // total registry size (a larger total means the list was truncated).
+  int32_t (*list)(AbcUiWeaponInfo *out, int32_t capacity);
+  // Snapshot by identity; 1 when the weapon exists.
+  int32_t (*get)(int32_t slot, int32_t slotPos, AbcUiWeaponInfo *out);
+  int32_t (*selectedSlot)(void);
+  // Snapshot of the highlighted weapon; 1 when there is one.
+  int32_t (*selected)(AbcUiWeaponInfo *out);
+  int32_t (*countAmmo)(int32_t ammoType);
+  // hud_fastswitch: the engine command already went out, the bar stays down.
+  int32_t (*fastSwitch)(void);
+  // Old SelectSlot: a slot key enters/cycles one slot, invnext/invprev walk
+  // slots and positions (`wheel` = the walk flavor).
+  void (*selectSlot)(int32_t slot, int32_t advance, int32_t wheel);
+  // ResourceLimits::weaponCommandName - the console-token gate for the
+  // server-provided weapon name (defense in depth; the registry already
+  // rejects non-identifiers).
+  int32_t (*validCommandName)(const char *name);
+} AbcUiWeaponsApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -286,6 +347,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiDataApi *data;
   const AbcUiUiApi *ui;
   const AbcUiCommandsApi *commands;
+  const AbcUiWeaponsApi *weapons;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

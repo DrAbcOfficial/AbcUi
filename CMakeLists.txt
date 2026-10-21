@@ -161,6 +161,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiTable.cpp
     src/modsys/ModuleManager.cpp
     src/modsys/ApiSections.cpp
+    src/modsys/ApiWeapons.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
@@ -337,7 +338,6 @@ add_library(AbcUi MODULE
     src/panels/settings/sections/BindingRows.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
-    src/panels/weaponchoose/WeaponChoosePanel.cpp
     src/panels/popnum/PopNumPanel.cpp
     src/panels/radar/RadarPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
@@ -363,6 +363,7 @@ add_subdirectory(modules/demo)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
 add_subdirectory(modules/motd)
+add_subdirectory(modules/weaponchoose)
 add_subdirectory(modules/vote)
 
 # Renderer's gl_common constants are the source of truth for the render vertex

@@ -26,4 +26,8 @@ namespace UiApi {
 const AbcUiUiApi *get();
 } // namespace UiApi
 
+namespace WeaponsApi {
+const AbcUiWeaponsApi *get();
+} // namespace WeaponsApi
+
 } // namespace framework
