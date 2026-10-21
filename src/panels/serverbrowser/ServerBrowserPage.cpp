@@ -675,7 +675,7 @@ void ServerBrowserPage::renderControls() {
           framework::TextUtil::escapeRml(blockedAtCell(Rule.BlockedAt)) +
           "</span><span class=\"bl-action\"><button "
           "data-action=\"sb-rule-remove\" data-address=\"" +
-          Rule.address() + "\">" +
+          framework::TextUtil::escapeRmlAttribute(Rule.address()) + "\">" +
           framework::TextUtil::escapeRml(token("SB_Unblock")) +
           "</button></span></div>";
     }
