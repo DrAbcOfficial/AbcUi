@@ -434,6 +434,8 @@ const AbcUiModuleApi *get() {
       WeaponsApi::get(),
       PlayersApi::get(),
       &kRadarApi,
+      ShellApi::get(),
+      VoiceApi::get(),
   };
   return &kApi;
 }

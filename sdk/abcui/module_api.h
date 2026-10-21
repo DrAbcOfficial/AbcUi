@@ -504,6 +504,31 @@ typedef struct AbcUiRadarApi {
   void (*setZoom)(float zoom);
 } AbcUiRadarApi;
 
+// --------------------------------------------------------------- shell ----
+
+// OS-shell seams the interactive panels need (profile links, copy actions).
+// Text is UTF-8; both are no-ops on null/empty input.
+typedef struct AbcUiShellApi {
+  uint32_t structSize;
+  // Opens the URL in the default browser (framework::OpenExternalUrl).
+  void (*openUrl)(const char *url);
+  // Puts the text on the system clipboard (Rml system interface).
+  void (*copyText)(const char *text);
+} AbcUiShellApi;
+
+// --------------------------------------------------------------- voice ----
+
+// The client's per-player voice blocking service (mute list + server vban
+// sync). Identity comes from the player resource's SteamID64: players
+// without one answer false and the local player can never be muted.
+typedef struct AbcUiVoiceApi {
+  uint32_t structSize;
+  int32_t (*available)(void);
+  int32_t (*isBlocked)(int32_t index);
+  // Sets the ban and syncs the server; 0 when the toggle was refused.
+  int32_t (*setBlocked)(int32_t index, int32_t blocked);
+} AbcUiVoiceApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -545,6 +570,8 @@ typedef struct AbcUiModuleApi {
   const AbcUiWeaponsApi *weapons;
   const AbcUiPlayersApi *players;
   const AbcUiRadarApi *radar;
+  const AbcUiShellApi *shell;
+  const AbcUiVoiceApi *voice;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

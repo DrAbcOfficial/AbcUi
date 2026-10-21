@@ -34,4 +34,12 @@ namespace PlayersApi {
 const AbcUiPlayersApi *get();
 } // namespace PlayersApi
 
+namespace ShellApi {
+const AbcUiShellApi *get();
+} // namespace ShellApi
+
+namespace VoiceApi {
+const AbcUiVoiceApi *get();
+} // namespace VoiceApi
+
 } // namespace framework
