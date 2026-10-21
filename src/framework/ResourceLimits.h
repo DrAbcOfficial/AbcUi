@@ -54,4 +54,12 @@ inline bool identifierName(std::string_view name) {
                   (c >= '0' && c <= '9') || c == '_';
          });
 }
+// The engine treats the selection token as a console command, so a legal
+// identifier is not enough ("kill" is one). GoldSrc weapon commands carry the
+// HLSDK "weapon_" prefix; require it before anything server-supplied reaches
+// pfnServerCmd.
+inline bool weaponCommandName(std::string_view name) {
+  return name.size() > 7 && name.size() <= 127 &&
+         name.substr(0, 7) == "weapon_" && identifierName(name);
+}
 } // namespace framework::ResourceLimits

@@ -15,6 +15,7 @@
 #include "../../panels/votemenu/VoteMenuPage.h"
 
 #include "../../data/WeaponResource.h"
+#include "../../framework/ResourceLimits.h"
 #include "modules/gameui/settings/SettingsResources.h"
 #include "modules/gameui/debug/DebugCommands.h"
 #include <abc/Console.h>
@@ -302,7 +303,9 @@ void GameUiModule::onInit() {
   // hud_fastswitch: the data registry only reports the selection; the
   // engine command is an engine-facing concern owned here.
   weaponres::FastSwitchWeapon.append([](const weaponres::Weapon *weapon) {
-    if (weapon)
+    // Same server-data boundary as WeaponChoosePanel: only an HLSDK-shaped
+    // weapon command token may reach the console.
+    if (weapon && framework::ResourceLimits::weaponCommandName(weapon->name))
       gEngfuncs.pfnServerCmd(weapon->name.c_str());
   });
   ServerBrowser.setProvider(services::serverbrowser::steamQueryProvider());
