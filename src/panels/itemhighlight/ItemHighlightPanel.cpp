@@ -454,8 +454,10 @@ void ItemHighlightPanel::onRedraw(double frameTime) {
       const float ratio =
           std::clamp(range > 0.0f ? length / range : 1.0f, 0.5f, 1.0f);
       float screen[2] = {};
-      framework::projection::worldToScreen(ent->curstate.origin, screen);
-      updateMarker(entindex, itemIndex, ratio, screen);
+      if (framework::projection::worldToScreen(ent->curstate.origin, screen))
+        updateMarker(entindex, itemIndex, ratio, screen);
+      else
+        removeMarker(entindex); // behind the view: no mirrored ghost label
     } else {
       removeMarker(entindex);
     }
