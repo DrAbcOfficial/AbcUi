@@ -4,44 +4,25 @@
 #include "../framework/Commands.h"
 #include "../framework/HudPanel.h"
 #include "../framework/PanelManager.h"
-#include "../data/NetworkMessages.h"
-#include "../data/TextFeed.h"
 #include "../modsys/ModuleManager.h"
 
-#include <memory>
 #include <utility>
 #include <vector>
 
 namespace modules {
-namespace {
-
-std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
-  std::vector<std::unique_ptr<framework::HudPanel>> panels;
-  // Batch B (feedback panels).
-  // Batch C (interaction + big data).
-  // Batch D (render depth).
-  // Issue 13: chat last, so its log/input paints over the readouts.
-  return panels;
-}
-
-} // namespace
 
 void installHudPanels() {
-  auto panels = buildPanels();
-  // Module-registered panels join the tail (same order their packages
-  // loaded in); the built-ins keep their fixed factory order ahead of them.
-  for (auto &panel : framework::modmanager::takePanels())
-    panels.push_back(std::move(panel));
-  framework::PanelManager::installPanels(std::move(panels));
+  // Every HUD panel is a UI module now, so the cycle is exactly the
+  // module-registered set (in package load order). Installing a fresh list
+  // per HUD_Init is what re-arms the boards after HUD_Shutdown cleared the
+  // previous one; the framework keeps no built-in panel factory.
+  framework::PanelManager::installPanels(framework::modmanager::takePanels());
 }
 
 void registerHudPanelCvars() {
+  // Process-scoped registration that stays in the framework spine: the
+  // chained commands every module subscribes to.
   commands::registerAll();
-  // Batch B.
-  // Batch C.
-  // Batch D.
-  // Issue 13: after the client's HUD_Init ran (the hud_saytext_* pointers
-  // are the client's own cvars).
 }
 
 } // namespace modules
