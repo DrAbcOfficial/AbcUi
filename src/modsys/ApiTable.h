@@ -86,4 +86,11 @@ namespace CreateGameApi {
 const AbcUiCreateGameApi *get();
 } // namespace CreateGameApi
 
+namespace ConsolePageApi {
+const AbcUiConsolePageApi *get();
+// framework-internal (the menu owner's routed ESC): reads-and-clears the
+// console page's one-layer ESC claim.
+bool consumeEscapeClaim();
+} // namespace ConsolePageApi
+
 } // namespace framework

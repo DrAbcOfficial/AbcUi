@@ -13,6 +13,10 @@
 #include <RmlUi/Core/Elements/ElementFormControl.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/Elements/ElementFormControlSelect.h>
+#include <RmlUi/Core/ElementText.h>
+#include <RmlUi/Core/ElementUtilities.h>
+#include <RmlUi/Core/Input.h>
+#include <RmlUi/Core/StringUtilities.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/EventListener.h>
 
@@ -286,6 +290,43 @@ float apiScale() {
 // Module DOM listeners: RmlUi does not own them, so the registry below owns
 // the objects until the module removes them (documented: remove in
 // onShutdown, while the document is still alive).
+// The ABI carries engine key numbers (the module cannot include the engine
+// headers); this is KeyMap's mapping in reverse, for the keys a DOM
+// keyboard handler acts on.
+int engineKeynumOf(Rml::Input::KeyIdentifier identifier) {
+  using Rml::Input::KeyIdentifier;
+  if (identifier >= KeyIdentifier::KI_0 && identifier <= KeyIdentifier::KI_9)
+    return '0' + static_cast<int>(identifier) -
+           static_cast<int>(KeyIdentifier::KI_0);
+  if (identifier >= KeyIdentifier::KI_A && identifier <= KeyIdentifier::KI_Z)
+    return 'a' + static_cast<int>(identifier) -
+           static_cast<int>(KeyIdentifier::KI_A);
+  switch (identifier) {
+  case KeyIdentifier::KI_SPACE:
+    return 32;
+  case KeyIdentifier::KI_TAB:
+    return 9;
+  case KeyIdentifier::KI_RETURN:
+    return 13;
+  case KeyIdentifier::KI_ESCAPE:
+    return 27;
+  case KeyIdentifier::KI_BACK:
+    return 127;
+  case KeyIdentifier::KI_UP:
+    return 128;
+  case KeyIdentifier::KI_DOWN:
+    return 129;
+  case KeyIdentifier::KI_LEFT:
+    return 130;
+  case KeyIdentifier::KI_RIGHT:
+    return 131;
+  case KeyIdentifier::KI_NUMPADENTER:
+    return 169;
+  default:
+    return 0;
+  }
+}
+
 struct ModuleElementListener final : Rml::EventListener {
   AbcUiElementListener callback = nullptr;
   void *userdata = nullptr;
@@ -301,6 +342,13 @@ struct ModuleElementListener final : Rml::EventListener {
     payload.button = event.GetParameter<int>("button", -1);
     payload.mouseX = event.GetParameter("mouse_x", 0.0f);
     payload.mouseY = event.GetParameter("mouse_y", 0.0f);
+    if (type == "keydown" || type == "keyup") {
+      payload.keynum = engineKeynumOf(static_cast<Rml::Input::KeyIdentifier>(
+          event.GetParameter<int>("key_identifier", 0)));
+      payload.modifiers =
+          (event.GetParameter<int>("ctrl_key", 0) ? ABCUI_MOD_CTRL : 0) |
+          (event.GetParameter<int>("shift_key", 0) ? ABCUI_MOD_SHIFT : 0);
+    }
     if (callback(userdata,
                  reinterpret_cast<AbcUiElement *>(event.GetTargetElement()),
                  &payload))
@@ -328,6 +376,24 @@ uint64_t apiElementAddListener(AbcUiElement *element, const char *type,
   entry->userdata = userdata;
   entry->id = id;
   target->AddEventListener(type, entry, false);
+  elementListeners()[id] = entry;
+  return id;
+}
+
+uint64_t apiElementAddListenerCapture(AbcUiElement *element, const char *type,
+                                      AbcUiElementListener listener,
+                                      void *userdata) {
+  Rml::Element *target = elementOf(element);
+  if (!target || !type || !*type || !listener)
+    return 0;
+  auto *entry = new (std::nothrow) ModuleElementListener();
+  if (!entry)
+    return 0;
+  const uint64_t id = NextListenerId++;
+  entry->callback = listener;
+  entry->userdata = userdata;
+  entry->id = id;
+  target->AddEventListener(type, entry, true);
   elementListeners()[id] = entry;
   return id;
 }
@@ -446,6 +512,88 @@ AbcUiElement *apiElementChild(AbcUiElement *element, int32_t index) {
 int32_t apiElementChildCount(AbcUiElement *element) {
   Rml::Element *target = elementOf(element);
   return target ? static_cast<int32_t>(target->GetNumChildren()) : 0;
+}
+
+int32_t apiElementAbsoluteOffset(AbcUiElement *element, float *x, float *y) {
+  Rml::Element *target = elementOf(element);
+  if (!target)
+    return 0;
+  const Rml::Vector2f offset = target->GetAbsoluteOffset();
+  if (x)
+    *x = offset.x;
+  if (y)
+    *y = offset.y;
+  return 1;
+}
+
+int32_t apiElementOffsetSize(AbcUiElement *element, float *width,
+                             float *height) {
+  Rml::Element *target = elementOf(element);
+  if (!target)
+    return 0;
+  if (width)
+    *width = target->GetOffsetWidth();
+  if (height)
+    *height = target->GetOffsetHeight();
+  return 1;
+}
+
+// The row's laid-out text lives in its first text child; every layout
+// query below resolves through it.
+Rml::ElementText *textContentOf(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  if (!target || target->GetNumChildren() == 0)
+    return nullptr;
+  return rmlui_dynamic_cast<Rml::ElementText *>(target->GetChild(0));
+}
+
+int32_t apiElementTextLayout(AbcUiElement *element, AbcUiTextLine *out,
+                             uint32_t max, float *lineHeight, float *originX,
+                             float *originY) {
+  Rml::ElementText *text = textContentOf(element);
+  if (!text)
+    return 0;
+  const auto &lines = text->GetLines();
+  if (lineHeight)
+    *lineHeight = text->GetLineHeight();
+  const Rml::Vector2f origin = text->GetAbsoluteOffset();
+  if (originX)
+    *originX = origin.x;
+  if (originY)
+    *originY = origin.y;
+  if (!out || max == 0)
+    return static_cast<int32_t>(lines.size());
+  const uint32_t count =
+      std::min<uint32_t>(max, static_cast<uint32_t>(lines.size()));
+  for (uint32_t i = 0; i < count; ++i) {
+    out[i].x = lines[i].position.x;
+    out[i].y = lines[i].position.y;
+    out[i].byteOffset = 0;
+    out[i].bytes = static_cast<uint32_t>(lines[i].text.size());
+    // Byte offsets accumulate in full-text order (the page slices its own
+    // row-text copy with them).
+    if (i > 0) {
+      out[i].byteOffset = out[i - 1].byteOffset + out[i - 1].bytes;
+    }
+  }
+  return static_cast<int32_t>(lines.size());
+}
+
+int32_t apiElementTextPrefixWidth(AbcUiElement *element, const char *value,
+                                  uint32_t bytesLength) {
+  Rml::ElementText *text = textContentOf(element);
+  if (!text || !value)
+    return 0;
+  return Rml::ElementUtilities::GetStringWidth(
+      text, Rml::StringView(value, value + bytesLength));
+}
+
+int32_t apiDocumentScale(AbcUiDocument *doc, float *scale) {
+  Rml::ElementDocument *document = documentOf(doc);
+  if (!document || !scale)
+    return 0;
+  *scale = Rml::ElementUtilities::GetDensityIndependentPixelRatio(document);
+  return 1;
 }
 
 void apiElementSelectRemoveAll(AbcUiElement *element) {
@@ -649,6 +797,12 @@ const AbcUiUiApi kUiApi = {
     apiElementSelectSetSelection,
     apiElementSelectSelection,
     apiElementScrollIntoView,
+    apiElementAddListenerCapture,
+    apiElementAbsoluteOffset,
+    apiElementOffsetSize,
+    apiElementTextLayout,
+    apiElementTextPrefixWidth,
+    apiDocumentScale,
 };
 
 } // namespace

@@ -38,26 +38,9 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   // sections.
   SubStub = std::make_unique<panels::menushared::MenuStubPage>(
       "menusub", "abc/abcui/gameui/rml/menustub.rml");
-  // T16: the replacement console (was the menuconsole stub).
-  Console = std::make_unique<panels::console::ConsolePage>();
-  Console->setBuffer(&services::console::consoleBuffer());
-  Console->setBackend(&services::console::consoleBackend());
-  Console->setSubmitSink([](const std::string &command) {
-    // The T15 submission path: one validated engine command per call
-    // (pfnClientCmd inside the backend; the engine's own chain runs).
-    using services::console::ConsoleBackend;
-    const auto result =
-        services::console::consoleBackend().submit(command.c_str());
-    if (result != ConsoleBackend::SubmitResult::kExecutedUnknownVerb)
-      return false;
-    // The engine executes an unknown client command silently (Sven
-    // Co-op's hw.dll carries no unknown-command message), and a loaded
-    // level's server may own the verb and execute it - so the console's
-    // own answer is exactly for the case where the client catalog is the
-    // whole truth: outside a level. The page formats and shows the line;
-    // engine call ownership stays here.
-    return !services::nativeUiBridge().hasLevel();
-  });
+  // The console page is a module document now (abcui.gameui): the buffer,
+  // the submission channel and the completion catalog reach it through the
+  // sdk consolepage section.
   Settings = std::make_unique<panels::settings::SettingsPage>();
   Settings->setPages(&UiConfig.pages());
   Settings->setModel(&SettingsModel);
@@ -90,7 +73,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   Password = std::make_unique<panels::loading::PasswordOverlay>();
   DirectConnect = std::make_unique<panels::loading::DirectConnectOverlay>();
   wire(SubStub);
-  wire(Console);
   wire(Settings);
   wire(Browser);
   wire(VideoConfirm);
@@ -152,9 +134,9 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      SubStub.get(),      Console.get(),       Settings.get(), Browser.get(),
-      VideoConfirm.get(), ConfirmQuit.get(),   Loading.get(),  ConnError.get(),
-      Password.get(),     DirectConnect.get(),
+      SubStub.get(),      Settings.get(),    Browser.get(),
+      VideoConfirm.get(), ConfirmQuit.get(), Loading.get(),
+      ConnError.get(),    Password.get(),    DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {
@@ -181,7 +163,6 @@ void GameUiModule::serviceEmergencyPages() {
   // every "projected for this opening" latch and let the sync re-run
   // the fresh-open projections from the models.
   SettingsView->setPresented(false);
-  ConsolePresented = false;
   ErrorPresented = false;
   PasswordPresented = false;
   DirectConnectPresented = false;

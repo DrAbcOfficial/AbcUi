@@ -247,18 +247,35 @@ typedef struct AbcUiDocument AbcUiDocument; // opaque panel-backed document
 typedef struct AbcUiElement AbcUiElement;
 
 // One DOM event delivered to a module listener. Mouse coordinates are in
-// context pixels; `button` is -1 for non-mouse events.
+// context pixels; `button` is -1 for non-mouse events. Keyboard events
+// (keydown/keyup) carry the engine key number and an ABCUI_MOD_* bitmask.
+#define ABCUI_MOD_CTRL 0x1
+#define ABCUI_MOD_SHIFT 0x2
+
 typedef struct AbcUiElementEvent {
   uint32_t structSize;
   const char *type; // "click", "mousedown", ...
   int32_t button;
   float mouseX;
   float mouseY;
+  int32_t keynum;    // engine key number (keyboard events; 0 otherwise)
+  int32_t modifiers; // ABCUI_MOD_* (keyboard events; 0 otherwise)
 } AbcUiElementEvent;
 
 // Returns nonzero to stop propagation (the module handled the event).
 typedef int32_t (*AbcUiElementListener)(void *userdata, AbcUiElement *target,
                                         const AbcUiElementEvent *event);
+
+// One laid-out line of an element's text: its position inside the text
+// element (context pixels) and its byte range within the element's full
+// text (byteOffset is a character boundary; bytes is the wrapped line's
+// length).
+typedef struct AbcUiTextLine {
+  float x;
+  float y;
+  uint32_t byteOffset;
+  uint32_t bytes;
+} AbcUiTextLine;
 
 typedef struct AbcUiUiApi {
   uint32_t structSize;
@@ -407,6 +424,31 @@ typedef struct AbcUiUiApi {
   // Scroll helper (bring a row into view after a programmatic selection;
   // alignTop picks the alignment edge).
   void (*elementScrollIntoView)(AbcUiElement *element, int32_t alignTop);
+  // Capture-phase listener (focus/blur never bubble; a capture keydown
+  // consumes interaction keys before the focused widget sees them).
+  uint64_t (*elementAddListenerCapture)(AbcUiElement *element, const char *type,
+                                        AbcUiElementListener listener,
+                                        void *userdata);
+  // Layout queries for text-adjacent widgets (the console's caret mapping
+  // and selection highlight). Absolute offsets are context pixels.
+  int32_t (*elementAbsoluteOffset)(AbcUiElement *element, float *x, float *y);
+  int32_t (*elementOffsetSize)(AbcUiElement *element, float *width,
+                               float *height);
+  // One element's laid-out text lines (its first text child): fills up to
+  // `max` AbcUiTextLine entries and returns the total line count. Byte
+  // offsets index the element's full text (slice with the row's own text
+  // copy); `lineHeight` receives the text's line height and
+  // `originX`/`originY` the text child's absolute offset (context pixels),
+  // the coordinate space the line positions live in.
+  int32_t (*elementTextLayout)(AbcUiElement *element, AbcUiTextLine *out,
+                               uint32_t max, float *lineHeight, float *originX,
+                               float *originY);
+  // The laid-out pixel width of a UTF-8 byte range, measured in the
+  // element's text face (the same path that wrapped the line).
+  int32_t (*elementTextPrefixWidth)(AbcUiElement *element, const char *text,
+                                    uint32_t bytes);
+  // The document's density-independent pixel ratio (dp -> context pixels).
+  int32_t (*documentScale)(AbcUiDocument *doc, float *scale);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -663,6 +705,10 @@ typedef struct AbcUiShellApi {
   void (*openUrl)(const char *url);
   // Puts the text on the system clipboard (Rml system interface).
   void (*copyText)(const char *text);
+  // Reads the system clipboard (measure-then-copy; 0 when unavailable or
+  // empty). The multi-line paste gate inspects it before the editor sees
+  // a Ctrl+V.
+  int32_t (*clipboardText)(char *out, uint32_t outSize);
 } AbcUiShellApi;
 
 // --------------------------------------------------------------- voice ----
@@ -1163,6 +1209,69 @@ typedef struct AbcUiCreateGameApi {
                     uint32_t hintSize);
 } AbcUiCreateGameApi;
 
+// -------------------------------------------------------------- console ----
+
+// The replacement console's data and services: the bounded engine output
+// mirror (the page's local input records ride the same scrollback), the
+// submission channel with its client-catalog answer, the input history and
+// the completion catalog. The projection discipline (bounded window,
+// incremental appends, tail follow, honest scroll) stays page-side.
+#define ABCUI_CONSOLE_TEXT_MAX 1024 // the buffer's own line byte cap
+
+typedef struct AbcUiConsoleLine {
+  uint32_t structSize;
+  int32_t developer; // assembled from DPrintf fragments
+  int32_t truncated; // the buffer cut the line (the page appends " ...")
+  char text[ABCUI_CONSOLE_TEXT_MAX]; // null-terminated copy
+} AbcUiConsoleLine;
+
+#define ABCUI_CONSOLE_NAME_MAX 128
+
+typedef struct AbcUiConsoleSuggestion {
+  uint32_t structSize;
+  char name[ABCUI_CONSOLE_NAME_MAX];
+} AbcUiConsoleSuggestion;
+
+typedef struct AbcUiConsolePageApi {
+  uint32_t structSize;
+  // Output mirror. The sequence is process-monotonic and never reused; a
+  // generation change means the buffer was cleared and the view restarts
+  // from the tail window.
+  uint64_t (*generation)(void);
+  uint64_t (*latestSequence)(void);
+  int32_t (*lineCount)(void);
+  // Copies up to `max` lines newer than `since` (the newest window when
+  // more qualify); returns the count. structSize honored per line.
+  int32_t (*copySince)(uint64_t since, AbcUiConsoleLine *out, uint32_t max);
+  // One local line into the same scrollback (the "] <command>" input
+  // record; one call is one complete line).
+  void (*pushLocalLine)(const char *text);
+  // The submission channel: validates and hands one command line to the
+  // engine command buffer. Returns 1 when executed; `unknown` (optional)
+  // then reports the client-catalog answer (1 = the verb is unknown here:
+  // the engine prints nothing for it and the console answers itself).
+  int32_t (*submit)(const char *command, int32_t *unknown);
+  // The console's own "unknown command" answer (localized), written into
+  // the scrollback exactly where the vanilla console put its messages.
+  void (*noteUnknownCommand)(const char *command);
+  // Input history (oldest first, newest last; sensitive lines absent).
+  int32_t (*historyCount)(void);
+  int32_t (*historyAt)(int32_t index, char *out, uint32_t outSize);
+  // Case-insensitive prefix completion over the runtime catalogs (sorted,
+  // exact-name deduplicated). Returns the match count which MAY exceed
+  // `max` (the "more exist" row); `out` receives at most `max`.
+  int32_t (*complete)(const char *prefix, AbcUiConsoleSuggestion *out,
+                      uint32_t max);
+  // The close funnel (the page's close button): the same bridge request
+  // path the engine console hotkey uses, engine flag included.
+  void (*requestClose)(void);
+  // ESC layering: the page claims an ESC press it consumed on one of its
+  // own layers (context menu / confirm pane / completion list); the menu
+  // owner's routed ESC reads-and-clears the claim so one physical press
+  // never closes two layers.
+  void (*noteEscapeClaim)(void);
+} AbcUiConsolePageApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -1217,6 +1326,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiSocialApi *social;
   const AbcUiInventoryApi *inventory;
   const AbcUiCreateGameApi *creategame;
+  const AbcUiConsolePageApi *consolepage;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

@@ -70,10 +70,27 @@ void apiCopyText(const char *text) {
     system->SetClipboardText(text);
 }
 
+int32_t apiClipboardText(char *out, uint32_t outSize) {
+  Rml::SystemInterface *system = Rml::GetSystemInterface();
+  if (!system)
+    return 0;
+  Rml::String clipboard;
+  system->GetClipboardText(clipboard);
+  const std::string text = clipboard.c_str();
+  if (out && outSize > 0) {
+    uint32_t i = 0;
+    for (; i + 1 < outSize && i < text.size(); ++i)
+      out[i] = text[i];
+    out[i] = '\0';
+  }
+  return static_cast<int32_t>(text.size());
+}
+
 const AbcUiShellApi kShellApi = {
     sizeof(AbcUiShellApi),
     apiOpenUrl,
     apiCopyText,
+    apiClipboardText,
 };
 
 } // namespace

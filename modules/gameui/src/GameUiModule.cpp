@@ -43,6 +43,12 @@ void shutdown();
 void unload();
 } // namespace creategamepage
 
+namespace consolepage {
+void load();
+void shutdown();
+void unload();
+} // namespace consolepage
+
 namespace {
 
 void onModuleLoad() {
@@ -52,6 +58,7 @@ void onModuleLoad() {
   menupage::load();
   inventorypage::load();
   creategamepage::load();
+  consolepage::load();
 }
 
 void onModuleShutdown() {
@@ -62,6 +69,7 @@ void onModuleShutdown() {
   menupage::shutdown();
   inventorypage::shutdown();
   creategamepage::shutdown();
+  consolepage::shutdown();
 }
 
 void onModuleUnload() {
@@ -71,6 +79,7 @@ void onModuleUnload() {
   menupage::unload();
   inventorypage::unload();
   creategamepage::unload();
+  consolepage::unload();
   Api = nullptr;
 }
 
@@ -86,7 +95,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->events ||
       !api->ui || !api->console || !api->documents || !api->menu ||
       !api->votemenu || !api->playerlist || !api->commandmenu ||
-      !api->menuconfig || !api->social || !api->inventory || !api->creategame)
+      !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
+      !api->consolepage || !api->input || !api->shell)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
@@ -97,7 +107,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       api->menuconfig->structSize < sizeof(AbcUiMenuConfigApi) ||
       api->social->structSize < sizeof(AbcUiSocialApi) ||
       api->inventory->structSize < sizeof(AbcUiInventoryApi) ||
-      api->creategame->structSize < sizeof(AbcUiCreateGameApi))
+      api->creategame->structSize < sizeof(AbcUiCreateGameApi) ||
+      api->consolepage->structSize < sizeof(AbcUiConsolePageApi))
     return 0;
   Api = api;
 

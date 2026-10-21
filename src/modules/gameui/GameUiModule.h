@@ -38,9 +38,6 @@
 #include <vector>
 #include <string>
 namespace panels {
-namespace console {
-class ConsolePage;
-}
 namespace loading {
 class LoadingPage;
 class ConnectionErrorOverlay;
@@ -186,7 +183,6 @@ private:
   // toggle's truth; the gate owns the run policy.
   services::loading::AutoRetryGate AutoRetry;
   std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
-  std::unique_ptr<panels::console::ConsolePage> Console;
   std::unique_ptr<panels::settings::SettingsPage> Settings;
   std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
@@ -207,7 +203,6 @@ private:
   KeyCaptureOwner CaptureOwner;
   framework::uiinput::Token CaptureToken;
   bool MenuPresented = false;
-  bool ConsolePresented = false;
   bool LoadingVisible = false;
   bool ErrorPresented = false;
   bool PasswordPresented = false;

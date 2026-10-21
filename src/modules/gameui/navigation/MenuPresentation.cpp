@@ -112,10 +112,6 @@ void GameUiModule::hideAllMenuDocuments() {
   framework::module_documents::hideMenu();
   if (SubStub)
     SubStub->hide();
-  if (Console) {
-    Console->hide();
-    ConsolePresented = false;
-  }
   if (Settings)
     Settings->hide();
   Server->hide();

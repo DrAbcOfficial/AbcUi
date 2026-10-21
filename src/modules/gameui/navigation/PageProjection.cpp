@@ -128,26 +128,11 @@ void GameUiModule::projectMenuPresentation() {
   // it above the page shells and the console even though the console
   // shows later, while the connection dialogs and the quit confirmation
   // carry higher tiers of their own (#4).
-  // T16 replacement console: fresh projection on every sync (the
-  // page appends only new lines; showLinesForTest analog = render).
-  bool consoleDropped = false;
-  if (state.overlays.contains(MenuOverlay::kConsole) && Console) {
-    if (!ConsolePresented) {
-      Console->prepare(); // fresh open: clear editor, reseed view
-      ConsolePresented = true;
-    }
-    Console->render();
-    Console->show();
-  } else if (Console) {
-    Console->hide();
-    // Issue #5: the UI closed the console (routed ESC, the close button, a
-    // force-dismiss). ConsolePresented is the only witness left at this
-    // point - requestConsoleClose already lowered the bridge truth, so a
-    // consoleRequested() test would miss exactly this path. The engine-side
-    // `hideconsole` follows below.
-    consoleDropped = ConsolePresented;
-    ConsolePresented = false;
-  }
+  // T16 replacement console: the page is a module document (abcui.gameui);
+  // it presents from the state's consoleOpen fact and renders on the paint
+  // beat. A close through its own surfaces (close button, routed ESC)
+  // lowers the engine-facing answer through the section's close funnel, so
+  // the sync only re-asserts it when the overlay dropped without one.
   // T14 overlays. Each "presented" latch means "projected at least
   // once for this opening" - the prepare() clears the fields exactly
   // once per open, repeated syncs are idempotent shows.
@@ -198,11 +183,14 @@ void GameUiModule::projectMenuPresentation() {
   // `hideconsole` the suppressed CGameUI::HideGameUI used to issue (issue
   // #5) - without it the engine's console flag outlived the close and the
   // next ActivateGameUI re-opened the console.
-  if (consoleDropped)
-    menuBackend().hideConsole();
-  else if (!state.overlays.contains(MenuOverlay::kConsole) &&
-           services::nativeUiBridge().consoleRequested())
+  if (!state.overlays.contains(MenuOverlay::kConsole) &&
+      services::nativeUiBridge().consoleRequested()) {
+    // The overlay dropped without the close funnel (a routed ESC): clear
+    // the bridge truth AND the engine-side console flag (issue #5 - the
+    // engine's console flag must never outlive the closed overlay).
     services::nativeUiBridge().noteConsoleDismissed();
+    menuBackend().hideConsole();
+  }
 }
 
 // The presentation sync every caller schedules: project the state machine

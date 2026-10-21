@@ -5,7 +5,6 @@
 // methods include this instead of depending on the composition header's
 // former include list.
 
-#include "../../panels/console/ConsolePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"

@@ -1,7 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
 #include "modules/gameui/GameUiPages.h"
-#include "../../panels/console/ConsolePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
@@ -17,6 +16,7 @@
 #include <abc/CvarCmd.h>
 #include "services/commandmenu/CommandMenuService.h"
 #include "services/creategame/CreateGameService.h"
+#include "services/console/ConsolePageService.h"
 #include "services/friends/FriendsService.h"
 #include "services/inventory/InventoryService.h"
 #include "services/serverbrowser/BlacklistFileStore.h"
@@ -204,6 +204,19 @@ GameUiModule::GameUiModule()
       module->Inventory->close();
   };
   services::inventory::setAccess(inventoryAccess);
+  // The console page module's close button lowers both truths (the bridge
+  // request path and the engine-side console flag) - the seams resolve the
+  // module through the registry (the launcher-thunk shape).
+  services::console::PageAccess consolePageAccess;
+  consolePageAccess.requestClose = [] {
+    if (GameUiModule *module = currentModule()) {
+      services::nativeUiBridge().requestConsoleClose(
+          services::NativeUiOrigin::kOwnUi);
+      services::nativeUiBridge().noteConsoleDismissed();
+      menuBackend().hideConsole();
+    }
+  };
+  services::console::setPageAccess(consolePageAccess);
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
@@ -239,13 +252,11 @@ VideoHost GameUiModule::MakeVideoHost() {
   host.menuPresented = [this] { return MenuPresented; };
   host.syncMenuPresentation = [this] { syncMenuPresentation(); };
   host.hideMenuDocuments = [this] {
-    // The home pages are module documents now; the console and the settings
-    // page stay built-in until their own migration.
+    // The home pages are module documents now; the settings page stays
+    // built-in until its own migration.
     framework::module_documents::hideMenu();
     if (SubStub)
       SubStub->hide();
-    if (Console)
-      Console->hide();
     if (Settings)
       Settings->hide();
   };
@@ -676,7 +687,6 @@ void GameUiModule::onShutdown() {
   // Stop callbacks and release queries before any observing document dies.
   ServerBrowser.closeContext();
   SubStub.reset();
-  Console.reset();
   SettingsView->shutdown();
   Settings.reset();
   Server->shutdown();
@@ -694,7 +704,6 @@ void GameUiModule::onShutdown() {
   DirectConnect.reset();
   Context = nullptr;
   MenuPresented = false;
-  ConsolePresented = false;
   LoadingVisible = false;
   ErrorPresented = false;
   PasswordPresented = false;

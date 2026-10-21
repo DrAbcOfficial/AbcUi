@@ -28,11 +28,6 @@ void GameUiModule::pumpVisibleWork() {
     if (SettingsModel.hasQueued())
       Settings->render();
   }
-  // T16 console stream: while the overlay is presented, the page
-  // appends the buffer's new lines once per frame (bounded incremental
-  // projection; no-op when nothing new arrived).
-  if (ConsolePresented && Console)
-    Console->render();
   // Per-frame focus guard (T09 step 5): while the menu is presented,
   // the context focus must stay inside one of the menu documents.
   // Foreign holders exist (the Rml debug hook document grabs the focus
@@ -66,7 +61,6 @@ void GameUiModule::pumpVisibleWork() {
     if (owner && owner->IsVisible() &&
         (framework::module_documents::ownsVisible(owner) ||
          owner == (SubStub ? SubStub->document() : nullptr) ||
-         owner == (Console ? Console->document() : nullptr) ||
          owner == (Settings ? Settings->document() : nullptr) ||
          owner == (Browser ? Browser->document() : nullptr) ||
          owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
@@ -93,9 +87,9 @@ void GameUiModule::pumpVisibleWork() {
     Password->refocusDefault();
   else if (state.overlays.contains(MenuOverlay::kConnectionError) && ConnError)
     ConnError->refocusDefault();
-  else if (state.overlays.contains(MenuOverlay::kConsole) && Console)
-    Console->refocusDefault();
-  else if (!state.pages.empty()) {
+  else if (state.overlays.contains(MenuOverlay::kConsole)) {
+    // The console page is a module document: it owns its editor focus.
+  } else if (!state.pages.empty()) {
     if (state.pages.top() == MenuPage::kMain ||
         state.pages.top() == MenuPage::kPause) {
       // The menu home is a module document: it owns its entry focus (the
