@@ -17,13 +17,13 @@
 	     left navigation rail, while the filtered list and its feedback live
 	     in the one right-hand content panel. -->
 	<div id="vm-navigation">
-		<button id="vm-tab-ban" class="vm-tab" data-action="vm-kind" data-kind="ban"
+		<button id="vm-tab-ban" data-action="vm-kind" data-kind="ban"
 			data-label="#VoteMenu_Ban">#VoteMenu_Ban</button>
-		<button id="vm-tab-kick" class="vm-tab" data-action="vm-kind" data-kind="kick"
+		<button id="vm-tab-kick" data-action="vm-kind" data-kind="kick"
 			data-label="#VoteMenu_Kick">#VoteMenu_Kick</button>
-		<button id="vm-tab-kill" class="vm-tab" data-action="vm-kind" data-kind="kill"
+		<button id="vm-tab-kill" data-action="vm-kind" data-kind="kill"
 			data-label="#VoteMenu_Kill">#VoteMenu_Kill</button>
-		<button id="vm-tab-map" class="vm-tab" data-action="vm-kind" data-kind="map"
+		<button id="vm-tab-map" data-action="vm-kind" data-kind="map"
 			data-label="#VoteMenu_Map">#VoteMenu_Map</button>
 	</div>
 
