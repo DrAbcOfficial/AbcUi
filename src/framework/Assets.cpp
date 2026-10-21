@@ -31,7 +31,6 @@ void verifyInstalled() {
       {"abc/abcui/hud/img/ammobar_background.png", "ammo panel art"},
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},
       // Batch B (feedback panels).
-      {"abc/abcui/hud/rml/crosshair.rml", "crosshair document"},
       {"abc/abcui/hud/rml/indicator.rml", "indicator document"},
       {"abc/abcui/hud/rml/gindicator.rml", "grenade indicator document"},
       {"abc/abcui/hud/rml/dmgtiles.rml", "damage tiles document"},

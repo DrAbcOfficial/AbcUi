@@ -298,7 +298,6 @@ add_library(AbcUi MODULE
     src/framework/Projection.cpp
     src/panels/chat/ChatMessage.cpp
     src/panels/chat/ChatPanel.cpp
-    src/panels/crosshair/CrosshairPanel.cpp
     src/panels/dmgtiles/DmgTilesPanel.cpp
     src/panels/gindicator/GIndicatorPanel.cpp
     src/panels/indicator/IndicatorPanel.cpp
@@ -353,6 +352,7 @@ add_subdirectory(modules/demo)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
 add_subdirectory(modules/ammo)
+add_subdirectory(modules/crosshair)
 add_subdirectory(modules/health)
 add_subdirectory(modules/hudeffects)
 add_subdirectory(modules/killfeed)

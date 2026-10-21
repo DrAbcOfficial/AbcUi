@@ -8,7 +8,6 @@
 #include "../data/TextFeed.h"
 #include "../modsys/ModuleManager.h"
 #include "../panels/chat/ChatPanel.h"
-#include "../panels/crosshair/CrosshairPanel.h"
 #include "../panels/dmgtiles/DmgTilesPanel.h"
 #include "../panels/gindicator/GIndicatorPanel.h"
 #include "../panels/indicator/IndicatorPanel.h"
@@ -28,7 +27,6 @@ namespace {
 std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
   // Batch B (feedback panels).
-  panels.push_back(std::make_unique<panels::CrosshairPanel>());
   panels.push_back(std::make_unique<panels::IndicatorPanel>());
   panels.push_back(std::make_unique<panels::GIndicatorPanel>());
   panels.push_back(std::make_unique<panels::DmgTilesPanel>());
@@ -58,7 +56,6 @@ void installHudPanels() {
 void registerHudPanelCvars() {
   commands::registerAll();
   // Batch B.
-  panels::crosshair::registerCvars();
   panels::indicator::registerCvars();
   panels::gindicator::registerCvars();
   panels::popnum::registerCvars();

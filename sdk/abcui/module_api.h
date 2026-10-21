@@ -189,6 +189,11 @@ typedef struct AbcUiPlayerState {
   float speed;   // horizontal velocity (the old side readout)
 } AbcUiPlayerState;
 
+// PlayerTrace types shared with data->traceEndPos.
+#define ABCUI_TRACE_VIEW 0
+#define ABCUI_TRACE_HEAD 1
+#define ABCUI_TRACE_FOOT 2
+
 typedef struct AbcUiDataApi {
   uint32_t structSize;
   void (*hudState)(AbcUiHudState *out);
@@ -198,9 +203,24 @@ typedef struct AbcUiDataApi {
   // Local player readout: entindex (0 when there is none), frags from the
   // ScoreInfo feed and the horizontal speed the HUD readouts display.
   void (*playerState)(AbcUiPlayerState *out);
+  // Engine third-person view flag (gExportfuncs.CL_IsThirdPerson).
+  int32_t (*thirdPerson)(void);
+  // Cached player trace end position (the same traces the HUD projects);
+  // 1 on success. `type` is one of ABCUI_TRACE_*.
+  int32_t (*traceEndPos)(int32_t type, float out[3]);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----
+
+// Dynamic crosshair layout request (the old services::crosshair::Layout).
+typedef struct AbcUiCrosshairLayout {
+  float thickness;
+  float length;
+  float offset;       // gap + the caller's punch drift
+  float outlineWidth; // 0 = no outline
+  int32_t dot;
+  int32_t tShape;
+} AbcUiCrosshairLayout;
 
 typedef struct AbcUiDocument AbcUiDocument; // opaque panel-backed document
 // Element handles are only valid for the callback that queried them; query
@@ -276,6 +296,19 @@ typedef struct AbcUiUiApi {
   // Restarts an <animimg> element's frame sequence (no-op on other
   // elements).
   void (*elementRestartAnimation)(AbcUiElement *element);
+  // Writes the RCSS "rgba(r, g, b, a)" text (alpha as a 0..255 integer).
+  void (*formatRgba)(int r, int g, int b, int a, char *out, uint32_t outSize);
+  // World -> screen projection in Rml pixel coordinates. Returns the raw
+  // engine result: nonzero means the point is behind the camera.
+  int (*project)(const float world[3], float screen[2]);
+  // Document/context pixel dimensions; 0 when the document has no context.
+  int (*documentSize)(AbcUiDocument *doc, int *width, int *height);
+  // Dynamic crosshair geometry (the single implementation the settings
+  // preview also uses). Fills core[5][4] and outline[5][4] as x, y, width,
+  // height relative to the centre, plus visible[5] (0 for the parts a switch
+  // hides). Part order: center, top, bottom, left, right.
+  void (*crosshairLayout)(const AbcUiCrosshairLayout *layout, float core[5][4],
+                          float outline[5][4], int32_t visible[5]);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -333,10 +366,14 @@ typedef struct AbcUiWeaponInfo {
   int32_t clip2;   // secondary magazine (-1 when the weapon has none)
   int32_t state;   // CurWeapon state bits (valid/onTarget/uzi)
   char name[ABCUI_WEAPON_NAME_MAX];
-  AbcUiWeaponSprite active;   // "weapon_s" sprite (highlighted item)
-  AbcUiWeaponSprite inactive; // "weapon" sprite
-  AbcUiWeaponSprite ammo;     // "ammo" sprite (ammo bar / pickup stack)
-  AbcUiWeaponSprite ammo2;    // "ammo2" sprite (falls back to "ammo")
+  AbcUiWeaponSprite active;          // "weapon_s" sprite (highlighted item)
+  AbcUiWeaponSprite inactive;        // "weapon" sprite
+  AbcUiWeaponSprite ammo;            // "ammo" sprite (ammo bar / pickup stack)
+  AbcUiWeaponSprite ammo2;           // "ammo2" sprite (falls back to "ammo")
+  AbcUiWeaponSprite crosshair;       // per-weapon crosshair ("crosshair")
+  AbcUiWeaponSprite autoaim;         // on-target crosshair ("autoaim")
+  AbcUiWeaponSprite zoomedCrosshair; // zoomed crosshair
+  AbcUiWeaponSprite zoomedAutoaim;   // zoomed on-target crosshair
 } AbcUiWeaponInfo;
 
 typedef struct AbcUiWeaponsApi {

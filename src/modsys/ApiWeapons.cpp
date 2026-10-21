@@ -52,6 +52,10 @@ void fill(const weaponres::Weapon &weapon, AbcUiWeaponInfo &out) {
   copySprite(weapon.inactive, out.inactive);
   copySprite(weapon.ammo, out.ammo);
   copySprite(weapon.ammo2, out.ammo2);
+  copySprite(weapon.crosshair, out.crosshair);
+  copySprite(weapon.autoaim, out.autoaim);
+  copySprite(weapon.zoomedCrosshair, out.zoomedCrosshair);
+  copySprite(weapon.zoomedAutoaim, out.zoomedAutoaim);
 }
 
 int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {

@@ -11,13 +11,16 @@
 
 #include "../data/HudState.h"
 #include "../data/NetworkMessages.h"
+#include "../data/PlayerTrace.h"
 #include "../framework/ColorUtil.h"
 #include "../framework/GlyphText.h"
 #include "../framework/HudPanel.h"
 #include "../framework/Localization.h"
+#include "../framework/Projection.h"
 #include "../framework/PanelManager.h"
 #include "../framework/TextUtil.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
+#include "../services/crosshair/Geometry.h"
 #include "../rmlui/animated/ElementAnimatedImage.h"
 #include "../rmlui/texture/SpriteResource.h"
 
@@ -178,6 +181,66 @@ void apiElementRestartAnimation(AbcUiElement *element) {
     animated->Restart();
 }
 
+void apiFormatRgba(int r, int g, int b, int a, char *out, uint32_t outSize) {
+  copyOut(ColorUtil::formatRgba(r, g, b, a), out, outSize);
+}
+
+int apiProject(const float world[3], float screen[2]) {
+  if (!world || !screen)
+    return 1;
+  return projection::worldToScreen(world, screen);
+}
+
+int apiDocumentSize(AbcUiDocument *doc, int *width, int *height) {
+  HudPanel *panel = panelOf(doc);
+  Rml::ElementDocument *document = panel ? panel->getDocument() : nullptr;
+  Rml::Context *context = document ? document->GetContext() : nullptr;
+  if (!context)
+    return 0;
+  const Rml::Vector2i dimensions = context->GetDimensions();
+  if (width)
+    *width = dimensions.x;
+  if (height)
+    *height = dimensions.y;
+  return 1;
+}
+
+void apiCrosshairLayout(const AbcUiCrosshairLayout *layout, float core[5][4],
+                        float outline[5][4], int32_t visible[5]) {
+  if (!layout)
+    return;
+  using services::crosshair::Part;
+  services::crosshair::Layout request;
+  request.Thickness = layout->thickness;
+  request.Length = layout->length;
+  request.Offset = layout->offset;
+  request.OutlineWidth = layout->outlineWidth;
+  request.Dot = layout->dot != 0;
+  request.TShape = layout->tShape != 0;
+  services::crosshair::Rect coreRects[services::crosshair::kPartCount];
+  services::crosshair::Rect outlineRects[services::crosshair::kPartCount];
+  services::crosshair::coreRects(request, coreRects);
+  services::crosshair::outlineRects(request, outlineRects);
+  static constexpr Part kParts[services::crosshair::kPartCount] = {
+      Part::kCenter, Part::kTop, Part::kBottom, Part::kLeft, Part::kRight};
+  for (int i = 0; i < services::crosshair::kPartCount; ++i) {
+    if (core) {
+      core[i][0] = coreRects[i].X;
+      core[i][1] = coreRects[i].Y;
+      core[i][2] = coreRects[i].Width;
+      core[i][3] = coreRects[i].Height;
+    }
+    if (outline) {
+      outline[i][0] = outlineRects[i].X;
+      outline[i][1] = outlineRects[i].Y;
+      outline[i][2] = outlineRects[i].Width;
+      outline[i][3] = outlineRects[i].Height;
+    }
+    if (visible)
+      visible[i] = services::crosshair::partVisible(request, kParts[i]) ? 1 : 0;
+  }
+}
+
 int apiHudSprite(const char *name, char *atlas, uint32_t atlasSize,
                  int32_t rect[4]) {
   if (!name)
@@ -321,6 +384,34 @@ void apiPlayerState(AbcUiPlayerState *out) {
   out->speed = std::sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
 }
 
+int32_t apiThirdPerson() {
+  return gExportfuncs.CL_IsThirdPerson() ? 1 : 0;
+}
+
+int32_t apiTraceEndPos(int32_t type, float out[3]) {
+  if (!out)
+    return 0;
+  playertrace::TraceType traceType = playertrace::TraceType::View;
+  switch (type) {
+  case ABCUI_TRACE_HEAD:
+    traceType = playertrace::TraceType::Head;
+    break;
+  case ABCUI_TRACE_FOOT:
+    traceType = playertrace::TraceType::Foot;
+    break;
+  default:
+    traceType = playertrace::TraceType::View;
+    break;
+  }
+  const pmtrace_t *trace = playertrace::get(traceType);
+  if (!trace)
+    return 0;
+  out[0] = trace->endpos[0];
+  out[1] = trace->endpos[1];
+  out[2] = trace->endpos[2];
+  return 1;
+}
+
 int apiLevelName(char *out, uint32_t outSize) {
   const char *name = gEngfuncs.pfnGetLevelName();
   const std::string text = name ? name : "";
@@ -330,10 +421,8 @@ int apiLevelName(char *out, uint32_t outSize) {
 }
 
 const AbcUiDataApi kDataApi = {
-    sizeof(AbcUiDataApi),
-    apiHudState,
-    apiLevelName,
-    apiPlayerState,
+    sizeof(AbcUiDataApi), apiHudState,    apiLevelName,
+    apiPlayerState,       apiThirdPerson, apiTraceEndPos,
 };
 
 } // namespace
