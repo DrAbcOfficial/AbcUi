@@ -78,12 +78,23 @@ jobs:
           & $cf --dry-run --Werror --style=file @files
 
       - name: Configure
-        # The CMake presets pin the Visual Studio 18 2026 generator, which the
-        # runner image does not carry yet; configure the same Win32/x86 target
-        # with the bundled Visual Studio 2022 generator instead.
+        # Use the newest Visual Studio the runner actually carries: the
+        # presets pin VS 18 2026, so prefer that generator and fall back to
+        # VS 17 2022 only when the image lacks it (instead of always
+        # validating the older generation).
         run: |
           cmake --version
-          cmake -S . -B build/ci -G "Visual Studio 17 2022" -A Win32 -DABC_CORE_DIR="$env:GITHUB_WORKSPACE/.abc/AbcCore"
+          $generator = 'Visual Studio 17 2022'
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          if (Test-Path $vswhere) {
+            $instances = & $vswhere -all -prerelease -products * -format json | ConvertFrom-Json
+            $latest = $instances | Sort-Object { [int]($_.installationVersion.Split('.')[0]) } -Descending | Select-Object -First 1
+            if ($latest -and [int]$latest.installationVersion.Split('.')[0] -ge 18) {
+              $generator = 'Visual Studio 18 2026'
+            }
+          }
+          Write-Host "Generating with '$generator'"
+          cmake -S . -B build/ci -G $generator -A Win32 -DABC_CORE_DIR="$env:GITHUB_WORKSPACE/.abc/AbcCore"
 
       - name: Build (${{ matrix.config }})
         run: cmake --build build/ci --config ${{ matrix.config }} --parallel
