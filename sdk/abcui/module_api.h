@@ -767,6 +767,15 @@ typedef struct AbcUiMenuApi {
   int32_t (*ensureUp)(void);
   // Close the menu and resume gameplay (in-game only); 1 on a decided close.
   int32_t (*resume)(void);
+  // The shell's remaining fixed intents (the same typed controller events the
+  // built-in shell sends; never raw engine commands):
+  // - open the quit confirmation (the page module presents the overlay);
+  // - leave the current game through the backend's disconnect path;
+  // - toggle the replacement console overlay (close when it is up, otherwise
+  //   open through the native bridge, then sync).
+  void (*quit)(void);
+  void (*disconnect)(void);
+  void (*toggleConsole)(void);
 } AbcUiMenuApi;
 
 // ------------------------------------------------- module descriptor ------

@@ -245,6 +245,30 @@ void GameUiModule::menuBack() {
   finishDispatch();
 }
 
+void GameUiModule::menuQuit() {
+  // The confirmation overlay is the controller's decision; a page module
+  // presents its own document once the overlay is on the stack.
+  Controller.dispatch(MenuEvent{EventKind::kQuitRequested});
+  finishDispatch();
+}
+
+void GameUiModule::menuDisconnect() {
+  Controller.dispatch(MenuEvent{EventKind::kDisconnectRequested});
+  finishDispatch();
+}
+
+void GameUiModule::menuToggleConsole() {
+  // Same shape the shell's console entry uses: close is idempotent and never
+  // reopens, otherwise open through the bridge (which raises the menu when
+  // needed and notifies the sink).
+  services::NativeUiBridge &bridge = services::nativeUiBridge();
+  if (bridge.consoleRequested())
+    bridge.requestConsoleClose(services::NativeUiOrigin::kOwnUi);
+  else
+    bridge.requestConsoleOpen(services::NativeUiOrigin::kOwnUi);
+  finishDispatch();
+}
+
 int32_t GameUiModule::resumeFromMenu() {
   if (Controller.state().phase != menu::BackendPhase::kInGame)
     return 0;

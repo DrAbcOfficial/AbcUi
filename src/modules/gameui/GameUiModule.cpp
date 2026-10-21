@@ -148,6 +148,9 @@ GameUiModule::GameUiModule()
   menuHost.back = [this] { menuBack(); };
   menuHost.ensureUp = [this] { return ensureMenuUp(); };
   menuHost.resume = [this] { return resumeFromMenu(); };
+  menuHost.quit = [this] { menuQuit(); };
+  menuHost.disconnect = [this] { menuDisconnect(); };
+  menuHost.toggleConsole = [this] { menuToggleConsole(); };
 }
 
 VideoHost GameUiModule::MakeVideoHost() {

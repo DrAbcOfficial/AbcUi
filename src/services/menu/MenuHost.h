@@ -42,6 +42,9 @@ struct Host {
   std::function<void()> back;
   std::function<int32_t()> ensureUp;
   std::function<int32_t()> resume;
+  std::function<void()> quit;
+  std::function<void()> disconnect;
+  std::function<void()> toggleConsole;
 };
 
 Host &host();

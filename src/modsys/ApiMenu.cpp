@@ -44,9 +44,28 @@ int32_t apiResume(void) {
   return seam.resume ? seam.resume() : 0;
 }
 
+void apiQuit(void) {
+  const services::menu::Host &seam = services::menu::host();
+  if (seam.quit)
+    seam.quit();
+}
+
+void apiDisconnect(void) {
+  const services::menu::Host &seam = services::menu::host();
+  if (seam.disconnect)
+    seam.disconnect();
+}
+
+void apiToggleConsole(void) {
+  const services::menu::Host &seam = services::menu::host();
+  if (seam.toggleConsole)
+    seam.toggleConsole();
+}
+
 const AbcUiMenuApi kMenuApi = {
     sizeof(AbcUiMenuApi), apiState,  apiOpenPage, apiBack,
-    apiEnsureUp,          apiResume,
+    apiEnsureUp,          apiResume, apiQuit,     apiDisconnect,
+    apiToggleConsole,
 };
 
 } // namespace

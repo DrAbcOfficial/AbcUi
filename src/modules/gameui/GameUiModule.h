@@ -122,6 +122,9 @@ private:
   int32_t ensureMenuUp();
   void menuBack();
   int32_t resumeFromMenu();
+  void menuQuit();
+  void menuDisconnect();
+  void menuToggleConsole();
   void showStubPage(panels::menushared::MenuStubPage *stub, MenuPage page,
                     bool console);
   void onMenuAction(const char *action);
