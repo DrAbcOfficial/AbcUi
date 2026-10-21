@@ -42,8 +42,9 @@ void unloadAll();
 // Refused outside a load window or on a duplicate panel name.
 bool acceptPanel(const AbcUiPanelDesc &desc);
 
-// Panels registered during boot, in registration order; installHudPanels
-// pulls (and clears) this before installing the cycle.
+// Panels registered during boot, in registration order. The descriptors are
+// kept (onLoad runs once per process); every installHudPanels cycle gets
+// fresh wrappers over them, because HUD_Shutdown destroys the panel list.
 std::vector<std::unique_ptr<HudPanel>> takePanels();
 
 } // namespace modmanager

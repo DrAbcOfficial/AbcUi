@@ -35,8 +35,8 @@ std::vector<LoadedModule> &loaded() {
   return instance;
 }
 
-std::vector<std::unique_ptr<HudPanel>> &pendingPanels() {
-  static std::vector<std::unique_ptr<HudPanel>> instance;
+std::vector<AbcUiPanelDesc> &pendingPanels() {
+  static std::vector<AbcUiPanelDesc> instance;
   return instance;
 }
 
@@ -334,13 +334,26 @@ bool acceptPanel(const AbcUiPanelDesc &desc) {
         desc.name);
     return false;
   }
-  pendingPanels().push_back(std::make_unique<ModulePanel>(desc));
+  for (const AbcUiPanelDesc &accepted : pendingPanels()) {
+    if (std::string(accepted.name) == desc.name) {
+      abc::ConsoleWarn("[AbcUi] panel \"%s\" registered twice, refused\n",
+                       desc.name);
+      return false;
+    }
+  }
+  pendingPanels().push_back(desc);
   return true;
 }
 
 std::vector<std::unique_ptr<HudPanel>> takePanels() {
-  auto panels = std::move(pendingPanels());
-  pendingPanels().clear();
+  // The descriptors stay put: onLoad runs once per process but the panel
+  // list is rebuilt after every HUD_Shutdown, so each install cycle gets
+  // fresh wrappers over the same module-owned descriptor (its strings live
+  // in the module image, which outlives every HUD cycle).
+  std::vector<std::unique_ptr<HudPanel>> panels;
+  panels.reserve(pendingPanels().size());
+  for (const AbcUiPanelDesc &desc : pendingPanels())
+    panels.push_back(std::make_unique<ModulePanel>(desc));
   return panels;
 }
 
