@@ -87,6 +87,13 @@ void StackBase::tickItems(double frameTime) {
 }
 
 void StackBase::clearItems() {
+  // initStack only warns when the RML #stack element is missing; without
+  // this guard every HUD_VidInit -> reset() -> clearItems() dereferenced
+  // null (a typo in the document escalated from a warning to a crash).
+  if (!Container) {
+    Items.clear();
+    return;
+  }
   for (Item &item : Items)
     Container->RemoveChild(item.element);
   Items.clear();
