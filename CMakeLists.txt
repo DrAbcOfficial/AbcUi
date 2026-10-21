@@ -202,7 +202,6 @@ add_library(AbcUi MODULE
     src/services/video/Options.cpp
     src/rmlui/video/VideoTexture.cpp
     src/rmlui/texture/DynamicTexture.cpp
-    src/services/filedialog/FileBrowser.cpp
     src/services/spray/Encoder.cpp
     src/modules/modeltest/ModelTest.cpp
     src/modules/videotest/VideoTest.cpp
@@ -258,7 +257,6 @@ add_library(AbcUi MODULE
     src/modules/gameui/navigation/Actions.cpp
     src/modules/gameui/navigation/MenuAction.cpp
     src/modules/gameui/input/MenuInput.cpp
-    src/modules/gameui/settings/SettingsFlow.cpp
     src/modules/gameui/settings/SprayMaker.cpp
     src/modules/gameui/settings/VideoFlow.cpp
     src/modules/gameui/serverbrowser/ServerBrowserFlow.cpp
@@ -327,20 +325,6 @@ add_library(AbcUi MODULE
     src/framework/GlyphText.cpp
     src/framework/Projection.cpp
     src/panels/menushared/MenuShellWindows.cpp
-    src/panels/settings/SettingsUi.cpp
-    src/panels/settings/sections/VideoSection.cpp
-    src/panels/settings/sections/VoiceSection.cpp
-    src/panels/settings/sections/PreviewSection.cpp
-    src/panels/settings/sections/CrosshairPreview.cpp
-    src/panels/settings/sections/SpraySection.cpp
-    src/panels/settings/SettingsPage.cpp
-    src/panels/settings/SettingsNavigation.cpp
-    src/panels/settings/SettingsEvents.cpp
-    src/panels/settings/sections/CvarRows.cpp
-    src/panels/settings/sections/ModelPicker.cpp
-    src/panels/settings/sections/ColorRows.cpp
-    src/panels/settings/sections/BindingRows.cpp
-    src/panels/settings/VideoConfirmPage.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )

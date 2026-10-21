@@ -7,6 +7,7 @@
 #include "modules/gameui/GameUiPages.h"
 #include "DebugCommands.h"
 #include <abc/Console.h>
+#include "modsys/ApiTable.h"
 #include "rmlui/InputBridge.h"
 #include <string>
 namespace gameui {
@@ -40,8 +41,7 @@ void DebugCommands::voiceBoostCommand() {
                            ? self.VoiceModel.micBoostDraft()
                            : self.VoiceModel.micBoost();
   self.VoiceModel.setMicBoostDraft(!current);
-  if (self.Settings)
-    self.Settings->renderVoiceSection();
+  framework::SettingsApi::bumpRevision();
   voiceStatusCommand();
 }
 
@@ -61,8 +61,7 @@ void DebugCommands::voiceTestCommand() {
     abc::ConsoleWarn(
         "[AbcUi] voice test REFUSED (no device / engine returned 0)\n");
   }
-  if (self.Settings)
-    self.Settings->renderVoiceSection();
+  framework::SettingsApi::bumpRevision();
   voiceStatusCommand();
 }
 
@@ -80,8 +79,7 @@ void DebugCommands::voiceApplyCommand() {
   const bool boostOk = self.VoiceModel.applyMicBoost();
   abc::ConsolePrint("[AbcUi] voice apply mic=%d boost=%d\n", micOk ? 1 : 0,
                     boostOk ? 1 : 0);
-  if (self.Settings)
-    self.Settings->renderVoiceSection();
+  framework::SettingsApi::bumpRevision();
   voiceStatusCommand();
 }
 
@@ -97,8 +95,7 @@ void DebugCommands::settingsApplyCommand() {
   for (const auto &result : results)
     abc::ConsolePrint("[AbcUi] apply '%s' outcome=%d\n", result.cvar.c_str(),
                       static_cast<int>(result.outcome));
-  if (self.Settings)
-    self.Settings->render();
+  framework::SettingsApi::bumpRevision();
   settingsStatusCommand();
 }
 
@@ -137,13 +134,8 @@ void DebugCommands::bindStatusCommand() {
   if (self.Context) {
     if (Rml::Element *hover = self.Context->GetHoverElement())
       hoverId = hover->GetId().empty() ? hover->GetTagName() : hover->GetId();
-    if (self.Settings && self.Settings->document()) {
-      if (Rml::Element *panel =
-              self.Settings->document()->GetElementById("panel")) {
-        panelScroll = panel->GetScrollTop();
-        panelScrollHeight = panel->GetScrollHeight();
-      }
-    }
+    // The settings page is a module document now: its scroll state is not
+    // reachable from the console (the page's own DOM owns it).
   }
   abc::ConsolePrint(
       "[AbcUi] binds: reads=%d capturing=%d row=%d conflict=%d token=%d "

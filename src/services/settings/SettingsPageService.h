@@ -57,6 +57,10 @@ struct PageAccess {
   // The display-mode transaction (persist the recovery record, write the
   // changed commands, restart). True when the batch was issued.
   std::function<bool()> videoApply;
+  // The confirmation window's two outcomes (the flow also owns the deferred
+  // restart ordering, so both land there).
+  std::function<bool()> videoKeep;
+  std::function<bool()> videoRevert;
   // The spray maker for one absolute image path. True when accepted.
   std::function<bool(const std::string &path)> sprayMake;
   // Starts a key-binding capture session: the model row plus the input token

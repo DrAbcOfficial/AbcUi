@@ -90,11 +90,12 @@ implemented rules the transition must keep:
   + `assets/` + a CMake `add_library(... MODULE)` target. Migrated so far:
   flashlight, textmenu, vote, motd, weaponchoose, killfeed, textfeed, sidetext,
   health, ammo, hudeffects, crosshair, damage, itemhighlight, playerboard,
-  radar, scoreboard and chat; `abcui.gameui` has the menu shell, the
-  console, the server browser and the vote creation, player-list,
-  command-menu, inventory and create-game pages (the remaining menu pages
-  still live in the framework); `demo` is the minimal example.
-  modeltest/videotest stay development-only.
+  radar, scoreboard and chat; `abcui.gameui` has every replacement menu
+  page (the shell, the console, the server browser, the connection
+  surfaces, the vote creation, player-list, command-menu, inventory,
+  create-game and settings pages, plus the display-mode confirmation
+  dialog); `demo` is the minimal example. modeltest/videotest stay
+  development-only.
 - The module ABI is pure C, versioned struct tables under `sdk/abcui/`
   (same pattern as `AbcCore_CreateInterface`). A module DLL exports exactly
   one entry, `AbcUiModule_Main(abiVersion, api, outDescriptor)`; everything
@@ -103,13 +104,14 @@ implemented rules the transition must keep:
   Sections: core, console, events, vfs, panels, documents, data, ui, commands,
   weapons, players, radar, shell, voice, score, input, menu, votemenu,
   playerlist, commandmenu, menuconfig, social, inventory, creategame,
-  consolepage, serverbrowser, connection. Adding a function
+  consolepage, serverbrowser, connection, settings. Adding a function
   means appending it to the section end (and its initializer in
   `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
   `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
   `ApiPlayerList.cpp` / `ApiCommandMenu.cpp` / `ApiMenuConfig.cpp` /
   `ApiSocial.cpp` / `ApiInventory.cpp` / `ApiCreateGame.cpp` /
-  `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` / `ApiConnection.cpp` -
+  `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` / `ApiConnection.cpp` /
+  `ApiSettings.cpp` -
   a missing initializer is silently a null pointer; the table audit in
   `ApiTable::get` catches it at boot), and
   appending to snapshot structs means the writer must honor the caller's
@@ -143,8 +145,8 @@ implemented rules the transition must keep:
   themselves from `menu.state` (transitions) and `menu.paint` (the per-frame
   presentation beat), and navigate through the `menu` section
   (`openPage`/`back`/`ensureUp`/`resume`) - never through a native GameUI
-  window. The page stack, phase machine and takeover stay framework-side
-  until the last page moves out.
+  window. The page stack, phase machine and takeover stay framework-side;
+  every page is a module document.
 - Data exchange is event-bus based (`src/modsys/EventBus.h`): string channels,
   each backed by priority buckets of `abc::CallbackList` (eventpp reused from
   AbcCore). Priority > 0 runs before the framework default (interception and
@@ -194,8 +196,10 @@ cmake --build --preset win32-debug    # Release: win32-release
 - C-style casts remain in the ABCEnchance-derived code; new code uses
   `static_cast` / `const_cast` / `reinterpret_cast`.
 - Interface structure is orchestrated through the GameUI composition root.
-  Page assets live under `assets/abc/abcui/`: `gameui/{rml,rcss,config,img,
-  scence}`, `hud/{rml,rcss,img,spr}`, plus the shared `lang`, `rcss` and `img`.
+  Page documents and their stylesheets live in the module packages; the
+  configuration JSON and the shared theme stay under `assets/abc/abcui/`:
+  `gameui/{rcss,config,img,scence}`, `hud/{rml,rcss,img,spr}`, plus the
+  shared `lang`, `rcss` and `img`.
 - RmlUi 6.3 RCSS constraints: `font-family` accepts a single family name (CJK
   falls back through the fallback face), and transition easing names use the
   `linear-in` family.

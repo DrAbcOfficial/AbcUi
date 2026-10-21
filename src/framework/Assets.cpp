@@ -36,14 +36,9 @@ void verifyInstalled() {
       // abcui.gameui package; its stylesheet stays until the last menu page
       // moves (the built-in documents share it).
       {"abc/abcui/gameui/rcss/mainmenu.rcss", "main menu stylesheet"},
-      // T10 settings page.
-      {"abc/abcui/gameui/rml/settings.rml", "settings document"},
-      {"abc/abcui/gameui/rcss/settings.rcss", "settings stylesheet"},
-      // T12 video confirmation dialog.
-      {"abc/abcui/gameui/rml/videoconfirm.rml", "video confirm document"},
-      {"abc/abcui/gameui/rcss/videoconfirm.rcss", "video confirm stylesheet"},
-      // The command menu (+commandmenu replacement) moved into the
-      // abcui.gameui package with its page.
+      // The settings and video-confirmation pages moved into the
+      // abcui.gameui package with their page (the shared mainmenu.rcss above
+      // stays framework-side).
   };
   for (const auto &check : checks) {
     if (!fileExists(check.Path))

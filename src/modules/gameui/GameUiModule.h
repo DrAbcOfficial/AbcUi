@@ -32,7 +32,6 @@
 #include "inventory/InventoryFlow.h"
 #include "settings/SprayMaker.h"
 #include "serverbrowser/ServerBrowserFlow.h"
-#include "settings/SettingsFlow.h"
 #include "settings/VideoFlow.h"
 #include "votemenu/VoteMenuFlow.h"
 #include <memory>
@@ -43,10 +42,6 @@ namespace menushared {
 class MenuStubPage;
 class ConfirmQuitOverlay;
 } // namespace menushared
-namespace settings {
-class SettingsPage;
-class VideoConfirmPage;
-} // namespace settings
 } // namespace panels
 
 namespace gameui {
@@ -182,8 +177,6 @@ private:
   // toggle's truth; the gate owns the run policy.
   services::loading::AutoRetryGate AutoRetry;
   std::unique_ptr<panels::menushared::MenuStubPage> SubStub;
-  std::unique_ptr<panels::settings::SettingsPage> Settings;
-  std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;
   std::unique_ptr<SprayMaker> Spray;
   std::unique_ptr<VoteMenuFlow> Vote;
@@ -191,7 +184,6 @@ private:
   std::unique_ptr<InventoryFlow> Inventory;
   std::unique_ptr<CreateGameFlow> Create;
   std::unique_ptr<ServerBrowserFlow> Server;
-  std::unique_ptr<SettingsFlow> SettingsView;
   std::unique_ptr<panels::menushared::ConfirmQuitOverlay> ConfirmQuit;
   framework::uiinput::Token PageToken;
   KeyCaptureOwner CaptureOwner;

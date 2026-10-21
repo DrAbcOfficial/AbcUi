@@ -369,6 +369,15 @@ void apiApply(AbcUiSettingsApply *out) {
     std::memcpy(out, &tally, declaredBytes(out->structSize, sizeof(tally)));
 }
 
+int32_t apiApplyOne(const char *cvar) {
+  auto *model = models().rows;
+  if (!model || !cvar || !*cvar)
+    return 0;
+  const auto result = model->applyOne(cvar);
+  bump();
+  return result ? 1 : 0;
+}
+
 // ---------------------------------------------------------- page tree ----
 
 const std::vector<services::uiconfig::SettingsPageDefinition> *pages() {
@@ -605,7 +614,7 @@ int32_t apiBindVerify(void) {
 // ------------------------------------------------------ display modes ----
 
 int32_t apiVideoFacts(AbcUiVideoFacts *out) {
-  const auto *model = models().video;
+  auto *model = models().video;
   if (!model || !out)
     return 0;
   AbcUiVideoFacts full{};
@@ -624,6 +633,25 @@ int32_t apiVideoFacts(AbcUiVideoFacts *out) {
   full.stagedWidth = staged.Width;
   full.stagedHeight = staged.Height;
   full.stagedWindowed = staged.Windowed ? 1 : 0;
+  if (full.awaitingConfirm) {
+    const auto &record = model->pending();
+    full.requestedWidth = record.NewWidth;
+    full.requestedHeight = record.NewHeight;
+    full.requestedWindowed = record.NewWindowed;
+    // confirmKind() re-queries the engine's actual mode: only ask while a
+    // confirmation actually owns the screen.
+    switch (model->confirmKind()) {
+    case services::settings::VideoModeModel::ConfirmKind::kApplied:
+      full.confirmKind = ABCUI_VIDEO_CONFIRM_APPLIED;
+      break;
+    case services::settings::VideoModeModel::ConfirmKind::kNotApplied:
+      full.confirmKind = ABCUI_VIDEO_CONFIRM_NOT_APPLIED;
+      break;
+    case services::settings::VideoModeModel::ConfirmKind::kUnknown:
+      full.confirmKind = ABCUI_VIDEO_CONFIRM_UNKNOWN;
+      break;
+    }
+  }
   std::memcpy(out, &full, declaredBytes(out->structSize, sizeof(full)));
   return 1;
 }
@@ -668,6 +696,20 @@ void apiVideoCancelStage(void) {
 int32_t apiVideoApply(void) {
   const services::settings::PageAccess &seam = services::settings::pageAccess();
   const int32_t result = seam.videoApply && seam.videoApply() ? 1 : 0;
+  bump();
+  return result;
+}
+
+int32_t apiVideoKeep(void) {
+  const services::settings::PageAccess &seam = services::settings::pageAccess();
+  const int32_t result = seam.videoKeep && seam.videoKeep() ? 1 : 0;
+  bump();
+  return result;
+}
+
+int32_t apiVideoRevert(void) {
+  const services::settings::PageAccess &seam = services::settings::pageAccess();
+  const int32_t result = seam.videoRevert && seam.videoRevert() ? 1 : 0;
   bump();
   return result;
 }
@@ -819,6 +861,7 @@ const AbcUiSettingsApi kSettingsApi = {
     apiEditable,
     apiHasQueued,
     apiApply,
+    apiApplyOne,
     apiPageCount,
     apiPageAt,
     apiPageCvarAt,
@@ -849,6 +892,8 @@ const AbcUiSettingsApi kSettingsApi = {
     apiVideoStageWindowed,
     apiVideoCancelStage,
     apiVideoApply,
+    apiVideoKeep,
+    apiVideoRevert,
     apiVideoDescribe,
     apiVoiceFacts,
     apiVoiceSetVolumeDraft,

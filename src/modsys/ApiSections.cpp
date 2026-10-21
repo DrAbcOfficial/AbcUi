@@ -763,7 +763,7 @@ AbcUiElement *apiElementFindTag(AbcUiElement *element, const char *tag) {
   AbcUiElement *found = nullptr;
   const int count = target->GetNumChildren(true);
   for (int index = 0; index < count; ++index) {
-    Rml::Element *child = target->GetChild(index, true);
+    Rml::Element *child = target->GetChild(index);
     if (child && child->GetTagName() == tag)
       found = reinterpret_cast<AbcUiElement *>(child);
   }
@@ -789,6 +789,29 @@ void apiFormatHueColor(float value, char *out, uint32_t outSize) {
 void apiReleaseTexture(const char *source) {
   if (source && *source)
     Rml::ReleaseTexture(source);
+}
+
+int32_t apiElementAppendChild(AbcUiElement *parent, AbcUiElement *child) {
+  Rml::Element *target = elementOf(parent);
+  Rml::Element *node = elementOf(child);
+  if (!target || !node || target == node)
+    return 0;
+  // Never let an element move under its own subtree.
+  for (Rml::Element *ancestor = target; ancestor;
+       ancestor = ancestor->GetParentNode()) {
+    if (ancestor == node)
+      return 0;
+  }
+  Rml::Element *previous = node->GetParentNode();
+  if (!previous)
+    return 0;
+  if (previous == target)
+    return 1;
+  Rml::ElementPtr owned = previous->RemoveChild(node);
+  if (!owned)
+    return 0;
+  target->AppendChild(std::move(owned));
+  return 1;
 }
 
 const AbcUiUiApi kUiApi = {
@@ -859,6 +882,7 @@ const AbcUiUiApi kUiApi = {
     apiElementSetDisabled,
     apiFormatHueColor,
     apiReleaseTexture,
+    apiElementAppendChild,
 };
 
 } // namespace

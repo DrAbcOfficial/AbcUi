@@ -470,6 +470,10 @@ typedef struct AbcUiUiApi {
   // about to change must retire the previous variant, or every palette it
   // showed stays resident on the GPU.
   void (*releaseTexture)(const char *source);
+  // Moves an existing element under another parent (the settings page's
+  // singleton widget blocks move between cards); 1 on success, 0 for an
+  // invalid handle or a cycle. The element keeps its attributes and events.
+  int32_t (*elementAppendChild)(AbcUiElement *parent, AbcUiElement *child);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -764,6 +768,11 @@ typedef struct AbcUiVoiceApi {
   (1 << 1) // part of the menu layer: hidden
            // when the menu lowers and honored
            // by the focus guard
+
+// Cross-document z-order tiers. A page shell uses 0; the display-mode
+// confirmation outranks every menu surface (it is the only way back from a
+// bad mode) and carries no menu flag so a menu hide cannot drop it.
+#define ABCUI_DOC_ZINDEX_CONFIRM 650
 
 typedef struct AbcUiDocumentDesc {
   uint32_t structSize;
@@ -1554,14 +1563,14 @@ typedef struct AbcUiConnectionApi {
 #define ABCUI_SET_STATE_MISSING 6
 
 // Row facts (AbcUiSettingRow::flags).
-#define ABCUI_SET_ROW_BOUNDED 0x1       // a real [min, max] domain
-#define ABCUI_SET_ROW_READ_ONLY 0x2     // shown, never editable
-#define ABCUI_SET_ROW_HUE_SWATCH 0x4    // the value is a player-palette hue
-#define ABCUI_SET_ROW_FILE_CHOICES 0x8  // scanned values are file paths
-#define ABCUI_SET_ROW_HAS_DEFAULT 0x10  // the default is verified
+#define ABCUI_SET_ROW_BOUNDED 0x1      // a real [min, max] domain
+#define ABCUI_SET_ROW_READ_ONLY 0x2    // shown, never editable
+#define ABCUI_SET_ROW_HUE_SWATCH 0x4   // the value is a player-palette hue
+#define ABCUI_SET_ROW_FILE_CHOICES 0x8 // scanned values are file paths
+#define ABCUI_SET_ROW_HAS_DEFAULT 0x10 // the default is verified
 #define ABCUI_SET_ROW_REQUIRE_ENABLED 0x20
-#define ABCUI_SET_ROW_MISSING 0x40      // the cvar is not registered
-#define ABCUI_SET_ROW_EDITABLE 0x80     // editable(cvar) right now
+#define ABCUI_SET_ROW_MISSING 0x40  // the cvar is not registered
+#define ABCUI_SET_ROW_EDITABLE 0x80 // editable(cvar) right now
 
 // One projected row. The static LIST options (optionCount/optionAt) and the
 // scanned string choices (choiceCount/choiceAt) are read through the section
@@ -1570,9 +1579,9 @@ typedef struct AbcUiConnectionApi {
 typedef struct AbcUiSettingRow {
   uint32_t structSize;
   char cvar[ABCUI_SETTINGS_CVAR_MAX];
-  int32_t kind;  // ABCUI_SET_KIND_*
-  int32_t state; // ABCUI_SET_STATE_*
-  int32_t flags; // ABCUI_SET_ROW_*
+  int32_t kind;        // ABCUI_SET_KIND_*
+  int32_t state;       // ABCUI_SET_STATE_*
+  int32_t flags;       // ABCUI_SET_ROW_*
   int32_t optionCount; // static enum options
   int32_t choiceCount; // scanned string choices
   float minValue;
@@ -1632,7 +1641,7 @@ typedef struct AbcUiBindAction {
   uint32_t structSize;
   int32_t index; // action index (the DOM anchor and every write target)
   int32_t header;
-  int32_t state; // ABCUI_BIND_STATE_*
+  int32_t state;    // ABCUI_BIND_STATE_*
   int32_t keyCount; // draft keys (bindKeyAt)
   char label[ABCUI_SETTINGS_LABEL_MAX];
   char command[ABCUI_SETTINGS_TEXT_MAX];
@@ -1653,7 +1662,18 @@ typedef struct AbcUiVideoFacts {
   int32_t stagedWidth; // the staged target (staged over actual)
   int32_t stagedHeight;
   int32_t stagedWindowed;
+  // While awaitingConfirm: how the actual mode compares with the requested
+  // one (ABCUI_VIDEO_CONFIRM_*) and the requested mode the recovery record
+  // holds.
+  int32_t confirmKind;
+  int32_t requestedWidth;
+  int32_t requestedHeight;
+  int32_t requestedWindowed;
 } AbcUiVideoFacts;
+
+#define ABCUI_VIDEO_CONFIRM_APPLIED 0     // actual == requested
+#define ABCUI_VIDEO_CONFIRM_NOT_APPLIED 1 // the switch never took
+#define ABCUI_VIDEO_CONFIRM_UNKNOWN 2     // unreadable / matches neither
 
 // The microphone hardware facts (mirrors services::settings::VoiceModel).
 // Volume is the engine scale 0..1 (the page shows x100); speakingLevel is
@@ -1719,6 +1739,10 @@ typedef struct AbcUiSettingsApi {
   // Writes every dirty row over the injected seams and reads back. Fills the
   // tally; null is allowed.
   void (*apply)(AbcUiSettingsApply *out);
+  // The same transaction for exactly one row (the model picker commits its
+  // selection immediately instead of waiting for Apply); 1 when a row was
+  // written, 0 when the cvar is unknown, clean or not writable right now.
+  int32_t (*applyOne)(const char *cvar);
 
   // --- page tree (settings/*.json) -------------------------------------
   int32_t (*pageCount)(void);
@@ -1769,6 +1793,11 @@ typedef struct AbcUiSettingsApi {
   // The framework transaction (persist record, changed commands, restart);
   // 1 when the batch was issued.
   int32_t (*videoApply)(void);
+  // The confirmation window's two outcomes (inert unless a confirmation is
+  // outstanding and the kind allows it): keep clears the record, revert
+  // restores the previous mode.
+  int32_t (*videoKeep)(void);
+  int32_t (*videoRevert)(void);
   // "1920 x 1080 windowed" (the model's own one-line description).
   int32_t (*videoDescribe)(int32_t width, int32_t height, int32_t windowed,
                            char *out, uint32_t outSize);

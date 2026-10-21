@@ -38,8 +38,8 @@ void GameUiModule::onCapturedKeyEdge(int keynum) {
                     BindModel.conflictPending() ? 1 : 0);
 #endif
   endKeyCapture(); // exactly one edge per session, whatever it was
-  if (Settings)
-    Settings->render();
+  // The page re-projects from the published generation (the bind rows moved).
+  framework::SettingsApi::bumpRevision();
 }
 
 void GameUiModule::onKeyCaptureForceLost() {
@@ -121,11 +121,11 @@ void GameUiModule::onClaimedKeyDown(int keynum) {
       framework::ServerBrowserApi::consumeEscapeClaim())
     return;
   if (Controller.state().overlays.empty() &&
-      Controller.state().pages.topIs(MenuPage::kSettings) && Settings &&
-      (Settings->isDirty() || Settings->sprayBrowsing())) {
-    // The page owns the answer: a spray picker in flight closes on ESC
-    // (requestLeave), a dirty page raises the unsaved-changes prompt.
-    Settings->requestLeave();
+      Controller.state().pages.topIs(MenuPage::kSettings) &&
+      framework::SettingsApi::consumeEscape()) {
+    // The page owns the answer: a spray picker or the favorite menu in
+    // flight closes on ESC, a dirty page raises the unsaved-changes prompt,
+    // and a clean page reports "not consumed" so the menu pops it below.
     syncMenuPresentation();
     return;
   }

@@ -36,7 +36,7 @@ void GameUiModule::pumpBackgroundWork() {
   }
   // The queued confirmation raise never shares a frame with a restart
   // drain (see the DeferredVideoConfirmRaise note): one frame apart.
-  if (!restartDrained && DeferredVideoConfirmRaise && Context && VideoConfirm) {
+  if (!restartDrained && DeferredVideoConfirmRaise && Context) {
     DeferredVideoConfirmRaise = false;
     Video->raiseConfirmation();
   }
@@ -49,8 +49,6 @@ void GameUiModule::pumpBackgroundWork() {
     Video->tickTimeout();
     if (reverted || !VideoModel.awaitingConfirm())
       Video->syncConfirmPage();
-    else if (VideoConfirm)
-      VideoConfirm->render();
   }
 }
 } // namespace gameui

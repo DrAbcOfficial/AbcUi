@@ -3,6 +3,7 @@
 #include "modules/gameui/GameUiModule.h"
 #include "modules/gameui/GameUiPages.h"
 #include <abc/Plugin.h>
+#include "services/settings/SettingsPageService.h"
 #include "modules/gameui/engine/MenuBindings.h"
 namespace gameui {
 using namespace engine;
@@ -34,7 +35,8 @@ void GameUiModule::projectMenuPresentation() {
       shellTop = true;
       break;
     case MenuPage::kSettings:
-      SettingsView->present();
+      // The settings page is a module document (abcui.gameui): it presents
+      // itself from menu.state and projects from the sdk settings section.
       break;
     case MenuPage::kServers:
       // T18: the real browser replaced the T09 stub. tick() runs on
@@ -93,11 +95,12 @@ void GameUiModule::projectMenuPresentation() {
   if (shellTop)
     SubStub->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kSettings) {
-    SettingsView->hide();
-    // T13b: the mic test is a page-scoped device session - leaving
-    // the settings page stops it (the original's PageHide guarantee,
-    // extended to the controller-driven leave path).
+    // T13b: the mic test is a page-scoped device session - leaving the
+    // settings page stops it (the original's PageHide guarantee, extended to
+    // the controller-driven leave path). The page re-projects the state from
+    // the published generation.
     VoiceModel.stopTest();
+    services::settings::bumpPageRevision();
   }
   if (state.pages.empty() || state.pages.top() != MenuPage::kServers)
     Server->hide();
@@ -119,10 +122,9 @@ void GameUiModule::projectMenuPresentation() {
     ConfirmQuit->show();
   else
     ConfirmQuit->hide();
-  // T12: the confirmation page is the top-most layer of all - a page
-  // sync while it is up must not raise another document over it.
-  if (Video->confirmPresented() && VideoConfirm)
-    VideoConfirm->show();
+  // T12: the display confirmation is a page module document now - it
+  // presents itself from the video facts at the top-most tier, so a page
+  // sync while it is up never raises another document over it.
   // T16 single truth: whenever the projection no longer holds the
   // console (routed ESC popped it, a force-dismiss cleared it), the
   // engine-facing answer must follow. hideConsole never notifies the sink,

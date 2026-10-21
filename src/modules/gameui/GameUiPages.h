@@ -6,5 +6,3 @@
 // former include list.
 
 #include "../../panels/menushared/MenuShellWindows.h"
-#include "../../panels/settings/SettingsPage.h"
-#include "../../panels/settings/VideoConfirmPage.h"

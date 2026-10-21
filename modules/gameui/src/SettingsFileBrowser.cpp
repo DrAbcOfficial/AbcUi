@@ -1,11 +1,11 @@
-#include "services/filedialog/FileBrowser.h"
+#include "SettingsFileBrowser.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
 
-namespace services::filedialog {
+namespace settingspage::files {
 namespace {
 
 // A folder with more entries than this shows the first window and says so;
@@ -145,4 +145,4 @@ bool FileBrowser::list(const std::string &directory) {
   return true;
 }
 
-} // namespace services::filedialog
+} // namespace settingspage::files

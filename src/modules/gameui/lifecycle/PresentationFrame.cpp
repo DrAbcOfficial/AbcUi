@@ -8,26 +8,10 @@
 #include "modsys/ModuleDocuments.h"
 namespace gameui {
 void GameUiModule::pumpVisibleWork() {
-
-  // T11 bind verification beat: pfnClientCmd lands in the engine
-  // command buffer, which flushes between frames. kQueued rows resolve
-  // on the first tick after Apply; a change re-projects the page once.
-  if (SettingsView->presented() && Settings && BindModel.hasQueued()) {
-    if (BindModel.verify())
-      Settings->render();
-  }
-  // T13: the same beat covers the cvar model's kCommandToggle rows
-  // (+mlook/-mlook settle against IsKeyDown) and the mic-test meter
-  // (the level readout is the GetSpeakingVolume truth, one render per
-  // frame while the session is up - not an animation).
-  if (SettingsView->presented() && Settings &&
-      (SettingsModel.hasQueued() || VoiceModel.testing())) {
-    if (SettingsModel.hasQueued())
-      SettingsModel.snapshot();
-    Settings->renderVoiceSection();
-    if (SettingsModel.hasQueued())
-      Settings->render();
-  }
+  // The settings page's model beats (bind verification, the kCommandToggle
+  // settle, the mic-test meter) run page-side from the sdk settings section
+  // on the same paint beat, so the composition root no longer reaches into
+  // the page.
   // Per-frame focus guard (T09 step 5): while the menu is presented,
   // the context focus must stay inside one of the menu documents.
   // Foreign holders exist (the Rml debug hook document grabs the focus
@@ -62,17 +46,14 @@ void GameUiModule::pumpVisibleWork() {
     if (owner && owner->IsVisible() &&
         (framework::module_documents::ownsVisible(owner) ||
          owner == (SubStub ? SubStub->document() : nullptr) ||
-         owner == (Settings ? Settings->document() : nullptr) ||
-         owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
-         owner == (VideoConfirm ? VideoConfirm->document() : nullptr)))
+         owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)))
       return;
   }
-  // T12: the display-mode confirmation outranks every other surface -
-  // it holds the safe default focus while it is up.
-  if (Video->confirmPresented() && VideoConfirm) {
-    VideoConfirm->refocusDefault();
+  // T12: the display-mode confirmation outranks every other surface - it is
+  // a visible page module document that owns its own focus, so the guard
+  // never steals it while the confirmation is up.
+  if (Video->confirmPresented())
     return;
-  }
   // T14 surfaces, top-most first (the same order the sync shows them).
   if (state.overlays.contains(MenuOverlay::kConfirmQuit) && ConfirmQuit)
     ConfirmQuit->refocusDefault();
@@ -88,8 +69,9 @@ void GameUiModule::pumpVisibleWork() {
         state.pages.top() == MenuPage::kPause) {
       // The menu home is a module document: it owns its entry focus (the
       // guard leaves a visible module document alone above).
-    } else if (state.pages.top() == MenuPage::kSettings && Settings) {
-      Settings->refocusDefault();
+    } else if (state.pages.top() == MenuPage::kSettings) {
+      // The settings page is a module document: it owns its focus (the guard
+      // leaves a visible module document alone above).
     } else if (state.pages.top() == MenuPage::kServers) {
       // The browser page is a module document: it owns its focus.
     } else if (state.pages.top() == MenuPage::kLoading) {

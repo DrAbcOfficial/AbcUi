@@ -2,7 +2,8 @@
 // The entry validates the framework's table once and fans the module
 // lifecycle out to the page projections (the shell, the console, the
 // server browser, the connection surfaces and the vote creation / player
-// list / command menu / inventory / create-game pages so far). A page owns
+// list / command menu / inventory / create-game / settings pages). A page
+// owns
 // its DOM, its local gestures and its model-section calls; the framework
 // keeps the models, the seams and the navigation state machine.
 #include "PageShared.h"
@@ -61,6 +62,12 @@ void shutdown();
 void unload();
 } // namespace connectionpage
 
+namespace settingspage {
+void load();
+void shutdown();
+void unload();
+} // namespace settingspage
+
 namespace {
 
 void onModuleLoad() {
@@ -73,6 +80,7 @@ void onModuleLoad() {
   consolepage::load();
   serverbrowserpage::load();
   connectionpage::load();
+  settingspage::load();
 }
 
 void onModuleShutdown() {
@@ -86,6 +94,7 @@ void onModuleShutdown() {
   consolepage::shutdown();
   serverbrowserpage::shutdown();
   connectionpage::shutdown();
+  settingspage::shutdown();
 }
 
 void onModuleUnload() {
@@ -98,6 +107,7 @@ void onModuleUnload() {
   consolepage::unload();
   serverbrowserpage::unload();
   connectionpage::unload();
+  settingspage::unload();
   Api = nullptr;
 }
 
@@ -115,7 +125,7 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       !api->votemenu || !api->playerlist || !api->commandmenu ||
       !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
       !api->consolepage || !api->input || !api->shell || !api->serverbrowser ||
-      !api->connection)
+      !api->connection || !api->settings)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
@@ -129,7 +139,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       api->creategame->structSize < sizeof(AbcUiCreateGameApi) ||
       api->consolepage->structSize < sizeof(AbcUiConsolePageApi) ||
       api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi) ||
-      api->connection->structSize < sizeof(AbcUiConnectionApi))
+      api->connection->structSize < sizeof(AbcUiConnectionApi) ||
+      api->settings->structSize < sizeof(AbcUiSettingsApi))
     return 0;
   Api = api;
 

@@ -112,19 +112,15 @@ void GameUiModule::hideAllMenuDocuments() {
   framework::module_documents::hideMenu();
   if (SubStub)
     SubStub->hide();
-  if (Settings)
-    Settings->hide();
   Server->hide();
   if (ConfirmQuit)
     ConfirmQuit->hide();
   // T14 connection surfaces: module documents hidden with the menu (the
   // ABCUI_DOC_FLAG_MENU layer); a later present re-projects from the
   // state.
-  // The video confirmation is NOT hidden by a generic hide: it must
-  // stay up until confirmed/reverted (a dismissal cannot silently
-  // abandon a mode the user has not confirmed). dismissMenu() calls
-  // this, so keep it visibly module-owned.
-  SettingsView->setPresented(false);
+  // The display confirmation is NOT hidden by a generic hide: its document
+  // carries no menu flag, so it stays up until confirmed/reverted (a
+  // dismissal cannot silently abandon a mode the user has not confirmed).
 }
 
 void GameUiModule::focusLog(const char *phase) {

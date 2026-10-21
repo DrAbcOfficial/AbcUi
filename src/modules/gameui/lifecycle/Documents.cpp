@@ -6,6 +6,7 @@
 #include "framework/FatalExit.h"
 #include "framework/Localization.h"
 #include "services/console/ConsoleBackend.h"
+#include "services/settings/SettingsPageService.h"
 #include "services/console/ConsoleBuffer.h"
 #include <cstring>
 #include <string>
@@ -38,34 +39,20 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   // sections.
   SubStub = std::make_unique<panels::menushared::MenuStubPage>(
       "menusub", "abc/abcui/gameui/rml/menustub.rml");
-  // The console page is a module document now (abcui.gameui): the buffer,
-  // the submission channel and the completion catalog reach it through the
-  // sdk consolepage section.
-  Settings = std::make_unique<panels::settings::SettingsPage>();
-  Settings->setPages(&UiConfig.pages());
-  Settings->setModel(&SettingsModel);
-  Settings->setBindModel(&BindModel);
-  Settings->setVideoModel(&VideoModel);
-  Settings->setVoiceModel(&VoiceModel);
-  Settings->setFavorites(&ModelFavorites);
-  SettingsView->setPage(Settings.get());
-  Settings->setSpraySink([this](const std::string &path) { Spray->run(path); });
+  // The settings page is a module document now (abcui.gameui): the four
+  // models, the page tree and the favorite store reach it through the sdk
+  // settings section, the display confirmation through the same facts.
   // The browser page is a module document now (abcui.gameui): the query
   // session reaches it through the sdk serverbrowser section, the Steam
   // stores and the blacklist stay here.
   // The create-game page and the inventory window are module documents
   // now (abcui.gameui): the catalog/options reach the page through the sdk
   // creategame section, the item stream feeds the model.
-  VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
-  VideoConfirm->setVideoModel(&VideoModel);
-  Video->setPage(VideoConfirm.get());
   ConfirmQuit = std::make_unique<panels::menushared::ConfirmQuitOverlay>();
   // The loading page and the three connection dialogs are module documents
   // now (abcui.gameui): the drained attempt model and the controller's
   // typed edges reach them through the sdk connection section.
   wire(SubStub);
-  wire(Settings);
-  wire(VideoConfirm);
   wire(ConfirmQuit);
   // T12 startup recovery: a persisted unconfirmed-switch record drives
   // the first presentation (confirmation window on the actual mode, or
@@ -121,8 +108,6 @@ void GameUiModule::serviceEmergencyPages() {
     return;
   framework::InteractiveDocument *pages[] = {
       SubStub.get(),
-      Settings.get(),
-      VideoConfirm.get(),
       ConfirmQuit.get(),
   };
   bool recovered = false;
@@ -149,8 +134,8 @@ void GameUiModule::serviceEmergencyPages() {
   // The recovered documents have empty caches by construction: clear
   // every "projected for this opening" latch and let the sync re-run
   // the fresh-open projections from the models.
-  SettingsView->setPresented(false);
   Server->setPresented(false);
+  services::settings::bumpPageRevision();
   syncMenuPresentation();
 }
 
