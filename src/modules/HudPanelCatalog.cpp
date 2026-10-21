@@ -10,7 +10,6 @@
 #include "../panels/chat/ChatPanel.h"
 #include "../panels/crosshair/CrosshairPanel.h"
 #include "../panels/dmgtiles/DmgTilesPanel.h"
-#include "../panels/effect/EffectPanel.h"
 #include "../panels/gindicator/GIndicatorPanel.h"
 #include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemhighlight/ItemHighlightPanel.h"
@@ -33,7 +32,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   panels.push_back(std::make_unique<panels::IndicatorPanel>());
   panels.push_back(std::make_unique<panels::GIndicatorPanel>());
   panels.push_back(std::make_unique<panels::DmgTilesPanel>());
-  panels.push_back(std::make_unique<panels::EffectPanel>());
   panels.push_back(std::make_unique<panels::PopNumPanel>());
   // Batch C (interaction + big data).
   panels.push_back(std::make_unique<panels::PlayerBoardPanel>());
@@ -63,7 +61,6 @@ void registerHudPanelCvars() {
   panels::crosshair::registerCvars();
   panels::indicator::registerCvars();
   panels::gindicator::registerCvars();
-  panels::effect::registerCvars();
   panels::popnum::registerCvars();
   // Batch C.
   panels::playerboard::registerCvars();

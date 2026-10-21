@@ -193,6 +193,12 @@ void apiPlaySound(const char *path, float volume) {
     gEngfuncs.pfnPlaySoundByName(path, volume);
 }
 
+AbcUiCvarHandle apiFindCvar(const char *name) {
+  return (name && *name)
+             ? static_cast<AbcUiCvarHandle>(abc::CVAR_GET_POINTER(name))
+             : nullptr;
+}
+
 const AbcUiConsoleApi kConsoleApi = {
     sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
     apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,

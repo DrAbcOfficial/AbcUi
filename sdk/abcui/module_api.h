@@ -90,6 +90,9 @@ typedef struct AbcUiConsoleApi {
                                        void *userdata);
   // Plays an engine sound by path (gEngfuncs.pfnPlaySoundByName).
   void (*playSound)(const char *path, float volume);
+  // Looks up an already-registered cvar by name (null when absent) - shared
+  // settings such as hud_danger_health or the engine's default_fov.
+  AbcUiCvarHandle (*findCvar)(const char *name);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -175,6 +178,7 @@ typedef struct AbcUiHudState {
   int32_t armor;  // message-fed armor value
   int32_t waterLevel;
   float fov;
+  float punchAngle[3]; // predicted view punch (old hudstate::punchangle)
 } AbcUiHudState;
 
 // Local player readout (data->playerState): copied out, never a pointer.
@@ -269,6 +273,9 @@ typedef struct AbcUiUiApi {
   // and crop rect; 1 when the name resolves.
   int (*hudSprite)(const char *name, char *atlas, uint32_t atlasSize,
                    int32_t rect[4]);
+  // Restarts an <animimg> element's frame sequence (no-op on other
+  // elements).
+  void (*elementRestartAnimation)(AbcUiElement *element);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

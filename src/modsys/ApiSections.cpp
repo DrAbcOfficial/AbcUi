@@ -18,6 +18,7 @@
 #include "../framework/PanelManager.h"
 #include "../framework/TextUtil.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
+#include "../rmlui/animated/ElementAnimatedImage.h"
 #include "../rmlui/texture/SpriteResource.h"
 
 namespace framework {
@@ -168,6 +169,15 @@ void apiElementSetClass(AbcUiElement *element, const char *name, int enabled) {
   elementOf(element)->SetClass(name, enabled != 0);
 }
 
+void apiElementRestartAnimation(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  if (!target)
+    return;
+  if (auto *animated =
+          rmlui_dynamic_cast<rmlui::animated::ElementAnimatedImage *>(target))
+    animated->Restart();
+}
+
 int apiHudSprite(const char *name, char *atlas, uint32_t atlasSize,
                  int32_t rect[4]) {
   if (!name)
@@ -266,6 +276,12 @@ void apiHudState(AbcUiHudState *out) {
   out->armor = messages.Armor;
   out->waterLevel = hudstate::waterlevel();
   out->fov = hudstate::fov();
+  const float *punch = hudstate::punchangle();
+  if (punch) {
+    out->punchAngle[0] = punch[0];
+    out->punchAngle[1] = punch[1];
+    out->punchAngle[2] = punch[2];
+  }
 }
 
 // The ScoreInfo feed carries the scoreboard rows; the local row's frags is
