@@ -175,9 +175,19 @@ typedef struct AbcUiVguiMenuEvent {
 #define ABCUI_KEY_BACKSPACE 127
 #define ABCUI_KEY_UPARROW 128
 #define ABCUI_KEY_DOWNARROW 129
+#define ABCUI_KEY_LEFTARROW 130
+#define ABCUI_KEY_RIGHTARROW 131
 #define ABCUI_KEY_KP_ENTER 169
 #define ABCUI_KEY_MWHEELDOWN 239
 #define ABCUI_KEY_MWHEELUP 240
+
+// menu.commandkey - one key edge the menu layer claimed while the command
+// menu page is on top. Veto channel (aggregate): a sink returning nonzero
+// consumed the edge (it performed the navigation). Payload is AbcUiKeyEvent
+// with `down` always 1 (the menu owner sees key-down edges only); `keynum`
+// uses the engine numbering above plus the printable ASCII codes for
+// letters/digits and the HLSDK numpad block (K_KP_HOME 160..K_KP_PLUS 174).
+#define ABCUI_CHANNEL_MENU_COMMAND_KEY "menu.commandkey"
 
 // input.key - one HUD key event. Veto channel: a sink returning nonzero
 // consumes the press so the engine binding chain never sees it (the vote

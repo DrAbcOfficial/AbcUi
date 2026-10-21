@@ -81,7 +81,8 @@ void GameUiModule::projectMenuPresentation() {
       // from menu.state once the page is on top.
       break;
     case MenuPage::kCommandMenu:
-      Command->present();
+      // The page is a module document (abcui.gameui): it presents itself
+      // from menu.state once the page is on top.
       break;
     case MenuPage::kInventory:
       Inventory->present();
@@ -147,8 +148,6 @@ void GameUiModule::projectMenuPresentation() {
     Server->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame)
     Create->hide();
-  if (state.pages.empty() || state.pages.top() != MenuPage::kCommandMenu)
-    Command->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kInventory)
     Inventory->hide();
 

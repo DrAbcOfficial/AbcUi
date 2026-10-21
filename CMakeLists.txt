@@ -141,6 +141,7 @@ add_library(abc_ui_config STATIC
     src/services/uiconfig/UiDefinitions.cpp
     src/services/uiconfig/ConfigRepository.cpp
     src/services/commandmenu/CommandMenuModel.cpp
+    src/services/commandmenu/CommandMenuService.cpp
     src/services/serverbrowser/ServerBlacklist.cpp
     src/services/serverbrowser/BlacklistFileStore.cpp)
 target_include_directories(abc_ui_config PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
@@ -169,6 +170,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiMenu.cpp
     src/modsys/ApiVoteMenu.cpp
     src/modsys/ApiPlayerList.cpp
+    src/modsys/ApiCommandMenu.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -317,7 +319,6 @@ add_library(AbcUi MODULE
     src/panels/serverbrowser/ServerBrowserControls.cpp
     src/panels/creategame/CreateGamePage.cpp
     src/panels/creategame/CreateGameOptions.cpp
-    src/panels/commandmenu/CommandMenuPage.cpp
     src/panels/inventory/InventoryPage.cpp
     src/panels/settings/SettingsUi.cpp
     src/panels/settings/sections/VideoSection.cpp

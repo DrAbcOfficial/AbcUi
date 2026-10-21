@@ -898,6 +898,60 @@ typedef struct AbcUiPlayerListApi {
   int32_t (*toggleMute)(int32_t *mutedAfter);
 } AbcUiPlayerListApi;
 
+// --------------------------------------------------------- commandmenu ----
+
+// The in-game command menu's model: the parsed commandmenu.json tree and its
+// column navigation. The definition JSON and its parser stay in the
+// framework; a page module projects the open columns and drives the
+// navigation. Activations execute framework-side: a command result closes
+// the menu first and then runs the engine command (the shared command path
+// may synchronously raise another page), a close result lowers the page
+// with the flow's raised-menu discipline - the page only re-projects.
+#define ABCUI_CMDMENU_RESULT_NONE 0
+#define ABCUI_CMDMENU_RESULT_SUBMENU 1
+#define ABCUI_CMDMENU_RESULT_COMMAND 2
+#define ABCUI_CMDMENU_RESULT_CLOSE 3
+
+// The parser bounds labels at this length.
+#define ABCUI_CMDMENU_LABEL_MAX 512
+
+// One item of an open column. `hasItems` marks a submenu branch.
+typedef struct AbcUiCommandMenuItem {
+  uint32_t structSize;
+  int32_t hasItems;
+  char label[ABCUI_CMDMENU_LABEL_MAX];
+} AbcUiCommandMenuItem;
+
+typedef struct AbcUiCommandMenuApi {
+  uint32_t structSize;
+  uint32_t (*revision)(void);
+  // Definition title token (may be empty; the page falls back to its own).
+  const char *(*title)(void);
+  // The open columns; the projection window is fixed at three (the page's
+  // composition shows three consecutive levels at once).
+  int32_t (*columnCount)(void);
+  int32_t (*firstVisibleColumn)(void);
+  int32_t (*visibleColumnCount)(void);
+  int32_t (*itemCountAt)(int32_t column);
+  int32_t (*selectedAt)(int32_t column);
+  // Copies item `index` of `column`; 0 out of range (structSize honored).
+  int32_t (*itemAt)(int32_t column, int32_t index, AbcUiCommandMenuItem *out);
+  // Moves the deepest column's selection; 1 when it moved.
+  int32_t (*moveSelection)(int32_t delta);
+  // Navigation/activation; every call returns an ABCUI_CMDMENU_RESULT_*.
+  int32_t (*openSelected)(void);
+  int32_t (*activateSelected)(void);
+  int32_t (*activateAt)(int32_t column, int32_t index);
+  // `digit` is 0..9 (the one-based gutter number is the page's markup).
+  int32_t (*activateShortcut)(int32_t digit);
+  // Pops one open column; kClose at the root (the caller follows with
+  // dismiss).
+  int32_t (*back)(void);
+  // The full dismiss gesture (ESC): the flow's close, raised-menu latch
+  // included.
+  void (*dismiss)(void);
+} AbcUiCommandMenuApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -947,6 +1001,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiMenuApi *menu;
   const AbcUiVoteMenuApi *votemenu;
   const AbcUiPlayerListApi *playerlist;
+  const AbcUiCommandMenuApi *commandmenu;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

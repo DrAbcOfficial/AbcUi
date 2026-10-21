@@ -91,8 +91,8 @@ implemented rules the transition must keep:
   flashlight, textmenu, vote, motd, weaponchoose, killfeed, textfeed, sidetext,
   health, ammo, hudeffects, crosshair, damage, itemhighlight, playerboard,
   radar, scoreboard and chat; `abcui.gameui` has started with the vote
-  creation and player-list pages (the shell and the other menu pages still
-  live in the framework); `demo` is the minimal example.
+  creation, player-list and command-menu pages (the shell and the other
+  menu pages still live in the framework); `demo` is the minimal example.
   modeltest/videotest stay development-only.
 - The module ABI is pure C, versioned struct tables under `sdk/abcui/`
   (same pattern as `AbcCore_CreateInterface`). A module DLL exports exactly
@@ -101,12 +101,13 @@ implemented rules the transition must keep:
   must not include RmlUi headers or link the framework's static libraries.
   Sections: core, console, events, vfs, panels, documents, data, ui, commands,
   weapons, players, radar, shell, voice, score, input, menu, votemenu,
-  playerlist. Adding a function
+  playerlist, commandmenu. Adding a function
   means appending it to the section end (and its initializer in
   `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
   `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
-  `ApiPlayerList.cpp` - a missing initializer is silently a null pointer;
-  the table audit in `ApiTable::get` catches it at boot), and
+  `ApiPlayerList.cpp` / `ApiCommandMenu.cpp` - a missing initializer is
+  silently a null pointer; the table audit in `ApiTable::get` catches it at
+  boot), and
   appending to snapshot structs means the writer must honor the caller's
   `structSize`.
 - Module packages are zip files at `svencoop/abc/abcui/modules/` (real files,

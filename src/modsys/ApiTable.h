@@ -66,4 +66,8 @@ namespace PlayerListApi {
 const AbcUiPlayerListApi *get();
 } // namespace PlayerListApi
 
+namespace CommandMenuApi {
+const AbcUiCommandMenuApi *get();
+} // namespace CommandMenuApi
+
 } // namespace framework

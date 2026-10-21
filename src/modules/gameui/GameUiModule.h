@@ -38,9 +38,6 @@
 #include <vector>
 #include <string>
 namespace panels {
-namespace commandmenu {
-class CommandMenuPage;
-}
 namespace console {
 class ConsolePage;
 }
@@ -205,7 +202,6 @@ private:
   std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
   std::unique_ptr<panels::creategame::CreateGamePage>
       CreateGamePage_; // T19 page
-  std::unique_ptr<panels::commandmenu::CommandMenuPage> CommandMenuPage_;
   std::unique_ptr<panels::inventory::InventoryPage> InventoryPage_;
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;

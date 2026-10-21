@@ -1,7 +1,7 @@
 <rml>
 <head>
-	<link type="text/rcss" href="../../rcss/base.rcss"/>
-	<link type="text/rcss" href="../../rcss/theme.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/base.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/theme.rcss"/>
 	<link type="text/rcss" href="../rcss/commandmenu.rcss"/>
 </head>
 <!-- In-game command menu: the RmlUi replacement for +commandmenu.

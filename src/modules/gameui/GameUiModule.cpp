@@ -1,7 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
 #include "modules/gameui/GameUiPages.h"
-#include "../../panels/commandmenu/CommandMenuPage.h"
 #include "../../panels/console/ConsolePage.h"
 #include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/inventory/InventoryPage.h"
@@ -19,6 +18,7 @@
 #include <abc/Console.h>
 #include <abc/Paths.h>
 #include <abc/CvarCmd.h>
+#include "services/commandmenu/CommandMenuService.h"
 #include "services/serverbrowser/BlacklistFileStore.h"
 #include "services/playerlist/PlayerListService.h"
 #include "services/votemenu/VoteMenuService.h"
@@ -132,6 +132,22 @@ GameUiModule::GameUiModule()
   // The player-list page module reads this model through the sdk
   // playerlist section.
   services::playerlist::setModel(&PlayerList);
+  // The command-menu page module reads this model through the sdk
+  // commandmenu section; its command/dismiss boundaries run here (close
+  // first, then the engine send; the raised-menu close discipline). The
+  // seams are bare function pointers, so they resolve the module through
+  // the registry (the same shape the launcher thunk uses).
+  services::commandmenu::Access commandAccess;
+  commandAccess.model = &Command->model();
+  commandAccess.submitCommand = [](const char *command) {
+    if (GameUiModule *module = currentModule())
+      module->Command->handleCommand(command ? command : "");
+  };
+  commandAccess.dismiss = [] {
+    if (GameUiModule *module = currentModule())
+      module->Command->close();
+  };
+  services::commandmenu::setAccess(commandAccess);
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
@@ -206,6 +222,9 @@ VoteMenuHost GameUiModule::MakeVoteMenuHost() {
 CommandMenuHost GameUiModule::MakeCommandMenuHost() {
   CommandMenuHost host;
   host.shellReady = [this] { return Shell && Context; };
+  host.pageOnTop = [this] {
+    return Controller.state().pages.topIs(MenuPage::kCommandMenu);
+  };
   host.ensureMenu = [this](bool &raisedMenu) {
     const bool menuWasUp = MenuPresented;
     if (!menuWasUp) {
@@ -606,7 +625,6 @@ void GameUiModule::onShutdown() {
   CreateGamePage_.reset();
   Vote->shutdown();
   Command->shutdown();
-  CommandMenuPage_.reset();
   Inventory->shutdown();
   InventoryPage_.reset();
   Video->shutdown();

@@ -5,7 +5,6 @@
 // methods include this instead of depending on the composition header's
 // former include list.
 
-#include "../../panels/commandmenu/CommandMenuPage.h"
 #include "../../panels/console/ConsolePage.h"
 #include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/inventory/InventoryPage.h"
