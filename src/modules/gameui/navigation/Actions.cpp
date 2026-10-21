@@ -25,7 +25,9 @@ void GameUiModule::onMenuAction(const char *action) {
   else if (Kind == ActionKind::kCreateGame)
     Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kCreateGame));
   else if (Parsed.Domain == ActionDomain::kCreateGame) {
-    Create->handleAction(Kind);
+    // The create-game page is a module document: it handles its own form
+    // (Apply submits through the sdk creategame section) and sends only
+    // menu.back on cancel, so nothing arrives here.
     return;
   } else if (Kind == ActionKind::kPlayerList)
     Controller.dispatch(gameui::menu::makeOpenPage(MenuPage::kPlayerList));

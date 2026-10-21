@@ -6,7 +6,6 @@
 // former include list.
 
 #include "../../panels/console/ConsolePage.h"
-#include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"

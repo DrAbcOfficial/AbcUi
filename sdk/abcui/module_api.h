@@ -396,6 +396,17 @@ typedef struct AbcUiUiApi {
   int32_t (*escapeRmlAttribute)(const char *text, char *out, uint32_t outSize);
   // Child count for DOM walks (elementChild indexes into it).
   int32_t (*elementChildCount)(AbcUiElement *element);
+  // Select (ElementFormControlSelect) helpers for option rows. `value` is
+  // the option's payload string (elementValue reads it back verbatim).
+  void (*elementSelectRemoveAll)(AbcUiElement *element);
+  void (*elementSelectAdd)(AbcUiElement *element, const char *label,
+                           const char *value);
+  int32_t (*elementSelectCount)(AbcUiElement *element);
+  void (*elementSelectSetSelection)(AbcUiElement *element, int32_t index);
+  int32_t (*elementSelectSelection)(AbcUiElement *element);
+  // Scroll helper (bring a row into view after a programmatic selection;
+  // alignTop picks the alignment edge).
+  void (*elementScrollIntoView)(AbcUiElement *element, int32_t alignTop);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -1090,6 +1101,68 @@ typedef struct AbcUiInventoryApi {
   void (*dismiss)(void);
 } AbcUiInventoryApi;
 
+// ----------------------------------------------------------- creategame ----
+
+// The create-local-game page's form data (the enumerated map catalog and
+// the server options from settings.scr) plus the validated submit. The
+// model, the catalog enumeration and the launch path stay framework-side;
+// the page builds the form and sends the fields once on Apply.
+#define ABCUI_CG_NAME_MAX 96
+#define ABCUI_CG_LABEL_MAX 256
+#define ABCUI_CG_VALUE_MAX 256
+
+// One server option (a settings.scr row): a toggle or enum renders as a
+// select; a bounded numeric renders as a slider; anything else is a text
+// field.
+typedef struct AbcUiCgOption {
+  uint32_t structSize;
+  char name[ABCUI_CG_NAME_MAX];
+  char label[ABCUI_CG_LABEL_MAX];
+  int32_t toggle;
+  int32_t hasChoices;
+  int32_t slider; // bounded numeric (min/max valid)
+  float min;
+  float max;
+  float defaultValue;
+  int32_t choiceCount;
+} AbcUiCgOption;
+
+// One enum choice of an option (the select's label/value pair).
+typedef struct AbcUiCgChoice {
+  uint32_t structSize;
+  float value;
+  char label[ABCUI_CG_LABEL_MAX];
+} AbcUiCgChoice;
+
+// One submitted field. The fixed form fields are "map", "players", "name",
+// "password" and "lan" ("1"/"0"); every option follows with its control's
+// value under the option's name.
+typedef struct AbcUiCgField {
+  uint32_t structSize;
+  char name[ABCUI_CG_NAME_MAX];
+  char value[ABCUI_CG_VALUE_MAX];
+} AbcUiCgField;
+
+typedef struct AbcUiCreateGameApi {
+  uint32_t structSize;
+  // Fresh opening defaults: the live hostname (empty -> the page projects
+  // its localized default token).
+  const char *(*defaultName)(void);
+  uint32_t (*mapCount)(void);
+  // Catalog name `index` (stable per world; the module rebuilds the picker
+  // on every fresh open).
+  const char *(*mapAt)(int32_t index);
+  int32_t (*optionCount)(void);
+  int32_t (*optionAt)(int32_t index, AbcUiCgOption *out);
+  int32_t (*choiceAt)(int32_t option, int32_t index, AbcUiCgChoice *out);
+  // Apply: assembles and validates the request from the fields. 1 when
+  // accepted (the attempt dispatched, the request kept for the local
+  // retry); 0 on refusal with a hint token/text in `hint` (the page can
+  // correct and re-Apply - the latch re-arms on any shown hint).
+  int32_t (*submit)(const AbcUiCgField *fields, int32_t fieldCount, char *hint,
+                    uint32_t hintSize);
+} AbcUiCreateGameApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -1143,6 +1216,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiMenuConfigApi *menuconfig;
   const AbcUiSocialApi *social;
   const AbcUiInventoryApi *inventory;
+  const AbcUiCreateGameApi *creategame;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

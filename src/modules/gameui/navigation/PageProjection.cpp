@@ -44,8 +44,8 @@ void GameUiModule::projectMenuPresentation() {
       Server->present();
       break;
     case MenuPage::kCreateGame:
-      // T19: the real create-game page replaced the T09 stub.
-      Create->present();
+      // The page is a module document (abcui.gameui): it presents itself
+      // from menu.state once the page is on top.
       break;
     case MenuPage::kPlayerList:
       // The page is a module document (abcui.gameui): it presents itself
@@ -120,8 +120,6 @@ void GameUiModule::projectMenuPresentation() {
   }
   if (state.pages.empty() || state.pages.top() != MenuPage::kServers)
     Server->hide();
-  if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame)
-    Create->hide();
 
   // Overlay layer, top-most last (each show pulls to the context
   // front); idempotent shows neither re-focus nor re-order. The loading

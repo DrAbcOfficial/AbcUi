@@ -69,7 +69,6 @@ void GameUiModule::pumpVisibleWork() {
          owner == (Console ? Console->document() : nullptr) ||
          owner == (Settings ? Settings->document() : nullptr) ||
          owner == (Browser ? Browser->document() : nullptr) ||
-         owner == (CreateGamePage_ ? CreateGamePage_->document() : nullptr) ||
          owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr) ||
          owner == (VideoConfirm ? VideoConfirm->document() : nullptr) ||
          owner == (Loading ? Loading->document() : nullptr) ||
@@ -105,8 +104,6 @@ void GameUiModule::pumpVisibleWork() {
       Settings->refocusDefault();
     } else if (state.pages.top() == MenuPage::kServers && Browser) {
       Browser->refocusDefault();
-    } else if (state.pages.top() == MenuPage::kCreateGame && CreateGamePage_) {
-      CreateGamePage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kLoading && Loading) {
       Loading->refocusDefault();
     } else if (SubStub) {

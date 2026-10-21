@@ -82,4 +82,8 @@ namespace InventoryApi {
 const AbcUiInventoryApi *get();
 } // namespace InventoryApi
 
+namespace CreateGameApi {
+const AbcUiCreateGameApi *get();
+} // namespace CreateGameApi
+
 } // namespace framework

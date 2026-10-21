@@ -9,7 +9,8 @@ add_library(abcui_mod_gameui MODULE
             src/VoteMenuPage.cpp
             src/PlayerListPage.cpp
             src/CommandMenuPage.cpp
-            src/InventoryPage.cpp)
+            src/InventoryPage.cpp
+            src/CreateGamePage.cpp)
 target_include_directories(abcui_mod_gameui PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../sdk")
 set_target_properties(abcui_mod_gameui PROPERTIES OUTPUT_NAME "abcui_gameui")

@@ -41,9 +41,6 @@ namespace panels {
 namespace console {
 class ConsolePage;
 }
-namespace creategame {
-class CreateGamePage;
-}
 namespace loading {
 class LoadingPage;
 class ConnectionErrorOverlay;
@@ -192,8 +189,6 @@ private:
   std::unique_ptr<panels::console::ConsolePage> Console;
   std::unique_ptr<panels::settings::SettingsPage> Settings;
   std::unique_ptr<panels::serverbrowser::ServerBrowserPage> Browser;
-  std::unique_ptr<panels::creategame::CreateGamePage>
-      CreateGamePage_; // T19 page
   std::unique_ptr<panels::settings::VideoConfirmPage> VideoConfirm;
   std::unique_ptr<VideoFlow> Video;
   std::unique_ptr<SprayMaker> Spray;

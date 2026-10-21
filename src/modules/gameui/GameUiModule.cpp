@@ -2,7 +2,6 @@
 #include "modules/gameui/GameUiModule.h"
 #include "modules/gameui/GameUiPages.h"
 #include "../../panels/console/ConsolePage.h"
-#include "../../panels/creategame/CreateGamePage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
@@ -17,6 +16,7 @@
 #include <abc/Paths.h>
 #include <abc/CvarCmd.h>
 #include "services/commandmenu/CommandMenuService.h"
+#include "services/creategame/CreateGameService.h"
 #include "services/friends/FriendsService.h"
 #include "services/inventory/InventoryService.h"
 #include "services/serverbrowser/BlacklistFileStore.h"
@@ -180,6 +180,19 @@ GameUiModule::GameUiModule()
       module->onFriendJoin(steamId, address);
   };
   services::friends::setJoinSeam(joinSeam);
+  // The create-game page module reads the catalog/options through the sdk
+  // creategame section and submits its form fields once on Apply (this
+  // seam assembles, validates and dispatches them).
+  services::creategame::Access createGameAccess;
+  createGameAccess.model = &Create->model();
+  createGameAccess.submit =
+      [](const std::vector<std::pair<std::string, std::string>> &fields,
+         std::string &hint) {
+        if (GameUiModule *module = currentModule())
+          return module->Create->apply(fields, hint);
+        return false;
+      };
+  services::creategame::setAccess(createGameAccess);
   // The inventory page module reads this model through the sdk inventory
   // section; the actions' client commands run here (the window closes
   // first, then the queued command). The seams resolve the module through
@@ -365,9 +378,6 @@ CreateGameHost GameUiModule::MakeCreateGameHost() {
   CreateGameHost host;
   host.dispatchCreate = [this](const std::string &map) {
     Controller.dispatch(menu::makeCreateGameRequest(map.c_str()));
-  };
-  host.dispatchBack = [this] {
-    Controller.dispatch(MenuEvent{EventKind::kBack});
   };
   host.finishDispatch = [this] { finishDispatch(); };
   host.resetAutoRetry = [this] { AutoRetry.reset(); };
@@ -672,7 +682,6 @@ void GameUiModule::onShutdown() {
   Server->shutdown();
   Browser.reset();
   Create->shutdown();
-  CreateGamePage_.reset();
   Vote->shutdown();
   Command->shutdown();
   Inventory->shutdown();

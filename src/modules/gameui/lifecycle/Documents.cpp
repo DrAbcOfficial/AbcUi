@@ -76,11 +76,9 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   Browser->setBlacklist(&Blacklist);
   Browser->setFavorites(services::serverbrowser::steamFavorites());
   Server->setPage(Browser.get());
-  // T19: the create-local-game page (was the kCreateGame stub).
-  CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
-  Create->setPage(CreateGamePage_.get());
-  // The inventory window is a module document now (abcui.gameui): the item
-  // stream feeds the model and the sdk inventory section carries the rest.
+  // The create-game page and the inventory window are module documents
+  // now (abcui.gameui): the catalog/options reach the page through the sdk
+  // creategame section, the item stream feeds the model.
   VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
   VideoConfirm->setVideoModel(&VideoModel);
   Video->setPage(VideoConfirm.get());
@@ -95,7 +93,6 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   wire(Console);
   wire(Settings);
   wire(Browser);
-  wire(CreateGamePage_);
   wire(VideoConfirm);
   wire(ConfirmQuit);
   wire(Loading);
@@ -155,10 +152,9 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      SubStub.get(),     Console.get(),         Settings.get(),
-      Browser.get(),     CreateGamePage_.get(), VideoConfirm.get(),
-      ConfirmQuit.get(), Loading.get(),         ConnError.get(),
-      Password.get(),    DirectConnect.get(),
+      SubStub.get(),      Console.get(),       Settings.get(), Browser.get(),
+      VideoConfirm.get(), ConfirmQuit.get(),   Loading.get(),  ConnError.get(),
+      Password.get(),     DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {
@@ -191,7 +187,6 @@ void GameUiModule::serviceEmergencyPages() {
   DirectConnectPresented = false;
   LoadingVisible = false;
   Server->setPresented(false);
-  Create->setPresented(false);
   syncMenuPresentation();
 }
 

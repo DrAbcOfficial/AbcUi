@@ -174,6 +174,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiMenuConfig.cpp
     src/modsys/ApiSocial.cpp
     src/modsys/ApiInventory.cpp
+    src/modsys/ApiCreateGame.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -292,6 +293,7 @@ add_library(AbcUi MODULE
     src/services/serverbrowser/ServerListModel.cpp
     src/services/serverbrowser/ServerFavorites.cpp
     src/services/creategame/CreateGameModel.cpp
+    src/services/creategame/CreateGameService.cpp
     src/services/creategame/ServerOptions.cpp
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
@@ -322,8 +324,6 @@ add_library(AbcUi MODULE
     src/panels/console/ConsoleSelection.cpp
     src/panels/serverbrowser/ServerBrowserPage.cpp
     src/panels/serverbrowser/ServerBrowserControls.cpp
-    src/panels/creategame/CreateGamePage.cpp
-    src/panels/creategame/CreateGameOptions.cpp
     src/panels/settings/SettingsUi.cpp
     src/panels/settings/sections/VideoSection.cpp
     src/panels/settings/sections/VoiceSection.cpp

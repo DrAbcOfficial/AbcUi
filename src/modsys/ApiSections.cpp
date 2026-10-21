@@ -12,6 +12,7 @@
 #include <RmlUi/Core/ElementUtilities.h>
 #include <RmlUi/Core/Elements/ElementFormControl.h>
 #include <RmlUi/Core/Elements/ElementFormControlInput.h>
+#include <RmlUi/Core/Elements/ElementFormControlSelect.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/EventListener.h>
 
@@ -447,6 +448,52 @@ int32_t apiElementChildCount(AbcUiElement *element) {
   return target ? static_cast<int32_t>(target->GetNumChildren()) : 0;
 }
 
+void apiElementSelectRemoveAll(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  if (auto *select =
+          rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(target))
+    select->RemoveAll();
+}
+
+void apiElementSelectAdd(AbcUiElement *element, const char *label,
+                         const char *value) {
+  Rml::Element *target = elementOf(element);
+  if (!label || !value)
+    return;
+  if (auto *select =
+          rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(target))
+    select->Add(label, value);
+}
+
+int32_t apiElementSelectCount(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  if (auto *select =
+          rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(target))
+    return select->GetNumOptions();
+  return 0;
+}
+
+void apiElementSelectSetSelection(AbcUiElement *element, int32_t index) {
+  Rml::Element *target = elementOf(element);
+  if (auto *select =
+          rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(target))
+    select->SetSelection(index);
+}
+
+int32_t apiElementSelectSelection(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  if (auto *select =
+          rmlui_dynamic_cast<Rml::ElementFormControlSelect *>(target))
+    return select->GetSelection();
+  return -1;
+}
+
+void apiElementScrollIntoView(AbcUiElement *element, int32_t alignTop) {
+  Rml::Element *target = elementOf(element);
+  if (target)
+    target->ScrollIntoView(alignTop != 0);
+}
+
 void apiCrosshairLayout(const AbcUiCrosshairLayout *layout, float core[5][4],
                         float outline[5][4], int32_t visible[5]) {
   if (!layout)
@@ -596,6 +643,12 @@ const AbcUiUiApi kUiApi = {
     apiElementAttribute,
     apiEscapeRmlAttribute,
     apiElementChildCount,
+    apiElementSelectRemoveAll,
+    apiElementSelectAdd,
+    apiElementSelectCount,
+    apiElementSelectSetSelection,
+    apiElementSelectSelection,
+    apiElementScrollIntoView,
 };
 
 } // namespace
