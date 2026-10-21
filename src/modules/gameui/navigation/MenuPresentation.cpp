@@ -120,7 +120,6 @@ void GameUiModule::hideAllMenuDocuments() {
     Settings->hide();
   Server->hide();
   Create->hide();
-  Inventory->hide();
   if (ConfirmQuit)
     ConfirmQuit->hide();
   // T14 connection surfaces: hidden with the menu; a later present

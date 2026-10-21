@@ -79,17 +79,8 @@ void GameUiModule::onContextReady(Rml::Context *context) {
   // T19: the create-local-game page (was the kCreateGame stub).
   CreateGamePage_ = std::make_unique<panels::creategame::CreateGamePage>();
   Create->setPage(CreateGamePage_.get());
-  InventoryPage_ = std::make_unique<panels::inventory::InventoryPage>();
-  Inventory->setPage(InventoryPage_.get());
-  InventoryPage_->setActionSink([this](services::inventory::Action action) {
-    Inventory->handleAction(action);
-  });
-  InventoryPage_->setCloseSink([this] { Inventory->close(); });
-  // The inventory page projects item actions, not navigation action strings,
-  // so it loads outside the generic wire (same emergency sink and outcome
-  // logging).
-  InventoryPage_->setEmergencySink(emergencySink);
-  logLoadOutcome(InventoryPage_->load(context));
+  // The inventory window is a module document now (abcui.gameui): the item
+  // stream feeds the model and the sdk inventory section carries the rest.
   VideoConfirm = std::make_unique<panels::settings::VideoConfirmPage>();
   VideoConfirm->setVideoModel(&VideoModel);
   Video->setPage(VideoConfirm.get());
@@ -164,10 +155,10 @@ void GameUiModule::serviceEmergencyPages() {
   if (!Context)
     return;
   framework::InteractiveDocument *pages[] = {
-      SubStub.get(),        Console.get(),         Settings.get(),
-      Browser.get(),        CreateGamePage_.get(), VideoConfirm.get(),
-      InventoryPage_.get(), ConfirmQuit.get(),     Loading.get(),
-      ConnError.get(),      Password.get(),        DirectConnect.get(),
+      SubStub.get(),     Console.get(),         Settings.get(),
+      Browser.get(),     CreateGamePage_.get(), VideoConfirm.get(),
+      ConfirmQuit.get(), Loading.get(),         ConnError.get(),
+      Password.get(),    DirectConnect.get(),
   };
   bool recovered = false;
   for (framework::InteractiveDocument *page : pages) {
@@ -201,7 +192,6 @@ void GameUiModule::serviceEmergencyPages() {
   LoadingVisible = false;
   Server->setPresented(false);
   Create->setPresented(false);
-  Inventory->setPresented(false);
   syncMenuPresentation();
 }
 

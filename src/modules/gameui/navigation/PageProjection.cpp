@@ -60,7 +60,8 @@ void GameUiModule::projectMenuPresentation() {
       // from menu.state once the page is on top.
       break;
     case MenuPage::kInventory:
-      Inventory->present();
+      // The page is a module document (abcui.gameui): it presents itself
+      // from menu.state once the page is on top.
       break;
     case MenuPage::kLoading:
       // Fresh projection on every sync: the attempt's values moved
@@ -121,8 +122,6 @@ void GameUiModule::projectMenuPresentation() {
     Server->hide();
   if (state.pages.empty() || state.pages.top() != MenuPage::kCreateGame)
     Create->hide();
-  if (state.pages.empty() || state.pages.top() != MenuPage::kInventory)
-    Inventory->hide();
 
   // Overlay layer, top-most last (each show pulls to the context
   // front); idempotent shows neither re-focus nor re-order. The loading

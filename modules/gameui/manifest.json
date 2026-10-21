@@ -1,7 +1,7 @@
 {
   "id": "abcui.gameui",
   "name": "GameUI",
-  "description": "The replacement game-menu pages; the shell and the vote creation, player list and command menu pages have moved so far.",
+  "description": "The replacement game-menu pages; the shell and the vote creation, player list, command menu and inventory pages have moved so far.",
   "author": "DrAbc",
   "version": "1.0.0",
   "abi": 1,

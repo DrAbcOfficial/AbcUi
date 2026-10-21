@@ -78,4 +78,8 @@ namespace SocialApi {
 const AbcUiSocialApi *get();
 } // namespace SocialApi
 
+namespace InventoryApi {
+const AbcUiInventoryApi *get();
+} // namespace InventoryApi
+
 } // namespace framework

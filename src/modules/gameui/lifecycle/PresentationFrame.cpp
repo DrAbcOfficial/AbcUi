@@ -107,8 +107,6 @@ void GameUiModule::pumpVisibleWork() {
       Browser->refocusDefault();
     } else if (state.pages.top() == MenuPage::kCreateGame && CreateGamePage_) {
       CreateGamePage_->refocusDefault();
-    } else if (state.pages.top() == MenuPage::kInventory && InventoryPage_) {
-      InventoryPage_->refocusDefault();
     } else if (state.pages.top() == MenuPage::kLoading && Loading) {
       Loading->refocusDefault();
     } else if (SubStub) {

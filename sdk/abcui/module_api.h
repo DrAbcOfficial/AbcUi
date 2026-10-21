@@ -1047,6 +1047,49 @@ typedef struct AbcUiSocialApi {
   void (*join)(uint64_t steamId, const char *address);
 } AbcUiSocialApi;
 
+// ------------------------------------------------------------ inventory ----
+
+// The item window's model: the list the server streams through InvAdd/
+// InvRemove plus the selection. Actions execute framework-side (the native
+// order: the window closes, then the client command runs); the read-through
+// rule means a refused action never mutates the list - an item disappears
+// only when the server's InvRemove arrives.
+#define ABCUI_INV_TEXT_MAX 512
+
+typedef struct AbcUiInvItem {
+  uint32_t structSize;
+  uint64_t serial;     // model-local identity (the click payload)
+  int32_t selected;    // computed against the model's selection
+  int32_t canActivate; // warning tint, not a disable (the server decides)
+  int32_t canDrop;
+  char name[ABCUI_INV_TEXT_MAX];
+  char description[ABCUI_INV_TEXT_MAX];
+} AbcUiInvItem;
+
+// Action verbs (the native client commands they issue).
+#define ABCUI_INV_ACTION_ACTIVATE 0
+#define ABCUI_INV_ACTION_DROP 1
+#define ABCUI_INV_ACTION_DROP_ALL 2
+
+typedef struct AbcUiInventoryApi {
+  uint32_t structSize;
+  uint32_t (*revision)(void);
+  int32_t (*itemCount)(void);
+  // Copies item `index`; 0 out of range (structSize honored on write).
+  int32_t (*itemAt)(int32_t index, AbcUiInvItem *out);
+  // Selects an existing serial; an unknown serial clears the selection.
+  void (*select)(uint64_t serial);
+  // Keyboard walk (clamps at the ends); 1 when the selection moved.
+  int32_t (*moveSelection)(int32_t delta);
+  // The action's client command: 1 when issued (the window already
+  // closed), 0 when the action has no target (no selection, or drop-all
+  // on an empty list - the window stays and the page re-projects).
+  int32_t (*activate)(int32_t action);
+  // The full dismiss gesture (close button, scrim, ESC): the flow's close
+  // with the raised-menu discipline.
+  void (*dismiss)(void);
+} AbcUiInventoryApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -1099,6 +1142,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiCommandMenuApi *commandmenu;
   const AbcUiMenuConfigApi *menuconfig;
   const AbcUiSocialApi *social;
+  const AbcUiInventoryApi *inventory;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

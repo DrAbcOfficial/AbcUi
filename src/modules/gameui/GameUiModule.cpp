@@ -3,7 +3,6 @@
 #include "modules/gameui/GameUiPages.h"
 #include "../../panels/console/ConsolePage.h"
 #include "../../panels/creategame/CreateGamePage.h"
-#include "../../panels/inventory/InventoryPage.h"
 #include "../../panels/loading/LoadingWindows.h"
 #include "../../panels/menushared/MenuShellWindows.h"
 #include "../../panels/serverbrowser/ServerBrowserPage.h"
@@ -19,6 +18,7 @@
 #include <abc/CvarCmd.h>
 #include "services/commandmenu/CommandMenuService.h"
 #include "services/friends/FriendsService.h"
+#include "services/inventory/InventoryService.h"
 #include "services/serverbrowser/BlacklistFileStore.h"
 #include "services/playerlist/PlayerListService.h"
 #include "services/uiconfig/MenuShellService.h"
@@ -180,6 +180,17 @@ GameUiModule::GameUiModule()
       module->onFriendJoin(steamId, address);
   };
   services::friends::setJoinSeam(joinSeam);
+  // The inventory page module reads this model through the sdk inventory
+  // section; the actions' client commands run here (the window closes
+  // first, then the queued command). The seams resolve the module through
+  // the registry (the launcher-thunk shape).
+  services::inventory::Access inventoryAccess;
+  inventoryAccess.model = &Inventory->model();
+  inventoryAccess.dismiss = [] {
+    if (GameUiModule *module = currentModule())
+      module->Inventory->close();
+  };
+  services::inventory::setAccess(inventoryAccess);
   // Vote creation menu: the live player roster comes from the same
   // playerres mirror; maps arrive through the MapList user message.
   // WS4: the friends board's Steam provider (bound lazily; without Steam the
@@ -306,6 +317,9 @@ CommandMenuHost GameUiModule::MakeCommandMenuHost() {
 InventoryHost GameUiModule::MakeInventoryHost() {
   InventoryHost host;
   host.shellReady = [this] { return Context != nullptr; };
+  host.pageOnTop = [this] {
+    return Controller.state().pages.topIs(MenuPage::kInventory);
+  };
   host.ensureMenu = [this](bool &raisedMenu) {
     const bool menuWasUp = MenuPresented;
     if (!menuWasUp) {
@@ -662,7 +676,6 @@ void GameUiModule::onShutdown() {
   Vote->shutdown();
   Command->shutdown();
   Inventory->shutdown();
-  InventoryPage_.reset();
   Video->shutdown();
   VideoConfirm.reset();
   ConfirmQuit.reset();
