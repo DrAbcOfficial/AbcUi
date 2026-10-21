@@ -372,9 +372,19 @@ void hookVanillaMenuRoute() {
   const auto target = abc::ResolveGameSymbol(
       abc::g_dwClientBase, "client", "TeamFortressViewport_ShowVGUIMenu",
       MH_GAMESYMBOL_KIND_FUNCTION);
+  if (!target) {
+    abc::SysError("[AbcUi] Failed to resolve "
+                  "TeamFortressViewport_ShowVGUIMenu");
+    return;
+  }
   ShowVguiMenuHook = g_pMetaHookAPI->InlineHook(
       target, H_TFV_ShowVGUIMenu,
       reinterpret_cast<void **>(&OriginalShowVguiMenu));
+  // Fail fast like locateNativeHudPanelInfo: without this hook the vanilla
+  // mission brief/MOTD windows stay reachable and silently shadow the panels.
+  if (!ShowVguiMenuHook)
+    abc::SysError(
+        "[AbcUi] Failed to hook TeamFortressViewport_ShowVGUIMenu");
 }
 
 void unhookVanillaMenuRoute() {
