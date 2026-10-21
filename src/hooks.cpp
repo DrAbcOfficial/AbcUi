@@ -9,6 +9,7 @@
 
 #include <abcui/events.h>
 
+#include <com_model.h>
 #include <keydefs.h>
 #include <usercmd.h>
 #include <in_buttons.h>
@@ -24,7 +25,6 @@
 #include "modsys/ModuleManager.h"
 #include "modules/HudPanelCatalog.h"
 #include "modules/Module.h"
-#include "panels/gindicator/GIndicatorPanel.h"
 #include "panels/itemhighlight/ItemHighlightPanel.h"
 #include "panels/scoreboard/ScoreboardPanel.h"
 #include "rmlui/InputBridge.h"
@@ -186,8 +186,27 @@ static void H_HUD_TxferLocalOverrides(struct entity_state_s *state,
 
 static int H_HUD_AddEntity(int type, struct cl_entity_s *ent,
                            const char *modelname) {
-  // Old Viewport::AddEntity routing: grenade indicator + item highlight.
-  panels::gindicator::onAddEntity(ent, modelname);
+  // Old Viewport::AddEntity routing (grenade indicator, item highlight) is
+  // now a bus channel: modules observe the same pass the engine sees.
+  AbcUiAddEntityEvent entity{};
+  entity.type = type;
+  if (ent) {
+    entity.index = ent->index;
+    entity.modelType = ent->model ? static_cast<int32_t>(ent->model->type) : 0;
+    entity.messageNum = ent->curstate.messagenum;
+    entity.effects = ent->curstate.effects;
+    entity.origin[0] = ent->curstate.origin[0];
+    entity.origin[1] = ent->curstate.origin[1];
+    entity.origin[2] = ent->curstate.origin[2];
+  }
+  if (modelname) {
+    size_t i = 0;
+    for (; i + 1 < sizeof(entity.model) && modelname[i]; ++i)
+      entity.model[i] = modelname[i];
+    entity.model[i] = '\0';
+  }
+  framework::eventBus().publish(ABCUI_CHANNEL_HUD_ADD_ENTITY, entity);
+  // Built-in consumer until its own module migration lands.
   panels::itemhighlight::onAddEntity(ent, modelname);
   return gExportfuncs.HUD_AddEntity(type, ent, modelname);
 }

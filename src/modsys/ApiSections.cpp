@@ -19,6 +19,7 @@
 #include "../framework/Projection.h"
 #include "../framework/PanelManager.h"
 #include "../framework/TextUtil.h"
+#include "../framework/Theme.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
 #include "../services/crosshair/Geometry.h"
 #include "../rmlui/animated/ElementAnimatedImage.h"
@@ -205,6 +206,10 @@ int apiDocumentSize(AbcUiDocument *doc, int *width, int *height) {
   return 1;
 }
 
+float apiScale() {
+  return Theme::scale();
+}
+
 void apiCrosshairLayout(const AbcUiCrosshairLayout *layout, float core[5][4],
                         float outline[5][4], int32_t visible[5]) {
   if (!layout)
@@ -303,13 +308,33 @@ int apiElementInnerRml(AbcUiElement *element, char *out, uint32_t outSize) {
 }
 
 const AbcUiUiApi kUiApi = {
-    sizeof(AbcUiUiApi),     apiPanelDocument,       apiDocumentShow,
-    apiDocumentHide,        apiDocumentSetProperty, apiQuerySelector,
-    apiElementSetProperty,  apiElementSetInnerRML,  apiInkMarkup,
-    apiTranslate,           apiEscapeRml,           apiKeyNameForKey,
-    apiDocumentVisible,     apiElementAppendRml,    apiElementRemove,
-    apiElementInnerRml,     apiFormatColor,         apiDifferColor,
-    apiElementSetAttribute, apiElementSetClass,     apiHudSprite,
+    sizeof(AbcUiUiApi),
+    apiPanelDocument,
+    apiDocumentShow,
+    apiDocumentHide,
+    apiDocumentSetProperty,
+    apiQuerySelector,
+    apiElementSetProperty,
+    apiElementSetInnerRML,
+    apiInkMarkup,
+    apiTranslate,
+    apiEscapeRml,
+    apiKeyNameForKey,
+    apiDocumentVisible,
+    apiElementAppendRml,
+    apiElementRemove,
+    apiElementInnerRml,
+    apiFormatColor,
+    apiDifferColor,
+    apiElementSetAttribute,
+    apiElementSetClass,
+    apiHudSprite,
+    apiElementRestartAnimation,
+    apiFormatRgba,
+    apiProject,
+    apiDocumentSize,
+    apiCrosshairLayout,
+    apiScale,
 };
 
 } // namespace
@@ -382,16 +407,24 @@ void watchScoreInfo() {
 void apiPlayerState(AbcUiPlayerState *out) {
   if (!out)
     return;
-  *out = AbcUiPlayerState{};
-  out->structSize = sizeof(AbcUiPlayerState);
+  const size_t bytes = declaredBytes(out->structSize, sizeof(AbcUiPlayerState));
+  AbcUiPlayerState state{};
+  state.structSize = sizeof(AbcUiPlayerState);
   watchScoreInfo();
-  out->frags = localFrags();
+  state.frags = localFrags();
   const cl_entity_t *local = gEngfuncs.GetLocalPlayer();
-  if (!local)
-    return;
-  out->index = local->index;
-  const float *velocity = local->curstate.velocity;
-  out->speed = std::sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
+  if (local) {
+    state.index = local->index;
+    const float *velocity = local->curstate.velocity;
+    state.speed =
+        std::sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
+    state.origin[0] = local->curstate.origin[0];
+    state.origin[1] = local->curstate.origin[1];
+    state.origin[2] = local->curstate.origin[2];
+    state.messageNum = local->curstate.messagenum;
+    gEngfuncs.GetViewAngles(state.angles);
+  }
+  std::memcpy(out, &state, bytes);
 }
 
 int32_t apiThirdPerson() {

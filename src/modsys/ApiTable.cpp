@@ -199,10 +199,13 @@ AbcUiCvarHandle apiFindCvar(const char *name) {
              : nullptr;
 }
 
+// Keep one initializer per member, in declaration order: a missing entry is
+// not a compile error (remaining pointers are zero-initialized) and only
+// shows up as a null call at runtime.
 const AbcUiConsoleApi kConsoleApi = {
     sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
     apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,
-    apiRegisterCvarWatch,    apiPlaySound,
+    apiRegisterCvarWatch,    apiPlaySound,     apiFindCvar,
 };
 
 // -------------------------------------------------------------- events ----
@@ -332,7 +335,44 @@ const AbcUiCommandsApi kCommandsApi = {
 
 namespace ApiTable {
 
+namespace {
+
+// Every section except core is {uint32_t structSize; pointers...} on the
+// x86 target (4-byte pointers, no padding), so a missing initializer shows up
+// as a null pointer. That is not a compile error - catch it when the table is
+// first handed to a module.
+template <typename Table> bool allMembersSet(const Table &table) {
+  constexpr size_t kPointers =
+      (sizeof(Table) - sizeof(uint32_t)) / sizeof(void *);
+  const void *const *members = reinterpret_cast<const void *const *>(&table);
+  for (size_t i = 1; i <= kPointers; ++i) {
+    if (!members[i])
+      return false;
+  }
+  return true;
+}
+
+void verifySections() {
+  static bool checked = false;
+  if (checked)
+    return;
+  checked = true;
+  // Data/Ui/Weapons live in their own translation units; their own `get()`
+  // callers read them directly, so only the sections owned by this file are
+  // audited here.
+  const bool complete = allMembersSet(kConsoleApi) &&
+                        allMembersSet(kEventsApi) && allMembersSet(kVfsApi) &&
+                        allMembersSet(kPanelsApi) &&
+                        allMembersSet(kCommandsApi);
+  if (!complete) {
+    abc::ConsoleError("[AbcUi] module api table has null section members");
+  }
+}
+
+} // namespace
+
 const AbcUiModuleApi *get() {
+  verifySections();
   static const AbcUiModuleApi kApi = {
       sizeof(AbcUiModuleApi),
       ABCUI_ABI_VERSION,

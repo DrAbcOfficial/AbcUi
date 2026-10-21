@@ -8,12 +8,8 @@
 #include "../data/TextFeed.h"
 #include "../modsys/ModuleManager.h"
 #include "../panels/chat/ChatPanel.h"
-#include "../panels/dmgtiles/DmgTilesPanel.h"
-#include "../panels/gindicator/GIndicatorPanel.h"
-#include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../panels/playerboard/PlayerBoardPanel.h"
-#include "../panels/popnum/PopNumPanel.h"
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 
@@ -27,10 +23,6 @@ namespace {
 std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
   // Batch B (feedback panels).
-  panels.push_back(std::make_unique<panels::IndicatorPanel>());
-  panels.push_back(std::make_unique<panels::GIndicatorPanel>());
-  panels.push_back(std::make_unique<panels::DmgTilesPanel>());
-  panels.push_back(std::make_unique<panels::PopNumPanel>());
   // Batch C (interaction + big data).
   panels.push_back(std::make_unique<panels::PlayerBoardPanel>());
   panels.push_back(std::make_unique<panels::ScoreboardPanel>());
@@ -56,9 +48,6 @@ void installHudPanels() {
 void registerHudPanelCvars() {
   commands::registerAll();
   // Batch B.
-  panels::indicator::registerCvars();
-  panels::gindicator::registerCvars();
-  panels::popnum::registerCvars();
   // Batch C.
   panels::playerboard::registerCvars();
   panels::scoreboard::registerCvars();

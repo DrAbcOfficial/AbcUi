@@ -194,6 +194,47 @@ typedef struct AbcUiItemPickupEvent {
   const char *name;
 } AbcUiItemPickupEvent;
 
+// netmsg.damage - the Damage usermsg (who hit us, how much, which damage
+// types). `from` is the attacker's world origin.
+#define ABCUI_CHANNEL_NETMSG_DAMAGE "netmsg.damage"
+typedef struct AbcUiDamageEvent {
+  int32_t armor;
+  int32_t damage;
+  int32_t tiles; // DMG_* bit mask (old bitsDamage)
+  float from[3];
+} AbcUiDamageEvent;
+
+// netmsg.popnum - one floating damage/heal number from the addon carrier
+// (world origin, value, RGBA tint).
+#define ABCUI_CHANNEL_NETMSG_POP_NUM "netmsg.popnum"
+typedef struct AbcUiPopNumEvent {
+  float origin[3];
+  int32_t value;
+  int32_t color[4];
+} AbcUiPopNumEvent;
+
+// Engine modtype_t values carried by hud.addentity (com_model.h order).
+#define ABCUI_MODEL_BRUSH 0
+#define ABCUI_MODEL_SPRITE 1
+#define ABCUI_MODEL_ALIAS 2
+#define ABCUI_MODEL_STUDIO 3
+// Entity effects bit that hides the entity from the HUD (EF_NODRAW).
+#define ABCUI_EF_NODRAW 128
+
+// hud.addentity - one HUD_AddEntity pass, published before the engine's own
+// handler (models/origins are dispatch-scoped copies; nothing borrows the
+// entity pointer).
+#define ABCUI_CHANNEL_HUD_ADD_ENTITY "hud.addentity"
+typedef struct AbcUiAddEntityEvent {
+  int32_t type;
+  int32_t index;     // entity index
+  int32_t modelType; // mod_studio / mod_sprite / ... (engine model_t type)
+  int32_t messageNum;
+  int32_t effects; // entity effects bits (ABCUI_EF_NODRAW)
+  char model[96];  // model name as passed to HUD_AddEntity
+  float origin[3];
+} AbcUiAddEntityEvent;
+
 // textfeed.killfeed - one routed kill line. All three strings are
 // dispatch-scoped pointers; `attacker` is empty for a suicide. `inflictor`
 // is the localized weapon phrase (the old kill feed's bracket text).

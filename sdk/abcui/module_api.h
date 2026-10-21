@@ -184,9 +184,12 @@ typedef struct AbcUiHudState {
 // Local player readout (data->playerState): copied out, never a pointer.
 typedef struct AbcUiPlayerState {
   uint32_t structSize;
-  int32_t index; // engine entindex, 0 when there is no local player
-  int32_t frags; // score from the ScoreInfo feed
-  float speed;   // horizontal velocity (the old side readout)
+  int32_t index;      // engine entindex, 0 when there is no local player
+  int32_t frags;      // score from the ScoreInfo feed
+  float speed;        // horizontal velocity (the old side readout)
+  float origin[3];    // local player origin (grenade range / projection)
+  float angles[3];    // local view angles (gEngfuncs.GetViewAngles)
+  int32_t messageNum; // entity message generation (stale-entity gate)
 } AbcUiPlayerState;
 
 // PlayerTrace types shared with data->traceEndPos.
@@ -309,6 +312,9 @@ typedef struct AbcUiUiApi {
   // hides). Part order: center, top, bottom, left, right.
   void (*crosshairLayout)(const AbcUiCrosshairLayout *layout, float core[5][4],
                           float outline[5][4], int32_t visible[5]);
+  // HUD density scale (framework::Theme::scale) - the old GetWide/GetTall
+  // proportional scale pixel geometry multiplies by.
+  float (*scale)(void);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

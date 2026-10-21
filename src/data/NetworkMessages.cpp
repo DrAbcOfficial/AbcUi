@@ -388,6 +388,12 @@ int __MsgFunc_Damage(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_Damage(pszName, iSize, pbuf);
   Damage(data);
+  const AbcUiDamageEvent damageEvent{
+      data.armor,
+      data.damage,
+      data.tiles,
+      {data.from[0], data.from[1], data.from[2]}};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_DAMAGE, damageEvent);
   return original_Damage(pszName, iSize, pbuf);
 }
 
@@ -593,6 +599,11 @@ int __MsgFunc_MetaHook(const char *pszName, int iSize, void *pbuf) {
       if (!msg.ok())
         return original_MetaHook ? original_MetaHook(pszName, iSize, pbuf) : 0;
       PopNum(data);
+      const AbcUiPopNumEvent popEvent{
+          {data.origin[0], data.origin[1], data.origin[2]},
+          data.value,
+          {data.color[0], data.color[1], data.color[2], data.color[3]}};
+      framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_POP_NUM, popEvent);
     }
   }
   return original_MetaHook ? original_MetaHook(pszName, iSize, pbuf) : 0;

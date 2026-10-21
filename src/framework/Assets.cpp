@@ -31,14 +31,6 @@ void verifyInstalled() {
       {"abc/abcui/hud/img/ammobar_background.png", "ammo panel art"},
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},
       // Batch B (feedback panels).
-      {"abc/abcui/hud/rml/indicator.rml", "indicator document"},
-      {"abc/abcui/hud/rml/gindicator.rml", "grenade indicator document"},
-      {"abc/abcui/hud/rml/dmgtiles.rml", "damage tiles document"},
-      {"abc/abcui/hud/rml/popnum.rml", "pop number document"},
-      {"abc/abcui/hud/img/pain_indicator.png", "pain indicator art"},
-      {"abc/abcui/hud/img/grenadeicon.png", "grenade indicator icon"},
-      {"abc/abcui/hud/img/icon_poison.png", "damage tile icon"},
-      {"abc/abcui/hud/img/icon_shock.png", "damage tile icon"},
       // Batch D (render depth panels).
       {"abc/abcui/hud/rml/itemhighlight.rml", "item highlight document"},
       {"abc/abcui/hud/ItemHighLightList.txt", "item highlight list"},

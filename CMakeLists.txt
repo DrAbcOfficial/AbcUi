@@ -298,9 +298,6 @@ add_library(AbcUi MODULE
     src/framework/Projection.cpp
     src/panels/chat/ChatMessage.cpp
     src/panels/chat/ChatPanel.cpp
-    src/panels/dmgtiles/DmgTilesPanel.cpp
-    src/panels/gindicator/GIndicatorPanel.cpp
-    src/panels/indicator/IndicatorPanel.cpp
     src/panels/itemhighlight/ItemHighlightPanel.cpp
     src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
@@ -331,7 +328,6 @@ add_library(AbcUi MODULE
     src/panels/settings/sections/BindingRows.cpp
     src/panels/settings/VideoConfirmPage.cpp
     src/panels/scoreboard/ScoreboardPanel.cpp
-    src/panels/popnum/PopNumPanel.cpp
     src/panels/radar/RadarPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
@@ -353,6 +349,7 @@ add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
 add_subdirectory(modules/ammo)
 add_subdirectory(modules/crosshair)
+add_subdirectory(modules/damage)
 add_subdirectory(modules/health)
 add_subdirectory(modules/hudeffects)
 add_subdirectory(modules/killfeed)

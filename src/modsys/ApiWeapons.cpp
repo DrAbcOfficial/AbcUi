@@ -166,10 +166,21 @@ int32_t apiAmmoIcon(int32_t ammoType, AbcUiWeaponSprite *out) {
   return 1;
 }
 
+// One initializer per member, in declaration order (see the console table
+// note: a missing entry becomes a null pointer, not a compile error).
 const AbcUiWeaponsApi kWeaponsApi = {
-    sizeof(AbcUiWeaponsApi), apiList,       apiGet,
-    apiSelectedSlot,         apiSelected,   apiCountAmmo,
-    apiFastSwitch,           apiSelectSlot, apiValidCommandName,
+    sizeof(AbcUiWeaponsApi),
+    apiList,
+    apiGet,
+    apiSelectedSlot,
+    apiSelected,
+    apiCountAmmo,
+    apiFastSwitch,
+    apiSelectSlot,
+    apiValidCommandName,
+    apiCurrent,
+    apiGetById,
+    apiAmmoIcon,
 };
 
 } // namespace
