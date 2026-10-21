@@ -30,6 +30,7 @@ cmake --build --preset win32-release --target deploy
 
 - UI assets go to `<game>/svencoop/abc/abcui/`, split by surface: GameUI documents, page styles, config and menu media live under `gameui/`; HUD documents, sprites and page art live under `hud/`; the cross-surface stylesheets (`rcss/base.rcss`, `rcss/theme.rcss`), language tables and shared art stay at the `abcui/` root.
 - `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`.
+- UI module packages go to `<game>/svencoop/abc/abcui/modules/*.zip` (built by the `pack_modules` target; `deploy` installs them too when `ABC_GAME_DIR` is set).
 - `FreeImage.dll` and `Mile.FFmpeg.dll` are provided by MetaHookSV/Renderer; AbcUi does not install or package a second copy.
 
 ## Packaging
@@ -39,7 +40,10 @@ cmake --build --preset win32-release --target dist
 ```
 
 Produces `AbcUi-<version>.zip` under `build/<preset>/dist/` (plugin DLL,
-`abc/abcui` assets, README). `AbcCore.dll` and the shared gamedata catalog are
+`abc/abcui` assets, the packed UI modules under `abc/abcui/modules/`, README).
+The module archives themselves are produced by `--target pack_modules`
+(`build/<preset>/dist/modules/<id>-<version>.zip`) from the manifests and the
+built module DLLs. `AbcCore.dll` and the shared gamedata catalog are
 provided by the aggregate `ABCEnchance-<tag>.zip` / `AbcCore-<version>.zip`,
 not by this module package. The archive contains `svencoop/` at its root: extract it directly into
 the Sven Co-op root, with no extra version folder to copy.
@@ -80,6 +84,47 @@ Limits: 1 MiB per file, 100 items per menu and 40 nested levels.
   ]
 }
 ```
+
+## UI modules
+
+AbcUi is a UI-free framework plus loadable UI-module packages. Every HUD panel
+that has been migrated lives in `modules/<id>/` in this repository and ships as
+one zip package installed at `svencoop/abc/abcui/modules/<id>-<version>.zip`
+(real files, never inside a VPK). Packages are mapped with
+`CreateFileMapping`; entries are stored uncompressed so the manifest, RML,
+RCSS, art and the entry DLL are served as zero-copy views (DEFLATED entries
+from third-party packages are inflated through miniz).
+
+A package contains:
+
+```text
+manifest.json            id, name, description, author, version, abi,
+                         minAbcUi, entry, dependencies, conflicts
+entry/<abcui_id>.dll     the module DLL (Win32 x86, /MD)
+hud/...                  the module's rml/rcss/img/lang tree
+```
+
+The framework scans the module directory once per process during `HUD_Init`,
+validates every manifest (ABI, `minAbcUi`, dependencies, conflicts), loads the
+packages in deterministic dependency order (ties broken by id), maps each entry
+DLL by hand (no `LoadLibrary`) and drives it through the same lifecycle points
+the built-in modules used: `onLoad`, `onInit`, `onContextReady`, `onFrame`,
+`onVidInit`, `onShutdown`, and `onUnload` in reverse order at process
+teardown. A module that fails validation is skipped together with its
+dependents; the rest keep working.
+
+Modules talk to the framework through the pure-C `AbcUiModuleApi` table
+(`sdk/abcui/`): versioned, append-only sections for console/cvars, the
+priority event bus, package files, HUD panels, the HUD data snapshot, Rml
+documents and elements, chained commands, the weapon registry and the player
+resource. Modules include `<abcui/module_api.h>`, export exactly one symbol
+(`AbcUiModule_Main`), must not include RmlUi headers or link the framework's
+static libraries, and must avoid static TLS and delay-loaded imports.
+
+First-party modules in this repository: flashlight, textmenu, vote, motd,
+weaponchoose, killfeed, textfeed, sidetext, health, ammo, hudeffects,
+crosshair, damage, itemhighlight and playerboard; `demo` is the minimal
+example. `tools/pack.py` validates each manifest and writes the archives.
 
 ## Feature overview
 

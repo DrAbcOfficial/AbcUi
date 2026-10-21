@@ -78,8 +78,8 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
 
 ## UI module architecture
 
-The plugin is being split into a UI-free framework plus loadable UI modules
-(zip packages). The target state and the rules the transition must keep:
+The plugin is a UI-free framework plus loadable UI modules (zip packages). The
+implemented rules the transition must keep:
 
 - AbcUi.dll ends up UI-free: RmlUi runtime, render bridge, input bridge, IME,
   theme/localization, texture services (sprites/avatars/custom elements), the
@@ -87,16 +87,21 @@ The plugin is being split into a UI-free framework plus loadable UI modules
   PlayerTrace / TextFeed) and the module machinery. No HUD panel or menu page
   ships inside the framework.
 - UI features live in modules under `modules/<id>/`: `manifest.json` + `src/`
-  + `assets/` + a CMake `add_library(... MODULE)` target. The first-party set
-  is health, flashlight, ammo, damage, radar, playerboard, scoreboard,
-  killfeed, textfeed, sidetext, chat, crosshair, motd, vote, textmenu,
-  weaponchoose, itemhighlight, hudeffects and gameui; modeltest/videotest stay
-  development-only.
+  + `assets/` + a CMake `add_library(... MODULE)` target. Migrated so far:
+  flashlight, textmenu, vote, motd, weaponchoose, killfeed, textfeed, sidetext,
+  health, ammo, hudeffects, crosshair, damage, itemhighlight and playerboard;
+  `demo` is the minimal example. modeltest/videotest stay development-only.
 - The module ABI is pure C, versioned struct tables under `sdk/abcui/`
   (same pattern as `AbcCore_CreateInterface`). A module DLL exports exactly
   one entry, `AbcUiModule_Main(abiVersion, api, outDescriptor)`; everything
   else crosses the boundary as C function pointers and POD payloads. Modules
   must not include RmlUi headers or link the framework's static libraries.
+  Sections: core, console, events, vfs, panels, data, ui, commands, weapons,
+  players. Adding a function means appending it to the section (and its
+  initializer in `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` /
+  `ApiPlayers.cpp` - a missing initializer is silently a null pointer; the
+  table audit in `ApiTable::get` catches it at boot), and appending to
+  snapshot structs means the writer must honor the caller's `structSize`.
 - Module packages are zip files at `svencoop/abc/abcui/modules/` (real files,
   never inside a VPK): `manifest.json`, the entry DLL and the module's
   rml / rcss / img / lang trees. Manifest fields: `id`, `name`, `description`,
@@ -104,7 +109,8 @@ The plugin is being split into a UI-free framework plus loadable UI modules
   `conflicts`. Packaging stores every entry uncompressed (STORED): the loader
   maps the zip with `CreateFileMapping` and serves STORED entries as zero-copy
   views; DEFLATED entries are inflated once through miniz for third-party
-  compatibility.
+  compatibility. `tools/pack.py` (the `pack_modules` target) validates the
+  manifests and writes `<id>-<version>.zip`; `dist` includes the archives.
 - Loading happens once per process in the HUD_Init one-shot block: scan,
   validate (abi / minAbcUi / dependencies / conflicts), topologically sort
   (ties broken by id), map each package, load the entry DLL from memory
@@ -114,19 +120,27 @@ The plugin is being split into a UI-free framework plus loadable UI modules
   onUnload` in load order (reverse order for shutdown). A failed module is
   skipped together with its dependents; the process keeps running. Modules
   must avoid static TLS (`__declspec(thread)`) and delayimp.
+- Module panel descriptors are kept for the whole process and every
+  `installHudPanels` cycle builds fresh wrappers: `PanelManager::shutdown`
+  destroys the panel list on every HUD_Shutdown, so taking the wrappers once
+  would lose every module panel after the first map change.
 - Data exchange is event-bus based (`src/modsys/EventBus.h`): string channels,
   each backed by priority buckets of `abc::CallbackList` (eventpp reused from
   AbcCore). Priority > 0 runs before the framework default (interception and
   rewriting), < 0 runs after (fallback); the same priority keeps registration
   order, and registration order follows the deterministic load order, so
-  behaviour never depends on discovery order. Veto channels (SayText, TextMsg,
-  chained commands) aggregate their bool result in priority order.
-- Transition rules: while the migration is in flight the framework keeps the
-  built-in panels; each migrated feature moves its sources, assets and cvars
+  behaviour never depends on discovery order. Veto channels aggregate their
+  bool result in priority order. The chained-command bridge inverts that
+  result: `CChainedCommand` runs the engine's original only when every
+  subscriber returned true, while the bus reports "consumed" (any sink
+  returned nonzero), so `Commands.cpp` returns `!publishVetoAggregateRaw(...)`.
+  Channels and payloads are documented in `sdk/abcui/events.h`.
+- Transition rules: each migrated feature moves its sources, assets and cvars
   into `modules/<id>/` in one commit and registers through the new ABI, and
-  the built-in copy is deleted only in the final cleanup commit. Existing
-  lifecycle red lines (one-shot latches, usermsg install-once + re-chain,
-  export chaining) keep applying to the framework spine unchanged.
+  the built-in copy is deleted in that same commit (the framework must not
+  keep a duplicate implementation). Existing lifecycle red lines (one-shot
+  latches, usermsg install-once + re-chain, export chaining) keep applying to
+  the framework spine unchanged.
 
 ## Build
 
