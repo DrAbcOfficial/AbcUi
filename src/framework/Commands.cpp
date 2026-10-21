@@ -53,11 +53,13 @@ void registerAll() {
     // Module bridge: every hooked command mirrors onto an aggregate veto
     // bus channel ("command.<name>"). Aggregate = the old CallbackList
     // semantics, every subscriber runs and independently decides whether
-    // the engine's original path runs.
+    // the engine's original path runs. CChainedCommand chains the original
+    // only when every subscriber returned true, while the bus reports
+    // "consumed" (any sink returned nonzero), so the two invert.
     command->Event().append([name]() {
       const std::string channel = std::string("command.") + name;
-      return framework::eventBus().publishVetoAggregateRaw(channel.c_str(),
-                                                           nullptr);
+      return !framework::eventBus().publishVetoAggregateRaw(channel.c_str(),
+                                                            nullptr);
     });
     list.push_back({name, std::move(command)});
   }
