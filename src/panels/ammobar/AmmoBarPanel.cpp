@@ -51,7 +51,9 @@ void AmmoBarPanel::reset() {
     rml.clear();
 }
 
-void AmmoBarPanel::updateVisibility() { applyHideToken(); }
+void AmmoBarPanel::updateVisibility() {
+  applyHideToken();
+}
 
 void AmmoBarPanel::applyHideToken() {
   // Old hudhideCallback: ShowPanel(!HIDEWEAPONS) while suited; the

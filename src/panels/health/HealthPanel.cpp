@@ -130,8 +130,7 @@ Rml::String HealthPanel::dangerColor(int value, float dangerValue) const {
 }
 
 void HealthPanel::applyVital(const char *labelId, const char *barId,
-                             const char *iconId, int value,
-                             float dangerValue) {
+                             const char *iconId, int value, float dangerValue) {
   const Rml::String color = dangerColor(value, dangerValue);
   if (Rml::Element *label = element(labelId)) {
     // Plain type with the 1px outline from health.rcss: the additive glyph

@@ -29,9 +29,8 @@ void GameUiModule::onFrame(double FrameTime) {
   // menu track over the Loading page and read as "the server is gone". The
   // map-load attempt suppresses it until LoadingFinished restores the level.
   const auto &state = Controller.state();
-  const bool mapLoading =
-      state.phase == menu::BackendPhase::kLoading &&
-      state.attemptKind == menu::AttemptKind::kMapLoad;
+  const bool mapLoading = state.phase == menu::BackendPhase::kLoading &&
+                          state.attemptKind == menu::AttemptKind::kMapLoad;
   music.update(bridge.pageShown() && !bridge.hasLevel() && !mapLoading);
   // Friends board: the throttle lives in the model, the projection is
   // change-gated on its generation (a steady list writes no DOM).

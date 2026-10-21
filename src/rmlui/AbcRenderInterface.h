@@ -109,10 +109,11 @@ public:
   // suffix and re-registers). `blend` selects the draw program: the animated
   // image element registers its frames additive (old kRenderTransAdd
   // sprites), everything else keeps the straight-alpha default.
-  void registerExternalTexture(
-      const Rml::String &uriPrefix, Rml::TextureHandle texture, int width,
-      int height, const int *maskSlot,
-      TextureBlend blend = TextureBlend::StraightAlpha);
+  void
+  registerExternalTexture(const Rml::String &uriPrefix,
+                          Rml::TextureHandle texture, int width, int height,
+                          const int *maskSlot,
+                          TextureBlend blend = TextureBlend::StraightAlpha);
   void unregisterExternalTexture(const Rml::String &uriPrefix);
 
 private:

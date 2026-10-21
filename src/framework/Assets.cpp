@@ -44,10 +44,8 @@ void verifyInstalled() {
       {"abc/abcui/hud/img/grenadeicon.png", "grenade indicator icon"},
       {"abc/abcui/hud/img/icon_poison.png", "damage tile icon"},
       {"abc/abcui/hud/img/icon_shock.png", "damage tile icon"},
-      {"abc/abcui/hud/img/water/face_rainleft.webp",
-       "water splash animation"},
-      {"abc/abcui/hud/img/water/face_rainright.webp",
-       "water splash animation"},
+      {"abc/abcui/hud/img/water/face_rainleft.webp", "water splash animation"},
+      {"abc/abcui/hud/img/water/face_rainright.webp", "water splash animation"},
       // Batch D (render depth panels).
       {"abc/abcui/hud/rml/itemhighlight.rml", "item highlight document"},
       {"abc/abcui/hud/ItemHighLightList.txt", "item highlight list"},

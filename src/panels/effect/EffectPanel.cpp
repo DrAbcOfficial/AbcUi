@@ -48,8 +48,8 @@ EffectPanel::EffectPanel()
 
 rmlui::animated::ElementAnimatedImage *
 EffectPanel::splash(const char *elementId) const {
-  Rml::Element *element = Document ? Document->GetElementById(elementId)
-                                   : nullptr;
+  Rml::Element *element =
+      Document ? Document->GetElementById(elementId) : nullptr;
   return element ? rmlui_dynamic_cast<rmlui::animated::ElementAnimatedImage *>(
                        element)
                  : nullptr;

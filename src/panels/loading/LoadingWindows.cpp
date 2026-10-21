@@ -181,9 +181,8 @@ void LoadingPage::refocusDefault() {
 }
 
 ConnectionErrorOverlay::ConnectionErrorOverlay()
-    : InteractiveDocument("menuconnerror",
-                          "abc/abcui/gameui/rml/connerror.rml", false,
-                          kConnectionDialogZIndex),
+    : InteractiveDocument("menuconnerror", "abc/abcui/gameui/rml/connerror.rml",
+                          false, kConnectionDialogZIndex),
       Listener(this) {}
 
 ConnectionErrorOverlay::~ConnectionErrorOverlay() {

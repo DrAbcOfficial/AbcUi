@@ -178,10 +178,9 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
   // Rml documents and their resources follow the engine mount order, which
   // is the same IFileSystem VGUI2Extension uses. This also keeps paths such
   // as "abc/abcui/..." independent of the process CWD.
-  const bool absolute =
-      (resolved.size() >= 2 && resolved[1] == ':') ||
-      (!resolved.empty() &&
-       (resolved.front() == '/' || resolved.front() == '\\'));
+  const bool absolute = (resolved.size() >= 2 && resolved[1] == ':') ||
+                        (!resolved.empty() &&
+                         (resolved.front() == '/' || resolved.front() == '\\'));
   if (absolute) {
     FILE *local = nullptr;
     if (fopen_s(&local, resolved.c_str(), "rb") != 0 || !local)
