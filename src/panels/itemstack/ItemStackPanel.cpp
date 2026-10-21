@@ -9,6 +9,7 @@
 #include <string>
 
 #include "../../data/NetworkMessages.h"
+#include "../../framework/TextUtil.h"
 #include "../../rmlui/texture/SpriteResource.h"
 
 namespace panels {
@@ -32,8 +33,12 @@ void ItemStackPanel::onDocumentReady() {
     wrect_t rect{};
     if (!sprites::findHudSprite(name, atlas, rect))
       return;
-    const std::string item =
-        std::format("<img class=\"icon\" src=\"spr://{}\"/>", name);
+    // The name is server data; the hud.txt lookup is the real gate, but the
+    // markup boundary still escapes it (a future lookup change must not
+    // turn this into a DOM injection point).
+    const std::string item = std::format(
+        "<img class=\"icon\" src=\"spr://{}\"/>",
+        framework::TextUtil::escapeRmlAttribute(name));
     appendItem("item", item.c_str());
   });
 }
