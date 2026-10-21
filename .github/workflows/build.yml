@@ -99,6 +99,25 @@ jobs:
       - name: Build (${{ matrix.config }})
         run: cmake --build build/ci --config ${{ matrix.config }} --parallel
 
+      # The module packages are zipped by tools/pack.py (Python3 required at
+      # configure time). Fail loudly instead of shipping a bundle without
+      # them: a dist zip with an empty modules directory would install a HUD
+      # with no panels.
+      - name: Verify module packages
+        if: matrix.config == 'Release'
+        shell: pwsh
+        run: |
+          cmake --build build/ci --config Release --target pack_modules
+          $packed = @(Get-ChildItem build/ci/dist/modules/*.zip -ErrorAction SilentlyContinue)
+          if ($packed.Count -lt 1) {
+            throw "no module packages were produced (tools/pack.py did not run)"
+          }
+          $expected = @(Get-ChildItem modules/*/manifest.json).Count
+          if ($packed.Count -ne $expected) {
+            throw "packed $($packed.Count) module(s), expected $expected"
+          }
+          Write-Host "$($packed.Count) module package(s) ready"
+
       - name: Package (Release)
         if: matrix.config == 'Release'
         run: cmake --build build/ci --config Release --target dist
