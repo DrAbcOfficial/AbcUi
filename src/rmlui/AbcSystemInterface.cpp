@@ -150,13 +150,20 @@ ResourceHandle *handleFor(Rml::FileHandle handle) {
 } // namespace
 
 Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
+  // engine://<engine path> lets a package document reference a framework
+  // shared asset (the base stylesheet, shared lang tables) by its absolute
+  // engine path, which relative mod:// links cannot reach.
+  Rml::String resolved = path;
+  if (resolved.rfind("engine://", 0) == 0)
+    resolved = resolved.substr(9);
+
   // Module packages: "mod://<module-id>/<path>" resolves through the module
   // VFS (zero-copy into the mapped zip for STORED entries). Rml keeps the
   // scheme when joining relative document references, so package-internal
   // links and images land here too.
-  if (framework::ModuleVfs::isModuleUri(path)) {
+  if (framework::ModuleVfs::isModuleUri(resolved)) {
     framework::PackageEntry entry;
-    if (!framework::ModuleVfs::open(path.c_str(), entry, nullptr))
+    if (!framework::ModuleVfs::open(resolved.c_str(), entry, nullptr))
       return 0;
     auto *resource = new (std::nothrow) ResourceHandle{};
     if (!resource)
@@ -172,11 +179,12 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
   // is the same IFileSystem VGUI2Extension uses. This also keeps paths such
   // as "abc/abcui/..." independent of the process CWD.
   const bool absolute =
-      (path.size() >= 2 && path[1] == ':') ||
-      (!path.empty() && (path.front() == '/' || path.front() == '\\'));
+      (resolved.size() >= 2 && resolved[1] == ':') ||
+      (!resolved.empty() &&
+       (resolved.front() == '/' || resolved.front() == '\\'));
   if (absolute) {
     FILE *local = nullptr;
-    if (fopen_s(&local, path.c_str(), "rb") != 0 || !local)
+    if (fopen_s(&local, resolved.c_str(), "rb") != 0 || !local)
       return 0;
     auto *resource = new (std::nothrow) ResourceHandle{nullptr, local};
     if (!resource) {
@@ -188,7 +196,7 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
 
   std::string normalized;
   if (!abc::g_pFileSystem ||
-      !framework::ResourceFile::normalize(path, normalized))
+      !framework::ResourceFile::normalize(resolved, normalized))
     return 0;
   FileHandle_t file = abc::g_pFileSystem->Open(normalized.c_str(), "rb");
   if (!file)

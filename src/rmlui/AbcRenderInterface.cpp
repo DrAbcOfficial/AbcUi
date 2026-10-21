@@ -368,6 +368,10 @@ void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
                                                    const Rml::String &source) {
+  // engine:// lets package documents reference shared framework art by its
+  // absolute engine path; the rest of the chain below speaks plain paths.
+  if (source.rfind("engine://", 0) == 0)
+    return loadFileTexture(dimensions, source.substr(9));
   if (source.rfind("preview://", 0) == 0) {
     framework::PreviewRequest Request;
     if (!framework::parsePreviewUri(source, Request) || !abc::g_pFileSystem)

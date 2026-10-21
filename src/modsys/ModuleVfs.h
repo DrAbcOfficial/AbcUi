@@ -29,7 +29,8 @@ bool isModuleUri(std::string_view uri);
 // Mounts a parsed package under a module id and takes ownership of the
 // image. Fails when the id is empty or already mounted.
 bool mount(const char *moduleId, std::unique_ptr<PackageImage> image);
-// Drops every mount.
+// Drops one mount (load failures) or every mount (process teardown).
+void unmount(const char *moduleId);
 void unmountAll();
 
 bool isMounted(const char *moduleId);

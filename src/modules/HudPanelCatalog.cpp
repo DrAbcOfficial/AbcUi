@@ -6,6 +6,7 @@
 #include "../framework/PanelManager.h"
 #include "../data/NetworkMessages.h"
 #include "../data/TextFeed.h"
+#include "../modsys/ModuleManager.h"
 #include "../panels/ammobar/AmmoBarPanel.h"
 #include "../panels/ammostack/AmmoStackPanel.h"
 #include "../panels/chat/ChatPanel.h"
@@ -78,7 +79,12 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
 } // namespace
 
 void installHudPanels() {
-  framework::PanelManager::installPanels(buildPanels());
+  auto panels = buildPanels();
+  // Module-registered panels join the tail (same order their packages
+  // loaded in); the built-ins keep their fixed factory order ahead of them.
+  for (auto &panel : framework::modmanager::takePanels())
+    panels.push_back(std::move(panel));
+  framework::PanelManager::installPanels(std::move(panels));
 }
 
 void registerHudPanelCvars() {

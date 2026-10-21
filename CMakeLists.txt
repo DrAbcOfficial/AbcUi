@@ -156,6 +156,10 @@ add_library(AbcUi MODULE
     src/modsys/PackageImage.cpp
     src/modsys/ModuleVfs.cpp
     src/modsys/MemoryDll.cpp
+    src/modsys/ModuleManifest.cpp
+    src/modsys/ModulePanel.cpp
+    src/modsys/ApiTable.cpp
+    src/modsys/ModuleManager.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
@@ -349,9 +353,16 @@ add_library(AbcUi MODULE
 target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_WARNINGS NOMINMAX)
 target_compile_options(AbcUi PRIVATE /W4)
 target_compile_options(AbcUi PRIVATE /FIabc/ForceImport.h)
+# The module SDK and the module manifest's JSON parser.
+target_include_directories(AbcUi PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}/sdk"
+    "${ABC_CORE_DIR}/thirdparty/MetaHook/thirdparty/rapidjson/include")
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
     abcui_miniz imm32 abc_ui_config)
+
+# First-party UI modules (each its own DLL + package; see modules/<id>/).
+add_subdirectory(modules/demo)
 
 # Renderer's gl_common constants are the source of truth for the render vertex
 # layouts. Fail the build when AbcUi's copied table drifts from the pin.
@@ -411,12 +422,12 @@ endif()
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
 # configuration that thirdparty/FreeImage pulls in.
-file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/plugins.cpp" ABC_UI_VERSION_LINE
-    REGEX "CAbcPluginBase\\(\"AbcUi\"")
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/src/modsys/FrameworkVersion.h" ABC_UI_VERSION_LINE
+    REGEX "kFrameworkVersion")
 string(REGEX MATCH "\"([0-9]+\\.[0-9]+\\.[0-9]+)\"" ABC_UI_VERSION "${ABC_UI_VERSION_LINE}")
 set(ABC_UI_VERSION "${CMAKE_MATCH_1}")
 if(NOT ABC_UI_VERSION)
-    message(WARNING "Could not parse the AbcUi version from src/plugins.cpp; packaging as 0.0.0")
+    message(WARNING "Could not parse the AbcUi version from src/modsys/FrameworkVersion.h; packaging as 0.0.0")
     set(ABC_UI_VERSION "0.0.0")
 endif()
 set(ABC_UI_STAGE_DIR "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}")

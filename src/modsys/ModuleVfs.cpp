@@ -72,6 +72,12 @@ bool mount(const char *moduleId, std::unique_ptr<PackageImage> image) {
   return true;
 }
 
+void unmount(const char *moduleId) {
+  if (!moduleId)
+    return;
+  mounts().erase(moduleId);
+}
+
 void unmountAll() {
   mounts().clear();
 }

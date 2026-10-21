@@ -18,6 +18,7 @@
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
+#include "modsys/ModuleManager.h"
 #include "modules/HudPanelCatalog.h"
 #include "modules/Module.h"
 #include "panels/gindicator/GIndicatorPanel.h"
@@ -102,6 +103,9 @@ static void H_HUD_Init() {
   //   it is empty (a live list is left alone).
   netmsg::init();
   netmsg::refreshAfterClientLoad();
+  // Module packages boot once per process, before the panel install, so
+  // module-registered panels join the first HUD_Init cycle.
+  framework::modmanager::boot();
   if (framework::PanelManager::panels().empty())
     modules::installHudPanels();
   // Process-scoped registration (cvars/commands survive HUD_Shutdown).
