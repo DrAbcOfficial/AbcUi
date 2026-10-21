@@ -294,11 +294,8 @@ add_library(AbcUi MODULE
     src/framework/PanelManager.cpp
     src/framework/PanelManagerLifecycle.cpp
     src/framework/Theme.cpp
-    src/framework/StackBase.cpp
     src/framework/GlyphText.cpp
     src/framework/Projection.cpp
-    src/panels/ammostack/AmmoStackPanel.cpp
-    src/panels/ammobar/AmmoBarPanel.cpp
     src/panels/chat/ChatMessage.cpp
     src/panels/chat/ChatPanel.cpp
     src/panels/crosshair/CrosshairPanel.cpp
@@ -338,8 +335,6 @@ add_library(AbcUi MODULE
     src/panels/scoreboard/ScoreboardPanel.cpp
     src/panels/popnum/PopNumPanel.cpp
     src/panels/radar/RadarPanel.cpp
-    src/panels/itemstack/ItemStackPanel.cpp
-    src/panels/weaponstack/WeaponStackPanel.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )
@@ -358,6 +353,7 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
 add_subdirectory(modules/demo)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
+add_subdirectory(modules/ammo)
 add_subdirectory(modules/health)
 add_subdirectory(modules/killfeed)
 add_subdirectory(modules/motd)

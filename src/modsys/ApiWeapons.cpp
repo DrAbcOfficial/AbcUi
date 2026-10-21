@@ -44,9 +44,14 @@ void fill(const weaponres::Weapon &weapon, AbcUiWeaponInfo &out) {
   out.flags = weapon.flags;
   out.owned = weaponres::isOwned(&weapon) ? 1 : 0;
   out.hasAmmo = weaponres::hasAmmo(&weapon) ? 1 : 0;
+  out.clip = weapon.clip;
+  out.clip2 = weapon.clip2;
+  out.state = weapon.state;
   copyField(weapon.name, out.name, sizeof(out.name));
   copySprite(weapon.active, out.active);
   copySprite(weapon.inactive, out.inactive);
+  copySprite(weapon.ammo, out.ammo);
+  copySprite(weapon.ammo2, out.ammo2);
 }
 
 int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {
@@ -67,6 +72,17 @@ int32_t apiGet(int32_t slot, int32_t slotPos, AbcUiWeaponInfo *out) {
   if (!out)
     return 0;
   const weaponres::Weapon *weapon = weaponres::getWeapon(slot, slotPos);
+  if (!weapon)
+    return 0;
+  *out = AbcUiWeaponInfo{};
+  fill(*weapon, *out);
+  return 1;
+}
+
+int32_t apiGetById(int32_t id, AbcUiWeaponInfo *out) {
+  if (!out)
+    return 0;
+  const weaponres::Weapon *weapon = weaponres::getWeapon(id);
   if (!weapon)
     return 0;
   *out = AbcUiWeaponInfo{};
@@ -103,6 +119,34 @@ void apiSelectSlot(int32_t slot, int32_t advance, int32_t wheel) {
 
 int32_t apiValidCommandName(const char *name) {
   return name && ResourceLimits::weaponCommandName(name) ? 1 : 0;
+}
+
+int32_t apiCurrent(AbcUiWeaponInfo *out) {
+  if (!out)
+    return 0;
+  const weaponres::Weapon *weapon = weaponres::currentWeapon();
+  if (!weapon)
+    return 0;
+  *out = AbcUiWeaponInfo{};
+  fill(*weapon, *out);
+  return 1;
+}
+
+int32_t apiAmmoIcon(int32_t ammoType, AbcUiWeaponSprite *out) {
+  if (!out)
+    return 0;
+  std::string atlas;
+  wrect_t rect{};
+  if (!weaponres::ammoIcon(ammoType, atlas, rect))
+    return 0;
+  *out = AbcUiWeaponSprite{};
+  out->valid = 1;
+  copyField(atlas, out->atlas, sizeof(out->atlas));
+  out->rect[0] = rect.left;
+  out->rect[1] = rect.top;
+  out->rect[2] = rect.right;
+  out->rect[3] = rect.bottom;
+  return 1;
 }
 
 const AbcUiWeaponsApi kWeaponsApi = {

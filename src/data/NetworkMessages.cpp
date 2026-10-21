@@ -112,6 +112,8 @@ int __MsgFunc_AmmoX(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_AmmoX(pszName, iSize, pbuf);
   AmmoX(index, count);
+  const AbcUiAmmoEvent ammoEvent{index, count};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_AMMO_X, ammoEvent);
   return original_AmmoX(pszName, iSize, pbuf);
 }
 
@@ -166,6 +168,8 @@ int __MsgFunc_CurWeapon(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_CurWeapon(pszName, iSize, pbuf);
   CurWeapon(state, id, clip, clip2);
+  const AbcUiCurWeaponEvent weaponEvent{state, id, clip, clip2};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_CUR_WEAPON, weaponEvent);
   return original_CurWeapon(pszName, iSize, pbuf);
 }
 
@@ -204,6 +208,8 @@ int __MsgFunc_WeapPickup(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_WeapPickup(pszName, iSize, pbuf);
   WeapPickup(index);
+  const AbcUiWeaponIdEvent pickupEvent{index};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_WEAP_PICKUP, pickupEvent);
   return original_WeapPickup(pszName, iSize, pbuf);
 }
 
@@ -214,6 +220,8 @@ int __MsgFunc_AmmoPickup(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_AmmoPickup(pszName, iSize, pbuf);
   AmmoPickup(index, count);
+  const AbcUiAmmoEvent pickupEvent{index, count};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_AMMO_PICKUP, pickupEvent);
   return original_AmmoPickup(pszName, iSize, pbuf);
 }
 
@@ -223,6 +231,8 @@ int __MsgFunc_ItemPickup(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_ItemPickup(pszName, iSize, pbuf);
   ItemPickup(name.c_str());
+  const AbcUiItemPickupEvent itemEvent{name.c_str()};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_ITEM_PICKUP, itemEvent);
   return original_ItemPickup(pszName, iSize, pbuf);
 }
 

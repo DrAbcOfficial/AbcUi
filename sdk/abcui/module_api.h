@@ -260,6 +260,15 @@ typedef struct AbcUiUiApi {
   // RCSS text. Both inputs are 0..255 RGB triples.
   void (*differColor)(const float base[3], const float danger[3], float ratio,
                       char *out, uint32_t outSize);
+  // Sets an HTML attribute ("src", "class", ...); a null value removes it.
+  void (*elementSetAttribute)(AbcUiElement *element, const char *name,
+                              const char *value);
+  // Toggles one class token on an element.
+  void (*elementSetClass)(AbcUiElement *element, const char *name, int enabled);
+  // hud.txt sprite lookup (the sprite resource tables): fills the atlas name
+  // and crop rect; 1 when the name resolves.
+  int (*hudSprite)(const char *name, char *atlas, uint32_t atlasSize,
+                   int32_t rect[4]);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -313,9 +322,14 @@ typedef struct AbcUiWeaponInfo {
   int32_t flags;   // ABCUI_ITEM_FLAG_*
   int32_t owned;   // owned by the local player right now
   int32_t hasAmmo; // usable right now (unlimited weapons always true)
+  int32_t clip;    // primary magazine (-1 when the weapon has none)
+  int32_t clip2;   // secondary magazine (-1 when the weapon has none)
+  int32_t state;   // CurWeapon state bits (valid/onTarget/uzi)
   char name[ABCUI_WEAPON_NAME_MAX];
   AbcUiWeaponSprite active;   // "weapon_s" sprite (highlighted item)
   AbcUiWeaponSprite inactive; // "weapon" sprite
+  AbcUiWeaponSprite ammo;     // "ammo" sprite (ammo bar / pickup stack)
+  AbcUiWeaponSprite ammo2;    // "ammo2" sprite (falls back to "ammo")
 } AbcUiWeaponInfo;
 
 typedef struct AbcUiWeaponsApi {
@@ -338,6 +352,12 @@ typedef struct AbcUiWeaponsApi {
   // server-provided weapon name (defense in depth; the registry already
   // rejects non-identifiers).
   int32_t (*validCommandName)(const char *name);
+  // Snapshot of the current (CurWeapon) weapon; 1 when known.
+  int32_t (*current)(AbcUiWeaponInfo *out);
+  // Snapshot by the engine/server weapon id; 1 when the registry knows it.
+  int32_t (*getById)(int32_t id, AbcUiWeaponInfo *out);
+  // Icon of an ammo type, taken from any weapon carrying it; 1 when found.
+  int32_t (*ammoIcon)(int32_t ammoType, AbcUiWeaponSprite *out);
 } AbcUiWeaponsApi;
 
 // ------------------------------------------------- module descriptor ------

@@ -18,6 +18,7 @@
 #include "../framework/PanelManager.h"
 #include "../framework/TextUtil.h"
 #include "../rmlui/VGUI2ExtensionImport.h"
+#include "../rmlui/texture/SpriteResource.h"
 
 namespace framework {
 namespace {
@@ -150,6 +151,42 @@ void apiDifferColor(const float base[3], const float danger[3], float ratio,
   copyOut(ColorUtil::format(rgb), out, outSize);
 }
 
+void apiElementSetAttribute(AbcUiElement *element, const char *name,
+                            const char *value) {
+  if (!element || !name || !*name)
+    return;
+  Rml::Element *target = elementOf(element);
+  if (!value)
+    target->RemoveAttribute(name);
+  else
+    target->SetAttribute(name, value);
+}
+
+void apiElementSetClass(AbcUiElement *element, const char *name, int enabled) {
+  if (!element || !name || !*name)
+    return;
+  elementOf(element)->SetClass(name, enabled != 0);
+}
+
+int apiHudSprite(const char *name, char *atlas, uint32_t atlasSize,
+                 int32_t rect[4]) {
+  if (!name)
+    return 0;
+  std::string sprite;
+  wrect_t crop{};
+  if (!sprites::findHudSprite(name, sprite, crop))
+    return 0;
+  if (atlas && atlasSize > 0)
+    copyOut(sprite, atlas, atlasSize);
+  if (rect) {
+    rect[0] = crop.left;
+    rect[1] = crop.top;
+    rect[2] = crop.right;
+    rect[3] = crop.bottom;
+  }
+  return 1;
+}
+
 int apiDocumentVisible(AbcUiDocument *doc) {
   const HudPanel *panel = panelOf(doc);
   return panel && panel->isVisible() ? 1 : 0;
@@ -193,12 +230,13 @@ int apiElementInnerRml(AbcUiElement *element, char *out, uint32_t outSize) {
 }
 
 const AbcUiUiApi kUiApi = {
-    sizeof(AbcUiUiApi),    apiPanelDocument,       apiDocumentShow,
-    apiDocumentHide,       apiDocumentSetProperty, apiQuerySelector,
-    apiElementSetProperty, apiElementSetInnerRML,  apiInkMarkup,
-    apiTranslate,          apiEscapeRml,           apiKeyNameForKey,
-    apiDocumentVisible,    apiElementAppendRml,    apiElementRemove,
-    apiElementInnerRml,    apiFormatColor,         apiDifferColor,
+    sizeof(AbcUiUiApi),     apiPanelDocument,       apiDocumentShow,
+    apiDocumentHide,        apiDocumentSetProperty, apiQuerySelector,
+    apiElementSetProperty,  apiElementSetInnerRML,  apiInkMarkup,
+    apiTranslate,           apiEscapeRml,           apiKeyNameForKey,
+    apiDocumentVisible,     apiElementAppendRml,    apiElementRemove,
+    apiElementInnerRml,     apiFormatColor,         apiDifferColor,
+    apiElementSetAttribute, apiElementSetClass,     apiHudSprite,
 };
 
 } // namespace

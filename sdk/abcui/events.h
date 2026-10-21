@@ -161,6 +161,39 @@ typedef struct AbcUiKeyEvent {
 // the engine bindings (weapon switch).
 #define ABCUI_CHANNEL_INPUT_WHEEL "input.wheel"
 
+// netmsg.curweapon - the client switched/holstered its weapon; `state`
+// carries the old WEAPONSTATE bits (valid/onTarget/uzi).
+#define ABCUI_CHANNEL_NETMSG_CUR_WEAPON "netmsg.curweapon"
+typedef struct AbcUiCurWeaponEvent {
+  int32_t state;
+  int32_t id;
+  int32_t clip;
+  int32_t clip2;
+} AbcUiCurWeaponEvent;
+
+// netmsg.ammox - one ammo pool changed (index is the AmmoX byte domain).
+#define ABCUI_CHANNEL_NETMSG_AMMO_X "netmsg.ammox"
+typedef struct AbcUiAmmoEvent {
+  int32_t index;
+  int32_t count;
+} AbcUiAmmoEvent;
+
+// netmsg.weappickup - the player picked up weapon `id`.
+#define ABCUI_CHANNEL_NETMSG_WEAP_PICKUP "netmsg.weappickup"
+typedef struct AbcUiWeaponIdEvent {
+  int32_t id;
+} AbcUiWeaponIdEvent;
+
+// netmsg.ammopickup - the player picked up ammo (AbcUiAmmoEvent).
+#define ABCUI_CHANNEL_NETMSG_AMMO_PICKUP "netmsg.ammopickup"
+
+// netmsg.itempickup - the player picked up the hud.txt item `name`
+// (dispatch-scoped pointer).
+#define ABCUI_CHANNEL_NETMSG_ITEM_PICKUP "netmsg.itempickup"
+typedef struct AbcUiItemPickupEvent {
+  const char *name;
+} AbcUiItemPickupEvent;
+
 // textfeed.killfeed - one routed kill line. All three strings are
 // dispatch-scoped pointers; `attacker` is empty for a suicide. `inflictor`
 // is the localized weapon phrase (the old kill feed's bracket text).

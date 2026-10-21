@@ -7,8 +7,6 @@
 #include "../data/NetworkMessages.h"
 #include "../data/TextFeed.h"
 #include "../modsys/ModuleManager.h"
-#include "../panels/ammobar/AmmoBarPanel.h"
-#include "../panels/ammostack/AmmoStackPanel.h"
 #include "../panels/chat/ChatPanel.h"
 #include "../panels/crosshair/CrosshairPanel.h"
 #include "../panels/dmgtiles/DmgTilesPanel.h"
@@ -16,12 +14,10 @@
 #include "../panels/gindicator/GIndicatorPanel.h"
 #include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemhighlight/ItemHighlightPanel.h"
-#include "../panels/itemstack/ItemStackPanel.h"
 #include "../panels/playerboard/PlayerBoardPanel.h"
 #include "../panels/popnum/PopNumPanel.h"
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
-#include "../panels/weaponstack/WeaponStackPanel.h"
 
 #include <memory>
 #include <utility>
@@ -32,10 +28,6 @@ namespace {
 
 std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
-  panels.push_back(std::make_unique<panels::AmmoBarPanel>());
-  panels.push_back(std::make_unique<panels::AmmoStackPanel>());
-  panels.push_back(std::make_unique<panels::ItemStackPanel>());
-  panels.push_back(std::make_unique<panels::WeaponStackPanel>());
   // Batch B (feedback panels).
   panels.push_back(std::make_unique<panels::CrosshairPanel>());
   panels.push_back(std::make_unique<panels::IndicatorPanel>());
