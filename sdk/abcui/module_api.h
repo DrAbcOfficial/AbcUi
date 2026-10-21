@@ -124,6 +124,60 @@ typedef struct AbcUiPanelsApi {
   int (*registerPanel)(const AbcUiPanelDesc *desc);
 } AbcUiPanelsApi;
 
+// ----------------------------------------------------------------- data ----
+
+// Snapshot of the local player HUD state the visibility rules hang off
+// (predicted client data plus the usermsg-fed values). Values are copied
+// out; int32_t flags are 0/1.
+typedef struct AbcUiHudState {
+  uint32_t structSize;
+  int32_t suit;
+  int32_t spectate;
+  int32_t longjump;
+  int32_t hideBits; // raw last-write HideWeapon/HideHUD token
+  int32_t flashOn;
+  int32_t flashBattery;
+  int32_t health; // predicted health (0 until the first prediction frame)
+  int32_t armor;  // message-fed armor value
+  int32_t waterLevel;
+  float fov;
+} AbcUiHudState;
+
+typedef struct AbcUiDataApi {
+  uint32_t structSize;
+  void (*hudState)(AbcUiHudState *out);
+} AbcUiDataApi;
+
+// ------------------------------------------------------------------- ui ----
+
+typedef struct AbcUiDocument AbcUiDocument; // opaque panel-backed document
+// Element handles are only valid for the callback that queried them; query
+// again per event (the built-ins do the same).
+typedef struct AbcUiElement AbcUiElement;
+
+typedef struct AbcUiUiApi {
+  uint32_t structSize;
+  // The document of one of this module's registered panels, by name.
+  AbcUiDocument *(*panelDocument)(const char *panelName);
+  // Session-aware visibility (the same gating the built-in panels use).
+  void (*documentShow)(AbcUiDocument *doc);
+  void (*documentHide)(AbcUiDocument *doc);
+  // Sets a document-level RCSS property (e.g. a --token).
+  void (*documentSetProperty)(AbcUiDocument *doc, const char *name,
+                              const char *value);
+  // "#id" lookup inside the document; null when missing.
+  AbcUiElement *(*querySelector)(AbcUiDocument *doc, const char *id);
+  void (*elementSetProperty)(AbcUiElement *elem, const char *name,
+                             const char *value);
+  void (*elementSetInnerRML)(AbcUiElement *elem, const char *rml);
+  // Additive digit-glyph markup for readouts (framework glyph atlas; the
+  // accent tint is used when `tint` is null). Returns 0 when the text lacks
+  // glyph coverage and plain text is the fallback. Writes at most
+  // outSize-1 bytes plus the terminator.
+  int (*inkMarkup)(const char *text, const char *tint, char *out,
+                   uint32_t outSize);
+} AbcUiUiApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -159,6 +213,8 @@ typedef struct AbcUiModuleApi {
   const AbcUiEventsApi *events;
   const AbcUiVfsApi *vfs;
   const AbcUiPanelsApi *panels;
+  const AbcUiDataApi *data;
+  const AbcUiUiApi *ui;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

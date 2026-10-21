@@ -16,4 +16,14 @@ const AbcUiModuleApi *get();
 
 } // namespace ApiTable
 
+// SDK section implementations living outside ApiTable.cpp (they pull in
+// their own subsystems); ApiTable::get() wires the pointers.
+namespace DataApi {
+const AbcUiDataApi *get();
+} // namespace DataApi
+
+namespace UiApi {
+const AbcUiUiApi *get();
+} // namespace UiApi
+
 } // namespace framework

@@ -160,6 +160,7 @@ add_library(AbcUi MODULE
     src/modsys/ModulePanel.cpp
     src/modsys/ApiTable.cpp
     src/modsys/ModuleManager.cpp
+    src/modsys/ApiSections.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
@@ -343,7 +344,6 @@ add_library(AbcUi MODULE
     src/panels/radar/RadarPanel.cpp
     src/panels/sidetext/SideTextPanel.cpp
     src/panels/textmenu/TextMenuPanel.cpp
-    src/panels/flashlight/FlashlightPanel.cpp
     src/panels/health/HealthPanel.cpp
     src/panels/itemstack/ItemStackPanel.cpp
     src/panels/weaponstack/WeaponStackPanel.cpp
@@ -363,6 +363,7 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
 
 # First-party UI modules (each its own DLL + package; see modules/<id>/).
 add_subdirectory(modules/demo)
+add_subdirectory(modules/flashlight)
 
 # Renderer's gl_common constants are the source of truth for the render vertex
 # layouts. Fail the build when AbcUi's copied table drifts from the pin.

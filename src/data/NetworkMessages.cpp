@@ -9,7 +9,10 @@
 #include <abc/NetMsg.h>
 #include <abc/Console.h>
 #include <abc/Plugin.h>
-#include <abc/Plugin.h>
+
+#include <abcui/events.h>
+
+#include "../modsys/EventBus.h"
 
 #include <cstdint>
 
@@ -287,6 +290,8 @@ int __MsgFunc_FlashBat(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_FlashBat(pszName, iSize, pbuf);
   FlashBat(battery);
+  const AbcUiFlashBatEvent moduleEvent{battery};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_FLASHBAT, moduleEvent);
   return original_FlashBat(pszName, iSize, pbuf);
 }
 
@@ -297,6 +302,8 @@ int __MsgFunc_Flashlight(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_Flashlight(pszName, iSize, pbuf);
   Flashlight(on > 0, battery);
+  const AbcUiFlashlightEvent moduleEvent{on > 0 ? 1 : 0, battery};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_FLASHLIGHT, moduleEvent);
   return original_Flashlight(pszName, iSize, pbuf);
 }
 

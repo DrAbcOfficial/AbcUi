@@ -14,7 +14,6 @@
 #include "../panels/deadmsg/DeadMsgPanel.h"
 #include "../panels/dmgtiles/DmgTilesPanel.h"
 #include "../panels/effect/EffectPanel.h"
-#include "../panels/flashlight/FlashlightPanel.h"
 #include "../panels/gindicator/GIndicatorPanel.h"
 #include "../panels/health/HealthPanel.h"
 #include "../panels/indicator/IndicatorPanel.h"
@@ -42,7 +41,6 @@ namespace {
 std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
   panels.push_back(std::make_unique<panels::HealthPanel>());
-  panels.push_back(std::make_unique<panels::FlashlightPanel>());
   panels.push_back(std::make_unique<panels::AmmoBarPanel>());
   panels.push_back(std::make_unique<panels::AmmoStackPanel>());
   panels.push_back(std::make_unique<panels::ItemStackPanel>());

@@ -228,6 +228,8 @@ const AbcUiModuleApi *get() {
       &kEventsApi,
       &kVfsApi,
       &kPanelsApi,
+      DataApi::get(),
+      UiApi::get(),
   };
   return &kApi;
 }

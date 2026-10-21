@@ -289,17 +289,6 @@ void probeCommand() {
                         name, doc->IsVisible() ? 1 : 0,
                         doc->GetProperty("display")->ToString().c_str());
   }
-  if (Rml::ElementDocument *flashlight = context->GetDocument("flashlight")) {
-    if (Rml::Element *off = flashlight->GetElementById("off-image")) {
-      const Rml::Box box = off->GetBox();
-      const Rml::Vector2f content = box.GetSize();
-      abc::ConsolePrint("[AbcUi] probe: flashlight off-image src='%s' "
-                        "visibility='%s' computed=%.2fx%.2f\n",
-                        off->GetAttribute<Rml::String>("src", "<none>").c_str(),
-                        off->GetProperty("visibility")->ToString().c_str(),
-                        content.x, content.y);
-    }
-  }
   // Batch B ground truth: the popnum doc's live children with their inline
   // and absolute positions (projection chain: netmsg -> element -> layout).
   if (Rml::ElementDocument *popnum = context->GetDocument("popnum")) {

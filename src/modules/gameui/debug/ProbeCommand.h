@@ -3,8 +3,8 @@
 // rmlui - abc_ui_probe / abc_ui_menu, Debug builds only.
 //
 // abc_ui_probe is a live diagnostic cross-section for acceptance and triage:
-// dumps hudstate, per-document visibility and hardcoded panel element states
-// (armor-bar-wrap, flashlight off-image), then opens a font-pipeline document.
+// dumps hudstate and per-document visibility, then opens a font-pipeline
+// document.
 // abc_ui_menu injects a canned netmsg::ShowMenu so drivers without a live
 // server menu stream can exercise the TextMenu chain (open, slot-key gate,
 // menuselect, re-show). The element ids and panel names these probe are

@@ -22,6 +22,40 @@
 
 #include "module_api.h"
 
+// netmsg.flashlight - flashlight toggled; battery 0..100.
+#define ABCUI_CHANNEL_NETMSG_FLASHLIGHT "netmsg.flashlight"
+typedef struct AbcUiFlashlightEvent {
+  int32_t on;
+  int32_t battery;
+} AbcUiFlashlightEvent;
+
+// netmsg.flashbat - flashlight battery update.
+#define ABCUI_CHANNEL_NETMSG_FLASHBAT "netmsg.flashbat"
+typedef struct AbcUiFlashBatEvent {
+  int32_t battery;
+} AbcUiFlashBatEvent;
+
+// hud.suit - HEV suit possession changed (weapon bits bit 31).
+#define ABCUI_CHANNEL_HUD_SUIT "hud.suit"
+typedef struct AbcUiBoolEvent {
+  int32_t value;
+} AbcUiBoolEvent;
+
+// hud.hideToken - raw HideWeapon/HideHUD token, last write wins. Bits:
+#define ABCUI_CHANNEL_HUD_HIDE_TOKEN "hud.hideToken"
+typedef struct AbcUiIntEvent {
+  int32_t value;
+} AbcUiIntEvent;
+
+#define ABCUI_HIDEBIT_WEAPONS (1 << 0)
+#define ABCUI_HIDEBIT_FLASHLIGHT (1 << 1)
+#define ABCUI_HIDEBIT_ALL (1 << 2)
+#define ABCUI_HIDEBIT_HEALTH (1 << 3)
+#define ABCUI_HIDEBIT_SELECTION (1 << 4)
+#define ABCUI_HIDEBIT_BATTERY (1 << 5)
+#define ABCUI_HIDEBIT_CUSTOM1 (1 << 6)
+#define ABCUI_HIDEBIT_CUSTOM2 (1 << 7)
+
 // HUD_Frame pump payload; also the "module ran this frame" heartbeat.
 #define ABCUI_CHANNEL_FRAME "client.frame"
 typedef struct AbcUiFrameEvent {

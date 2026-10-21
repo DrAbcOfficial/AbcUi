@@ -32,7 +32,6 @@ void verifyInstalled() {
       {"abc/abcui/hud/rml/textmenu.rml", "textmenu document"},
       {"abc/abcui/hud/img/healthpanel_background.png", "health panel art"},
       {"abc/abcui/hud/img/ammobar_background.png", "ammo panel art"},
-      {"abc/abcui/hud/img/flashlight_off.png", "flashlight art"},
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},
       // Batch B (feedback panels).
       {"abc/abcui/hud/rml/crosshair.rml", "crosshair document"},
