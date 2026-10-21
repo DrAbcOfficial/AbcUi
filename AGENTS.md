@@ -76,6 +76,58 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `ElementColorPicker::pumpChanges()` in the frame pump, never from the
   drag/render call stack (a page handler may destroy the picker).
 
+## UI module architecture
+
+The plugin is being split into a UI-free framework plus loadable UI modules
+(zip packages). The target state and the rules the transition must keep:
+
+- AbcUi.dll ends up UI-free: RmlUi runtime, render bridge, input bridge, IME,
+  theme/localization, texture services (sprites/avatars/custom elements), the
+  data layer (NetworkMessages / WeaponResource / HudState / PlayerResource /
+  PlayerTrace / TextFeed) and the module machinery. No HUD panel or menu page
+  ships inside the framework.
+- UI features live in modules under `modules/<id>/`: `manifest.json` + `src/`
+  + `assets/` + a CMake `add_library(... MODULE)` target. The first-party set
+  is health, flashlight, ammo, damage, radar, playerboard, scoreboard,
+  killfeed, textfeed, sidetext, chat, crosshair, motd, vote, textmenu,
+  weaponchoose, itemhighlight, hudeffects and gameui; modeltest/videotest stay
+  development-only.
+- The module ABI is pure C, versioned struct tables under `sdk/abcui/`
+  (same pattern as `AbcCore_CreateInterface`). A module DLL exports exactly
+  one entry, `AbcUiModule_Main(abiVersion, api, outDescriptor)`; everything
+  else crosses the boundary as C function pointers and POD payloads. Modules
+  must not include RmlUi headers or link the framework's static libraries.
+- Module packages are zip files at `svencoop/abc/abcui/modules/` (real files,
+  never inside a VPK): `manifest.json`, the entry DLL and the module's
+  rml / rcss / img / lang trees. Manifest fields: `id`, `name`, `description`,
+  `author`, `version`, `abi`, `minAbcUi`, `entry`, `dependencies`,
+  `conflicts`. Packaging stores every entry uncompressed (STORED): the loader
+  maps the zip with `CreateFileMapping` and serves STORED entries as zero-copy
+  views; DEFLATED entries are inflated once through miniz for third-party
+  compatibility.
+- Loading happens once per process in the HUD_Init one-shot block: scan,
+  validate (abi / minAbcUi / dependencies / conflicts), topologically sort
+  (ties broken by id), map each package, load the entry DLL from memory
+  (manual PE map; imports resolve through `GetModuleHandle` /
+  `GetProcAddress`), call the entry, then drive
+  `onLoad / onInit / onContextReady / onFrame / onVidInit / onShutdown /
+  onUnload` in load order (reverse order for shutdown). A failed module is
+  skipped together with its dependents; the process keeps running. Modules
+  must avoid static TLS (`__declspec(thread)`) and delayimp.
+- Data exchange is event-bus based (`src/modsys/EventBus.h`): string channels,
+  each backed by priority buckets of `abc::CallbackList` (eventpp reused from
+  AbcCore). Priority > 0 runs before the framework default (interception and
+  rewriting), < 0 runs after (fallback); the same priority keeps registration
+  order, and registration order follows the deterministic load order, so
+  behaviour never depends on discovery order. Veto channels (SayText, TextMsg,
+  chained commands) aggregate their bool result in priority order.
+- Transition rules: while the migration is in flight the framework keeps the
+  built-in panels; each migrated feature moves its sources, assets and cvars
+  into `modules/<id>/` in one commit and registers through the new ABI, and
+  the built-in copy is deleted only in the final cleanup commit. Existing
+  lifecycle red lines (one-shot latches, usermsg install-once + re-chain,
+  export chaining) keep applying to the framework spine unchanged.
+
 ## Build
 
 Win32 x86 only / C++20 / dynamic CRT (/MD). AbcCore is consumed as
