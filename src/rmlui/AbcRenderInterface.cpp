@@ -15,6 +15,7 @@
 #include "texture/Avatars.h"
 #include "texture/SpriteResource.h"
 #include "../framework/ImageLoader.h"
+#include "../modsys/ModuleVfs.h"
 #include "render/Render.h"
 #include "render/RenderCommon.h"
 #include "VGUI2ExtensionImport.h"
@@ -450,6 +451,23 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
     // The scheme keeps Rml from joining the document directory, so markup
     // composed in code (the additive glyph stacks) resolves from anywhere.
     return loadFileTexture(dimensions, source.substr(6));
+  }
+  if (source.rfind("mod://", 0) == 0) {
+    // Module package image: resolve through the module VFS, decode from the
+    // (zero-copy) entry view.
+    framework::PackageEntry entry;
+    if (!framework::ModuleVfs::open(source.c_str(), entry, nullptr))
+      return 0;
+    framework::ImageLoader::DecodedImage image;
+    if (!framework::ImageLoader::loadFromMemory(
+            static_cast<const unsigned char *>(entry.data), entry.size, image))
+      return 0;
+    const int textureId =
+        uploadSurfaceTexture(image.Pixels.data(), image.Width, image.Height);
+    if (!textureId)
+      return 0;
+    dimensions = Rml::Vector2i(image.Width, image.Height);
+    return retainTexture(textureId, true);
   }
   if (source.rfind("texadd://", 0) == 0) {
     // Mod-relative file loaded additive (old kRenderTransAdd TGA panels -

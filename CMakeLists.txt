@@ -153,6 +153,8 @@ add_library(AbcUi MODULE
     src/hooks.cpp
     src/modsys/EventBus.cpp
     src/modsys/PackageFile.cpp
+    src/modsys/PackageImage.cpp
+    src/modsys/ModuleVfs.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
