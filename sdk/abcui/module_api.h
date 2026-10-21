@@ -461,6 +461,7 @@ typedef struct AbcUiEntityState {
   int32_t isPlayer;
   int32_t effects;
   float origin[3];
+  float angles[3];
   float mins[3];
   float maxs[3];
 } AbcUiEntityState;
@@ -475,7 +476,33 @@ typedef struct AbcUiPlayersApi {
   int32_t (*entity)(int32_t index, AbcUiEntityState *out);
   // Client dll per-player tint (GetClientColor, 0..1 RGB); 1 when available.
   int32_t (*clientColor)(int32_t index, float out[3]);
+  // Avatar cache-bust generation for a SteamID64 (append to the avatar://
+  // uri as "?gen=N"); 0 when the avatar service has no entry yet.
+  int32_t (*avatarGeneration)(uint64_t steamId64);
 } AbcUiPlayersApi;
+
+// ---------------------------------------------------------------- radar ----
+
+// The framework's world-to-FBO producer (the render half of the radar).
+// The module owns the document, the plate geometry and the avatars; the
+// framework renders the world from above when the module says the plate is
+// on screen.
+#define ABCUI_RADAR_ORTHO_BASE 4096.0f
+
+typedef struct AbcUiRadarApi {
+  uint32_t structSize;
+  // 1 when the FBO colour texture exists and is registered.
+  int32_t (*ready)(void);
+  // Bumped whenever the FBO texture handle changes; build the map uri as
+  // "radarfbo://map?gen=<generation>" (RmlUi caches textures per source).
+  int32_t (*generation)(void);
+  // The plate is on screen: render the world pass on the next pre-view.
+  void (*setActive)(int32_t active);
+  // Plate shape (square/round) - selects the mask the draw applies.
+  void (*setMaskRound)(int32_t round);
+  // hud_radar_zoom: visible span = 2 * (ABCUI_RADAR_ORTHO_BASE / zoom).
+  void (*setZoom)(float zoom);
+} AbcUiRadarApi;
 
 // ------------------------------------------------- module descriptor ------
 
@@ -517,6 +544,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiCommandsApi *commands;
   const AbcUiWeaponsApi *weapons;
   const AbcUiPlayersApi *players;
+  const AbcUiRadarApi *radar;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

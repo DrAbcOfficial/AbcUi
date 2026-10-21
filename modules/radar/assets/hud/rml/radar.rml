@@ -1,6 +1,6 @@
 <rml>
 <head>
-	<link type="text/rcss" href="../../rcss/base.rcss"/>
+	<link type="text/rcss" href="engine://abc/abcui/rcss/base.rcss"/>
 	<link type="text/rcss" href="../rcss/radar.rcss"/>
 </head>
 <body id="radar">
@@ -9,11 +9,11 @@
 	     with the square/round mask by AbcRenderInterface); #avatars is
 	     rebuilt per frame by RadarPanel::onData (old 32-slot fleet). -->
 	<div id="plate">
-		<img id="plate-square" src="../img/radar/radar_background.png"/>
-		<img id="plate-round" src="../img/radar/radar_roundbackground.png"/>
+		<img id="plate-square" src="mod://abcui.radar/hud/img/radar/radar_background.png"/>
+		<img id="plate-round" src="mod://abcui.radar/hud/img/radar/radar_roundbackground.png"/>
 		<img id="map"/>
-		<img id="north" src="../img/radar/radar_north.png"/>
-		<img id="aim" src="../img/radar/radar_viewangle.png"/>
+		<img id="north" src="mod://abcui.radar/hud/img/radar/radar_north.png"/>
+		<img id="aim" src="mod://abcui.radar/hud/img/radar/radar_viewangle.png"/>
 		<div id="avatars"></div>
 	</div>
 </body>

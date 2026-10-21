@@ -7,6 +7,7 @@
 #include <string>
 
 #include "../data/PlayerResource.h"
+#include "../rmlui/texture/Avatars.h"
 #include "../hooks.h"
 
 namespace framework {
@@ -93,6 +94,7 @@ int32_t apiEntity(int32_t index, AbcUiEntityState *out) {
     state.effects = entity->curstate.effects;
     for (int i = 0; i < 3; ++i) {
       state.origin[i] = entity->curstate.origin[i];
+      state.angles[i] = entity->curstate.angles[i];
       state.mins[i] = entity->curstate.mins[i];
       state.maxs[i] = entity->curstate.maxs[i];
     }

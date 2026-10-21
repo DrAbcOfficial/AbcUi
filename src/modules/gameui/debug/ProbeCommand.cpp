@@ -16,12 +16,12 @@
 
 #include "../../../data/HudState.h"
 #include "../../../framework/PanelManager.h"
+#include "../../../render/RadarRender.h"
 #include "../../../rmlui/texture/Avatars.h"
 #include "../../../data/NetworkMessages.h"
 #include "../../../data/PlayerResource.h"
 #include "../../../rmlui/texture/SpriteResource.h"
 #include "../../../data/WeaponResource.h"
-#include "../../../panels/radar/RadarPanel.h"
 #include "../../../panels/scoreboard/ScoreboardPanel.h"
 
 #include "../../../services/steam/SteamAPI.h"
@@ -413,8 +413,9 @@ void probeCommand() {
     if (Rml::Element *container = radar->GetElementById("avatars"))
       avatars = container->GetNumChildren();
     abc::ConsolePrint(
-        "[AbcUi] probe: radar fbo-tex=%d doc-visible=%d avatars=%d\n",
-        panels::radar::debugFboTexture(), radar->IsVisible() ? 1 : 0, avatars);
+        "[AbcUi] probe: radar fbo-ready=%d doc-visible=%d avatars=%d\n",
+        framework::radarrender::ready() ? 1 : 0, radar->IsVisible() ? 1 : 0,
+        avatars);
     if (Rml::Element *map = radar->GetElementById("map")) {
       abc::ConsolePrint("[AbcUi] probe: radar map src='%s' abs=(%.1f %.1f)\n",
                         map->GetAttribute<Rml::String>("src", "<none>").c_str(),

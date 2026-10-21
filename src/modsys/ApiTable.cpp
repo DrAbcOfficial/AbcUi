@@ -13,6 +13,7 @@
 
 #include "../data/NetworkMessages.h"
 #include "../framework/Commands.h"
+#include "../render/RadarRender.h"
 #include "../framework/ResourceFile.h"
 #include "EventBus.h"
 #include "FrameworkVersion.h"
@@ -322,6 +323,33 @@ const AbcUiPanelsApi kPanelsApi = {
     apiRegisterPanel,
 };
 
+// ---------------------------------------------------------------- radar ----
+
+int32_t apiRadarReady() {
+  return radarrender::ready() ? 1 : 0;
+}
+
+int32_t apiRadarGeneration() {
+  return radarrender::generation();
+}
+
+void apiRadarSetActive(int32_t active) {
+  radarrender::setActive(active != 0);
+}
+
+void apiRadarSetMaskRound(int32_t round) {
+  radarrender::setMaskRound(round != 0);
+}
+
+void apiRadarSetZoom(float zoom) {
+  radarrender::setZoom(zoom);
+}
+
+const AbcUiRadarApi kRadarApi = {
+    sizeof(AbcUiRadarApi), apiRadarReady,        apiRadarGeneration,
+    apiRadarSetActive,     apiRadarSetMaskRound, apiRadarSetZoom,
+};
+
 // ------------------------------------------------------------- commands ----
 
 AbcUiSubscription apiSubscribeCommand(const char *name, int priority,
@@ -382,7 +410,7 @@ void verifySections() {
   const bool complete = allMembersSet(kConsoleApi) &&
                         allMembersSet(kEventsApi) && allMembersSet(kVfsApi) &&
                         allMembersSet(kPanelsApi) &&
-                        allMembersSet(kCommandsApi);
+                        allMembersSet(kCommandsApi) && allMembersSet(kRadarApi);
   if (!complete) {
     abc::ConsoleError("[AbcUi] module api table has null section members");
   }
@@ -405,6 +433,7 @@ const AbcUiModuleApi *get() {
       &kCommandsApi,
       WeaponsApi::get(),
       PlayersApi::get(),
+      &kRadarApi,
   };
   return &kApi;
 }
