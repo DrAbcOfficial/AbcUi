@@ -98,6 +98,23 @@ typedef struct AbcUiVoteMenuEvent {
 // netmsg.endvote - the vote window closed (payload is null).
 #define ABCUI_CHANNEL_NETMSG_END_VOTE "netmsg.endvote"
 
+// netmsg.motd - one MOTD chunk from the server. `text` is a dispatch-scoped
+// pointer; an empty text means "close the window" (old empty-chunk
+// semantics) and code > 0 marks the final chunk of the message.
+#define ABCUI_CHANNEL_NETMSG_MOTD "netmsg.motd"
+typedef struct AbcUiMotdEvent {
+  int32_t code;
+  const char *text;
+} AbcUiMotdEvent;
+
+// menu.vguimenu - the client asked for a native viewport window
+// (CTeamFortressViewport::ShowVGUIMenu ids: 4 mission brief, 5 MOTD, ...).
+// Veto channel: nonzero suppresses the vanilla window.
+#define ABCUI_CHANNEL_MENU_VGUI_MENU "menu.vguimenu"
+typedef struct AbcUiVguiMenuEvent {
+  int32_t menu;
+} AbcUiVguiMenuEvent;
+
 // input.key - one HUD key event. Veto channel: a sink returning nonzero
 // consumes the press so the engine binding chain never sees it (the vote
 // keys answer the vote instead of running their binding).
@@ -106,3 +123,9 @@ typedef struct AbcUiKeyEvent {
   int32_t down;   // 1 key down, 0 key up
   int32_t keynum; // engine key number
 } AbcUiKeyEvent;
+
+// input.wheel - one mouse-wheel pulse (AbcUiKeyEvent payload). Veto channel
+// with claim semantics: nonzero routes the pulse into the Rml context (the
+// open document scrolls) without taking input ownership; zero leaves it to
+// the engine bindings (weapon switch).
+#define ABCUI_CHANNEL_INPUT_WHEEL "input.wheel"

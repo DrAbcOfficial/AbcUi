@@ -82,6 +82,12 @@ typedef struct AbcUiConsoleApi {
   // gate is off the message passes through untouched (old IsVoteEnable).
   // Pass null to remove the gate (the message is then not routed at all).
   void (*setVoteGate)(AbcUiCvarHandle cvar);
+  // Registers a cvar and arms an engine-side change callback (the old
+  // CREATE_CVAR callback contract: clamping and re-set reactions). The
+  // callback runs on the engine cvar-set path with the module's userdata.
+  AbcUiCvarHandle (*registerCvarWatch)(const char *name, const char *value,
+                                       int flags, AbcUiCommandFn fn,
+                                       void *userdata);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -119,6 +125,12 @@ typedef struct AbcUiVfsApi {
   // Releases a view (no-op for zero-copy entries, frees extracted ones).
   void (*viewFree)(AbcUiFileView *view);
   int (*exists)(const char *moduleId, const char *path);
+  // Reads an engine-relative file through the engine filesystem (the same
+  // mounted search path the framework's resource reader uses). Returns the
+  // byte count, or -1 when the file is missing, invalid or larger than
+  // maxBytes. Pass out == null (or a null outSize) to measure first.
+  int (*readEngineFile)(const char *path, void *out, uint32_t outSize,
+                        uint32_t maxBytes);
 } AbcUiVfsApi;
 
 // -------------------------------------------------------------- panels ----
@@ -166,6 +178,9 @@ typedef struct AbcUiHudState {
 typedef struct AbcUiDataApi {
   uint32_t structSize;
   void (*hudState)(AbcUiHudState *out);
+  // Current level name ("maps/<map>.bsp"); empty when the engine has none.
+  // Same measure-then-copy contract as ui->escapeRml.
+  int (*levelName)(char *out, uint32_t outSize);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----

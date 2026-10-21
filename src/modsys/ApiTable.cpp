@@ -3,14 +3,17 @@
 
 #include <cstdarg>
 #include <cstdio>
+#include <cstring>
 #include <map>
 #include <string>
+#include <vector>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
 
 #include "../data/NetworkMessages.h"
 #include "../framework/Commands.h"
+#include "../framework/ResourceFile.h"
 #include "EventBus.h"
 #include "FrameworkVersion.h"
 #include "ModuleManager.h"
@@ -154,9 +157,41 @@ void apiSetVoteGate(AbcUiCvarHandle cvar) {
   netmsg::setVoteGate(static_cast<cvar_t *>(cvar));
 }
 
+// Engine cvar callbacks receive only the cvar pointer; the module's
+// userdata hangs off this table (registered before the cvar can be set).
+struct CvarWatch {
+  AbcUiCommandFn fn = nullptr;
+  void *userdata = nullptr;
+};
+
+std::map<cvar_t *, CvarWatch> &cvarWatches() {
+  static std::map<cvar_t *, CvarWatch> instance;
+  return instance;
+}
+
+void cvarWatchThunk(cvar_t *cvar) {
+  const auto &table = cvarWatches();
+  const auto it = table.find(cvar);
+  if (it != table.end() && it->second.fn)
+    it->second.fn(it->second.userdata);
+}
+
+AbcUiCvarHandle apiRegisterCvarWatch(const char *name, const char *value,
+                                     int flags, AbcUiCommandFn fn,
+                                     void *userdata) {
+  if (!name || !value || !fn)
+    return apiRegisterCvar(name, value, flags);
+  cvar_t *cvar = abc::CREATE_CVAR(name, value, flags, &cvarWatchThunk);
+  if (!cvar)
+    return nullptr;
+  cvarWatches()[cvar] = CvarWatch{fn, userdata};
+  return static_cast<AbcUiCvarHandle>(cvar);
+}
+
 const AbcUiConsoleApi kConsoleApi = {
-    sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
-    apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,
+    sizeof(AbcUiConsoleApi), apiRegisterCvar,    apiCvarValue,
+    apiCvarString,           apiRegisterCommand, apiEngineCommand,
+    apiServerCommand,        apiSetVoteGate,     apiRegisterCvarWatch,
 };
 
 // -------------------------------------------------------------- events ----
@@ -219,9 +254,25 @@ int apiVfsExists(const char *moduleId, const char *path) {
   return ModuleVfs::openPath(moduleId, path, entry, nullptr) ? 1 : 0;
 }
 
+int apiReadEngineFile(const char *path, void *out, uint32_t outSize,
+                      uint32_t maxBytes) {
+  if (!path || !*path)
+    return -1;
+  std::vector<unsigned char> bytes;
+  if (!ResourceFile::read(path, bytes, maxBytes ? maxBytes : 65536u))
+    return -1;
+  if (out && outSize > 0) {
+    const size_t copy =
+        bytes.size() < outSize ? bytes.size() : static_cast<size_t>(outSize);
+    if (copy)
+      std::memcpy(out, bytes.data(), copy);
+  }
+  return static_cast<int>(bytes.size());
+}
+
 const AbcUiVfsApi kVfsApi = {
-    sizeof(AbcUiVfsApi), apiVfsOpen,  apiViewData,
-    apiViewSize,         apiViewFree, apiVfsExists,
+    sizeof(AbcUiVfsApi), apiVfsOpen,   apiViewData,       apiViewSize,
+    apiViewFree,         apiVfsExists, apiReadEngineFile,
 };
 
 // -------------------------------------------------------------- panels ----

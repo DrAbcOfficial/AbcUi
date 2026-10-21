@@ -425,6 +425,8 @@ int __MsgFunc_MOTD(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_MOTD(pszName, iSize, pbuf);
   Motd(code, info.c_str());
+  const AbcUiMotdEvent moduleEvent{code, info.c_str()};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_MOTD, moduleEvent);
   return original_MOTD(pszName, iSize, pbuf);
 }
 

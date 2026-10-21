@@ -26,7 +26,6 @@
 #include "modules/Module.h"
 #include "panels/gindicator/GIndicatorPanel.h"
 #include "panels/itemhighlight/ItemHighlightPanel.h"
-#include "panels/motd/MotdPanel.h"
 #include "panels/scoreboard/ScoreboardPanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
@@ -205,14 +204,15 @@ static void H_HUD_TxferPredictionData(struct entity_state_s *ps,
 
 namespace {
 
-// Wheel claims that are NOT ownership (T06): the open motd scrolls (old
-// per-page auto-advance died with the pagination - D-17 ledger) without
-// holding UI input. Owner-backed wheel claims (scoreboard pointer mode,
-// menu pages) ride the router's wheelClaimed() inside rmlui::routeKey.
-bool uiOwnsWheel(int down, int keynum) {
+// Wheel claims that are NOT ownership (T06): an open module document (the
+// motd) scrolls without holding UI input. Modules claim through the
+// input.wheel veto channel. Owner-backed wheel claims (scoreboard pointer
+// mode, menu pages) ride the router's wheelClaimed() inside rmlui::routeKey.
+bool moduleWheelClaim(int down, int keynum) {
   if (!down || (keynum != K_MWHEELUP && keynum != K_MWHEELDOWN))
     return false;
-  return panels::motd::wantsWheel();
+  const AbcUiKeyEvent event{1, keynum};
+  return framework::eventBus().publishVeto(ABCUI_CHANNEL_INPUT_WHEEL, event);
 }
 
 } // namespace
@@ -234,7 +234,7 @@ static int H_HUD_Key_Event(int down, int keynum,
     abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down,
                       keynum, consumed ? 1 : 0);
 #endif
-  if (consumed || rmlui::routeKey(down, keynum, uiOwnsWheel(down, keynum)))
+  if (consumed || rmlui::routeKey(down, keynum, moduleWheelClaim(down, keynum)))
     return 0;
   return gExportfuncs.HUD_Key_Event(down, keynum, pszCurrentBinding);
 }
@@ -352,27 +352,21 @@ void locateVanillaHudList() {
 namespace {
 
 // Native viewport menu route (from: ABCEnchance exportfuncs.cpp
-// TFV_ShowVGUIMenu). The SC client opens every
-// built-in viewport window through CTeamFortressViewport::ShowVGUIMenu(id);
-// the old mod inline-hooked it so the vanilla mission brief (4) never opens
-// (the missionbriefing command chain feeds the new motd panel) and the
-// vanilla MOTD window (5) yields while hud_motd is non-zero (>= 1 the new
-// panel replaces it, < 0 suppresses both, 0 restores the vanilla window).
-// Every other menu id chains untouched.
-constexpr int kMenuMissionBrief = 4;
-constexpr int kMenuMotd = 5;
+// TFV_ShowVGUIMenu). The SC client opens every built-in viewport window
+// through CTeamFortressViewport::ShowVGUIMenu(id); the hook republishes each
+// request on the menu.vguimenu veto channel so the owning module decides
+// (the motd module suppresses the vanilla mission brief (4) and, while
+// hud_motd is non-zero, the vanilla MOTD window (5)). An unconsumed request
+// chains untouched.
 
 using ShowVguiMenuFn = void(__fastcall *)(void *pthis, int dummy, int menu);
 ShowVguiMenuFn OriginalShowVguiMenu = nullptr;
 hook_t *ShowVguiMenuHook = nullptr;
 
 static void __fastcall H_TFV_ShowVGUIMenu(void *pthis, int dummy, int menu) {
-  if (menu == kMenuMissionBrief)
-    return;
-  if (menu == kMenuMotd && panels::motd::blocksVanillaWindow()) {
-    panels::motd::showMotd();
-    return;
-  }
+  const AbcUiVguiMenuEvent event{menu};
+  if (framework::eventBus().publishVeto(ABCUI_CHANNEL_MENU_VGUI_MENU, event))
+    return; // consumed: the vanilla window must not open
   if (OriginalShowVguiMenu)
     OriginalShowVguiMenu(pthis, dummy, menu);
 }

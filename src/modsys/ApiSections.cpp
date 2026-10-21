@@ -17,6 +17,22 @@
 #include "../rmlui/VGUI2ExtensionImport.h"
 
 namespace framework {
+namespace {
+
+// Copies a string into a module-owned buffer, always terminating; returns the
+// number of bytes written (never outSize or more).
+int copyOut(const std::string &text, char *out, uint32_t outSize) {
+  if (!out || outSize == 0)
+    return 0;
+  uint32_t i = 0;
+  for (; i + 1 < outSize && i < text.size(); ++i)
+    out[i] = text[i];
+  out[i] = '\0';
+  return static_cast<int>(i);
+}
+
+} // namespace
+
 namespace UiApi {
 namespace {
 
@@ -89,18 +105,6 @@ int apiInkMarkup(const char *text, const char *tint, char *out,
   return 1;
 }
 
-// Copies a string into a module-owned buffer, always terminating; returns the
-// number of bytes written (never outSize or more).
-int copyOut(const std::string &text, char *out, uint32_t outSize) {
-  if (!out || outSize == 0)
-    return 0;
-  uint32_t i = 0;
-  for (; i + 1 < outSize && i < text.size(); ++i)
-    out[i] = text[i];
-  out[i] = '\0';
-  return static_cast<int>(i);
-}
-
 int apiTranslate(const char *token, char *out, uint32_t outSize) {
   if (!token || !*token || !out || outSize == 0)
     return 0;
@@ -170,9 +174,18 @@ void apiHudState(AbcUiHudState *out) {
   out->fov = hudstate::fov();
 }
 
+int apiLevelName(char *out, uint32_t outSize) {
+  const char *name = gEngfuncs.pfnGetLevelName();
+  const std::string text = name ? name : "";
+  if (out && outSize > 0)
+    copyOut(text, out, outSize);
+  return static_cast<int>(text.size());
+}
+
 const AbcUiDataApi kDataApi = {
     sizeof(AbcUiDataApi),
     apiHudState,
+    apiLevelName,
 };
 
 } // namespace
