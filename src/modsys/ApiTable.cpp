@@ -436,6 +436,7 @@ const AbcUiModuleApi *get() {
       &kRadarApi,
       ShellApi::get(),
       VoiceApi::get(),
+      ScoreApi::get(),
   };
   return &kApi;
 }

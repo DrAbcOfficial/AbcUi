@@ -44,6 +44,14 @@ typedef struct AbcUiBoolEvent {
 // hud.longjump - longjump module possession changed (physinfo "slj").
 #define ABCUI_CHANNEL_HUD_LONG_JUMP "hud.longjump"
 
+// hud.intermission - the client entered/left the end-of-map intermission
+// (the scoreboard table shows for the duration).
+#define ABCUI_CHANNEL_HUD_INTERMISSION "hud.intermission"
+
+// hud.scorePointer - the scoreboard's pointer mode changed; nonzero = the
+// cursor is unlocked and the table owns mouse input.
+#define ABCUI_CHANNEL_HUD_SCORE_POINTER "hud.scorePointer"
+
 // hud.spectate - the local player entered/left observer mode.
 #define ABCUI_CHANNEL_HUD_SPECTATE "hud.spectate"
 

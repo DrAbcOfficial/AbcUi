@@ -21,11 +21,11 @@
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
+#include "framework/ScoreSeat.h"
 #include "modsys/EventBus.h"
 #include "modsys/ModuleManager.h"
 #include "modules/HudPanelCatalog.h"
 #include "modules/Module.h"
-#include "panels/scoreboard/ScoreboardPanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 #include "services/steam/SteamAPI.h"
@@ -163,7 +163,7 @@ static int H_HUD_Redraw(float time, int intermission) {
   hideVanillaHudPanels();
   // Old Viewport::SetInterMission -> ShowPanel(intermission > 0); the
   // +/-showscores commands stay dead while it lasts.
-  panels::scoreboard::setIntermission(intermission != 0);
+  framework::scoreseat::setIntermission(intermission != 0);
   rmlui::onRedraw(delta);
   return gExportfuncs.HUD_Redraw(time, intermission);
 }
@@ -246,7 +246,7 @@ static int H_HUD_Key_Event(int down, int keynum,
   const AbcUiKeyEvent keyEvent{down ? 1 : 0, keynum};
   const bool consumed =
       framework::eventBus().publishVeto(ABCUI_CHANNEL_INPUT_KEY, keyEvent) ||
-      panels::scoreboard::onKeyEvent(down, keynum);
+      framework::scoreseat::onKeyEvent(down, keynum);
 #ifndef NDEBUG
   if (keynum >= K_MOUSE2 || keynum == K_MWHEELUP || keynum == K_MWHEELDOWN)
     abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down,
@@ -312,7 +312,7 @@ static void H_CL_CreateMove(float time, usercmd_s *cmd, int active) {
   // button stream as IN_SCORE - the server streams every player's
   // ping/loss only to clients it believes hold the scoreboard (issue #9;
   // without this the engine player tables sit at 0/0 the whole session).
-  if (panels::scoreboard::inScore())
+  if (framework::scoreseat::held())
     cmd->buttons |= IN_SCORE;
   if (owner) {
     cmd->buttons &= ~(IN_ATTACK | IN_ATTACK2);

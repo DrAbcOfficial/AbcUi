@@ -16,13 +16,14 @@
 
 #include "../../../data/HudState.h"
 #include "../../../framework/PanelManager.h"
+#include "../../../framework/HudPanel.h"
+#include "../../../framework/ScoreSeat.h"
 #include "../../../render/RadarRender.h"
 #include "../../../rmlui/texture/Avatars.h"
 #include "../../../data/NetworkMessages.h"
 #include "../../../data/PlayerResource.h"
 #include "../../../rmlui/texture/SpriteResource.h"
 #include "../../../data/WeaponResource.h"
-#include "../../../panels/scoreboard/ScoreboardPanel.h"
 
 #include "../../../services/steam/SteamAPI.h"
 
@@ -478,7 +479,7 @@ void probeCommand() {
                       cursor ? 1 : 0, vgui2ext::isCursorVisible() ? 1 : 0, cx,
                       cy, vgui2ext::uiCallbacksRegistered() ? 1 : 0,
                       rmlui::uiMouseOwner() ? 1 : 0,
-                      panels::scoreboard::wantsWheel() ? 1 : 0);
+                      framework::scoreseat::wantsWheel() ? 1 : 0);
   }
   const char *rml =
       "<rml>"
@@ -611,12 +612,12 @@ void boardCommand() {
 // (P6 acceptance finding - real hardware does), so the driver flips the
 // pointer mode and pumps the wheel directly.
 void pointerOnCommand() {
-  panels::scoreboard::setPointerMode(true);
+  framework::scoreseat::setPointerMode(true);
   abc::ConsolePrint("[AbcUi] pointer: on\n");
 }
 
 void pointerOffCommand() {
-  panels::scoreboard::setPointerMode(false);
+  framework::scoreseat::setPointerMode(false);
   abc::ConsolePrint("[AbcUi] pointer: off\n");
 }
 
@@ -640,7 +641,7 @@ void mouseKeyCommand() {
                     "cursor=%d wheel=%d\n",
                     key, down, result, uiMouseOwner(),
                     vgui2ext::isCursorVisible(),
-                    panels::scoreboard::wantsWheel());
+                    framework::scoreseat::wantsWheel());
 }
 
 // T07 text seams: the same entry points the engine AppProc events
@@ -816,8 +817,7 @@ void domAtCommand() {
 
 void inputRegressionCommand() {
   auto *ctx = rmlui::context();
-  auto *panel = static_cast<panels::ScoreboardPanel *>(
-      framework::PanelManager::find("scoreboard"));
+  framework::HudPanel *panel = framework::PanelManager::find("scoreboard");
   if (!ctx || !panel)
     return;
   int failures = 0;
@@ -830,7 +830,7 @@ void inputRegressionCommand() {
   panel->reset();
   check(hooks::debugKeyEvent(1, K_MOUSE2) == 1 && !uiMouseOwner(),
         "hidden right passes");
-  panels::scoreboard::setIntermission(true);
+  framework::scoreseat::setIntermission(true);
   check(hooks::debugKeyEvent(1, K_MOUSE2) == 0 && uiMouseOwner(),
         "first right enters");
   hooks::debugKeyEvent(0, K_MOUSE2);
@@ -840,11 +840,11 @@ void inputRegressionCommand() {
   hooks::debugKeyEvent(0, K_MOUSE2);
   check(hooks::debugKeyEvent(1, K_MOUSE1) == 0, "left attack consumed");
   hooks::debugKeyEvent(0, K_MOUSE1);
-  panels::scoreboard::setIntermission(false);
-  check(!uiMouseOwner() && !panels::scoreboard::wantsWheel(),
+  framework::scoreseat::setIntermission(false);
+  check(!uiMouseOwner() && !framework::scoreseat::wantsWheel(),
         "intermission hide releases");
   check(hooks::debugKeyEvent(1, K_MOUSE2) == 1, "closed right passes again");
-  panels::scoreboard::setIntermission(true);
+  framework::scoreseat::setIntermission(true);
   hooks::debugKeyEvent(1, K_MOUSE2);
   hooks::debugKeyEvent(0, K_MOUSE2);
   panel->reset();

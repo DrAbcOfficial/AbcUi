@@ -504,6 +504,27 @@ typedef struct AbcUiRadarApi {
   void (*setZoom)(float zoom);
 } AbcUiRadarApi;
 
+// --------------------------------------------------------------- score ----
+
+// The framework's scoreboard interaction seat (see framework/ScoreSeat.h):
+// the +/-showscores latch that becomes usercmd IN_SCORE, the intermission
+// flag HUD_Redraw feeds, and the interactive-HUD pointer tier (MOUSE2
+// unlocks the cursor; the router token gates Rml mouse input).
+typedef struct AbcUiScoreApi {
+  uint32_t structSize;
+  // The module holds the scores key: nonzero = CL_CreateMove reports
+  // IN_SCORE so the server streams every player's ping/loss.
+  void (*setHeld)(int32_t held);
+  int32_t (*held)(void);
+  // The module's table is on screen (pointer mode needs it).
+  void (*setVisible)(int32_t visible);
+  int32_t (*pointerMode)(void);
+  // Refused while the table is not visible or the intermission board is up.
+  void (*setPointerMode)(int32_t enabled);
+  int32_t (*wantsWheel)(void);
+  int32_t (*intermission)(void);
+} AbcUiScoreApi;
+
 // --------------------------------------------------------------- shell ----
 
 // OS-shell seams the interactive panels need (profile links, copy actions).
@@ -572,6 +593,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiRadarApi *radar;
   const AbcUiShellApi *shell;
   const AbcUiVoiceApi *voice;
+  const AbcUiScoreApi *score;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

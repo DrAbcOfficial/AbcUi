@@ -34,6 +34,10 @@ namespace PlayersApi {
 const AbcUiPlayersApi *get();
 } // namespace PlayersApi
 
+namespace ScoreApi {
+const AbcUiScoreApi *get();
+} // namespace ScoreApi
+
 namespace ShellApi {
 const AbcUiShellApi *get();
 } // namespace ShellApi

@@ -6,10 +6,55 @@
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/SystemInterface.h>
 
+#include "../framework/ScoreSeat.h"
 #include "../framework/ShellActions.h"
 #include "../services/voice/VoiceStatus.h"
 
 namespace framework {
+namespace ScoreApi {
+namespace {
+
+void apiSetHeld(int32_t held) {
+  scoreseat::setHeld(held != 0);
+}
+
+int32_t apiHeld() {
+  return scoreseat::held() ? 1 : 0;
+}
+
+void apiSetVisible(int32_t visible) {
+  scoreseat::setVisible(visible != 0);
+}
+
+int32_t apiPointerMode() {
+  return scoreseat::pointerMode() ? 1 : 0;
+}
+
+void apiSetPointerMode(int32_t enabled) {
+  scoreseat::setPointerMode(enabled != 0);
+}
+
+int32_t apiWantsWheel() {
+  return scoreseat::wantsWheel() ? 1 : 0;
+}
+
+int32_t apiIntermission() {
+  return scoreseat::intermission() ? 1 : 0;
+}
+
+const AbcUiScoreApi kScoreApi = {
+    sizeof(AbcUiScoreApi), apiSetHeld,        apiHeld,       apiSetVisible,
+    apiPointerMode,        apiSetPointerMode, apiWantsWheel, apiIntermission,
+};
+
+} // namespace
+
+const AbcUiScoreApi *get() {
+  return &kScoreApi;
+}
+
+} // namespace ScoreApi
+
 namespace ShellApi {
 namespace {
 

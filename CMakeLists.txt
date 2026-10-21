@@ -213,6 +213,7 @@ add_library(AbcUi MODULE
     src/framework/FatalExit.cpp
     src/framework/TextEncoding.cpp
     src/framework/HudPanel.cpp
+    src/framework/ScoreSeat.cpp
     src/framework/ImageLoader.cpp
     src/framework/MenuBackdrop.cpp
     src/framework/PreviewImage.cpp

@@ -17,6 +17,7 @@
 #include "../../data/HudState.h"
 #include "../../framework/ColorUtil.h"
 #include "../../framework/PanelManager.h"
+#include "../../framework/ScoreSeat.h"
 #include "../../framework/ShellActions.h"
 #include "../../framework/Theme.h"
 #include "../../services/voice/VoiceStatus.h"
@@ -97,38 +98,23 @@ ScoreboardPanel *instance() {
 } // namespace
 
 bool onKeyEvent(int down, int keynum) {
-  ScoreboardPanel *panel = instance();
-  return panel && panel->answerKey(down, keynum);
+  return framework::scoreseat::onKeyEvent(down, keynum);
 }
 
 void setIntermission(bool intermission) {
-  // Edge-triggered: HUD_Redraw calls this every frame with the current
-  // flag; only the 0->1/1->0 transitions drive the panel (old
-  // SetInterMission was a state change, not a per-frame vote).
-  ScoreboardPanel *panel = instance();
-  if (!panel || panel->Intermission == intermission)
-    return;
-  panel->Intermission = intermission;
-  // Old SetInterMission -> ShowPanel(intermission > 0).
-  panel->setVisible(intermission);
-  // The pointer never auto-engages on the intermission board (old code kept
-  // +/-showscores dead there; MOUSE2 stays live for players who want it).
+  framework::scoreseat::setIntermission(intermission);
 }
 
 bool inScore() {
-  ScoreboardPanel *panel = instance();
-  return panel && panel->InScore;
+  return framework::scoreseat::held();
 }
 
 bool wantsWheel() {
-  ScoreboardPanel *panel = instance();
-  return panel && panel->isVisible() && panel->MouseMode;
+  return framework::scoreseat::wantsWheel();
 }
 
 void setPointerMode(bool enabled) {
-  ScoreboardPanel *panel = instance();
-  if (panel && (!enabled || panel->isVisible()))
-    panel->setMouseMode(enabled);
+  framework::scoreseat::setPointerMode(enabled);
 }
 
 } // namespace scoreboard
@@ -293,8 +279,10 @@ ScoreboardPanel::~ScoreboardPanel() {
 
 void ScoreboardPanel::reset() {
   Intermission = false;
-  InScore = false;
+  framework::scoreseat::setHeld(false);
   setVisible(false);
+  framework::scoreseat::setHeld(false);
+  framework::scoreseat::setVisible(false);
   ServerName.clear();
   NextMap.clear();
   TimeEndCount = 0;
@@ -313,6 +301,8 @@ void ScoreboardPanel::setVisible(bool visible) {
   if (visible == Visible)
     return;
   Visible = visible;
+  // Pointer mode and the HUD_Key_Event seam gate on the seat's visibility.
+  framework::scoreseat::setVisible(visible);
   // The document itself is the visibility switch (HudPanel::show is
   // idempotent and focus-safe); the box rides it.
   visible ? show() : hide();
@@ -326,53 +316,12 @@ void ScoreboardPanel::setVisible(bool visible) {
 }
 
 void ScoreboardPanel::setMouseMode(bool enabled) {
-  enabled = enabled && Visible && isVisible();
-  // The router is the single ownership truth (T06); MouseMode mirrors it.
-  // After a force-release (focus loss) a re-enable must re-acquire even
-  // though this flag still reads enabled.
-  if (enabled == MouseMode && (!enabled || PointerToken.held()))
-    return;
-  MouseMode = enabled;
-  // Ownership gates both Rml input and the client mouse/view hooks; the
-  // native cursor lifetime follows the router's first/last owner edge.
-  if (enabled)
-    PointerToken = rmlui::uiRouter().acquire(
-        this, framework::uiinput::OwnerTier::kInteractiveHud);
-  else
-    PointerToken.release();
-  if (enabled) {
-    vgui2ext::centerAndUnlockCursor();
-  } else {
+  // The router token is the seat's; the panel mirrors the result for its
+  // own menu/scroll logic and closes the menu when ownership ends.
+  framework::scoreseat::setPointerMode(enabled);
+  MouseMode = framework::scoreseat::pointerMode();
+  if (!MouseMode)
     closeContextMenu();
-  }
-}
-
-// uiinput::Owner: consulted only while this panel's token is top-of-stack.
-bool ScoreboardPanel::claimsKey(int down, int keynum) {
-  (void)down;
-  return MouseMode && ((keynum >= K_MOUSE1 && keynum <= K_MOUSE5) ||
-                       keynum == K_MWHEELUP || keynum == K_MWHEELDOWN);
-}
-
-bool ScoreboardPanel::claimsWheel() {
-  return MouseMode;
-}
-
-void ScoreboardPanel::onOwnershipLost() {
-  if (MouseMode)
-    setMouseMode(false);
-}
-
-bool ScoreboardPanel::answerKey(int down, int keynum) {
-  if (!Visible || !isVisible())
-    return false;
-  if (keynum == kMouse2 && down && !MouseMode) {
-    // Enter once; subsequent right presses belong to the row context menu.
-    setMouseMode(true);
-    return true;
-  }
-  return MouseMode && ((keynum >= K_MOUSE1 && keynum <= K_MOUSE5) ||
-                       keynum == K_MWHEELUP || keynum == K_MWHEELDOWN);
 }
 
 void ScoreboardPanel::onDocumentReady() {
@@ -382,23 +331,23 @@ void ScoreboardPanel::onDocumentReady() {
   TimeEndBase = ClientTimeNow;
   if (abc::CChainedCommand *open = commands::get("+showscores")) {
     subscribe(open->Event(), [this]() {
-      if (!Intermission) {
+      if (!framework::scoreseat::intermission()) {
         setVisible(true);
         // Old Viewport m_bInScore: the button state the usercmd stream
         // reports (IN_SCORE) - the server streams ping/loss only to
         // clients it believes hold the scoreboard (issue #9).
-        InScore = true;
+        framework::scoreseat::setHeld(true);
       }
       return false;
     });
   }
   if (abc::CChainedCommand *close = commands::get("-showscores")) {
     subscribe(close->Event(), [this]() {
-      if (!Intermission) {
+      if (!framework::scoreseat::intermission()) {
         setVisible(false);
         setMouseMode(false);
       }
-      InScore = false;
+      framework::scoreseat::setHeld(false);
       return false;
     });
   }
@@ -972,6 +921,17 @@ void ScoreboardPanel::menuAction(ScoreboardAction action) {
 }
 
 void ScoreboardPanel::onData(double frameTime) {
+  // The seat owns the router token; a force-release (focus loss) leaves the
+  // mirror stale until this sync closes the menu.
+  if (MouseMode != framework::scoreseat::pointerMode())
+    setMouseMode(framework::scoreseat::pointerMode());
+  // Old SetInterMission -> ShowPanel(intermission > 0); edge-triggered here
+  // because the seat is fed from HUD_Redraw.
+  const bool intermission = framework::scoreseat::intermission();
+  if (intermission != Intermission) {
+    Intermission = intermission;
+    setVisible(intermission);
+  }
   ClientTimeNow += frameTime;
   if (!Document)
     return;

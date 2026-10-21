@@ -21,7 +21,6 @@
 #include <RmlUi/Core/Vector2.h>
 
 #include "../../framework/HudPanel.h"
-#include "../../framework/UiInputRouter.h"
 
 struct cvar_s;
 
@@ -64,8 +63,7 @@ enum class ScoreboardAction : int {
   kMute,
 };
 
-class ScoreboardPanel : public framework::HudPanel,
-                        private framework::uiinput::Owner {
+class ScoreboardPanel : public framework::HudPanel {
 public:
   ScoreboardPanel();
   ~ScoreboardPanel() override;
@@ -77,16 +75,8 @@ protected:
   void onData(double frameTime) override;
 
 private:
-  friend bool scoreboard::onKeyEvent(int down, int keynum);
-  friend void scoreboard::setIntermission(bool intermission);
-  friend bool scoreboard::wantsWheel();
-  friend void scoreboard::setPointerMode(bool enabled);
-  friend bool scoreboard::inScore();
   friend class TableListener;
   class TableListener;
-
-  // Old EnableMousePointer / KeyCodeTyped path.
-  bool answerKey(int down, int keynum);
 
   // Old FullUpdate on show; refresh on the 0.5s period (old
   // UPDATE_PERIOD) or a data-version bump.
@@ -104,16 +94,6 @@ private:
   void setVisible(bool visible);
   void setMouseMode(bool enabled);
 
-  // framework::uiinput::Owner (interactive-HUD tier): the pointer-mode key
-  // contract is answerKey's MouseMode branch. Consulted only while this
-  // panel's token is top-of-stack, so keyboard keys keep their play
-  // behavior (chat etc.) while the pointer is up.
-  bool claimsKey(int down, int keynum) override;
-  bool claimsWheel() override;
-  // Force-release (focus loss / teardown): re-sync the mirror through
-  // setMouseMode(false) - the token is stale, release() would no-op.
-  void onOwnershipLost() override;
-
   std::string ServerName;
   std::string NextMap;
   int TimeEndCount = 0;
@@ -122,11 +102,10 @@ private:
   double ClientTimeNow = 0.0;
   float AppliedRowHeight = -1;
   bool Visible = false;
+  // Mirror of framework::scoreseat's pointer mode (the router token lives
+  // in the seat; this copy only drives the panel-local menu/scroll logic).
   bool MouseMode = false;
-  bool Intermission = false;
-  // Old CViewport::m_bInScore: the +/-showscores latch (intermission does
-  // not set it); CL_CreateMove rides it into usercmd IN_SCORE.
-  bool InScore = false;
+  bool Intermission = false; // mirror of framework::scoreseat
   long DataVersion = 0;
   long AppliedVersion = -1;
   int MenuClient = 0;
@@ -135,8 +114,6 @@ private:
   // centered content height (update's vertical centering).
   std::string HeaderCache[5];
   float CenteredHeight = -1.0f;
-  // Router ownership of pointer mode (T06); MouseMode above mirrors it.
-  framework::uiinput::Token PointerToken;
 };
 
 } // namespace panels
