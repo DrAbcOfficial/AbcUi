@@ -5,7 +5,7 @@
 // The table and its section structs live in sdk/abcui/module_api.h; this
 // header is the framework-side owner of the single frozen instance.
 
-#include "module_api.h"
+#include <abcui/module_api.h>
 
 namespace framework {
 

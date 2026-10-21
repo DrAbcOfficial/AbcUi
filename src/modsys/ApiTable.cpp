@@ -9,12 +9,18 @@
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
 
-#include "../../framework/Commands.h"
+#include "../framework/Commands.h"
 #include "EventBus.h"
 #include "FrameworkVersion.h"
 #include "ModuleManager.h"
 #include "ModulePanel.h"
 #include "ModuleVfs.h"
+
+// The SDK's AbcUiFileView typedef sits at global scope (module_api.h), so its
+// definition must too; it owns one package entry view.
+struct AbcUiFileView {
+  framework::PackageEntry entry;
+};
 
 namespace framework {
 namespace {
@@ -116,7 +122,7 @@ std::map<std::string, ModuleCommand> &moduleCommands() {
 // One engine command per registered name; the engine calls back without a
 // userdata slot, so the thunk recovers the name through argv(0).
 void moduleCommandThunk() {
-  const char *name = gEngfuncs.pfnCmd_Argv(0);
+  const char *name = gEngfuncs.Cmd_Argv(0);
   const auto &table = moduleCommands();
   const auto it = table.find(name ? name : "");
   if (it != table.end() && it->second.fn)
@@ -174,10 +180,6 @@ const AbcUiEventsApi kEventsApi = {
 };
 
 // ----------------------------------------------------------------- vfs ----
-
-struct AbcUiFileView {
-  PackageEntry entry;
-};
 
 AbcUiFileView *apiVfsOpen(const char *moduleId, const char *path) {
   auto *view = new (std::nothrow) AbcUiFileView();

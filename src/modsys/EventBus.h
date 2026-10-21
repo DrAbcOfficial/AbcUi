@@ -113,7 +113,7 @@ private:
       fn(*static_cast<const T *>(payload));
     }
     static void thunk(void *userdata, const void *payload) {
-      static_cast<Wrapper *>(userdata)->invoke(payload);
+      static_cast<FnWrapper *>(userdata)->invoke(payload);
     }
     Fn fn;
   };

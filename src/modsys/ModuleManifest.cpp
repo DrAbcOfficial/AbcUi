@@ -30,7 +30,7 @@ bool readIdArray(const rapidjson::Value &object, const char *key,
     fail(error, std::string("manifest field '") + key + "' must be an array");
     return false;
   }
-  for (const auto &item : array) {
+  for (const auto &item : array.GetArray()) {
     if (!item.IsString()) {
       fail(error, std::string("manifest field '") + key +
                       "' must contain only strings");

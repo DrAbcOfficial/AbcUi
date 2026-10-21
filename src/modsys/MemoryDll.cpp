@@ -58,7 +58,7 @@ bool applyRelocations(uint8_t *image, const IMAGE_NT_HEADERS32 *nt,
   if (delta == 0)
     return true;
   const IMAGE_DATA_DIRECTORY &directory =
-      nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOCATION];
+      nt->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_BASERELOC];
   if (directory.VirtualAddress == 0 || directory.Size == 0)
     return true;
 
@@ -230,7 +230,7 @@ bool MemoryDll::load(const void *data, size_t size, std::string *error) {
     const size_t room =
         (std::min)(rawSize,
                    static_cast<size_t>(nt->OptionalHeader.SizeOfImage) -
-                       section.VirtualAddress);
+                       static_cast<size_t>(section.VirtualAddress));
     std::memcpy(image + section.VirtualAddress,
                 source + section.PointerToRawData, room);
   }

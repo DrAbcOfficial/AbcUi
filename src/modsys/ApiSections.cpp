@@ -10,6 +10,7 @@
 
 #include "../data/HudState.h"
 #include "../framework/GlyphText.h"
+#include "../framework/HudPanel.h"
 #include "../framework/PanelManager.h"
 
 namespace framework {

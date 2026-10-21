@@ -8,7 +8,7 @@
 // escaping module exception is reported and contained instead of unwinding
 // through the engine frame.
 
-#include "module_api.h"
+#include <abcui/module_api.h>
 
 #include "../framework/HudPanel.h"
 
