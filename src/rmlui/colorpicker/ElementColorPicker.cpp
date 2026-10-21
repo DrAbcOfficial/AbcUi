@@ -16,10 +16,22 @@
 #include <cstdio>
 #include <cstring>
 #include <functional>
+#include <unordered_set>
 #include <vector>
 
 namespace rmlui::colorpicker {
 namespace {
+// Pickers whose `change` event is queued and pickers that are still alive
+// (the destructor removes itself). pumpChanges uses these to skip elements a
+// page handler destroyed while the queue was being drained.
+std::vector<ElementColorPicker *> &PendingChanges() {
+  static std::vector<ElementColorPicker *> pending;
+  return pending;
+}
+std::unordered_set<const ElementColorPicker *> &LiveElements() {
+  static std::unordered_set<const ElementColorPicker *> live;
+  return live;
+}
 // Strip heights and gutters in dp; the density ratio scales them to pixels.
 constexpr float kHueHeight = 10.0f;
 constexpr float kAlphaHeight = 10.0f;
@@ -135,9 +147,12 @@ ElementColorPicker::ElementColorPicker(const Rml::String &Tag)
   // Only the press is bound to the element; the document takes the move and
   // release while the drag is alive.
   AddEventListener("mousedown", &Listener, false);
+  LiveElements().insert(this);
 }
 
 ElementColorPicker::~ElementColorPicker() {
+  LiveElements().erase(this);
+  std::erase(PendingChanges(), this);
   syncDocumentListeners(false);
   releaseGeometry();
 }
@@ -185,9 +200,36 @@ void ElementColorPicker::applyColor() {
   GeometryDirty = true;
   if (GetAttribute<Rml::String>("value", "") != text)
     SetAttribute("value", Rml::String(text));
-  Rml::Dictionary parameters;
-  parameters["value"] = Rml::Variant(Rml::String(text));
-  DispatchEvent("change", parameters);
+  // Do not dispatch here: this runs inside the element's own drag/render
+  // call stack, and the page's change handler may destroy the picker right
+  // away. Queue the latest value and let pumpChanges fire it from the frame
+  // loop instead.
+  PendingValue = text;
+  if (!ChangePending) {
+    ChangePending = true;
+    PendingChanges().push_back(this);
+  }
+}
+
+void ElementColorPicker::pumpChanges() {
+  auto &pending = PendingChanges();
+  if (pending.empty())
+    return;
+  std::vector<ElementColorPicker *> queued;
+  queued.swap(pending);
+  for (ElementColorPicker *element : queued) {
+    // A handler earlier in this drain may have destroyed this picker (its
+    // destructor removed it from the live set and the queue).
+    if (!LiveElements().contains(element))
+      continue;
+    element->ChangePending = false;
+    const Rml::String value = element->PendingValue;
+    Rml::Dictionary parameters;
+    parameters["value"] = Rml::Variant(value);
+    element->DispatchEvent("change", parameters);
+    // The handler may have destroyed `element`; do not touch it again. Its
+    // destructor already removed it from the live set.
+  }
 }
 
 ElementColorPicker::Layout ElementColorPicker::layout(Rml::Vector2f size) {

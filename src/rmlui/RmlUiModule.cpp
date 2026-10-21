@@ -512,6 +512,9 @@ void onFrame(double frameTime) {
   // same Context::Update (order contract, modules/Module.h).
   if (Sink.frame)
     Sink.frame(frameTime);
+  // Queued <colorpicker> change events fire here, outside the drag/event
+  // stack: a page handler may destroy the picker (see pumpChanges).
+  colorpicker::ElementColorPicker::pumpChanges();
 #ifndef NDEBUG
   PerfTimer updateTimer;
 #endif
