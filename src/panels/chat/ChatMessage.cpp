@@ -53,8 +53,17 @@ std::string substituteParams(const std::string &format,
     if (spec == 's') {
       if (i + 2 < format.size() && format[i + 2] >= '1' &&
           format[i + 2] <= '9') {
-        out += params[format[i + 2] - '1'];
-        i += 2;
+        const int position = format[i + 2] - '1';
+        // SayText carries exactly four positional parameters (%s1..%s4).
+        // A malformed or hostile server line can contain %s5..%s9; those
+        // must not index past params (the bare-%s path below is bounded).
+        if (position < 4) {
+          out += params[position];
+          i += 2;
+          continue;
+        }
+        // Out of range: emit the sequence verbatim and resume after '%'.
+        out += c;
         continue;
       }
       if (next < 4)
