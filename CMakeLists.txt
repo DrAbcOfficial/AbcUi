@@ -301,8 +301,6 @@ add_library(AbcUi MODULE
     src/framework/Theme.cpp
     src/framework/GlyphText.cpp
     src/framework/Projection.cpp
-    src/panels/chat/ChatMessage.cpp
-    src/panels/chat/ChatPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
     src/panels/loading/LoadingWindows.cpp
@@ -349,6 +347,7 @@ add_subdirectory(modules/demo)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
 add_subdirectory(modules/ammo)
+add_subdirectory(modules/chat)
 add_subdirectory(modules/crosshair)
 add_subdirectory(modules/damage)
 add_subdirectory(modules/health)
