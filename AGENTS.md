@@ -48,6 +48,31 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   is the service lifetime. Consume them through their named accessor; do not
   add new ad-hoc file-level statics. Module and panel lookup goes through
   `modules::registry()` / `PanelManager::find`, not reverse pointers.
+- HUD_Init/HUD_Shutdown repeat within one engine process (the client re-runs
+  its HUD cycle on map init and the teardown path runs on the way out).
+  Everything HUD_Shutdown tears down must be re-armed by H_HUD_Init: usermsg
+  hooks (`netmsg::init` is idempotent and adopts only a foreign predecessor),
+  the panel list (`installHudPanels` when `PanelManager` is empty) and module
+  documents (`onContextReady`). Cvars, commands and module registration stay
+  process-scoped and are guarded by a one-shot latch; do not move them into
+  the per-cycle path.
+- GameUiModule's engine-event subscriptions (`votemenu`, command menu,
+  inventory commands, InvAdd/InvRemove, MapList) are installed once in
+  `onInit` and guarded by `*Bound` flags. The module object and the event
+  buses are process-lifetime, so they are deliberately not unsubscribed in
+  `onShutdown`; never re-append an unguarded `[this]` subscription from a
+  per-cycle callback.
+- Server weapon names are untrusted. They may enter the weapon registry only
+  as `[A-Za-z0-9_]` identifiers, and only a `weapon_*` token may be sent to
+  `pfnServerCmd` (`ResourceLimits::weaponCommandName`). A bare identifier is
+  not enough: `kill` is a legal identifier and a real console command.
+- Custom Rml elements that are downcast after lookup declare
+  `RMLUI_RTTI_DeclareWithParent`/`RMLUI_RTTI_Define` and are reached through
+  `rmlui_dynamic_cast`; raw `static_cast` between element types is not
+  allowed in production or debug tools.
+- `<colorpicker>` queues `change` events and dispatches them from
+  `ElementColorPicker::pumpChanges()` in the frame pump, never from the
+  drag/render call stack (a page handler may destroy the picker).
 
 ## Build
 
@@ -93,5 +118,14 @@ cmake --build --preset win32-debug    # Release: win32-release
   directives are `engine`/`navigation`/`settings`/`detail`, plus a function-local
   `std::chrono` in `ServerQuery.cpp`. Never add one to a header or use it to
   reach an unrelated subsystem.
+- CI pins the CMake download (4.4.4 + published SHA-256) and action commit
+  SHAs, and uses the permission-scoped default token instead of a personal
+  PAT. Keep those properties when editing the workflow.
+- An empty `ABCUI_MILE_FFMPEG_ROOT` downloads the pinned, hash-verified SDK;
+  accepting a local dev-tree copy requires
+  `-DABCUI_ALLOW_LOCAL_MILE_FFMPEG=ON`. Do not restore the implicit local
+  search.
+- RML class tokens must have a rule in an RCSS file; an unstyled class is
+  either given a rule or removed (ids used by C++ lookups stay).
 - Commit messages use `type(scope): summary` (feat / fix / refactor / docs / build / chore) with motivation and verification in the body.
 - Before handing off: no local paths or credentials; README matches actual behaviour; Debug and Release both build.
