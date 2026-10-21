@@ -189,3 +189,5 @@ void renderPreviews() {
     Context->Update();
 }
 } // namespace rmlui::model
+
+RMLUI_RTTI_Define(rmlui::model::ElementModel)
