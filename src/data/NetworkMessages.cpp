@@ -655,8 +655,8 @@ void refreshAfterClientLoad() {
   // A client DLL reload re-registers its usermsg table, replacing our hooks
   // and leaving the stored predecessors pointing into the old image. Only in
   // that case re-chain. The probe is a message no other plugin hooks: a
-  // client-image handler (or the absence of our hook) means the table was
-  // rebuilt. A normal HUD cycle leaves our hook at the head and does nothing.
+  // client-image handler means the table was rebuilt. A normal HUD cycle
+  // leaves our hook at the head and does nothing.
   if (!g_pMetaHookAPI->FindUserMsgHook)
     return;
   usermsg_t *probe = g_pMetaHookAPI->FindUserMsgHook("SayText");
