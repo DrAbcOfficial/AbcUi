@@ -94,12 +94,14 @@ static void H_HUD_Init() {
   // is reloaded on some map-change/reconnect paths). Everything that
   // HUD_Shutdown tears down must be re-armed here.
   //
-  // - usermsg hooks: re-hook after every cycle. init() keeps a foreign
-  //   predecessor and ignores our own, so the call is idempotent and also
-  //   recovers the chain if the engine rebuilt the message table.
+  // - usermsg hooks: init() installs the chain once. Re-hooking on every
+  //   cycle would make AbcEssential's and this plugin's hooks point at each
+  //   other, so the only re-install path is a detected client DLL reload
+  //   (refreshAfterClientLoad probes a Ui-exclusive message).
   // - panels: PanelManager::shutdown() clears the list, so rebuild it when
   //   it is empty (a live list is left alone).
   netmsg::init();
+  netmsg::refreshAfterClientLoad();
   if (framework::PanelManager::panels().empty())
     modules::installHudPanels();
   // Process-scoped registration (cvars/commands survive HUD_Shutdown).

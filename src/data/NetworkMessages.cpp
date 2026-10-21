@@ -8,6 +8,12 @@
 
 #include <abc/NetMsg.h>
 #include <abc/Console.h>
+#include <abc/Plugin.h>
+#include <abc/Plugin.h>
+
+#include <cstdint>
+
+#include <cstdint>
 
 #include <cvardef.h>
 
@@ -561,10 +567,9 @@ int __MsgFunc_MetaHook(const char *pszName, int iSize, void *pbuf) {
 }
 #pragma endregion
 
-// HookUserMsg returns the previous handler. Re-running init() (every
-// HUD_Init cycle) reports our own handler back; the real predecessor is
-// already stored, so only a foreign one is adopted. This also recovers the
-// chain after the engine rebuilt the client's usermsg table on a reload.
+// HookUserMsg returns the previous handler. A refresh after a client reload
+// may report our own handler back; the real predecessor is already stored, so
+// only a foreign one is adopted.
 void installHook(const char *name, pfnUserMsgHook hook,
                  pfnUserMsgHook &original) {
   pfnUserMsgHook previous = g_pMetaHookAPI->HookUserMsg(name, hook);
@@ -572,13 +577,16 @@ void installHook(const char *name, pfnUserMsgHook hook,
     original = previous;
 }
 
-} // namespace
+// True when the address is a function inside the loaded client image. Used to
+// tell a client-rebuilt usermsg table (head is the client's own handler) from
+// a table another plugin still owns (a plugin hook lives outside that image).
+bool isClientCode(uintptr_t address) {
+  const auto base = reinterpret_cast<uintptr_t>(abc::g_dwClientBase);
+  return base && abc::g_dwClientSize && address >= base &&
+         address - base < abc::g_dwClientSize;
+}
 
-void init() {
-  // Per HUD_Init cycle: the engine may rebuild the client's usermsg table on
-  // a reload, and the predecessors must then be re-read. installHook keeps an
-  // existing foreign chain and ignores our own previous hook, so a repeated
-  // call is idempotent.
+void registerUserMsgHooks() {
   installHook("AmmoX", __MsgFunc_AmmoX, original_AmmoX);
   installHook("WeaponList", __MsgFunc_WeaponList, original_WeaponList);
   installHook("InitHUD", __MsgFunc_InitHUD, original_InitHUD);
@@ -627,6 +635,34 @@ void init() {
                      "registered by the client; the inventory page has no "
                      "data\n");
   }
+}
+
+} // namespace
+
+void init() {
+  // Installed once per process. HUD_Init can repeat (map cycles), but the
+  // usermsg table then still points at this chain: re-hooking every cycle
+  // would make two chained plugins point at each other (AbcEssential hooks
+  // the same messages) and recurse forever.
+  static bool registered = false;
+  if (registered)
+    return;
+  registered = true;
+  registerUserMsgHooks();
+}
+
+void refreshAfterClientLoad() {
+  // A client DLL reload re-registers its usermsg table, replacing our hooks
+  // and leaving the stored predecessors pointing into the old image. Only in
+  // that case re-chain. The probe is a message no other plugin hooks: a
+  // client-image handler (or the absence of our hook) means the table was
+  // rebuilt. A normal HUD cycle leaves our hook at the head and does nothing.
+  if (!g_pMetaHookAPI->FindUserMsgHook)
+    return;
+  usermsg_t *probe = g_pMetaHookAPI->FindUserMsgHook("SayText");
+  if (!probe || !isClientCode(reinterpret_cast<uintptr_t>(probe->function)))
+    return;
+  registerUserMsgHooks();
 }
 
 void setVoteGate(cvar_t *cvar) {

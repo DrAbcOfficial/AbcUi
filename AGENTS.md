@@ -50,12 +50,14 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `modules::registry()` / `PanelManager::find`, not reverse pointers.
 - HUD_Init/HUD_Shutdown repeat within one engine process (the client re-runs
   its HUD cycle on map init and the teardown path runs on the way out).
-  Everything HUD_Shutdown tears down must be re-armed by H_HUD_Init: usermsg
-  hooks (`netmsg::init` is idempotent and adopts only a foreign predecessor),
-  the panel list (`installHudPanels` when `PanelManager` is empty) and module
+  Everything HUD_Shutdown tears down must be re-armed by H_HUD_Init: the
+  panel list (`installHudPanels` when `PanelManager` is empty) and module
   documents (`onContextReady`). Cvars, commands and module registration stay
   process-scoped and are guarded by a one-shot latch; do not move them into
-  the per-cycle path.
+  the per-cycle path. Usermsg hooks are installed once and re-chained only by
+  `netmsg::refreshAfterClientLoad()` after a client DLL reload (detected via a
+  Ui-exclusive message); re-hooking every cycle would make AbcEssential's and
+  this plugin's hooks point at each other and recurse forever.
 - GameUiModule's engine-event subscriptions (`votemenu`, command menu,
   inventory commands, InvAdd/InvRemove, MapList) are installed once in
   `onInit` and guarded by `*Bound` flags. The module object and the event

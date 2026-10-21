@@ -12,10 +12,11 @@
 //   LoadClient      plugin entry only: interface grabs, sig scans, export
 //                   chain. No cvar/command work (plan 08 §4.9 red line) and
 //                   no module dispatch.
-//   HUD_Init        every cycle: netmsg::init (idempotent usermsg re-hook)
-//                   and PanelManager::installHudPanels when the list is
-//                   empty (HUD_Shutdown cleared it). The process-scoped
-//                   block runs once: data-layer init ->
+//   HUD_Init        every cycle: netmsg::init (usermsg chain installed once)
+//                   + netmsg::refreshAfterClientLoad (re-chain only after a
+//                   client DLL reload) and PanelManager::installHudPanels
+//                   when the list is empty (HUD_Shutdown cleared it). The
+//                   process-scoped block runs once: data-layer init ->
 //                   PanelManager::registerPanelCvars ->
 //                   rmlui::registerCommands -> registry().initAll(). The
 //                   engine keeps registered cvars/commands across
