@@ -177,12 +177,23 @@ typedef struct AbcUiHudState {
   float fov;
 } AbcUiHudState;
 
+// Local player readout (data->playerState): copied out, never a pointer.
+typedef struct AbcUiPlayerState {
+  uint32_t structSize;
+  int32_t index; // engine entindex, 0 when there is no local player
+  int32_t frags; // score from the ScoreInfo feed
+  float speed;   // horizontal velocity (the old side readout)
+} AbcUiPlayerState;
+
 typedef struct AbcUiDataApi {
   uint32_t structSize;
   void (*hudState)(AbcUiHudState *out);
   // Current level name ("maps/<map>.bsp"); empty when the engine has none.
   // Same measure-then-copy contract as ui->escapeRml.
   int (*levelName)(char *out, uint32_t outSize);
+  // Local player readout: entindex (0 when there is none), frags from the
+  // ScoreInfo feed and the horizontal speed the HUD readouts display.
+  void (*playerState)(AbcUiPlayerState *out);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----
@@ -229,6 +240,18 @@ typedef struct AbcUiUiApi {
   // True while the panel's document is actually on screen (the session gate
   // included) - the built-in panels' isVisible().
   int (*documentVisible)(AbcUiDocument *doc);
+  // Appends one child element to `parent`, built from `rml` (the element's
+  // inner markup) with `className` applied when non-empty. Returns a handle
+  // that stays valid until the element is removed or its document closes -
+  // the dynamic-row pattern (kill feed, chat log). Do not cache handles
+  // across a context rebuild.
+  AbcUiElement *(*elementAppendRml)(AbcUiElement *parent, const char *rml,
+                                    const char *className);
+  // Removes and destroys an element appended through elementAppendRml.
+  void (*elementRemove)(AbcUiElement *element);
+  // Reads an element's inner RML; same measure-then-copy contract as
+  // escapeRml.
+  int (*elementInnerRML)(AbcUiElement *element, char *out, uint32_t outSize);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

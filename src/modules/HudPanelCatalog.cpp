@@ -11,7 +11,6 @@
 #include "../panels/ammostack/AmmoStackPanel.h"
 #include "../panels/chat/ChatPanel.h"
 #include "../panels/crosshair/CrosshairPanel.h"
-#include "../panels/deadmsg/DeadMsgPanel.h"
 #include "../panels/dmgtiles/DmgTilesPanel.h"
 #include "../panels/effect/EffectPanel.h"
 #include "../panels/gindicator/GIndicatorPanel.h"
@@ -19,12 +18,10 @@
 #include "../panels/indicator/IndicatorPanel.h"
 #include "../panels/itemhighlight/ItemHighlightPanel.h"
 #include "../panels/itemstack/ItemStackPanel.h"
-#include "../panels/notice/NoticePanel.h"
 #include "../panels/playerboard/PlayerBoardPanel.h"
 #include "../panels/popnum/PopNumPanel.h"
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
-#include "../panels/sidetext/SideTextPanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
 
 #include <memory>
@@ -41,13 +38,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   panels.push_back(std::make_unique<panels::AmmoStackPanel>());
   panels.push_back(std::make_unique<panels::ItemStackPanel>());
   panels.push_back(std::make_unique<panels::WeaponStackPanel>());
-  panels.push_back(std::make_unique<panels::DeadMsgPanel>());
-  panels.push_back(std::make_unique<panels::NoticePanel>(
-      "notice", "abc/abcui/hud/rml/notice.rml", textfeed::kPrintNotify));
-  panels.push_back(std::make_unique<panels::NoticePanel>(
-      "notice-center", "abc/abcui/hud/rml/notice_center.rml",
-      textfeed::kPrintCenter));
-  panels.push_back(std::make_unique<panels::SideTextPanel>());
   // Batch B (feedback panels).
   panels.push_back(std::make_unique<panels::CrosshairPanel>());
   panels.push_back(std::make_unique<panels::IndicatorPanel>());
@@ -79,8 +69,6 @@ void installHudPanels() {
 
 void registerHudPanelCvars() {
   panels::health::registerCvars();
-  panels::deadmsg::registerCvars();
-  panels::sidetext::registerCvars();
   commands::registerAll();
   // Batch B.
   panels::crosshair::registerCvars();

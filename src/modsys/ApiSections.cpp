@@ -2,6 +2,7 @@
 // ApiTable.h for how they join the module table.
 #include "ApiTable.h"
 
+#include <cmath>
 #include <cstring>
 #include <string>
 
@@ -9,6 +10,7 @@
 #include <RmlUi/Core/ElementDocument.h>
 
 #include "../data/HudState.h"
+#include "../data/NetworkMessages.h"
 #include "../framework/GlyphText.h"
 #include "../framework/HudPanel.h"
 #include "../framework/Localization.h"
@@ -137,12 +139,50 @@ int apiDocumentVisible(AbcUiDocument *doc) {
   return panel && panel->isVisible() ? 1 : 0;
 }
 
+AbcUiElement *apiElementAppendRml(AbcUiElement *parent, const char *rml,
+                                  const char *className) {
+  Rml::Element *element = elementOf(parent);
+  if (!element || !rml)
+    return nullptr;
+  Rml::ElementDocument *document = element->GetOwnerDocument();
+  if (!document)
+    return nullptr;
+  Rml::ElementPtr holder = document->CreateElement("div");
+  if (!holder)
+    return nullptr;
+  Rml::Element *created = holder.get();
+  if (className && *className)
+    created->SetClass(className, true);
+  created->SetInnerRML(rml);
+  element->AppendChild(std::move(holder));
+  return reinterpret_cast<AbcUiElement *>(created);
+}
+
+void apiElementRemove(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  if (!target)
+    return;
+  if (Rml::Element *parent = target->GetParentNode())
+    parent->RemoveChild(target);
+}
+
+int apiElementInnerRml(AbcUiElement *element, char *out, uint32_t outSize) {
+  Rml::Element *target = elementOf(element);
+  if (!target)
+    return 0;
+  const std::string inner = target->GetInnerRML();
+  if (out && outSize > 0)
+    copyOut(inner, out, outSize);
+  return static_cast<int>(inner.size());
+}
+
 const AbcUiUiApi kUiApi = {
     sizeof(AbcUiUiApi),    apiPanelDocument,       apiDocumentShow,
     apiDocumentHide,       apiDocumentSetProperty, apiQuerySelector,
     apiElementSetProperty, apiElementSetInnerRML,  apiInkMarkup,
     apiTranslate,          apiEscapeRml,           apiKeyNameForKey,
-    apiDocumentVisible,
+    apiDocumentVisible,    apiElementAppendRml,    apiElementRemove,
+    apiElementInnerRml,
 };
 
 } // namespace
@@ -174,6 +214,43 @@ void apiHudState(AbcUiHudState *out) {
   out->fov = hudstate::fov();
 }
 
+// The ScoreInfo feed carries the scoreboard rows; the local row's frags is
+// what the HUD score readouts show (old panel-local latch).
+int &localFrags() {
+  static int frags = 0;
+  return frags;
+}
+
+void onScoreInfo(int clientIndex, float frags, int, float, float, int, int,
+                 int) {
+  const cl_entity_t *local = gEngfuncs.GetLocalPlayer();
+  if (local && clientIndex == local->index)
+    localFrags() = static_cast<int>(frags);
+}
+
+void watchScoreInfo() {
+  static bool watched = false;
+  if (watched)
+    return;
+  watched = true;
+  netmsg::ScoreInfo.append(&onScoreInfo);
+}
+
+void apiPlayerState(AbcUiPlayerState *out) {
+  if (!out)
+    return;
+  *out = AbcUiPlayerState{};
+  out->structSize = sizeof(AbcUiPlayerState);
+  watchScoreInfo();
+  out->frags = localFrags();
+  const cl_entity_t *local = gEngfuncs.GetLocalPlayer();
+  if (!local)
+    return;
+  out->index = local->index;
+  const float *velocity = local->curstate.velocity;
+  out->speed = std::sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1]);
+}
+
 int apiLevelName(char *out, uint32_t outSize) {
   const char *name = gEngfuncs.pfnGetLevelName();
   const std::string text = name ? name : "";
@@ -186,6 +263,7 @@ const AbcUiDataApi kDataApi = {
     sizeof(AbcUiDataApi),
     apiHudState,
     apiLevelName,
+    apiPlayerState,
 };
 
 } // namespace

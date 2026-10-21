@@ -147,3 +147,22 @@ typedef struct AbcUiKeyEvent {
 // open document scrolls) without taking input ownership; zero leaves it to
 // the engine bindings (weapon switch).
 #define ABCUI_CHANNEL_INPUT_WHEEL "input.wheel"
+
+// textfeed.killfeed - one routed kill line. All three strings are
+// dispatch-scoped pointers; `attacker` is empty for a suicide. `inflictor`
+// is the localized weapon phrase (the old kill feed's bracket text).
+#define ABCUI_CHANNEL_TEXTFEED_KILL_FEED "textfeed.killfeed"
+typedef struct AbcUiKillFeedEvent {
+  const char *victim;
+  const char *attacker;
+  const char *inflictor;
+} AbcUiKillFeedEvent;
+
+// textfeed.notice - one routed centerprint/notify line. `text` is a
+// dispatch-scoped pointer; `target` is the old HUDNOTICE value (1 notify,
+// 4 center).
+#define ABCUI_CHANNEL_TEXTFEED_NOTICE "textfeed.notice"
+typedef struct AbcUiNoticeEvent {
+  int32_t target;
+  const char *text;
+} AbcUiNoticeEvent;
