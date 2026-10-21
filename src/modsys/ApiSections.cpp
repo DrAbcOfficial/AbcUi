@@ -8,6 +8,7 @@
 #include <new>
 #include <string>
 
+#include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementUtilities.h>
 #include <RmlUi/Core/Elements/ElementFormControl.h>
@@ -753,6 +754,43 @@ int apiElementInnerRml(AbcUiElement *element, char *out, uint32_t outSize) {
   return static_cast<int>(inner.size());
 }
 
+AbcUiElement *apiElementFindTag(AbcUiElement *element, const char *tag) {
+  Rml::Element *target = elementOf(element);
+  if (!target || !tag || !*tag)
+    return nullptr;
+  // Widget parts (a range slider's thumb) are non-DOM children appended
+  // after the DOM ones, so the search must include them.
+  AbcUiElement *found = nullptr;
+  const int count = target->GetNumChildren(true);
+  for (int index = 0; index < count; ++index) {
+    Rml::Element *child = target->GetChild(index, true);
+    if (child && child->GetTagName() == tag)
+      found = reinterpret_cast<AbcUiElement *>(child);
+  }
+  return found;
+}
+
+void apiElementSetDisabled(AbcUiElement *element, int32_t disabled) {
+  Rml::Element *target = elementOf(element);
+  auto *control =
+      target ? rmlui_dynamic_cast<Rml::ElementFormControl *>(target) : nullptr;
+  if (control)
+    control->SetDisabled(disabled != 0);
+}
+
+void apiFormatHueColor(float value, char *out, uint32_t outSize) {
+  if (!out || outSize == 0)
+    return;
+  float rgb[3];
+  ColorUtil::playerHueColor(value, rgb);
+  copyOut(ColorUtil::format(rgb), out, outSize);
+}
+
+void apiReleaseTexture(const char *source) {
+  if (source && *source)
+    Rml::ReleaseTexture(source);
+}
+
 const AbcUiUiApi kUiApi = {
     sizeof(AbcUiUiApi),
     apiPanelDocument,
@@ -817,6 +855,10 @@ const AbcUiUiApi kUiApi = {
     apiDocumentScale,
     apiElementPseudoClassSet,
     apiElementProgressValue,
+    apiElementFindTag,
+    apiElementSetDisabled,
+    apiFormatHueColor,
+    apiReleaseTexture,
 };
 
 } // namespace

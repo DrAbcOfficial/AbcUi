@@ -117,8 +117,8 @@ Modules talk to the framework through the pure-C `AbcUiModuleApi` table
 (`sdk/abcui/`): versioned, append-only sections for console/cvars, the
 priority event bus, package files, HUD panels, interactive page documents,
 the replacement menu's presentation state, the HUD data snapshot, Rml
-documents and elements, chained commands, the weapon registry and the player
-resource. Modules include `<abcui/module_api.h>`, export exactly one symbol
+documents and elements, chained commands, the weapon registry, the player
+resource and the settings page's row/bind/display/microphone models. Modules include `<abcui/module_api.h>`, export exactly one symbol
 (`AbcUiModule_Main`), must not include RmlUi headers or link the framework's
 static libraries, and must avoid static TLS and delay-loaded imports.
 

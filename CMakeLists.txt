@@ -178,6 +178,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiConsolePage.cpp
     src/modsys/ApiServerBrowser.cpp
     src/modsys/ApiConnection.cpp
+    src/modsys/ApiSettings.cpp
     src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
@@ -316,6 +317,7 @@ add_library(AbcUi MODULE
     src/services/settings/VideoModeModel.cpp
     src/services/settings/VideoPendingStore.cpp
     src/services/settings/VoiceModel.cpp
+    src/services/settings/SettingsPageService.cpp
     src/services/voice/VoiceBanStore.cpp
     src/services/voice/VoiceStatus.cpp
     src/services/crosshair/Geometry.cpp
