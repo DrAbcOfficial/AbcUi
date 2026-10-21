@@ -118,8 +118,11 @@ static void H_HUD_Init() {
 }
 
 static int H_HUD_VidInit() {
-  rebuildVanillaHudPanels();
   int result = gExportfuncs.HUD_VidInit();
+  // Capture AFTER the client re-ran its own VidInit: if a client rebuilds
+  // the gHUD chain per map, pointers grabbed before the call would be freed
+  // and hideVanillaHudPanels() wrote into them every frame.
+  rebuildVanillaHudPanels();
   hudstate::reset();
   weaponres::reset();
   playerres::resetAll();
