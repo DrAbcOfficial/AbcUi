@@ -125,6 +125,7 @@ add_library(AbcUi MODULE
     src/plugins.cpp
     src/CoreGlobals.cpp
     src/hooks.cpp
+    src/modsys/EventBus.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
