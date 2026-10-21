@@ -117,6 +117,10 @@ int32_t apiClientColor(int32_t index, float out[3]) {
   return 1;
 }
 
+int32_t apiAvatarGeneration(uint64_t steamId64) {
+  return static_cast<int32_t>(avatars::generation(steamId64));
+}
+
 int32_t apiTeamNameToken(int32_t team, char *out, uint32_t outSize) {
   const char *token =
       teamres::teamNameToken(static_cast<teamres::TeamId>(team));
@@ -138,7 +142,14 @@ void apiRefresh(int32_t full) {
 }
 
 const AbcUiPlayersApi kPlayersApi = {
-    sizeof(AbcUiPlayersApi), apiLocal, apiGet, apiEntity, apiClientColor,
+    sizeof(AbcUiPlayersApi),
+    apiLocal,
+    apiGet,
+    apiEntity,
+    apiClientColor,
+    apiAvatarGeneration,
+    apiTeamNameToken,
+    apiRefresh,
 };
 
 } // namespace

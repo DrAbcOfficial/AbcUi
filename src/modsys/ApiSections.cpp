@@ -679,6 +679,7 @@ int apiLevelName(char *out, uint32_t outSize) {
 const AbcUiDataApi kDataApi = {
     sizeof(AbcUiDataApi), apiHudState,    apiLevelName,
     apiPlayerState,       apiThirdPerson, apiTraceEndPos,
+    apiModelIndex,        apiViewHeight,  apiServerInfo,
 };
 
 } // namespace

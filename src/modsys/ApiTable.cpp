@@ -225,7 +225,8 @@ int32_t apiKeyBinding(const char *name, char *out, uint32_t outSize) {
 const AbcUiConsoleApi kConsoleApi = {
     sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
     apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,
-    apiRegisterCvarWatch,    apiPlaySound,     apiFindCvar,
+    apiRegisterCvarWatch,    apiPlaySound,     apiFindCvar,      apiKeyBinding,
+    apiSetCvarValue,
 };
 
 // -------------------------------------------------------------- events ----
@@ -399,18 +400,33 @@ template <typename Table> bool allMembersSet(const Table &table) {
   return true;
 }
 
+// The table aggregate itself needs a by-name audit: appending a section to the
+// SDK header does not force appending its initializer here, C++ zero-fills the
+// omission and every module then receives a silently null section. The
+// per-section check below cannot see that, so check the wiring explicitly.
+bool tableComplete(const AbcUiModuleApi &api) {
+  return api.core && api.console && api.events && api.vfs && api.panels &&
+         api.data && api.ui && api.commands && api.weapons && api.players &&
+         api.radar && api.shell && api.voice && api.score && api.input;
+}
+
 void verifySections() {
   static bool checked = false;
   if (checked)
     return;
   checked = true;
-  // Data/Ui/Weapons live in their own translation units; their own `get()`
-  // callers read them directly, so only the sections owned by this file are
-  // audited here.
-  const bool complete = allMembersSet(kConsoleApi) &&
-                        allMembersSet(kEventsApi) && allMembersSet(kVfsApi) &&
-                        allMembersSet(kPanelsApi) &&
-                        allMembersSet(kCommandsApi) && allMembersSet(kRadarApi);
+  // Every section, wherever its implementation lives: the append-only rule
+  // has already left three initializers short (console, data, players) after
+  // later commits appended members. Such omissions only surface as null calls
+  // at runtime, so audit every section here and report at boot.
+  const bool complete =
+      allMembersSet(kConsoleApi) && allMembersSet(kEventsApi) &&
+      allMembersSet(kVfsApi) && allMembersSet(kPanelsApi) &&
+      allMembersSet(kCommandsApi) && allMembersSet(kRadarApi) &&
+      allMembersSet(*DataApi::get()) && allMembersSet(*UiApi::get()) &&
+      allMembersSet(*WeaponsApi::get()) && allMembersSet(*PlayersApi::get()) &&
+      allMembersSet(*ScoreApi::get()) && allMembersSet(*InputApi::get()) &&
+      allMembersSet(*ShellApi::get()) && allMembersSet(*VoiceApi::get());
   if (!complete) {
     abc::ConsoleError("[AbcUi] module api table has null section members");
   }
@@ -437,7 +453,11 @@ const AbcUiModuleApi *get() {
       ShellApi::get(),
       VoiceApi::get(),
       ScoreApi::get(),
+      InputApi::get(),
   };
+  static const bool complete = tableComplete(kApi);
+  if (!complete)
+    abc::ConsoleError("[AbcUi] module api table is incomplete (null section)");
   return &kApi;
 }
 
