@@ -360,6 +360,44 @@ add_subdirectory(modules/textfeed)
 add_subdirectory(modules/weaponchoose)
 add_subdirectory(modules/vote)
 
+# --- Module packages ---------------------------------------------------------
+# Every modules/<id>/ CMakeLists registers one MODULE target. Collect them so
+# the pack target builds the DLLs before zipping (a plain `--target dist`
+# would otherwise ship stale or missing module entries).
+set(ABCUI_MODULE_TARGETS "")
+get_property(ABCUI_SUBDIRECTORIES DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    PROPERTY SUBDIRECTORIES)
+foreach(ABCUI_SUBDIR IN LISTS ABCUI_SUBDIRECTORIES)
+    if(ABCUI_SUBDIR MATCHES "/modules/")
+        get_property(ABCUI_DIR_TARGETS DIRECTORY "${ABCUI_SUBDIR}"
+            PROPERTY BUILDSYSTEM_TARGETS)
+        list(APPEND ABCUI_MODULE_TARGETS ${ABCUI_DIR_TARGETS})
+    endif()
+endforeach()
+
+set(ABCUI_MODULE_PACK_DIR "${CMAKE_BINARY_DIR}/dist/modules")
+find_package(Python3 COMPONENTS Interpreter)
+if(Python3_Interpreter_FOUND)
+    add_custom_target(pack_modules
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ABCUI_MODULE_PACK_DIR}"
+        COMMAND "${Python3_EXECUTABLE}"
+            "${CMAKE_CURRENT_SOURCE_DIR}/tools/pack.py"
+            --source-dir "${CMAKE_CURRENT_SOURCE_DIR}"
+            --build-dir "${CMAKE_BINARY_DIR}"
+            --config "$<CONFIG>"
+            --out-dir "${ABCUI_MODULE_PACK_DIR}"
+        DEPENDS AbcUi ${ABCUI_MODULE_TARGETS}
+        COMMENT "Packing UI module packages")
+else()
+    message(WARNING "Python3 not found: the pack_modules and dist module "
+        "packages will not be produced")
+    add_custom_target(pack_modules
+        COMMAND "${CMAKE_COMMAND}" -E echo
+            "python3 not found: skipping module packages")
+endif()
+# The dist/deploy commands copy this directory unconditionally; keep it.
+file(MAKE_DIRECTORY "${ABCUI_MODULE_PACK_DIR}")
+
 # Renderer's gl_common constants are the source of truth for the render vertex
 # layouts. Fail the build when AbcUi's copied table drifts from the pin.
 add_custom_target(check-rendercommon-sync
@@ -400,11 +438,14 @@ if(ABC_GAME_DIR)
         install(DIRECTORY assets/abc/abcui DESTINATION "${ABC_GAME_DIR}/svencoop/abc"
             PATTERN ".gitkeep" EXCLUDE)
     endif()
+    # Module packages produced by tools/pack.py (build a Release pack first).
+    install(DIRECTORY "${ABCUI_MODULE_PACK_DIR}/"
+        DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
     # The menu score ships inside abc/abcui/gameui/scence/audio (installed with
     # the tree above). MenuMusic drives the engine's mp3 player with the
     # mod-relative path selected by abc_ui_menu_music.
     add_custom_target(deploy
-        DEPENDS AbcUi
+        DEPENDS AbcUi pack_modules
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
         COMMENT "Deploying AbcUi.dll and assets to ${ABC_GAME_DIR}")
 endif()
@@ -440,10 +481,14 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui"
     COMMAND "${CMAKE_COMMAND}" -E rm -f "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/.gitkeep"
     COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory "${ABCUI_MODULE_PACK_DIR}"
+        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
     COMMAND "${CMAKE_COMMAND}" -E chdir "${ABC_UI_STAGE_DIR}"
         "${CMAKE_COMMAND}" -E tar cfv
         "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"
         --format=zip -- svencoop README.md
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
-    DEPENDS AbcUi
+    DEPENDS AbcUi pack_modules
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")
