@@ -26,7 +26,6 @@
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 #include "../panels/sidetext/SideTextPanel.h"
-#include "../panels/vote/VotePanel.h"
 #include "../panels/weaponchoose/WeaponChoosePanel.h"
 #include "../panels/weaponstack/WeaponStackPanel.h"
 
@@ -60,7 +59,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   panels.push_back(std::make_unique<panels::PopNumPanel>());
   // Batch C (interaction + big data).
   panels.push_back(std::make_unique<panels::PlayerBoardPanel>());
-  panels.push_back(std::make_unique<panels::VotePanel>());
   panels.push_back(std::make_unique<panels::MotdPanel>());
   panels.push_back(std::make_unique<panels::ScoreboardPanel>());
   panels.push_back(std::make_unique<panels::WeaponChoosePanel>());
@@ -96,7 +94,6 @@ void registerHudPanelCvars() {
   panels::popnum::registerCvars();
   // Batch C.
   panels::playerboard::registerCvars();
-  panels::vote::registerCvars();
   panels::motd::registerCvars();
   panels::scoreboard::registerCvars();
   panels::weaponchoose::registerCvars();

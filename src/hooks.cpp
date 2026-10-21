@@ -7,6 +7,8 @@
 #include <abc/GameData.h>
 #include <abc/Plugin.h>
 
+#include <abcui/events.h>
+
 #include <keydefs.h>
 #include <usercmd.h>
 #include <in_buttons.h>
@@ -18,6 +20,7 @@
 #include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/PanelManager.h"
+#include "modsys/EventBus.h"
 #include "modsys/ModuleManager.h"
 #include "modules/HudPanelCatalog.h"
 #include "modules/Module.h"
@@ -25,7 +28,6 @@
 #include "panels/itemhighlight/ItemHighlightPanel.h"
 #include "panels/motd/MotdPanel.h"
 #include "panels/scoreboard/ScoreboardPanel.h"
-#include "panels/vote/VotePanel.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 #include "services/steam/SteamAPI.h"
@@ -217,13 +219,16 @@ bool uiOwnsWheel(int down, int keynum) {
 
 static int H_HUD_Key_Event(int down, int keynum,
                            const char *pszCurrentBinding) {
-  // Static interactive-HUD consumers stay the P6-proven pre-stage (vote
-  // answers, scoreboard pointer enter). routeKey is then the single
-  // physical injection point: the router decides UI feeds and the
-  // engine-consume flag (keydown/up pairing, auto-repeat dedup, pre-held
-  // passthrough and focus-loss cleanup live there - T06).
-  const bool consumed = panels::vote::onKeyEvent(down, keynum) ||
-                        panels::scoreboard::onKeyEvent(down, keynum);
+  // Static interactive-HUD consumers stay the P6-proven pre-stage (the
+  // module input.key veto channel - vote answers -, scoreboard pointer
+  // enter). routeKey is then the single physical injection point: the
+  // router decides UI feeds and the engine-consume flag (keydown/up
+  // pairing, auto-repeat dedup, pre-held passthrough and focus-loss cleanup
+  // live there - T06).
+  const AbcUiKeyEvent keyEvent{down ? 1 : 0, keynum};
+  const bool consumed =
+      framework::eventBus().publishVeto(ABCUI_CHANNEL_INPUT_KEY, keyEvent) ||
+      panels::scoreboard::onKeyEvent(down, keynum);
 #ifndef NDEBUG
   if (keynum >= K_MOUSE2 || keynum == K_MWHEELUP || keynum == K_MWHEELDOWN)
     abc::ConsolePrint("[AbcUi] key: down=%d keynum=%d consumed=%d\n", down,

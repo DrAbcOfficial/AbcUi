@@ -86,9 +86,10 @@ pfnUserMsgHook original_TextMsg = nullptr;
 pfnUserMsgHook original_SayText = nullptr;
 pfnUserMsgHook original_Damage = nullptr;
 pfnUserMsgHook original_MetaHook = nullptr;
-// hud_vote gate for the VoteMenu consumer (set by panels/vote at HUD_Init -
-// before any usermsg can arrive, so the null branch is unreachable in
-// practice; null would pass the message straight through, old IsVoteEnable).
+// hud_vote gate for the VoteMenu consumer (set by the vote module through
+// the module console api at HUD_Init - before any usermsg can arrive, so the
+// null branch is unreachable in practice; null would pass the message
+// straight through, old IsVoteEnable).
 cvar_t *voteEnabled = nullptr;
 pfnUserMsgHook original_Spectator = nullptr;
 pfnUserMsgHook original_ServerName = nullptr;
@@ -441,11 +442,15 @@ int __MsgFunc_VoteMenu(const char *pszName, int iSize, void *pbuf) {
   if (!msg.ok())
     return original_VoteMenu(pszName, iSize, pbuf);
   VoteMenu(data);
+  const AbcUiVoteMenuEvent moduleEvent{data.type, data.content.c_str(),
+                                       data.yes.c_str(), data.no.c_str()};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_VOTE_MENU, moduleEvent);
   return 1;
 }
 
 int __MsgFunc_EndVote(const char *pszName, int iSize, void *pbuf) {
   EndVote();
+  framework::eventBus().publishRaw(ABCUI_CHANNEL_NETMSG_END_VOTE, nullptr);
   return original_EndVote(pszName, iSize, pbuf);
 }
 

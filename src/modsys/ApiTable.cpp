@@ -9,6 +9,7 @@
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
 
+#include "../data/NetworkMessages.h"
 #include "../framework/Commands.h"
 #include "EventBus.h"
 #include "FrameworkVersion.h"
@@ -144,9 +145,18 @@ void apiEngineCommand(const char *command) {
     abc::EngineClientCmd(command);
 }
 
+void apiServerCommand(const char *command) {
+  if (command && *command)
+    abc::ServerCmd(command);
+}
+
+void apiSetVoteGate(AbcUiCvarHandle cvar) {
+  netmsg::setVoteGate(static_cast<cvar_t *>(cvar));
+}
+
 const AbcUiConsoleApi kConsoleApi = {
-    sizeof(AbcUiConsoleApi), apiRegisterCvar,    apiCvarValue,
-    apiCvarString,           apiRegisterCommand, apiEngineCommand,
+    sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
+    apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,
 };
 
 // -------------------------------------------------------------- events ----

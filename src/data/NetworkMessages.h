@@ -175,8 +175,9 @@ void init();
 // table (detected through a client-image handler on a Ui-exclusive message).
 // A normal map cycle leaves the table untouched and this is a no-op.
 void refreshAfterClientLoad();
-// panels/vote hands its hud_vote cvar here (HUD_Init time) - the VoteMenu
-// consumer passes messages through while the gate is off (old IsVoteEnable).
+// The vote module hands its hud_vote cvar here at HUD_Init (console api) -
+// the VoteMenu consumer passes messages through while the gate is off (old
+// IsVoteEnable).
 void setVoteGate(cvar_t *cvar);
 
 } // namespace netmsg

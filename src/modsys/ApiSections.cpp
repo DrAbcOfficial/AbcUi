@@ -11,7 +11,10 @@
 #include "../data/HudState.h"
 #include "../framework/GlyphText.h"
 #include "../framework/HudPanel.h"
+#include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
+#include "../framework/TextUtil.h"
+#include "../rmlui/VGUI2ExtensionImport.h"
 
 namespace framework {
 namespace UiApi {
@@ -86,10 +89,56 @@ int apiInkMarkup(const char *text, const char *tint, char *out,
   return 1;
 }
 
+// Copies a string into a module-owned buffer, always terminating; returns the
+// number of bytes written (never outSize or more).
+int copyOut(const std::string &text, char *out, uint32_t outSize) {
+  if (!out || outSize == 0)
+    return 0;
+  uint32_t i = 0;
+  for (; i + 1 < outSize && i < text.size(); ++i)
+    out[i] = text[i];
+  out[i] = '\0';
+  return static_cast<int>(i);
+}
+
+int apiTranslate(const char *token, char *out, uint32_t outSize) {
+  if (!token || !*token || !out || outSize == 0)
+    return 0;
+  std::string translated;
+  if (!Localization::translate(translated, token))
+    return 0;
+  copyOut(translated, out, outSize);
+  return 1;
+}
+
+int apiEscapeRml(const char *text, char *out, uint32_t outSize) {
+  if (!text)
+    return 0;
+  const std::string escaped = TextUtil::escapeRml(text);
+  if (out && outSize > 0)
+    copyOut(escaped, out, outSize);
+  return static_cast<int>(escaped.size());
+}
+
+int apiKeyNameForKey(int keynum, char *out, uint32_t outSize) {
+  const char *name = vgui2ext::keyNameForKey(keynum);
+  const std::string text = name ? name : "";
+  if (out && outSize > 0)
+    copyOut(text, out, outSize);
+  return static_cast<int>(text.size());
+}
+
+int apiDocumentVisible(AbcUiDocument *doc) {
+  const HudPanel *panel = panelOf(doc);
+  return panel && panel->isVisible() ? 1 : 0;
+}
+
 const AbcUiUiApi kUiApi = {
     sizeof(AbcUiUiApi),    apiPanelDocument,       apiDocumentShow,
     apiDocumentHide,       apiDocumentSetProperty, apiQuerySelector,
     apiElementSetProperty, apiElementSetInnerRML,  apiInkMarkup,
+    apiTranslate,          apiEscapeRml,           apiKeyNameForKey,
+    apiDocumentVisible,
 };
 
 } // namespace

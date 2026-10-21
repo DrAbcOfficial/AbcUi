@@ -54,6 +54,11 @@ typedef struct AbcUiCoreApi {
 
 typedef void *AbcUiCvarHandle; // opaque registered cvar
 
+// Flags for console->registerCvar: mirrors AbcCore's abc::FCVAR_VALUE
+// (FCVAR_PRINTABLEONLY | FCVAR_CLIENTDLL | FCVAR_ARCHIVE) so a module needs
+// no AbcCore or engine header. Other engine flags are not part of the ABI.
+#define ABCUI_CVAR_VALUE 0x00000091
+
 typedef struct AbcUiConsoleApi {
   uint32_t structSize;
   // Registers a cvar and returns its handle (null when the engine refused).
@@ -70,6 +75,13 @@ typedef struct AbcUiConsoleApi {
   // Runs a client command through the engine command path (menus send
   // "menuselect 3" and friends through this).
   void (*engineCommand)(const char *command);
+  // Runs a server command (abc::ServerCmd; the vote module answers
+  // "voteyes"/"voteno").
+  void (*serverCommand)(const char *command);
+  // Hands the hud_vote gate cvar to the netmsg VoteMenu consumer: while the
+  // gate is off the message passes through untouched (old IsVoteEnable).
+  // Pass null to remove the gate (the message is then not routed at all).
+  void (*setVoteGate)(AbcUiCvarHandle cvar);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -184,6 +196,22 @@ typedef struct AbcUiUiApi {
   // outSize-1 bytes plus the terminator.
   int (*inkMarkup)(const char *text, const char *tint, char *out,
                    uint32_t outSize);
+  // Localizes a translation token ("Vote_DefaultYes") through the game
+  // language table. Returns 1 and writes the translation (at most outSize-1
+  // bytes plus terminator); 0 when the token is unknown (out untouched).
+  int (*translate)(const char *token, char *out, uint32_t outSize);
+  // Escapes server-derived text for elementSetInnerRML (the built-in panels'
+  // TextUtil::escapeRml). Returns the byte count the escaped text needs
+  // (terminator excluded) and writes at most outSize-1 bytes plus the
+  // terminator; pass out == null to measure first.
+  int (*escapeRml)(const char *text, char *out, uint32_t outSize);
+  // Display name for an engine keynum (IGameUIFuncs::Key_NameForKey); empty
+  // when the engine interface is missing. Same measure-then-copy contract
+  // as escapeRml.
+  int (*keyNameForKey)(int keynum, char *out, uint32_t outSize);
+  // True while the panel's document is actually on screen (the session gate
+  // included) - the built-in panels' isVisible().
+  int (*documentVisible)(AbcUiDocument *doc);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----

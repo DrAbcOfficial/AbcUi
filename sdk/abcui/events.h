@@ -82,3 +82,27 @@ typedef struct AbcUiShowMenuEvent {
 
 // netmsg.inithud - the client re-ran its HUD init (payload is null).
 #define ABCUI_CHANNEL_NETMSG_INIT_HUD "netmsg.inithud"
+
+// netmsg.votemenu - the server opened a yes/no vote; `type` is the vanilla
+// vote enum (1 kill, 2 kick, 3 ban, 4 map, ...). The three strings are
+// dispatch-scoped pointers: copy before the sink returns. The message is
+// only routed while the hud_vote gate is on (console->setVoteGate).
+#define ABCUI_CHANNEL_NETMSG_VOTE_MENU "netmsg.votemenu"
+typedef struct AbcUiVoteMenuEvent {
+  int32_t type;
+  const char *content; // server caption text
+  const char *yes;     // server-provided yes caption, "" when absent
+  const char *no;      // server-provided no caption, "" when absent
+} AbcUiVoteMenuEvent;
+
+// netmsg.endvote - the vote window closed (payload is null).
+#define ABCUI_CHANNEL_NETMSG_END_VOTE "netmsg.endvote"
+
+// input.key - one HUD key event. Veto channel: a sink returning nonzero
+// consumes the press so the engine binding chain never sees it (the vote
+// keys answer the vote instead of running their binding).
+#define ABCUI_CHANNEL_INPUT_KEY "input.key"
+typedef struct AbcUiKeyEvent {
+  int32_t down;   // 1 key down, 0 key up
+  int32_t keynum; // engine key number
+} AbcUiKeyEvent;

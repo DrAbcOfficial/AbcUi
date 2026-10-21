@@ -309,7 +309,6 @@ add_library(AbcUi MODULE
     src/panels/itemhighlight/ItemHighlightPanel.cpp
     src/panels/notice/NoticePanel.cpp
     src/panels/playerboard/PlayerBoardPanel.cpp
-    src/panels/vote/VotePanel.cpp
     src/panels/motd/MotdPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
@@ -364,6 +363,7 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
 add_subdirectory(modules/demo)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
+add_subdirectory(modules/vote)
 
 # Renderer's gl_common constants are the source of truth for the render vertex
 # layouts. Fail the build when AbcUi's copied table drifts from the pin.
