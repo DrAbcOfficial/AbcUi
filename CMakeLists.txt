@@ -111,6 +111,32 @@ target_compile_options(abcui_webp PRIVATE
     $<$<CONFIG:Debug>:/MDd>
     $<$<NOT:$<CONFIG:Debug>>:/MD>)
 
+# --- miniz (module package reader) -------------------------------------------
+# Read-only zip support for UI module packages. Memory-image reads only: the
+# writer, stdio and time-conversion surfaces are compiled out.
+set(ABCUI_MINIZ_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/miniz")
+add_library(abcui_miniz STATIC
+    "${ABCUI_MINIZ_DIR}/miniz.c"
+    "${ABCUI_MINIZ_DIR}/miniz_tdef.c"
+    "${ABCUI_MINIZ_DIR}/miniz_tinfl.c"
+    "${ABCUI_MINIZ_DIR}/miniz_zip.c")
+target_include_directories(abcui_miniz PUBLIC "${ABCUI_MINIZ_DIR}")
+target_compile_definitions(abcui_miniz PRIVATE
+    MINIZ_NO_STDIO MINIZ_NO_TIME MINIZ_NO_ARCHIVE_WRITING_APIS)
+# miniz 3.x includes a generated visibility header; a static build only needs
+# MINIZ_EXPORT to expand to nothing (what upstream CMake does for static libs).
+set(ABCUI_MINIZ_GEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/miniz-gen")
+file(WRITE "${ABCUI_MINIZ_GEN_DIR}/miniz_export.h"
+    "#pragma once\n#ifndef MINIZ_EXPORT\n#define MINIZ_EXPORT\n#endif\n")
+target_include_directories(abcui_miniz PUBLIC "${ABCUI_MINIZ_GEN_DIR}")
+set_target_properties(abcui_miniz PROPERTIES
+    C_STANDARD 99
+    C_STANDARD_REQUIRED ON
+    MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+target_compile_options(abcui_miniz PRIVATE
+    $<$<CONFIG:Debug>:/MDd>
+    $<$<NOT:$<CONFIG:Debug>>:/MD>)
+
 add_library(abc_ui_config STATIC
     src/services/uiconfig/UiDefinitions.cpp
     src/services/uiconfig/ConfigRepository.cpp
@@ -126,6 +152,7 @@ add_library(AbcUi MODULE
     src/CoreGlobals.cpp
     src/hooks.cpp
     src/modsys/EventBus.cpp
+    src/modsys/PackageFile.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
@@ -321,7 +348,7 @@ target_compile_options(AbcUi PRIVATE /W4)
 target_compile_options(AbcUi PRIVATE /FIabc/ForceImport.h)
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
-    imm32 abc_ui_config)
+    abcui_miniz imm32 abc_ui_config)
 
 # Renderer's gl_common constants are the source of truth for the render vertex
 # layouts. Fail the build when AbcUi's copied table drifts from the pin.
