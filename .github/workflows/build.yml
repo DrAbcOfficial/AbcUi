@@ -31,19 +31,21 @@ jobs:
           git config --global url."https://github.com/DrAbcOfficial/Renderer".insteadOf "https://github.com/MetaHookSv/Renderer"
 
       - name: Checkout
-        uses: actions/checkout@v7.0.1
+        # actions/checkout v7.0.1, pinned to its commit: a mutable tag could
+        # be repointed by a compromised action repository.
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
+          # Default scoped token: permissions: contents: read applies, and a
+          # personal PAT (which carries its own scopes) is not involved.
           submodules: recursive
 
       # AbcCore is owned by the aggregate ABCEnchance repository; standalone
       # CI checks out the central repository and passes its path to CMake.
       - name: Checkout AbcCore
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: DrAbcOfficial/AbcCore
           path: .abc/AbcCore
-          token: ${{ secrets.SUBMODULE_TOKEN || github.token }}
           submodules: recursive
 
       # The runner image ships an older CMake than the project requires. Pin
@@ -92,7 +94,8 @@ jobs:
 
       - name: Upload package
         if: matrix.config == 'Release'
-        uses: actions/upload-artifact@v7.0.2
+        # actions/upload-artifact v7.0.2, pinned to its commit.
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: AbcUi-package
           path: build/ci/dist/*.zip
