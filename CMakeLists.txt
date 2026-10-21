@@ -68,6 +68,10 @@ add_subdirectory(thirdparty/RmlUi EXCLUDE_FROM_ALL)
 # runtime FreeImage.dll; AbcUi must not publish a second copy. MetaHook's
 # launcher appends every metahook/dlls/* subdirectory to PATH, so the loader
 # resolves the Renderer-provided DLL at runtime.
+# Note: the vendored FreeImage CMake also forces /MT on its own objects (see
+# the WebP note below). That stays an exception to the family-wide /MD rule:
+# the DLL owns its heap and exposes a C-style API only, so no allocator,
+# handle or C++ object crosses the boundary.
 add_subdirectory(thirdparty/FreeImage EXCLUDE_FROM_ALL)
 
 # --- Animated WebP decode backend -------------------------------------------
@@ -315,7 +319,6 @@ target_compile_definitions(AbcUi PRIVATE WIN32 _WINDOWS _USRDLL _CRT_SECURE_NO_W
 target_compile_options(AbcUi PRIVATE /W4)
 target_compile_options(AbcUi PRIVATE /FIabc/ForceImport.h)
 # imm32: T07 IME placement/cancel (ImmSetCompositionWindow / ImmNotifyIME).
-target_compile_definitions(AbcUi PRIVATE ABC_CORE_STATIC)
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
     imm32 abc_ui_config)
 
@@ -334,6 +337,9 @@ add_dependencies(AbcUi check-rendercommon-sync)
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).
 target_include_directories(AbcUi PRIVATE
     "${ABCUI_MILE_FFMPEG_SDK}/Include"
+    # Resolves the /FIabc/ForceImport.h forced include explicitly instead of
+    # relying on Abc::Core's transitive include directory.
+    "${ABC_CORE_DIR}/include"
     "${STEAMSDK_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface"
