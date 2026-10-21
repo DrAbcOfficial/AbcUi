@@ -434,6 +434,10 @@ void shutdown() {
     // HUD_Init can arm modules before the first HUD_Frame creates a context.
     if (Sink.shutdown)
       Sink.shutdown();
+    // Same teardown symmetry as the initialized path: the panel list dies
+    // with the cycle so the next HUD_Init can rebuild it (the panels never
+    // loaded a document in this state).
+    framework::PanelManager::shutdown();
     return;
   }
   Initialised = false;

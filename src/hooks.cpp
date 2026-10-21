@@ -90,18 +90,27 @@ void hideVanillaHudPanels() {
 
 static void H_HUD_Init() {
   gExportfuncs.HUD_Init();
-  // Command/cvar registration is HUD_Init-time only (plan 08 §4.9);
-  // guarded like AbcEssential in case the engine re-runs HUD_Init.
+  // HUD_Init/HUD_Shutdown can repeat within one engine process (the client
+  // is reloaded on some map-change/reconnect paths). Everything that
+  // HUD_Shutdown tears down must be re-armed here.
+  //
+  // - usermsg hooks: re-hook after every cycle. init() keeps a foreign
+  //   predecessor and ignores our own, so the call is idempotent and also
+  //   recovers the chain if the engine rebuilt the message table.
+  // - panels: PanelManager::shutdown() clears the list, so rebuild it when
+  //   it is empty (a live list is left alone).
+  netmsg::init();
+  if (framework::PanelManager::panels().empty())
+    modules::installHudPanels();
+  // Process-scoped registration (cvars/commands survive HUD_Shutdown).
   static bool CommandsRegistered = false;
   if (!CommandsRegistered) {
     CommandsRegistered = true;
-    netmsg::init();
     services::voice::status().init();
     hudstate::init();
     weaponres::init();
     playerres::init();
     textfeed::init();
-    modules::installHudPanels();
     modules::registerHudPanelCvars();
     rmlui::registerCommands();
     modules::registry().initAll();

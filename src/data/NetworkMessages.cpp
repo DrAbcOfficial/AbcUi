@@ -561,61 +561,72 @@ int __MsgFunc_MetaHook(const char *pszName, int iSize, void *pbuf) {
 }
 #pragma endregion
 
+// HookUserMsg returns the previous handler. Re-running init() (every
+// HUD_Init cycle) reports our own handler back; the real predecessor is
+// already stored, so only a foreign one is adopted. This also recovers the
+// chain after the engine rebuilt the client's usermsg table on a reload.
+void installHook(const char *name, pfnUserMsgHook hook,
+                 pfnUserMsgHook &original) {
+  pfnUserMsgHook previous = g_pMetaHookAPI->HookUserMsg(name, hook);
+  if (previous && previous != hook)
+    original = previous;
+}
+
 } // namespace
 
 void init() {
-  static bool registered = false;
-  if (registered)
-    return;
-  registered = true;
-  // HOOK_MESSAGE per message (g_pMetaHookAPI->HookUserMsg): returns the
-  // previous handler, forming the multi-plugin chain (AbcEssential
-  // registers its own links at its HUD_Init).
-  original_AmmoX = HOOK_MESSAGE(AmmoX);
-  original_WeaponList = HOOK_MESSAGE(WeaponList);
-  original_InitHUD = HOOK_MESSAGE(InitHUD);
-  original_CustWeapon = HOOK_MESSAGE(CustWeapon);
-  original_CurWeapon = HOOK_MESSAGE(CurWeapon);
-  original_HideWeapon = HOOK_MESSAGE(HideWeapon);
-  original_HideHUD = HOOK_MESSAGE(HideHUD);
-  original_WeaponSpr = HOOK_MESSAGE(WeaponSpr);
-  original_WeapPickup = HOOK_MESSAGE(WeapPickup);
-  original_AmmoPickup = HOOK_MESSAGE(AmmoPickup);
-  original_ItemPickup = HOOK_MESSAGE(ItemPickup);
-  original_Battery = HOOK_MESSAGE(Battery);
-  original_Health = HOOK_MESSAGE(Health);
-  original_ScoreInfo = HOOK_MESSAGE(ScoreInfo);
-  original_ShowMenu = HOOK_MESSAGE(ShowMenu);
-  original_FlashBat = HOOK_MESSAGE(FlashBat);
-  original_Flashlight = HOOK_MESSAGE(Flashlight);
-  original_TextMsg = HOOK_MESSAGE(TextMsg);
-  original_SayText = HOOK_MESSAGE(SayText);
-  original_Damage = HOOK_MESSAGE(Damage);
+  // Per HUD_Init cycle: the engine may rebuild the client's usermsg table on
+  // a reload, and the predecessors must then be re-read. installHook keeps an
+  // existing foreign chain and ignores our own previous hook, so a repeated
+  // call is idempotent.
+  installHook("AmmoX", __MsgFunc_AmmoX, original_AmmoX);
+  installHook("WeaponList", __MsgFunc_WeaponList, original_WeaponList);
+  installHook("InitHUD", __MsgFunc_InitHUD, original_InitHUD);
+  installHook("CustWeapon", __MsgFunc_CustWeapon, original_CustWeapon);
+  installHook("CurWeapon", __MsgFunc_CurWeapon, original_CurWeapon);
+  installHook("HideWeapon", __MsgFunc_HideWeapon, original_HideWeapon);
+  installHook("HideHUD", __MsgFunc_HideHUD, original_HideHUD);
+  installHook("WeaponSpr", __MsgFunc_WeaponSpr, original_WeaponSpr);
+  installHook("WeapPickup", __MsgFunc_WeapPickup, original_WeapPickup);
+  installHook("AmmoPickup", __MsgFunc_AmmoPickup, original_AmmoPickup);
+  installHook("ItemPickup", __MsgFunc_ItemPickup, original_ItemPickup);
+  installHook("Battery", __MsgFunc_Battery, original_Battery);
+  installHook("Health", __MsgFunc_Health, original_Health);
+  installHook("ScoreInfo", __MsgFunc_ScoreInfo, original_ScoreInfo);
+  installHook("ShowMenu", __MsgFunc_ShowMenu, original_ShowMenu);
+  installHook("FlashBat", __MsgFunc_FlashBat, original_FlashBat);
+  installHook("Flashlight", __MsgFunc_Flashlight, original_Flashlight);
+  installHook("TextMsg", __MsgFunc_TextMsg, original_TextMsg);
+  installHook("SayText", __MsgFunc_SayText, original_SayText);
+  installHook("Damage", __MsgFunc_Damage, original_Damage);
   // The MetaHook carrier is addon-registered; a null chain (vanilla servers)
   // leaves every read a no-op passthrough (see __MsgFunc_MetaHook).
-  original_MetaHook = HOOK_MESSAGE(MetaHook);
+  installHook("MetaHook", __MsgFunc_MetaHook, original_MetaHook);
   // Batch C additions.
-  original_Spectator = HOOK_MESSAGE(Spectator);
-  original_ServerName = HOOK_MESSAGE(ServerName);
-  original_NextMap = HOOK_MESSAGE(NextMap);
-  original_TimeEnd = HOOK_MESSAGE(TimeEnd);
-  original_MOTD = HOOK_MESSAGE(MOTD);
-  original_VoteMenu = HOOK_MESSAGE(VoteMenu);
-  original_EndVote = HOOK_MESSAGE(EndVote);
-  original_MapList = HOOK_MESSAGE(MapList);
-  original_ClExtrasInfo = HOOK_MESSAGE(ClExtrasInfo);
-  original_VoiceMask = HOOK_MESSAGE(VoiceMask);
-  original_ReqState = HOOK_MESSAGE(ReqState);
+  installHook("Spectator", __MsgFunc_Spectator, original_Spectator);
+  installHook("ServerName", __MsgFunc_ServerName, original_ServerName);
+  installHook("NextMap", __MsgFunc_NextMap, original_NextMap);
+  installHook("TimeEnd", __MsgFunc_TimeEnd, original_TimeEnd);
+  installHook("MOTD", __MsgFunc_MOTD, original_MOTD);
+  installHook("VoteMenu", __MsgFunc_VoteMenu, original_VoteMenu);
+  installHook("EndVote", __MsgFunc_EndVote, original_EndVote);
+  installHook("MapList", __MsgFunc_MapList, original_MapList);
+  installHook("ClExtrasInfo", __MsgFunc_ClExtrasInfo, original_ClExtrasInfo);
+  installHook("VoiceMask", __MsgFunc_VoiceMask, original_VoiceMask);
+  installHook("ReqState", __MsgFunc_ReqState, original_ReqState);
   // Issue 10: the client registers both at its own HUD_Init, which runs
   // before this init() from the hook spine. A null result means the message
   // table moved; the inventory page then has no data (fail-closed, the
   // native panel is still suppressed by the command hook).
-  original_InvAdd = HOOK_MESSAGE(InvAdd);
-  original_InvRemove = HOOK_MESSAGE(InvRemove);
-  if (!original_InvAdd || !original_InvRemove)
+  installHook("InvAdd", __MsgFunc_InvAdd, original_InvAdd);
+  installHook("InvRemove", __MsgFunc_InvRemove, original_InvRemove);
+  static bool warnedMissingInventory = false;
+  if ((!original_InvAdd || !original_InvRemove) && !warnedMissingInventory) {
+    warnedMissingInventory = true;
     abc::ConsoleWarn("[AbcUi] inventory messages (InvAdd/InvRemove) were not "
                      "registered by the client; the inventory page has no "
                      "data\n");
+  }
 }
 
 void setVoteGate(cvar_t *cvar) {
