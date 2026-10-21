@@ -338,6 +338,15 @@ void AbcRenderInterface::registerExternalTexture(const Rml::String &uriPrefix,
                                                  TextureBlend blend) {
   if (uriPrefix.empty() || texture == 0)
     return;
+  // A recycled engine id must not stay marked as owned: if a live record for
+  // a file/font texture still carries the same id (possible after a
+  // frame-buffer regen recycles the GL texture name), releasing that record
+  // would delete a texture the external owner now controls.
+  for (auto &[handle, record] : Textures) {
+    (void)handle;
+    if (record.Owned && record.Id == static_cast<int>(texture))
+      record.Owned = false;
+  }
   ExternalTexture entry;
   entry.Texture = texture;
   entry.Width = width;
@@ -345,8 +354,6 @@ void AbcRenderInterface::registerExternalTexture(const Rml::String &uriPrefix,
   entry.MaskSlot = maskSlot;
   entry.Blend = blend;
   ExternalTextures[uriPrefix] = entry;
-  // A recycled handle must not stay marked as owned (a second
-  // registration of the same GL id after a frame-buffer regen).
 }
 
 void AbcRenderInterface::unregisterExternalTexture(
