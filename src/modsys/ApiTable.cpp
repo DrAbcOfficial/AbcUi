@@ -404,6 +404,7 @@ const AbcUiModuleApi *get() {
       UiApi::get(),
       &kCommandsApi,
       WeaponsApi::get(),
+      PlayersApi::get(),
   };
   return &kApi;
 }

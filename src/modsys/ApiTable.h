@@ -30,4 +30,8 @@ namespace WeaponsApi {
 const AbcUiWeaponsApi *get();
 } // namespace WeaponsApi
 
+namespace PlayersApi {
+const AbcUiPlayersApi *get();
+} // namespace PlayersApi
+
 } // namespace framework

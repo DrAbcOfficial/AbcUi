@@ -8,7 +8,6 @@
 #include "../data/TextFeed.h"
 #include "../modsys/ModuleManager.h"
 #include "../panels/chat/ChatPanel.h"
-#include "../panels/playerboard/PlayerBoardPanel.h"
 #include "../panels/radar/RadarPanel.h"
 #include "../panels/scoreboard/ScoreboardPanel.h"
 
@@ -23,7 +22,6 @@ std::vector<std::unique_ptr<framework::HudPanel>> buildPanels() {
   std::vector<std::unique_ptr<framework::HudPanel>> panels;
   // Batch B (feedback panels).
   // Batch C (interaction + big data).
-  panels.push_back(std::make_unique<panels::PlayerBoardPanel>());
   panels.push_back(std::make_unique<panels::ScoreboardPanel>());
   // Batch D (render depth).
   panels.push_back(std::make_unique<panels::RadarPanel>());
@@ -47,7 +45,6 @@ void registerHudPanelCvars() {
   commands::registerAll();
   // Batch B.
   // Batch C.
-  panels::playerboard::registerCvars();
   panels::scoreboard::registerCvars();
   // Batch D.
   panels::radar::registerCvars();

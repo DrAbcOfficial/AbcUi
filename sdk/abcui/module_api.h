@@ -329,6 +329,9 @@ typedef struct AbcUiUiApi {
   // Nth child element (0-based); null when out of range. Stable for children
   // appended through elementAppendRml until one is removed.
   AbcUiElement *(*elementChild)(AbcUiElement *element, int32_t index);
+  // Subtree-scoped id lookup (document-scoped lookups would collapse
+  // repeated per-tile ids into the first tile).
+  AbcUiElement *(*elementFind)(AbcUiElement *element, const char *id);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -424,6 +427,56 @@ typedef struct AbcUiWeaponsApi {
   int32_t (*ammoIcon)(int32_t ammoType, AbcUiWeaponSprite *out);
 } AbcUiWeaponsApi;
 
+// -------------------------------------------------------------- players ----
+
+#define ABCUI_MAX_PLAYERS 32
+
+// One player-resource row (ScoreInfo wire values + engine mirror).
+typedef struct AbcUiPlayerInfo {
+  uint32_t structSize;
+  int32_t index; // 1..32 entindex
+  int32_t valid; // connected AND named
+  int32_t spectate;
+  int32_t team;  // teamres::TeamId
+  int32_t admin; // 0 none, 1 operator, 2 server owner
+  int32_t donor; // old native donor kind (0x10000 + kind)
+  int32_t topColor;
+  int32_t bottomColor;
+  int32_t ping;
+  int32_t loss;
+  float frags;
+  float health;
+  float armor;
+  uint64_t steamId64;
+  char name[64];
+  char model[96];
+} AbcUiPlayerInfo;
+
+// Engine entity snapshot (GetEntityByIndex + curstate/baseline fields the HUD
+// panels gate on).
+typedef struct AbcUiEntityState {
+  uint32_t structSize;
+  int32_t valid;
+  int32_t messageNum;
+  int32_t isPlayer;
+  int32_t effects;
+  float origin[3];
+  float mins[3];
+  float maxs[3];
+} AbcUiEntityState;
+
+typedef struct AbcUiPlayersApi {
+  uint32_t structSize;
+  // The local player's row; valid == 0 when there is none.
+  void (*local)(AbcUiPlayerInfo *out);
+  // One slot's row; 1 when the player resource knows the slot at all.
+  int32_t (*get)(int32_t index, AbcUiPlayerInfo *out);
+  // Engine entity snapshot; 1 when live.
+  int32_t (*entity)(int32_t index, AbcUiEntityState *out);
+  // Client dll per-player tint (GetClientColor, 0..1 RGB); 1 when available.
+  int32_t (*clientColor)(int32_t index, float out[3]);
+} AbcUiPlayersApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -463,6 +516,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiUiApi *ui;
   const AbcUiCommandsApi *commands;
   const AbcUiWeaponsApi *weapons;
+  const AbcUiPlayersApi *players;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

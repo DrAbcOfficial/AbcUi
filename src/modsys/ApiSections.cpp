@@ -7,6 +7,7 @@
 #include <string>
 
 #include <RmlUi/Core/Element.h>
+#include <RmlUi/Core/ElementUtilities.h>
 
 #include <event_api.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -212,6 +213,14 @@ float apiScale() {
   return Theme::scale();
 }
 
+AbcUiElement *apiElementFind(AbcUiElement *element, const char *id) {
+  Rml::Element *root = elementOf(element);
+  if (!root || !id || !*id)
+    return nullptr;
+  return reinterpret_cast<AbcUiElement *>(
+      Rml::ElementUtilities::GetElementById(root, id));
+}
+
 AbcUiElement *apiElementChild(AbcUiElement *element, int32_t index) {
   Rml::Element *target = elementOf(element);
   if (!target || index < 0 || index >= target->GetNumChildren())
@@ -345,6 +354,7 @@ const AbcUiUiApi kUiApi = {
     apiCrosshairLayout,
     apiScale,
     apiElementChild,
+    apiElementFind,
 };
 
 } // namespace

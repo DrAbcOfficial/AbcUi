@@ -162,6 +162,7 @@ add_library(AbcUi MODULE
     src/modsys/ModuleManager.cpp
     src/modsys/ApiSections.cpp
     src/modsys/ApiWeapons.cpp
+    src/modsys/ApiPlayers.cpp
     src/render/Render.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
@@ -298,7 +299,6 @@ add_library(AbcUi MODULE
     src/framework/Projection.cpp
     src/panels/chat/ChatMessage.cpp
     src/panels/chat/ChatPanel.cpp
-    src/panels/playerboard/PlayerBoardPanel.cpp
     src/panels/mainmenu/MainMenuPage.cpp
     src/panels/menushared/MenuShellWindows.cpp
     src/panels/loading/LoadingWindows.cpp
@@ -352,6 +352,7 @@ add_subdirectory(modules/damage)
 add_subdirectory(modules/health)
 add_subdirectory(modules/hudeffects)
 add_subdirectory(modules/itemhighlight)
+add_subdirectory(modules/playerboard)
 add_subdirectory(modules/killfeed)
 add_subdirectory(modules/motd)
 add_subdirectory(modules/sidetext)
