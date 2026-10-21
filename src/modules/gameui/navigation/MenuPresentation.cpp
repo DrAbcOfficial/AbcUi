@@ -7,6 +7,7 @@
 #include "modules/gameui/GameUiPages.h"
 #include <abc/Console.h>
 #include "framework/Localization.h"
+#include "modsys/ModuleDocuments.h"
 #include "rmlui/InputBridge.h"
 #include <string>
 #include "modules/gameui/engine/MenuBindings.h"
@@ -85,6 +86,7 @@ void GameUiModule::dismissMenu() {
     services::nativeUiBridge().notePageHidden();
   }
   focusLog("dismissed");
+  publishMenuPresentation();
 }
 
 void GameUiModule::reconcilePhase() {
@@ -103,6 +105,9 @@ void GameUiModule::reconcilePhase() {
 }
 
 void GameUiModule::hideAllMenuDocuments() {
+  // Module pages join the layer (ABCUI_DOC_FLAG_MENU): the framework hides
+  // them with the built-in ones, so no page can outlive a lowered menu.
+  framework::module_documents::hideMenu();
   if (Shell)
     Shell->hide();
   if (SubStub)
@@ -182,6 +187,70 @@ void GameUiModule::showStubPage(panels::menushared::MenuStubPage *stub,
   Resolve::translate(body, bodyToken + 1);
   stub->showFor(title.c_str(), body.c_str());
   stub->show();
+}
+
+// --- menu section backing (services::menu::Host) ---------------------------
+// The pages are modules: they act through the menu section and learn the
+// settled state from menu.state. These four entry points are the exact
+// orchestrations the page flows used to reach through host lambdas
+// (ensure the menu, reconcile the phase, dispatch the intent, finish).
+
+services::menu::Snapshot GameUiModule::menuSnapshot() const {
+  services::menu::Snapshot snapshot;
+  const menu::MenuState &state = Controller.state();
+  snapshot.phase = static_cast<int32_t>(state.phase);
+  snapshot.page = state.pages.empty() ? ABCUI_MENU_PAGE_NONE
+                                      : static_cast<int32_t>(state.pages.top());
+  snapshot.up = MenuPresented ? 1 : 0;
+  snapshot.loading = (state.phase == menu::BackendPhase::kConnecting ||
+                      state.phase == menu::BackendPhase::kLoading)
+                         ? 1
+                         : 0;
+  snapshot.consoleOpen = state.overlays.contains(MenuOverlay::kConsole) ? 1 : 0;
+  snapshot.hasLevel = services::nativeUiBridge().hasLevel() ? 1 : 0;
+  snapshot.canClose = state.canCloseMenu() ? 1 : 0;
+  snapshot.generation = state.connectGeneration;
+  return snapshot;
+}
+
+int32_t GameUiModule::ensureMenuUp() {
+  if (!Shell || !Context)
+    return 0; // the command landed before Rml assembly
+  if (!MenuPresented) {
+    if (!services::nativeUiBridge().menuUp())
+      services::nativeUiBridge().requestMenuUp(
+          services::NativeUiOrigin::kOwnUi);
+    if (!MenuPresented)
+      presentMenu();
+  }
+  return MenuPresented ? 1 : 0;
+}
+
+int32_t GameUiModule::openMenuPage(int32_t page) {
+  if (page < ABCUI_MENU_PAGE_MAIN || page > ABCUI_MENU_PAGE_LOADING)
+    return 0;
+  const MenuPage target = static_cast<MenuPage>(page);
+  if (!ensureMenuUp())
+    return 0;
+  reconcilePhase();
+  if (Controller.state().phase != menu::BackendPhase::kInGame)
+    return 0; // the in-game pages never open over the home screen
+  Controller.dispatch(menu::makeOpenPage(target));
+  finishDispatch();
+  return Controller.state().pages.topIs(target) ? 1 : 0;
+}
+
+void GameUiModule::menuBack() {
+  Controller.dispatch(MenuEvent{EventKind::kBack});
+  finishDispatch();
+}
+
+int32_t GameUiModule::resumeFromMenu() {
+  if (Controller.state().phase != menu::BackendPhase::kInGame)
+    return 0;
+  Controller.dispatch(MenuEvent{EventKind::kResume});
+  finishDispatch();
+  return Controller.isMenuActive() ? 0 : 1;
 }
 
 } // namespace gameui

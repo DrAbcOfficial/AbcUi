@@ -6,7 +6,7 @@
 #include "modules/gameui/engine/MenuBindings.h"
 namespace gameui {
 using namespace engine;
-void GameUiModule::syncMenuPresentation() {
+void GameUiModule::projectMenuPresentation() {
   if (!Shell || !Context)
     return;
   const auto &state = Controller.state();
@@ -239,6 +239,18 @@ void GameUiModule::syncMenuPresentation() {
   else if (!state.overlays.contains(MenuOverlay::kConsole) &&
            services::nativeUiBridge().consoleRequested())
     services::nativeUiBridge().noteConsoleDismissed();
+}
+
+// The presentation sync every caller schedules: project the state machine
+// onto the Rml documents, then publish the settled facts to the page modules
+// (menu.state on a transition, menu.paint on every beat).
+void GameUiModule::syncMenuPresentation() {
+  projectMenuPresentation();
+  publishMenuPresentation();
+}
+
+void GameUiModule::publishMenuPresentation() {
+  services::menu::publish();
 }
 
 } // namespace gameui

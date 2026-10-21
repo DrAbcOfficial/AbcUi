@@ -34,6 +34,44 @@
 namespace gameui {
 using namespace engine;
 using namespace settings;
+
+// The menu section's page ids are ABI: pin the state-machine enum values to
+// the SDK constants so a reordered enum fails to compile instead of
+// misrouting a module page.
+static_assert(static_cast<int>(menu::MenuPage::kMain) == ABCUI_MENU_PAGE_MAIN);
+static_assert(static_cast<int>(menu::MenuPage::kPause) ==
+              ABCUI_MENU_PAGE_PAUSE);
+static_assert(static_cast<int>(menu::MenuPage::kSettings) ==
+              ABCUI_MENU_PAGE_SETTINGS);
+static_assert(static_cast<int>(menu::MenuPage::kServers) ==
+              ABCUI_MENU_PAGE_SERVERS);
+static_assert(static_cast<int>(menu::MenuPage::kCreateGame) ==
+              ABCUI_MENU_PAGE_CREATE_GAME);
+static_assert(static_cast<int>(menu::MenuPage::kPlayerList) ==
+              ABCUI_MENU_PAGE_PLAYER_LIST);
+static_assert(static_cast<int>(menu::MenuPage::kVoteMenu) ==
+              ABCUI_MENU_PAGE_VOTE);
+static_assert(static_cast<int>(menu::MenuPage::kCommandMenu) ==
+              ABCUI_MENU_PAGE_COMMAND);
+static_assert(static_cast<int>(menu::MenuPage::kInventory) ==
+              ABCUI_MENU_PAGE_INVENTORY);
+static_assert(static_cast<int>(menu::MenuPage::kLoading) ==
+              ABCUI_MENU_PAGE_LOADING);
+static_assert(static_cast<int>(menu::BackendPhase::kBooting) ==
+              ABCUI_MENU_PHASE_BOOTING);
+static_assert(static_cast<int>(menu::BackendPhase::kDisconnected) ==
+              ABCUI_MENU_PHASE_DISCONNECTED);
+static_assert(static_cast<int>(menu::BackendPhase::kConnecting) ==
+              ABCUI_MENU_PHASE_CONNECTING);
+static_assert(static_cast<int>(menu::BackendPhase::kLoading) ==
+              ABCUI_MENU_PHASE_LOADING);
+static_assert(static_cast<int>(menu::BackendPhase::kInGame) ==
+              ABCUI_MENU_PHASE_IN_GAME);
+static_assert(static_cast<int>(menu::BackendPhase::kShuttingDown) ==
+              ABCUI_MENU_PHASE_SHUTTING_DOWN);
+static_assert(static_cast<int>(menu::BackendPhase::kFatal) ==
+              ABCUI_MENU_PHASE_FATAL);
+
 namespace {
 
 bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
@@ -101,6 +139,15 @@ GameUiModule::GameUiModule()
       services::friends::steamFriendsProvider());
   modules::registry().add(this);
   services::nativeUiBridge().setMenuSink(this);
+  // Menu section backing: the page modules act through these four entry
+  // points and read the settled state from menu.state/menu.paint. Bound once
+  // (the module object is process-lifetime).
+  services::menu::Host &menuHost = services::menu::host();
+  menuHost.snapshot = [this] { return menuSnapshot(); };
+  menuHost.openPage = [this](int32_t page) { return openMenuPage(page); };
+  menuHost.back = [this] { menuBack(); };
+  menuHost.ensureUp = [this] { return ensureMenuUp(); };
+  menuHost.resume = [this] { return resumeFromMenu(); };
 }
 
 VideoHost GameUiModule::MakeVideoHost() {

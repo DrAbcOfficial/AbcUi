@@ -46,5 +46,9 @@ void GameUiModule::onFrame(double FrameTime) {
   lifecycle::pumpMenuFrame([this] { pumpBackgroundWork(); },
                            [this] { return MenuPresented && Shell && Context; },
                            [this] { pumpVisibleWork(); });
+  // The presentation beat (menu.paint): page modules project their DOM here,
+  // inside the framework's takeover pipeline. menu.state stays edge-only.
+  if (MenuPresented)
+    publishMenuPresentation();
 }
 } // namespace gameui

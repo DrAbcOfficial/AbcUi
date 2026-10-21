@@ -154,6 +154,20 @@ typedef struct AbcUiVguiMenuEvent {
   int32_t menu;
 } AbcUiVguiMenuEvent;
 
+// menu.state - one replacement-menu presentation transition: the menu layer
+// went up/down, the page stack top moved, the console overlay opened/closed,
+// the loading attempt started/finished, or the backend phase changed.
+// Payload AbcUiMenuState (module_api.h). Data channel; the framework publishes
+// it after syncing the presentation, so a page module may show/hide its own
+// document in response.
+#define ABCUI_CHANNEL_MENU_STATE "menu.state"
+
+// menu.paint - the presentation beat, publishing the same AbcUiMenuState:
+// once after every sync and once per frame while the menu layer is up. A page
+// module projects its DOM here (change-gated work only - this runs every
+// frame).
+#define ABCUI_CHANNEL_MENU_PAINT "menu.paint"
+
 // Engine key numbers the input.key channel carries (HLSDK keydefs.h values;
 // the ABI cannot include the engine headers).
 #define ABCUI_KEY_ENTER 13

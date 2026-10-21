@@ -115,7 +115,8 @@ dependents; the rest keep working.
 
 Modules talk to the framework through the pure-C `AbcUiModuleApi` table
 (`sdk/abcui/`): versioned, append-only sections for console/cvars, the
-priority event bus, package files, HUD panels, the HUD data snapshot, Rml
+priority event bus, package files, HUD panels, interactive page documents,
+the replacement menu's presentation state, the HUD data snapshot, Rml
 documents and elements, chained commands, the weapon registry and the player
 resource. Modules include `<abcui/module_api.h>`, export exactly one symbol
 (`AbcUiModule_Main`), must not include RmlUi headers or link the framework's
@@ -126,8 +127,8 @@ weaponchoose, killfeed, textfeed, sidetext, health, ammo, hudeffects,
 crosshair, damage, itemhighlight, playerboard, radar, scoreboard and chat;
 `demo` is the minimal example. `tools/pack.py` validates each manifest and
 writes the archives. The remaining built-in UI (the game/menu pages of the
-GameUI composition root) still ships in `AbcUi.dll`; each page moves out in
-its own module commit.
+GameUI composition root) still ships in `AbcUi.dll`; the `abcui.gameui`
+module takes them over page by page in follow-up commits.
 
 ## Feature overview
 

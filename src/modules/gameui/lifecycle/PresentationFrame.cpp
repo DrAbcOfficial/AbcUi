@@ -5,6 +5,7 @@
 #include <RmlUi/Debugger.h>
 #include "modules/gameui/GameUiModule.h"
 #include "modules/gameui/GameUiPages.h"
+#include "modsys/ModuleDocuments.h"
 namespace gameui {
 void GameUiModule::pumpVisibleWork() {
 
@@ -66,7 +67,8 @@ void GameUiModule::pumpVisibleWork() {
     // one (stub/overlay just dismissed) is exactly the stale state
     // this guard exists to repair.
     if (owner && owner->IsVisible() &&
-        (owner == Shell->document() ||
+        (framework::module_documents::ownsVisible(owner) ||
+         owner == Shell->document() ||
          owner == (SubStub ? SubStub->document() : nullptr) ||
          owner == (Console ? Console->document() : nullptr) ||
          owner == (Settings ? Settings->document() : nullptr) ||

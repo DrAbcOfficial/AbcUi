@@ -33,6 +33,7 @@
 #include "../services/crosshair/Geometry.h"
 #include "../rmlui/animated/ElementAnimatedImage.h"
 #include "../rmlui/texture/SpriteResource.h"
+#include "ModuleDocuments.h"
 
 namespace framework {
 namespace {
@@ -54,8 +55,32 @@ int copyOut(const std::string &text, char *out, uint32_t outSize) {
 namespace UiApi {
 namespace {
 
+// Documents reach the ui section as one opaque handle type; panel handles
+// are owned by PanelManager, page handles by module_documents. Resolve by
+// membership (never by casting) so a stale handle is a no-op instead of a
+// wild pointer.
+Rml::ElementDocument *documentOf(AbcUiDocument *doc) {
+  if (!doc)
+    return nullptr;
+  if (module_documents::isDocument(doc))
+    return module_documents::documentOf(doc);
+  const HudPanel *panel = reinterpret_cast<HudPanel *>(doc);
+  for (const auto &candidate : PanelManager::panels()) {
+    if (candidate.get() == panel)
+      return candidate->getDocument();
+  }
+  return nullptr;
+}
+
 HudPanel *panelOf(AbcUiDocument *doc) {
-  return reinterpret_cast<HudPanel *>(doc);
+  if (!doc || module_documents::isDocument(doc))
+    return nullptr;
+  const HudPanel *panel = reinterpret_cast<HudPanel *>(doc);
+  for (const auto &candidate : PanelManager::panels()) {
+    if (candidate.get() == panel)
+      return const_cast<HudPanel *>(candidate.get());
+  }
+  return nullptr;
 }
 
 Rml::Element *elementOf(AbcUiElement *element) {
@@ -69,32 +94,51 @@ AbcUiDocument *apiPanelDocument(const char *panelName) {
 }
 
 void apiDocumentShow(AbcUiDocument *doc) {
+  if (module_documents::isDocument(doc)) {
+    module_documents::show(doc);
+    return;
+  }
   if (HudPanel *panel = panelOf(doc))
     panel->show();
 }
 
 void apiDocumentHide(AbcUiDocument *doc) {
+  if (module_documents::isDocument(doc)) {
+    module_documents::hide(doc);
+    return;
+  }
   if (HudPanel *panel = panelOf(doc))
     panel->hide();
 }
 
 void apiDocumentSetProperty(AbcUiDocument *doc, const char *name,
                             const char *value) {
-  HudPanel *panel = panelOf(doc);
-  if (!panel || !name || !value)
+  if (!name || !value)
     return;
-  if (Rml::ElementDocument *document = panel->getDocument())
+  if (Rml::ElementDocument *document = documentOf(doc))
     document->SetProperty(name, value);
 }
 
 AbcUiElement *apiQuerySelector(AbcUiDocument *doc, const char *id) {
-  HudPanel *panel = panelOf(doc);
-  if (!panel || !id || !*id)
+  if (!id || !*id)
     return nullptr;
   const char *key = (*id == '#') ? id + 1 : id;
-  if (Rml::ElementDocument *document = panel->getDocument())
+  if (Rml::ElementDocument *document = documentOf(doc))
     return reinterpret_cast<AbcUiElement *>(document->GetElementById(key));
   return nullptr;
+}
+
+void apiDocumentFocus(AbcUiDocument *doc) {
+  if (Rml::ElementDocument *document = documentOf(doc))
+    document->Focus();
+}
+
+void apiDocumentBlur(AbcUiDocument *doc) {
+  Rml::ElementDocument *document = documentOf(doc);
+  if (!document)
+    return;
+  if (Rml::Context *context = document->GetContext())
+    context->UnfocusDocument(document);
 }
 
 void apiElementSetProperty(AbcUiElement *element, const char *name,
@@ -202,8 +246,7 @@ int apiProject(const float world[3], float screen[2]) {
 }
 
 int apiDocumentSize(AbcUiDocument *doc, int *width, int *height) {
-  HudPanel *panel = panelOf(doc);
-  Rml::ElementDocument *document = panel ? panel->getDocument() : nullptr;
+  Rml::ElementDocument *document = documentOf(doc);
   Rml::Context *context = document ? document->GetContext() : nullptr;
   if (!context)
     return 0;
@@ -435,6 +478,8 @@ int apiHudSprite(const char *name, char *atlas, uint32_t atlasSize,
 }
 
 int apiDocumentVisible(AbcUiDocument *doc) {
+  if (module_documents::isDocument(doc))
+    return module_documents::visible(doc);
   const HudPanel *panel = panelOf(doc);
   return panel && panel->isVisible() ? 1 : 0;
 }
@@ -521,6 +566,8 @@ const AbcUiUiApi kUiApi = {
     apiElementScrollHeight,
     apiElementClientHeight,
     apiElementSetSelection,
+    apiDocumentFocus,
+    apiDocumentBlur,
 };
 
 } // namespace

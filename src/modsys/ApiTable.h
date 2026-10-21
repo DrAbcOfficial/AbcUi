@@ -50,4 +50,12 @@ namespace VoiceApi {
 const AbcUiVoiceApi *get();
 } // namespace VoiceApi
 
+namespace DocumentsApi {
+const AbcUiDocumentsApi *get();
+} // namespace DocumentsApi
+
+namespace MenuApi {
+const AbcUiMenuApi *get();
+} // namespace MenuApi
+
 } // namespace framework

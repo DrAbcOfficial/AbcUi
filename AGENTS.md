@@ -89,19 +89,22 @@ implemented rules the transition must keep:
 - UI features live in modules under `modules/<id>/`: `manifest.json` + `src/`
   + `assets/` + a CMake `add_library(... MODULE)` target. Migrated so far:
   flashlight, textmenu, vote, motd, weaponchoose, killfeed, textfeed, sidetext,
-  health, ammo, hudeffects, crosshair, damage, itemhighlight and playerboard;
-  `demo` is the minimal example. modeltest/videotest stay development-only.
+  health, ammo, hudeffects, crosshair, damage, itemhighlight, playerboard,
+  radar, scoreboard and chat; `demo` is the minimal example.
+  modeltest/videotest stay development-only.
 - The module ABI is pure C, versioned struct tables under `sdk/abcui/`
   (same pattern as `AbcCore_CreateInterface`). A module DLL exports exactly
   one entry, `AbcUiModule_Main(abiVersion, api, outDescriptor)`; everything
   else crosses the boundary as C function pointers and POD payloads. Modules
   must not include RmlUi headers or link the framework's static libraries.
-  Sections: core, console, events, vfs, panels, data, ui, commands, weapons,
-  players. Adding a function means appending it to the section (and its
-  initializer in `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` /
-  `ApiPlayers.cpp` - a missing initializer is silently a null pointer; the
-  table audit in `ApiTable::get` catches it at boot), and appending to
-  snapshot structs means the writer must honor the caller's `structSize`.
+  Sections: core, console, events, vfs, panels, documents, data, ui, commands,
+  weapons, players, radar, shell, voice, score, input, menu. Adding a function
+  means appending it to the section end (and its initializer in
+  `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
+  `ApiDocuments.cpp` / `ApiMenu.cpp` - a missing initializer is silently a
+  null pointer; the table audit in `ApiTable::get` catches it at boot), and
+  appending to snapshot structs means the writer must honor the caller's
+  `structSize`.
 - Module packages are zip files at `svencoop/abc/abcui/modules/` (real files,
   never inside a VPK): `manifest.json`, the entry DLL and the module's
   rml / rcss / img / lang trees. Manifest fields: `id`, `name`, `description`,
@@ -124,6 +127,15 @@ implemented rules the transition must keep:
   `installHudPanels` cycle builds fresh wrappers: `PanelManager::shutdown`
   destroys the panel list on every HUD_Shutdown, so taking the wrappers once
   would lose every module panel after the first map change.
+- Interactive pages are module-owned documents (`documents->create`), never
+  framework pages: the framework loads them on every context cycle, forwards
+  ready/show/hide/close, and keeps the menu layer's focus guard and hide-all
+  rule for descriptors carrying `ABCUI_DOC_FLAG_MENU`. Page modules present
+  themselves from `menu.state` (transitions) and `menu.paint` (the per-frame
+  presentation beat), and navigate through the `menu` section
+  (`openPage`/`back`/`ensureUp`/`resume`) - never through a native GameUI
+  window. The page stack, phase machine and takeover stay framework-side
+  until the last page moves out.
 - Data exchange is event-bus based (`src/modsys/EventBus.h`): string channels,
   each backed by priority buckets of `abc::CallbackList` (eventpp reused from
   AbcCore). Priority > 0 runs before the framework default (interception and

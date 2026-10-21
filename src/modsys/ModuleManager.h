@@ -27,9 +27,10 @@ namespace modmanager {
 // number of modules that loaded.
 size_t boot();
 
-// Lifecycle forwarders, driven by the registry adapter.
+// Lifecycle forwarders, driven by the registry adapter. contextReady
+// loads every registered module page before the modules see the context.
 void initAll();
-void contextReadyAll();
+void contextReadyAll(Rml::Context *context);
 void frameAll(double frameTime);
 void vidInitAll();
 void shutdownAll();

@@ -15,6 +15,7 @@
 #include "EventBus.h"
 #include "FrameworkVersion.h"
 #include "MemoryDll.h"
+#include "ModuleDocuments.h"
 #include "ModuleManifest.h"
 #include "ModuleVfs.h"
 
@@ -131,8 +132,8 @@ public:
   void onInit() override {
     modmanager::initAll();
   }
-  void onContextReady(Rml::Context *) override {
-    modmanager::contextReadyAll();
+  void onContextReady(Rml::Context *context) override {
+    modmanager::contextReadyAll(context);
   }
   void onFrame(double frameTime) override {
     modmanager::frameAll(frameTime);
@@ -286,7 +287,9 @@ void initAll() {
   }
 }
 
-void contextReadyAll() {
+void contextReadyAll(Rml::Context *context) {
+  // Registered pages first: a module's onContextReady may already show one.
+  module_documents::contextReady(context);
   for (LoadedModule &module : loaded()) {
     if (module.descriptor.onContextReady)
       guarded(module.manifest.id.c_str(), "onContextReady",
@@ -311,6 +314,10 @@ void vidInitAll() {
 }
 
 void shutdownAll() {
+  // Pages are framework-owned: close them first, while the Rml context is
+  // alive and the modules are fully alive (onClose fires here, not after the
+  // module's own teardown).
+  module_documents::shutdown();
   for (auto it = loaded().rbegin(); it != loaded().rend(); ++it) {
     if (it->descriptor.onShutdown)
       guarded(it->manifest.id.c_str(), "onShutdown", it->descriptor.onShutdown);
@@ -318,11 +325,18 @@ void shutdownAll() {
 }
 
 void unloadAll() {
+  // Close pages before the modules tear themselves down (onClose is a module
+  // callback); the descriptor strings and callback pointers point into the
+  // module images, so the registry must also forget them before any image
+  // goes away.
+  module_documents::shutdown();
   for (auto it = loaded().rbegin(); it != loaded().rend(); ++it) {
     if (it->descriptor.onUnload)
       guarded(it->manifest.id.c_str(), "onUnload", it->descriptor.onUnload);
-    it->library->unload();
   }
+  module_documents::unload();
+  for (auto it = loaded().rbegin(); it != loaded().rend(); ++it)
+    it->library->unload();
   loaded().clear();
   ModuleVfs::unmountAll();
 }

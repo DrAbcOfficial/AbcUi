@@ -379,6 +379,11 @@ typedef struct AbcUiUiApi {
   // Text caret range (the chat editor parks it at the end after a recall).
   void (*elementSetSelection)(AbcUiElement *element, int32_t start,
                               int32_t end);
+  // Document focus (focused root: keys reach the document, the page keeps its
+  // last control focus) and focus release (removes the document from the
+  // context's focus history). Safe on panel and page handles.
+  void (*documentFocus)(AbcUiDocument *doc);
+  void (*documentBlur)(AbcUiDocument *doc);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -650,6 +655,120 @@ typedef struct AbcUiVoiceApi {
   int32_t (*setBlocked)(int32_t index, int32_t blocked);
 } AbcUiVoiceApi;
 
+// ----------------------------------------------------------- documents ----
+
+// Interactive (menu / dialogue) documents. A HUD panel is passive: pointer
+// events off, no focus. A module page is the complement - one Rml document
+// shown with document focus, pulled to the front of the context z-order,
+// hit-testable, and closable. Register the descriptor once (the package
+// image owns the document assets); the framework loads it on every Rml
+// context cycle, because documents die with the context.
+//
+// The page keeps its DOM work through the ui section: root() is the document
+// element for delegated listeners (querySelector resolves ids inside it),
+// and every element handle follows the same per-callback lifetime rule.
+#define ABCUI_DOC_FLAG_BACKDROP                                                \
+  (1 << 0) // wall-sized surface: attach the
+           // shared blurred backdrop
+#define ABCUI_DOC_FLAG_MENU                                                    \
+  (1 << 1) // part of the menu layer: hidden
+           // when the menu lowers and honored
+           // by the focus guard
+
+typedef struct AbcUiDocumentDesc {
+  uint32_t structSize;
+  const char *name; // unique document name (diagnostics, lookup)
+  const char *path; // document path ("abc/abcui/...", "mod://<id>/...")
+  uint32_t flags;   // ABCUI_DOC_FLAG_*
+  int32_t zIndex;   // cross-document tier; 0 = default
+  void *userdata;   // passed back to every callback
+  // The main document loaded (never fired for the built-in emergency page;
+  // use documents->degraded to detect that case). Bind listeners here.
+  void (*onReady)(void *userdata);
+  void (*onShow)(void *userdata);
+  void (*onHide)(void *userdata);
+  // Document closed: a context shutdown or documents->destroy. Handles are
+  // already invalid; drop anything the owner cached.
+  void (*onClose)(void *userdata);
+} AbcUiDocumentDesc;
+
+typedef struct AbcUiDocumentsApi {
+  uint32_t structSize;
+  // Registers a page. The descriptor strings are copied; legal at any time
+  // (a document created after contextReady loads immediately). Returns null
+  // on a duplicate name or an incomplete descriptor.
+  AbcUiDocument *(*create)(const AbcUiDocumentDesc *desc);
+  // Unregisters and closes (onClose fires while the module is still loaded).
+  void (*destroy)(AbcUiDocument *doc);
+  int32_t (*loaded)(AbcUiDocument *doc);
+  int32_t (*degraded)(AbcUiDocument *doc);
+  int32_t (*visible)(AbcUiDocument *doc);
+  void (*show)(AbcUiDocument *doc);
+  void (*hide)(AbcUiDocument *doc);
+  // The document element, for delegated listeners; null while unloaded.
+  AbcUiElement *(*root)(AbcUiDocument *doc);
+  // Recovery for a degraded document: re-attempt the main document. Returns
+  // the load state afterwards.
+  int32_t (*retry)(AbcUiDocument *doc);
+} AbcUiDocumentsApi;
+
+// ---------------------------------------------------------------- menu ----
+
+// The replacement GameUI's navigation state, published after every
+// presentation sync as the payload of "menu.state" (transitions only) and
+// "menu.paint" (every presentation beat while a page layer is up). Page
+// modules present their own document when the reported top page is theirs;
+// the framework owns the takeover, the input claim and the page stack.
+//
+// Numeric ids are part of the ABI: they mirror gameui::menu::MenuPage and
+// BackendPhase.
+#define ABCUI_MENU_PAGE_NONE (-1)
+#define ABCUI_MENU_PAGE_MAIN 0
+#define ABCUI_MENU_PAGE_PAUSE 1
+#define ABCUI_MENU_PAGE_SETTINGS 2
+#define ABCUI_MENU_PAGE_SERVERS 3
+#define ABCUI_MENU_PAGE_CREATE_GAME 4
+#define ABCUI_MENU_PAGE_PLAYER_LIST 5
+#define ABCUI_MENU_PAGE_VOTE 6
+#define ABCUI_MENU_PAGE_COMMAND 7
+#define ABCUI_MENU_PAGE_INVENTORY 8
+#define ABCUI_MENU_PAGE_LOADING 9
+
+#define ABCUI_MENU_PHASE_BOOTING 0
+#define ABCUI_MENU_PHASE_DISCONNECTED 1
+#define ABCUI_MENU_PHASE_CONNECTING 2
+#define ABCUI_MENU_PHASE_LOADING 3
+#define ABCUI_MENU_PHASE_IN_GAME 4
+#define ABCUI_MENU_PHASE_SHUTTING_DOWN 5
+#define ABCUI_MENU_PHASE_FATAL 6
+
+typedef struct AbcUiMenuState {
+  uint32_t structSize;
+  int32_t phase;       // ABCUI_MENU_PHASE_*
+  int32_t page;        // top page, ABCUI_MENU_PAGE_NONE when the stack is empty
+  int32_t up;          // the menu layer is presented
+  int32_t loading;     // a load attempt owns the screen
+  int32_t consoleOpen; // the console overlay is up
+  int32_t hasLevel;    // a level is loaded
+  int32_t canClose;    // closing the menu resumes gameplay
+  uint32_t generation; // live connect/local attempt id, 0 = none
+} AbcUiMenuState;
+
+typedef struct AbcUiMenuApi {
+  uint32_t structSize;
+  void (*state)(AbcUiMenuState *out);
+  // Full open intent of one page (ensure the menu is up, reconcile the
+  // phase, push the page, sync the presentation). 1 when the page is on top
+  // afterwards. `page` is an ABCUI_MENU_PAGE_* value.
+  int32_t (*openPage)(int32_t page);
+  // One back intent plus the presentation sync (the page's Cancel action).
+  void (*back)(void);
+  // Raise the menu without pushing a page (idempotent); 1 when it is up.
+  int32_t (*ensureUp)(void);
+  // Close the menu and resume gameplay (in-game only); 1 on a decided close.
+  int32_t (*resume)(void);
+} AbcUiMenuApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -695,6 +814,8 @@ typedef struct AbcUiModuleApi {
   const AbcUiVoiceApi *voice;
   const AbcUiScoreApi *score;
   const AbcUiInputApi *input;
+  const AbcUiDocumentsApi *documents;
+  const AbcUiMenuApi *menu;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

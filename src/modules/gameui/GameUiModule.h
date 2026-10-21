@@ -10,6 +10,7 @@
 #include "services/uiconfig/ConfigRepository.h"
 #include "../../services/EngineUiBackend.h"
 #include "../../services/GameUiBridge.h"
+#include "../../services/menu/MenuHost.h"
 #include "../../services/loading/LoadingModel.h"
 #include "../../services/loading/AutoRetryGate.h"
 #include "../../services/playerlist/PlayerListModel.h"
@@ -114,6 +115,13 @@ private:
   void dismissMenu();
   void reconcilePhase();
   void syncMenuPresentation();
+  void projectMenuPresentation();
+  void publishMenuPresentation();
+  services::menu::Snapshot menuSnapshot() const;
+  int32_t openMenuPage(int32_t page);
+  int32_t ensureMenuUp();
+  void menuBack();
+  int32_t resumeFromMenu();
   void showStubPage(panels::menushared::MenuStubPage *stub, MenuPage page,
                     bool console);
   void onMenuAction(const char *action);

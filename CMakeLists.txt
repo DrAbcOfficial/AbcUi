@@ -165,6 +165,9 @@ add_library(AbcUi MODULE
     src/modsys/ApiPlayers.cpp
     src/modsys/ApiServices.cpp
     src/modsys/ApiInput.cpp
+    src/modsys/ApiDocuments.cpp
+    src/modsys/ApiMenu.cpp
+    src/modsys/ModuleDocuments.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
     src/render/ScreenMetrics.cpp
@@ -269,6 +272,7 @@ add_library(AbcUi MODULE
     src/modules/gameui/settings/SettingsResources.cpp
     src/modules/gameui/navigation/MenuController.cpp
     src/services/GameUiBridge.cpp
+    src/services/menu/MenuHost.cpp
     src/services/steam/RuntimeAccess.cpp
     src/services/EngineUiBackend.cpp
     src/services/console/ConsoleBuffer.cpp
