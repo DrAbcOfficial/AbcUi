@@ -11,6 +11,7 @@
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementUtilities.h>
 #include <RmlUi/Core/Elements/ElementFormControl.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 #include <RmlUi/Core/Event.h>
 #include <RmlUi/Core/EventListener.h>
 
@@ -329,6 +330,35 @@ void apiElementSetValue(AbcUiElement *element, const char *text) {
     control->SetValue(text ? text : "");
 }
 
+float apiElementScrollTop(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  return target ? target->GetScrollTop() : 0.0f;
+}
+
+void apiElementSetScrollTop(AbcUiElement *element, float top) {
+  if (Rml::Element *target = elementOf(element))
+    target->SetScrollTop(top);
+}
+
+float apiElementScrollHeight(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  return target ? target->GetScrollHeight() : 0.0f;
+}
+
+float apiElementClientHeight(AbcUiElement *element) {
+  Rml::Element *target = elementOf(element);
+  return target ? target->GetClientHeight() : 0.0f;
+}
+
+void apiElementSetSelection(AbcUiElement *element, int32_t start, int32_t end) {
+  Rml::Element *target = elementOf(element);
+  auto *input = target
+                    ? rmlui_dynamic_cast<Rml::ElementFormControlInput *>(target)
+                    : nullptr;
+  if (input)
+    input->SetSelectionRange(start, end);
+}
+
 const char *apiElementId(AbcUiElement *element) {
   Rml::Element *target = elementOf(element);
   return target ? target->GetId().c_str() : "";
@@ -486,6 +516,11 @@ const AbcUiUiApi kUiApi = {
     apiElementBlur,
     apiElementValue,
     apiElementSetValue,
+    apiElementScrollTop,
+    apiElementSetScrollTop,
+    apiElementScrollHeight,
+    apiElementClientHeight,
+    apiElementSetSelection,
 };
 
 } // namespace

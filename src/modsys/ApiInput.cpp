@@ -9,6 +9,8 @@
 #include "../framework/UiInputRouter.h"
 #include "../rmlui/ImeOverlay.h"
 #include "../rmlui/InputBridge.h"
+#include "../rmlui/TextInput.h"
+#include "../services/GameUiBridge.h"
 
 namespace framework {
 namespace InputApi {
@@ -99,6 +101,18 @@ int32_t apiExclusive() {
   return rmlui::uiRouter().exclusive() ? 1 : 0;
 }
 
+int32_t apiTextComposing() {
+  return rmlui::textComposing() ? 1 : 0;
+}
+
+void apiCancelComposition() {
+  rmlui::cancelComposition();
+}
+
+int32_t apiMenuUp() {
+  return services::nativeUiBridge().menuUp() ? 1 : 0;
+}
+
 int32_t apiImeLanguageTag(char *out, uint32_t outSize) {
   const std::string tag = rmlui::ime::inputLanguageTag();
   if (out && outSize > 0) {
@@ -112,7 +126,8 @@ int32_t apiImeLanguageTag(char *out, uint32_t outSize) {
 
 const AbcUiInputApi kInputApi = {
     sizeof(AbcUiInputApi), apiTakeToken, apiReleaseToken,
-    apiTokenHeld,          apiExclusive, apiImeLanguageTag,
+    apiTokenHeld,          apiExclusive, apiTextComposing,
+    apiCancelComposition,  apiMenuUp,    apiImeLanguageTag,
 };
 
 } // namespace

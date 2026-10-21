@@ -370,6 +370,15 @@ typedef struct AbcUiUiApi {
   void (*elementBlur)(AbcUiElement *element);
   int32_t (*elementValue)(AbcUiElement *element, char *out, uint32_t outSize);
   void (*elementSetValue)(AbcUiElement *element, const char *text);
+  // Scrolling: the log windows use these to follow the tail and to browse
+  // older lines (values in Rml pixels).
+  float (*elementScrollTop)(AbcUiElement *element);
+  void (*elementSetScrollTop)(AbcUiElement *element, float top);
+  float (*elementScrollHeight)(AbcUiElement *element);
+  float (*elementClientHeight)(AbcUiElement *element);
+  // Text caret range (the chat editor parks it at the end after a recall).
+  void (*elementSetSelection)(AbcUiElement *element, int32_t start,
+                              int32_t end);
 } AbcUiUiApi;
 
 // ------------------------------------------------------------- commands ----
@@ -605,6 +614,12 @@ typedef struct AbcUiInputApi {
   int32_t (*tokenHeld)(AbcUiInputToken token);
   // True while some owner holds UI input (the engine must not act on keys).
   int32_t (*exclusive)(void);
+  // An IME composition is live (the editor must not act on Enter/ESC; the
+  // input method consumes them) / drop the live composition.
+  int32_t (*textComposing)(void);
+  void (*cancelComposition)(void);
+  // The native pause menu is up (a focused editor must close).
+  int32_t (*menuUp)(void);
   // Active input-method short tag (CN/TW/HK/JP/KR), "" when none. Same
   // measure-then-copy contract as ui->escapeRml.
   int32_t (*imeLanguageTag)(char *out, uint32_t outSize);

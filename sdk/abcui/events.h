@@ -154,6 +154,17 @@ typedef struct AbcUiVguiMenuEvent {
   int32_t menu;
 } AbcUiVguiMenuEvent;
 
+// Engine key numbers the input.key channel carries (HLSDK keydefs.h values;
+// the ABI cannot include the engine headers).
+#define ABCUI_KEY_ENTER 13
+#define ABCUI_KEY_ESCAPE 27
+#define ABCUI_KEY_BACKSPACE 127
+#define ABCUI_KEY_UPARROW 128
+#define ABCUI_KEY_DOWNARROW 129
+#define ABCUI_KEY_KP_ENTER 169
+#define ABCUI_KEY_MWHEELDOWN 239
+#define ABCUI_KEY_MWHEELUP 240
+
 // input.key - one HUD key event. Veto channel: a sink returning nonzero
 // consumes the press so the engine binding chain never sees it (the vote
 // keys answer the vote instead of running their binding).
