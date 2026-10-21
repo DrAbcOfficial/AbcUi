@@ -323,28 +323,38 @@ const AbcUiUiApi *get() {
 namespace DataApi {
 namespace {
 
+// Snapshot writers honor the caller's declared structSize (ABI rule: a
+// caller may be built against an older, shorter header). 0 means "the
+// framework's current size".
+size_t declaredBytes(size_t declared, size_t full) {
+  return (declared == 0 || declared > full) ? full : declared;
+}
+
 void apiHudState(AbcUiHudState *out) {
   if (!out)
     return;
-  *out = AbcUiHudState{};
-  out->structSize = sizeof(AbcUiHudState);
-  out->suit = hudstate::hasSuit() ? 1 : 0;
-  out->spectate = hudstate::isSpectate() ? 1 : 0;
-  out->longjump = hudstate::hasLongJump() ? 1 : 0;
-  out->hideBits = hudstate::debugHideTokens();
+  const size_t bytes = declaredBytes(out->structSize, sizeof(AbcUiHudState));
+  AbcUiHudState state{};
+  AbcUiHudState *target = &state;
+  state.structSize = sizeof(AbcUiHudState);
+  target->suit = hudstate::hasSuit() ? 1 : 0;
+  target->spectate = hudstate::isSpectate() ? 1 : 0;
+  target->longjump = hudstate::hasLongJump() ? 1 : 0;
+  target->hideBits = hudstate::debugHideTokens();
   const hudstate::MessageSnapshot &messages = hudstate::messages();
-  out->flashOn = messages.FlashOn ? 1 : 0;
-  out->flashBattery = messages.FlashBattery;
-  out->health = static_cast<int32_t>(hudstate::health());
-  out->armor = messages.Armor;
-  out->waterLevel = hudstate::waterlevel();
-  out->fov = hudstate::fov();
+  target->flashOn = messages.FlashOn ? 1 : 0;
+  target->flashBattery = messages.FlashBattery;
+  target->health = static_cast<int32_t>(hudstate::health());
+  target->armor = messages.Armor;
+  target->waterLevel = hudstate::waterlevel();
+  target->fov = hudstate::fov();
   const float *punch = hudstate::punchangle();
   if (punch) {
-    out->punchAngle[0] = punch[0];
-    out->punchAngle[1] = punch[1];
-    out->punchAngle[2] = punch[2];
+    target->punchAngle[0] = punch[0];
+    target->punchAngle[1] = punch[1];
+    target->punchAngle[2] = punch[2];
   }
+  std::memcpy(out, &state, bytes);
 }
 
 // The ScoreInfo feed carries the scoreboard rows; the local row's frags is

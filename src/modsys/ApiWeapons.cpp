@@ -2,6 +2,7 @@
 // selection action). See ApiTable.h for how it joins the module table.
 #include "ApiTable.h"
 
+#include <cstring>
 #include <string>
 
 #include "../data/WeaponResource.h"
@@ -33,29 +34,41 @@ void copySprite(const weaponres::Weapon::SpriteSource &source,
   out.rect[3] = source.rect.bottom;
 }
 
+// Copies `full` into the caller's buffer honoring the size it declared
+// (ABI rule: a caller may be built against an older, shorter header; 0 means
+// "the framework's current size").
+void copyOut(const AbcUiWeaponInfo &full, AbcUiWeaponInfo &out) {
+  const size_t declared = out.structSize;
+  const size_t bytes =
+      declared == 0 || declared > sizeof(full) ? sizeof(full) : declared;
+  std::memcpy(&out, &full, bytes);
+}
+
 void fill(const weaponres::Weapon &weapon, AbcUiWeaponInfo &out) {
-  out.structSize = sizeof(AbcUiWeaponInfo);
-  out.slot = weapon.slot;
-  out.slotPos = weapon.slotPos;
-  out.ammoType = weapon.ammoType;
-  out.ammo2Type = weapon.ammo2Type;
-  out.max1 = weapon.max1;
-  out.max2 = weapon.max2;
-  out.flags = weapon.flags;
-  out.owned = weaponres::isOwned(&weapon) ? 1 : 0;
-  out.hasAmmo = weaponres::hasAmmo(&weapon) ? 1 : 0;
-  out.clip = weapon.clip;
-  out.clip2 = weapon.clip2;
-  out.state = weapon.state;
-  copyField(weapon.name, out.name, sizeof(out.name));
-  copySprite(weapon.active, out.active);
-  copySprite(weapon.inactive, out.inactive);
-  copySprite(weapon.ammo, out.ammo);
-  copySprite(weapon.ammo2, out.ammo2);
-  copySprite(weapon.crosshair, out.crosshair);
-  copySprite(weapon.autoaim, out.autoaim);
-  copySprite(weapon.zoomedCrosshair, out.zoomedCrosshair);
-  copySprite(weapon.zoomedAutoaim, out.zoomedAutoaim);
+  AbcUiWeaponInfo full{};
+  full.structSize = sizeof(AbcUiWeaponInfo);
+  full.slot = weapon.slot;
+  full.slotPos = weapon.slotPos;
+  full.ammoType = weapon.ammoType;
+  full.ammo2Type = weapon.ammo2Type;
+  full.max1 = weapon.max1;
+  full.max2 = weapon.max2;
+  full.flags = weapon.flags;
+  full.owned = weaponres::isOwned(&weapon) ? 1 : 0;
+  full.hasAmmo = weaponres::hasAmmo(&weapon) ? 1 : 0;
+  full.clip = weapon.clip;
+  full.clip2 = weapon.clip2;
+  full.state = weapon.state;
+  copyField(weapon.name, full.name, sizeof(full.name));
+  copySprite(weapon.active, full.active);
+  copySprite(weapon.inactive, full.inactive);
+  copySprite(weapon.ammo, full.ammo);
+  copySprite(weapon.ammo2, full.ammo2);
+  copySprite(weapon.crosshair, full.crosshair);
+  copySprite(weapon.autoaim, full.autoaim);
+  copySprite(weapon.zoomedCrosshair, full.zoomedCrosshair);
+  copySprite(weapon.zoomedAutoaim, full.zoomedAutoaim);
+  copyOut(full, out);
 }
 
 int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {
