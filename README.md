@@ -113,6 +113,47 @@ the built-in modules used: `onLoad`, `onInit`, `onContextReady`, `onFrame`,
 teardown. A module that fails validation is skipped together with its
 dependents; the rest keep working.
 
+Entries and callbacks must not throw across the C ABI: cross-image C++
+unwinding is not guaranteed for manually mapped DLLs. Host guards defensively
+handle exceptions that reach the host, not native memory faults or arbitrary
+module failures. Report expected startup errors with
+`core->failInitialization(reason)` and return normally; a zero entry return
+still rejects the module. Reported entry/`onLoad` failures roll back framework
+registrations before releasing the image. A failed `onInit` also retires its
+dependents before they initialize. Optional shutdown/unload callbacks must
+handle partial initialization and a context that may not exist yet; a null
+`onLoad` is a valid no-op. Caught runtime exceptions have a neutral return,
+not transactional rollback of module state.
+
+Framework registrations retain their creating module's identity across nested
+event, command, cvar, panel, document, DOM and input callbacks. Failure and final
+unload revoke registrations even when a module omitted manual cleanup: events,
+command handlers, cvar watches, panels, documents, file views and the vote gate
+are process-scoped; DOM listeners and input tokens are also reclaimed at each
+context shutdown. Commands/cvars already registered with the engine remain
+process-owned (removed handlers become inert); engine commands and cvar value
+changes are not undone. A command or cvar watch owned by another live module
+cannot be replaced. All module callback gates close before final unload starts,
+so one module's cleanup cannot call another module after its teardown. HUD
+shutdown does not remove process-scoped subscriptions or re-install usermsg
+hooks. Modules must still honor borrowed-element lifetimes and may explicitly
+release their own resources earlier.
+Service calls are main-thread-only; worker results must be handed off through
+the module's main-thread callbacks rather than invoking the SDK from a worker.
+Module-created workers and arbitrary allocations remain module-owned and must
+be stopped/freed before `onUnload` returns.
+New DOM listeners and input tokens are refused before context assembly or
+during teardown. Documents created from a shutdown callback stay unloaded
+until the next context instead of retaining a pointer into the dying one.
+Automatic registration reclamation and initialization rollback require
+AbcUi 0.8.1 or later: modules relying on these guarantees must declare
+`"minAbcUi": "0.8.1"` (or newer). The module ABI remains version 1.
+The appended `core->failInitialization` returns 1 when accepted during
+Main/onLoad/onInit, or 0 outside initialization/already reported. It closes
+new registrations immediately, with rollback after the current callback
+returns. Use `ABCUI_API_HAS_MEMBER` before accessing it on an older host;
+`core->error` is diagnostic output only, not a failure report.
+
 Module ids are lowercase alphanumeric segments separated by dots. Versions
 (`version` and `minAbcUi`) are non-empty dot-separated decimal segments, with
 no suffixes or empty segments; leading zeroes are numeric and omitted trailing

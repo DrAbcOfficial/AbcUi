@@ -10,10 +10,10 @@
 // with DLL_PROCESS_ATTACH on success; unload runs DllMain(DETACH), releases
 // the imported modules and frees the image.
 //
-// x86 SEH and C++ exceptions work for manually mapped images (the FS-chain
-// needs no kernel registration); static TLS, delay-loaded imports and .NET
-// images are rejected with a load error instead of failing silently later.
-// These constraints are documented in the SDK.
+// The image is not registered with the OS loader; cross-image C++ unwinding
+// is not guaranteed. SDK callbacks must not throw across the C ABI; expected
+// startup errors use core->failInitialization. Static TLS, delay-loaded
+// imports and .NET images are rejected with a load error.
 
 #include <cstddef>
 #include <string>

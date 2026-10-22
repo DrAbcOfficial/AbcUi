@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -25,6 +26,7 @@
 // definition must too; it owns one package entry view.
 struct AbcUiFileView {
   framework::PackageEntry entry;
+  framework::module_resources::Registration lifetime;
 };
 
 namespace framework {
@@ -76,6 +78,10 @@ void apiError(const char *format, ...) {
   abc::ConsoleError("[module] %s\n", buffer);
 }
 
+int32_t apiFailInitialization(const char *reason) {
+  return module_resources::failInitialization(reason) ? 1 : 0;
+}
+
 const AbcUiCoreApi kCoreApi = {
     sizeof(AbcUiCoreApi),
     packedVersion(kFrameworkVersion),
@@ -83,13 +89,14 @@ const AbcUiCoreApi kCoreApi = {
     apiPrint,
     apiWarn,
     apiError,
+    apiFailInitialization,
 };
 
 // ------------------------------------------------------------- console ----
 
 AbcUiCvarHandle apiRegisterCvar(const char *name, const char *value,
                                 int flags) {
-  if (!name || !value)
+  if (!name || !value || !module_resources::accepting())
     return nullptr;
   return static_cast<AbcUiCvarHandle>(
       abc::CREATE_CVAR(name, value, flags, nullptr));
@@ -117,6 +124,7 @@ void apiCvarString(AbcUiCvarHandle cvar, char *out, uint32_t outSize,
 struct ModuleCommand {
   AbcUiCommandFn fn = nullptr;
   void *userdata = nullptr;
+  module_resources::Registration lifetime;
 };
 
 std::map<std::string, ModuleCommand> &moduleCommands() {
@@ -130,18 +138,34 @@ void moduleCommandThunk() {
   const char *name = gEngfuncs.Cmd_Argv(0);
   const auto &table = moduleCommands();
   const auto it = table.find(name ? name : "");
-  if (it != table.end() && it->second.fn)
-    it->second.fn(it->second.userdata);
+  if (it != table.end() && it->second.fn) {
+    const auto owner = it->second.lifetime.owner();
+    const auto fn = it->second.fn;
+    void *userdata = it->second.userdata;
+    module_resources::invoke(owner, "console command", fn, userdata);
+  }
 }
 
 void apiRegisterCommand(const char *name, AbcUiCommandFn fn, void *userdata) {
-  if (!name || !fn)
+  if (!name || !fn || !module_resources::accepting())
     return;
   auto &table = moduleCommands();
-  const bool fresh = table.find(name) == table.end();
-  table[name] = ModuleCommand{fn, userdata};
+  auto [it, fresh] = table.try_emplace(name);
+  if (it->second.fn &&
+      it->second.lifetime.owner() != module_resources::current()) {
+    abc::ConsoleWarn("[AbcUi] command \"%s\" belongs to another module\n",
+                     name);
+    return;
+  }
+  it->second = ModuleCommand{fn, userdata};
+  it->second.lifetime.track([key = it->first] {
+    auto &record = moduleCommands().at(key);
+    record.fn = nullptr;
+    record.userdata = nullptr;
+    record.lifetime.forget();
+  });
   if (fresh)
-    abc::ADD_COMMAND(name, &moduleCommandThunk);
+    abc::ADD_COMMAND(it->first.c_str(), &moduleCommandThunk);
 }
 
 void apiEngineCommand(const char *command) {
@@ -154,8 +178,28 @@ void apiServerCommand(const char *command) {
     abc::ServerCmd(command);
 }
 
+module_resources::Registration &voteGateLifetime() {
+  static module_resources::Registration lifetime;
+  return lifetime;
+}
+
 void apiSetVoteGate(AbcUiCvarHandle cvar) {
+  if (!module_resources::accepting())
+    return;
+  auto &lifetime = voteGateLifetime();
+  if (cvar && lifetime.tracked() &&
+      lifetime.owner() != module_resources::current()) {
+    abc::ConsoleWarn("[AbcUi] vote gate belongs to another module\n");
+    return;
+  }
+  lifetime.forget();
+  lifetime = module_resources::Registration{};
   netmsg::setVoteGate(static_cast<cvar_t *>(cvar));
+  if (cvar)
+    lifetime.track([] {
+      netmsg::setVoteGate(nullptr);
+      voteGateLifetime().forget();
+    });
 }
 
 // Engine cvar callbacks receive only the cvar pointer; the module's
@@ -163,6 +207,7 @@ void apiSetVoteGate(AbcUiCvarHandle cvar) {
 struct CvarWatch {
   AbcUiCommandFn fn = nullptr;
   void *userdata = nullptr;
+  module_resources::Registration lifetime;
 };
 
 std::map<cvar_t *, CvarWatch> &cvarWatches() {
@@ -173,19 +218,35 @@ std::map<cvar_t *, CvarWatch> &cvarWatches() {
 void cvarWatchThunk(cvar_t *cvar) {
   const auto &table = cvarWatches();
   const auto it = table.find(cvar);
-  if (it != table.end() && it->second.fn)
-    it->second.fn(it->second.userdata);
+  if (it != table.end() && it->second.fn) {
+    const auto owner = it->second.lifetime.owner();
+    const auto fn = it->second.fn;
+    void *userdata = it->second.userdata;
+    module_resources::invoke(owner, "cvar watch", fn, userdata);
+  }
 }
 
 AbcUiCvarHandle apiRegisterCvarWatch(const char *name, const char *value,
                                      int flags, AbcUiCommandFn fn,
                                      void *userdata) {
+  if (!module_resources::accepting())
+    return nullptr;
   if (!name || !value || !fn)
     return apiRegisterCvar(name, value, flags);
+  if (auto *existing = abc::CVAR_GET_POINTER(name)) {
+    const auto it = cvarWatches().find(existing);
+    if (it != cvarWatches().end() &&
+        it->second.lifetime.owner() != module_resources::current()) {
+      abc::ConsoleWarn("[AbcUi] cvar watch \"%s\" belongs to another module\n",
+                       name);
+      return nullptr;
+    }
+  }
   cvar_t *cvar = abc::CREATE_CVAR(name, value, flags, &cvarWatchThunk);
   if (!cvar)
     return nullptr;
   cvarWatches()[cvar] = CvarWatch{fn, userdata};
+  cvarWatches()[cvar].lifetime.track([cvar] { cvarWatches().erase(cvar); });
   return static_cast<AbcUiCvarHandle>(cvar);
 }
 
@@ -258,7 +319,19 @@ const AbcUiEventsApi kEventsApi = {
 
 // ----------------------------------------------------------------- vfs ----
 
+std::set<AbcUiFileView *> &fileViews() {
+  static std::set<AbcUiFileView *> views;
+  return views;
+}
+
+void apiViewFree(AbcUiFileView *view) {
+  if (fileViews().erase(view))
+    delete view;
+}
+
 AbcUiFileView *apiVfsOpen(const char *moduleId, const char *path) {
+  if (!module_resources::accepting())
+    return nullptr;
   auto *view = new (std::nothrow) AbcUiFileView();
   if (!view)
     return nullptr;
@@ -266,19 +339,17 @@ AbcUiFileView *apiVfsOpen(const char *moduleId, const char *path) {
     delete view;
     return nullptr;
   }
+  fileViews().insert(view);
+  view->lifetime.track([view] { apiViewFree(view); });
   return view;
 }
 
 const void *apiViewData(AbcUiFileView *view) {
-  return view ? view->entry.data : nullptr;
+  return fileViews().count(view) ? view->entry.data : nullptr;
 }
 
 uint32_t apiViewSize(AbcUiFileView *view) {
-  return view ? static_cast<uint32_t>(view->entry.size) : 0;
-}
-
-void apiViewFree(AbcUiFileView *view) {
-  delete view;
+  return fileViews().count(view) ? static_cast<uint32_t>(view->entry.size) : 0;
 }
 
 int apiVfsExists(const char *moduleId, const char *path) {
@@ -421,15 +492,15 @@ void verifySections() {
   // later commits appended members. Such omissions only surface as null calls
   // at runtime, so audit every section here and report at boot.
   const bool complete =
-      allMembersSet(kConsoleApi) && allMembersSet(kEventsApi) &&
-      allMembersSet(kVfsApi) && allMembersSet(kPanelsApi) &&
-      allMembersSet(kCommandsApi) && allMembersSet(kRadarApi) &&
-      allMembersSet(*DataApi::get()) && allMembersSet(*UiApi::get()) &&
-      allMembersSet(*WeaponsApi::get()) && allMembersSet(*PlayersApi::get()) &&
-      allMembersSet(*ScoreApi::get()) && allMembersSet(*InputApi::get()) &&
-      allMembersSet(*ShellApi::get()) && allMembersSet(*VoiceApi::get()) &&
-      allMembersSet(*DocumentsApi::get()) && allMembersSet(*MenuApi::get()) &&
-      allMembersSet(*VoteMenuApi::get()) &&
+      kCoreApi.failInitialization && allMembersSet(kConsoleApi) &&
+      allMembersSet(kEventsApi) && allMembersSet(kVfsApi) &&
+      allMembersSet(kPanelsApi) && allMembersSet(kCommandsApi) &&
+      allMembersSet(kRadarApi) && allMembersSet(*DataApi::get()) &&
+      allMembersSet(*UiApi::get()) && allMembersSet(*WeaponsApi::get()) &&
+      allMembersSet(*PlayersApi::get()) && allMembersSet(*ScoreApi::get()) &&
+      allMembersSet(*InputApi::get()) && allMembersSet(*ShellApi::get()) &&
+      allMembersSet(*VoiceApi::get()) && allMembersSet(*DocumentsApi::get()) &&
+      allMembersSet(*MenuApi::get()) && allMembersSet(*VoteMenuApi::get()) &&
       allMembersSet(*PlayerListApi::get()) &&
       allMembersSet(*CommandMenuApi::get()) &&
       allMembersSet(*MenuConfigApi::get()) &&

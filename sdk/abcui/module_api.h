@@ -13,6 +13,11 @@
 // the module and everything that depends on it. Descriptor callbacks run on
 // the engine main thread at the same lifecycle points the framework's
 // built-in modules use (see AGENTS.md "UI module architecture").
+// All service calls are main-thread-only. Worker results must be handed off
+// through the module's main-thread callbacks, never registered from a worker.
+// Entries/callbacks must not throw across this C ABI: manually mapped images
+// do not guarantee cross-image C++ unwinding. Report expected startup errors
+// through core->failInitialization and return from the callback normally.
 
 #include <stdint.h>
 
@@ -48,6 +53,12 @@ typedef struct AbcUiCoreApi {
   void (*print)(const char *format, ...);
   void (*warn)(const char *format, ...);
   void (*error)(const char *format, ...);
+  // AbcUi >= 0.8.1: reports a startup failure without throwing. Valid during
+  // Main/onLoad/onInit (1 accepted, 0 outside startup/already reported).
+  // Stops new registrations immediately; rollback occurs when the callback
+  // returns. Existing engine side effects are not undone. Check availability
+  // with ABCUI_API_HAS_MEMBER, or declare minAbcUi >= 0.8.1.
+  int32_t (*failInitialization)(const char *reason);
 } AbcUiCoreApi;
 
 // ------------------------------------------------------------- console ----
@@ -69,8 +80,8 @@ typedef struct AbcUiConsoleApi {
   // Copies the cvar string (at most outSize-1 bytes + terminator).
   void (*cvarString)(AbcUiCvarHandle cvar, char *out, uint32_t outSize,
                      const char *fallback);
-  // Registers a console command. Registering the same name twice updates
-  // the handler without touching the engine table.
+  // Registers a console command. The same module can update its handler
+  // without touching the engine table; another live owner's name is refused.
   void (*registerCommand)(const char *name, AbcUiCommandFn fn, void *userdata);
   // Runs a client command through the engine command path (menus send
   // "menuselect 3" and friends through this).
@@ -107,7 +118,9 @@ typedef struct AbcUiConsoleApi {
 // (see sdk/abcui/events.h for the constants and their payload structs).
 // Priority > 0 intercepts before the publisher's default 0, < 0 runs after;
 // the same priority keeps subscription order. Subscribe from onLoad or
-// onDocumentReady and unsubscribe before onUnload returns.
+// onDocumentReady. Explicit cleanup is allowed; the framework also revokes
+// remaining subscriptions on module failure/final unload, not HUD_Shutdown
+// (requires minAbcUi >= 0.8.1 when relying on automatic reclamation).
 typedef struct AbcUiEventsApi {
   uint32_t structSize;
   AbcUiSubscription (*subscribe)(const char *channel, int priority,
@@ -1881,7 +1894,9 @@ typedef struct AbcUiModuleDescriptor {
   // While the context is still alive: release documents, listeners and
   // borrowed handles. Not re-fired until the next init/contextReady.
   void (*onShutdown)(void);
-  // Process teardown: every service is gone; free everything else.
+  // Final teardown or initialization failure: free everything else. Handle
+  // partial initialization. Rml may be gone; do not create new registrations.
+  // Stop/join module-created workers before returning.
   void (*onUnload)(void);
 } AbcUiModuleDescriptor;
 

@@ -153,6 +153,7 @@ add_library(AbcUi MODULE
     src/CoreGlobals.cpp
     src/hooks.cpp
     src/modsys/EventBus.cpp
+    src/modsys/ModuleResources.cpp
     src/modsys/PackageFile.cpp
     src/modsys/PackageImage.cpp
     src/modsys/ModuleVfs.cpp

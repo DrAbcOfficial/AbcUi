@@ -30,6 +30,8 @@ struct PackageEntry {
   const void *data = nullptr;
   size_t size = 0;
   std::unique_ptr<std::uint8_t[], void (*)(void *)> owned{nullptr, mz_free};
+  // VFS views retain the backing mapping even if its provider is retired.
+  std::shared_ptr<const void> mappingPin;
 };
 
 class PackageFile {

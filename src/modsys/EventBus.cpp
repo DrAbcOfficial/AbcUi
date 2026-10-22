@@ -8,6 +8,11 @@ constexpr EventSubscription kNoSubscription = 0;
 
 } // namespace
 
+EventBus::~EventBus() {
+  while (!Records.empty())
+    unsubscribe(Records.begin()->first);
+}
+
 EventBus::Channel *EventBus::find(const char *channel) {
   const auto it = Channels.find(channel);
   return it == Channels.end() ? nullptr : &it->second;
@@ -21,12 +26,14 @@ const EventBus::Channel *EventBus::find(const char *channel) const {
 EventSubscription EventBus::subscribe(const char *channel,
                                       EventPriority priority, EventSinkFn sink,
                                       void *userdata) {
-  if (!channel || !sink)
+  if (!channel || !sink || !module_resources::accepting())
     return kNoSubscription;
   Channel &target = Channels[channel];
   DataList &list = target.data[priority];
-  const auto handle = list.append(
-      [sink, userdata](const void *payload) { sink(userdata, payload); });
+  const auto owner = module_resources::current();
+  const auto handle = list.append([sink, userdata, owner](const void *payload) {
+    module_resources::invoke(owner, "event", sink, userdata, payload);
+  });
   ++target.count;
   const EventSubscription token = NextToken++;
   Record &record = Records[token];
@@ -34,18 +41,21 @@ EventSubscription EventBus::subscribe(const char *channel,
   record.priority = priority;
   record.mode = kModeData;
   record.dataHandle = handle;
+  record.lifetime.track([this, token] { unsubscribe(token); });
   return token;
 }
 
 EventSubscription EventBus::subscribeVeto(const char *channel,
                                           EventPriority priority,
                                           EventVetoFn sink, void *userdata) {
-  if (!channel || !sink)
+  if (!channel || !sink || !module_resources::accepting())
     return kNoSubscription;
   Channel &target = Channels[channel];
   VetoList &list = target.veto[priority];
-  const auto handle = list.append([sink, userdata](const void *payload) {
-    return sink(userdata, payload) != 0;
+  const auto owner = module_resources::current();
+  const auto handle = list.append([sink, userdata, owner](const void *payload) {
+    return module_resources::invoke(owner, "veto event", sink, userdata,
+                                    payload) != 0;
   });
   ++target.count;
   const EventSubscription token = NextToken++;
@@ -54,6 +64,7 @@ EventSubscription EventBus::subscribeVeto(const char *channel,
   record.priority = priority;
   record.mode = kModeVeto;
   record.vetoHandle = handle;
+  record.lifetime.track([this, token] { unsubscribe(token); });
   return token;
 }
 
@@ -61,12 +72,14 @@ EventSubscription EventBus::subscribeVetoAggregate(const char *channel,
                                                    EventPriority priority,
                                                    EventVetoFn sink,
                                                    void *userdata) {
-  if (!channel || !sink)
+  if (!channel || !sink || !module_resources::accepting())
     return kNoSubscription;
   Channel &target = Channels[channel];
   VetoList &list = target.vetoAggregate[priority];
-  const auto handle = list.append([sink, userdata](const void *payload) {
-    return sink(userdata, payload) != 0;
+  const auto owner = module_resources::current();
+  const auto handle = list.append([sink, userdata, owner](const void *payload) {
+    return module_resources::invoke(owner, "aggregate veto event", sink,
+                                    userdata, payload) != 0;
   });
   ++target.count;
   const EventSubscription token = NextToken++;
@@ -75,6 +88,7 @@ EventSubscription EventBus::subscribeVetoAggregate(const char *channel,
   record.priority = priority;
   record.mode = kModeVetoAggregate;
   record.vetoAggregateHandle = handle;
+  record.lifetime.track([this, token] { unsubscribe(token); });
   return token;
 }
 

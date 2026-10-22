@@ -1,11 +1,13 @@
 // framework::module_documents implementation - see ModuleDocuments.h.
 #include "ModuleDocuments.h"
+#include "ModuleResources.h"
 
 #include <abc/Console.h>
 
 #include <RmlUi/Core/Context.h>
 
 #include <cstring>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -17,19 +19,9 @@ namespace framework {
 namespace module_documents {
 namespace {
 
-// Contains an escaping module exception so it never unwinds through the
-// engine frame (the ModulePanel rule).
-template <typename Fn>
-void guarded(const char *page, const char *what, Fn &&fn) {
-  try {
-    fn();
-  } catch (...) {
-    abc::ConsoleError("[AbcUi] module document \"%s\": exception escaped %s\n",
-                      page, what);
-  }
-}
-
-class ModuleDocument final : public InteractiveDocument {
+class ModuleDocument final
+    : public InteractiveDocument,
+      public std::enable_shared_from_this<ModuleDocument> {
 public:
   explicit ModuleDocument(const AbcUiDocumentDesc &desc)
       : InteractiveDocument(desc.name, desc.path,
@@ -53,30 +45,34 @@ public:
   // page callbacks (InteractiveDocument::show/hide are idempotent for the
   // same reason).
   void showDocument() {
+    auto keepAlive = shared_from_this();
     if (isVisible())
       return;
     InteractiveDocument::show();
-    if (Desc.onShow)
-      guarded(getName().c_str(), "onShow", [&] { Desc.onShow(Desc.userdata); });
+    module_resources::invoke(Lifetime.owner(), "document show", Desc.onShow,
+                             Desc.userdata);
   }
 
   void hideDocument() {
+    auto keepAlive = shared_from_this();
     if (!isVisible())
       return;
     // Before the DOM hides: a page closing its own composition/popups needs
     // the still-visible document.
-    if (Desc.onHide)
-      guarded(getName().c_str(), "onHide", [&] { Desc.onHide(Desc.userdata); });
+    module_resources::invoke(Lifetime.owner(), "document hide", Desc.onHide,
+                             Desc.userdata);
     InteractiveDocument::hide();
   }
 
   void closeDocument() {
-    if (!isLoaded())
+    if (!isLoaded() || Closing)
       return;
-    if (Desc.onClose)
-      guarded(getName().c_str(), "onClose",
-              [&] { Desc.onClose(Desc.userdata); });
+    auto keepAlive = shared_from_this();
+    Closing = true;
+    module_resources::invoke(Lifetime.owner(), "document close", Desc.onClose,
+                             Desc.userdata);
     close();
+    Closing = false;
   }
 
   bool menuLayer() const {
@@ -87,17 +83,20 @@ protected:
   void onDocumentReady() override {
     // Never fires for the built-in emergency page (degraded() reports it):
     // the page's ids do not exist there.
-    if (Desc.onReady)
-      guarded(getName().c_str(), "onReady",
-              [&] { Desc.onReady(Desc.userdata); });
+    module_resources::invoke(Lifetime.owner(), "document ready", Desc.onReady,
+                             Desc.userdata);
   }
 
+public:
+  module_resources::Registration Lifetime;
+
 private:
+  bool Closing = false;
   AbcUiDocumentDesc Desc;
 };
 
-std::vector<std::unique_ptr<ModuleDocument>> &documents() {
-  static std::vector<std::unique_ptr<ModuleDocument>> instance;
+std::vector<std::shared_ptr<ModuleDocument>> &documents() {
+  static std::vector<std::shared_ptr<ModuleDocument>> instance;
   return instance;
 }
 
@@ -127,6 +126,8 @@ void loadDocument(ModuleDocument &doc) {
 } // namespace
 
 AbcUiDocument *create(const AbcUiDocumentDesc &desc) {
+  if (!module_resources::accepting())
+    return nullptr;
   if (!desc.name || !*desc.name) {
     abc::ConsoleWarn("[AbcUi] module document without a name refused\n");
     return nullptr;
@@ -144,23 +145,26 @@ AbcUiDocument *create(const AbcUiDocumentDesc &desc) {
       return nullptr;
     }
   }
-  std::unique_ptr<ModuleDocument> doc = std::make_unique<ModuleDocument>(desc);
+  auto doc = std::make_shared<ModuleDocument>(desc);
   // The raw pointer stays valid across a re-entrant create from onReady: the
   // vector may reallocate, the heap object does not.
   ModuleDocument *raw = doc.get();
-  documents().push_back(std::move(doc));
+  documents().push_back(doc);
+  auto *handle = reinterpret_cast<AbcUiDocument *>(raw);
+  raw->Lifetime.track([handle] { destroy(handle); });
   loadDocument(*raw);
-  return reinterpret_cast<AbcUiDocument *>(raw);
+  return resolve(handle) ? handle : nullptr;
 }
 
 void destroy(AbcUiDocument *handle) {
   ModuleDocument *target = resolve(handle);
   if (!target)
     return;
-  target->closeDocument();
   for (auto it = documents().begin(); it != documents().end(); ++it) {
     if (it->get() == target) {
-      documents().erase(it);
+      auto closing = *it;
+      documents().erase(it); // forget before onClose can re-enter destroy
+      closing->closeDocument();
       return;
     }
   }
@@ -209,39 +213,55 @@ int32_t retry(AbcUiDocument *doc) {
 
 void contextReady(Rml::Context *context) {
   liveContext() = context;
+  module_resources::contextRegistrationsOpen() = context != nullptr;
   if (!context)
     return;
-  for (const auto &doc : documents())
-    doc->load(context);
+  const auto snapshot = documents();
+  for (const auto &doc : snapshot)
+    if (resolve(reinterpret_cast<AbcUiDocument *>(doc.get())))
+      doc->load(context);
 }
 
 void pump() {
   Rml::Context *context = liveContext();
   if (!context)
     return;
-  for (const auto &doc : documents()) {
-    if (!doc->retryRequested())
+  if (std::none_of(documents().begin(), documents().end(),
+                   [](const auto &doc) { return doc->retryRequested(); }))
+    return;
+  const auto snapshot = documents();
+  for (const auto &doc : snapshot) {
+    if (!resolve(reinterpret_cast<AbcUiDocument *>(doc.get())) ||
+        !doc->retryRequested())
       continue;
     doc->retry(context);
   }
 }
 
 void shutdown() {
-  for (const auto &doc : documents())
-    doc->closeDocument();
+  // onClose may register another document. Keep new descriptors unloaded
+  // until the next context, rather than retaining a pointer into this one.
   liveContext() = nullptr;
+  module_resources::contextRegistrationsOpen() = false;
+  const auto snapshot = documents();
+  for (const auto &doc : snapshot)
+    doc->closeDocument();
 }
 
 void unload() {
-  for (const auto &doc : documents())
+  liveContext() = nullptr;
+  module_resources::contextRegistrationsOpen() = false;
+  const auto snapshot = documents();
+  for (const auto &doc : snapshot)
     doc->closeDocument();
   documents().clear();
-  liveContext() = nullptr;
 }
 
 void hideMenu() {
-  for (const auto &doc : documents()) {
-    if (doc->menuLayer() && doc->isVisible())
+  const auto snapshot = documents();
+  for (const auto &doc : snapshot) {
+    if (resolve(reinterpret_cast<AbcUiDocument *>(doc.get())) &&
+        doc->menuLayer() && doc->isVisible())
       doc->hideDocument();
   }
 }

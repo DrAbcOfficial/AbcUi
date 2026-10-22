@@ -11,7 +11,7 @@ namespace {
 constexpr std::string_view kScheme = "mod://";
 
 struct Mount {
-  std::unique_ptr<PackageImage> image;
+  std::shared_ptr<PackageImage> image;
 };
 
 std::map<std::string, Mount> &mounts() {
@@ -126,7 +126,10 @@ bool openPath(const char *moduleId, const char *path, PackageEntry &out,
       *error = "module is not mounted";
     return false;
   }
-  return it->second.image->file().read(path, out, error);
+  if (!it->second.image->file().read(path, out, error))
+    return false;
+  out.mappingPin = it->second.image;
+  return true;
 }
 
 } // namespace ModuleVfs

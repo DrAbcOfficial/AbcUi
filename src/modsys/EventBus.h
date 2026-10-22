@@ -19,9 +19,9 @@
 // subscribe or unsubscribe its own channel while a dispatch is running.
 //
 // Subscriptions return an opaque token; unsubscribe is idempotent. The bus is
-// a process-lifetime service: module sinks must be unsubscribed or inert by
-// the time their DLL unloads (ModuleManager unloads in reverse load order
-// after shutdownAll, so sinks die before the bus does).
+// a process-lifetime service: SDK sinks retain their creating module's scope
+// and are revoked automatically on failure/final unload, not HUD_Shutdown.
+// Framework-only subscriptions with no module scope retain explicit lifetime.
 
 #include <cstdint>
 #include <cstddef>
@@ -31,6 +31,8 @@
 #include <utility>
 
 #include <abc/Events.h>
+
+#include "ModuleResources.h"
 
 namespace framework {
 
@@ -46,6 +48,7 @@ using EventVetoFn = int (*)(void *userdata, const void *payload);
 
 class EventBus {
 public:
+  ~EventBus();
   // Subscribes a module-facing sink. Same priority keeps registration order.
   // Returns 0 for a null channel or sink.
   EventSubscription subscribe(const char *channel, EventPriority priority,
@@ -145,6 +148,7 @@ private:
     VetoList::Handle vetoHandle;
     VetoList::Handle vetoAggregateHandle;
     FnWrapperBase *wrapper = nullptr; // owned; set through ownWrapper
+    module_resources::Registration lifetime;
   };
 
   Channel *find(const char *channel);

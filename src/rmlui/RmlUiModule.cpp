@@ -17,6 +17,7 @@
 #include "../framework/FatalExit.h"
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
+#include "../modsys/ModuleResources.h"
 #include "../framework/Theme.h"
 #include "../render/Render.h"
 #include "texture/Avatars.h"
@@ -404,6 +405,8 @@ void init() {
   sprites::vidInit();
   avatars::init();
   framework::Assets::verifyInstalled();
+  // HUD document ready callbacks run before the menu/context lifecycle beat.
+  framework::module_resources::contextRegistrationsOpen() = true;
   framework::PanelManager::initAll(Context);
 
   Rml::Debugger::Initialise(Context);
@@ -424,6 +427,8 @@ void init() {
 }
 
 void shutdown() {
+  // No new DOM listeners or input claims may be created by teardown callbacks.
+  framework::module_resources::contextRegistrationsOpen() = false;
   // Ownership first (T06): tokens release and the pairing cleanups run
   // while every owner can still clean up and the context (for the synth
   // UI keyups) still exists. Teardown form: HUD_Shutdown runs after the

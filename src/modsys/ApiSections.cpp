@@ -2,10 +2,12 @@
 // ApiTable.h for how they join the module table.
 #include "ApiTable.h"
 #include "ApiSnapshot.h"
+#include "ModuleResources.h"
 
 #include <cmath>
 #include <cstring>
 #include <map>
+#include <memory>
 #include <new>
 #include <string>
 
@@ -290,9 +292,8 @@ float apiScale() {
   return Theme::scale();
 }
 
-// Module DOM listeners: RmlUi does not own them, so the registry below owns
-// the objects until the module removes them (documented: remove in
-// onShutdown, while the document is still alive).
+// The registry owns listeners through removal or context shutdown. Observer
+// pointers make late removal safe after the target element has died.
 // The ABI carries engine key numbers (the module cannot include the engine
 // headers); this is KeyMap's mapping in reverse, for the keys a DOM
 // keyboard handler acts on.
@@ -330,7 +331,9 @@ int engineKeynumOf(Rml::Input::KeyIdentifier identifier) {
   }
 }
 
-struct ModuleElementListener final : Rml::EventListener {
+struct ModuleElementListener final
+    : Rml::EventListener,
+      std::enable_shared_from_this<ModuleElementListener> {
   AbcUiElementListener callback = nullptr;
   void *userdata = nullptr;
   uint64_t id = 0;
@@ -338,9 +341,13 @@ struct ModuleElementListener final : Rml::EventListener {
   // (event id, phase), so removal must use the same phase or it silently
   // misses and leaves a dangling pointer behind.
   bool capture = false;
+  Rml::ObserverPtr<Rml::Element> target;
+  std::string type;
+  module_resources::Registration lifetime;
 
   void ProcessEvent(Rml::Event &event) override {
-    if (!callback)
+    auto keepAlive = shared_from_this();
+    if (!callback || !module_resources::enabled(lifetime.owner()))
       return;
     AbcUiElementEvent payload{};
     payload.structSize = sizeof(AbcUiElementEvent);
@@ -356,69 +363,64 @@ struct ModuleElementListener final : Rml::EventListener {
           (event.GetParameter<int>("ctrl_key", 0) ? ABCUI_MOD_CTRL : 0) |
           (event.GetParameter<int>("shift_key", 0) ? ABCUI_MOD_SHIFT : 0);
     }
-    if (callback(userdata,
-                 reinterpret_cast<AbcUiElement *>(event.GetTargetElement()),
-                 &payload))
+    if (module_resources::invoke(
+            lifetime.owner(), "DOM event", callback, userdata,
+            reinterpret_cast<AbcUiElement *>(event.GetTargetElement()),
+            &payload))
       event.StopPropagation();
   }
 };
 
-std::map<uint64_t, ModuleElementListener *> &elementListeners() {
-  static std::map<uint64_t, ModuleElementListener *> instance;
+std::map<uint64_t, std::shared_ptr<ModuleElementListener>> &elementListeners() {
+  static std::map<uint64_t, std::shared_ptr<ModuleElementListener>> instance;
   return instance;
 }
 
 uint64_t NextListenerId = 1;
 
-uint64_t apiElementAddListener(AbcUiElement *element, const char *type,
-                               AbcUiElementListener listener, void *userdata) {
+void apiElementRemoveListener(AbcUiElement *, const char *, uint64_t id) {
+  const auto it = elementListeners().find(id);
+  if (it == elementListeners().end())
+    return;
+  auto entry = it->second;
+  elementListeners().erase(it); // detach may re-enter removal
+  if (auto *target = entry->target.get())
+    target->RemoveEventListener(entry->type, entry.get(), entry->capture);
+}
+
+uint64_t addElementListener(AbcUiElement *element, const char *type,
+                            AbcUiElementListener listener, void *userdata,
+                            bool capture) {
   Rml::Element *target = elementOf(element);
-  if (!target || !type || !*type || !listener)
+  if (!module_resources::accepting() ||
+      !module_resources::contextRegistrationsOpen() || !target || !type ||
+      !*type || !listener)
     return 0;
-  auto *entry = new (std::nothrow) ModuleElementListener();
-  if (!entry)
-    return 0;
+  auto entry = std::make_shared<ModuleElementListener>();
   const uint64_t id = NextListenerId++;
   entry->callback = listener;
   entry->userdata = userdata;
   entry->id = id;
-  entry->capture = false;
-  target->AddEventListener(type, entry, false);
+  entry->capture = capture;
+  entry->target = target->GetObserverPtr();
+  entry->type = type;
   elementListeners()[id] = entry;
+  entry->lifetime.track(
+      [id] { apiElementRemoveListener(nullptr, nullptr, id); },
+      module_resources::Lifetime::Context);
+  target->AddEventListener(type, entry.get(), capture);
   return id;
+}
+
+uint64_t apiElementAddListener(AbcUiElement *element, const char *type,
+                               AbcUiElementListener listener, void *userdata) {
+  return addElementListener(element, type, listener, userdata, false);
 }
 
 uint64_t apiElementAddListenerCapture(AbcUiElement *element, const char *type,
                                       AbcUiElementListener listener,
                                       void *userdata) {
-  Rml::Element *target = elementOf(element);
-  if (!target || !type || !*type || !listener)
-    return 0;
-  auto *entry = new (std::nothrow) ModuleElementListener();
-  if (!entry)
-    return 0;
-  const uint64_t id = NextListenerId++;
-  entry->callback = listener;
-  entry->userdata = userdata;
-  entry->id = id;
-  entry->capture = true;
-  target->AddEventListener(type, entry, true);
-  elementListeners()[id] = entry;
-  return id;
-}
-
-void apiElementRemoveListener(AbcUiElement *element, const char *type,
-                              uint64_t id) {
-  const auto itor = elementListeners().find(id);
-  if (itor == elementListeners().end())
-    return;
-  ModuleElementListener *entry = itor->second;
-  elementListeners().erase(itor);
-  if (Rml::Element *target = elementOf(element)) {
-    if (type && *type)
-      target->RemoveEventListener(type, entry, entry->capture);
-  }
-  delete entry;
+  return addElementListener(element, type, listener, userdata, true);
 }
 
 int32_t apiElementAttributeInt(AbcUiElement *element, const char *name,
