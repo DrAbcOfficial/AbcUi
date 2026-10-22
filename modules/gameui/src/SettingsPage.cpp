@@ -2502,16 +2502,18 @@ void onChange(AbcUiElement *target) {
   if (InRender || !target || !Api->settings)
     return;
   const std::string id = Api->ui->elementId(target);
-  std::string value;
-  if (!rowEditValue(target, value))
-    return;
   // RGBA colour pickers: one change carries four channel values, so the
-  // row-keyed commit below cannot express it.
+  // row-keyed commit below cannot express it. The picker is not a form
+  // control: its canonical value rides the element's own value attribute
+  // (written before the change is dispatched).
   if (bindingFor(id.c_str())) {
-    handleColorChange(id.c_str(), value.c_str());
+    handleColorChange(id.c_str(), attributeOf(target, "value").c_str());
     render();
     return;
   }
+  std::string value;
+  if (!rowEditValue(target, value))
+    return;
   // T12 resolution select: the value is "WxH" from the enumerated option set;
   // the model validates it again before staging.
   if (id == "video-resolution") {
