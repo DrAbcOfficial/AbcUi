@@ -1,7 +1,9 @@
 // framework::WeaponsApi - the sdk weapons section (registry snapshots and the
 // selection action). See ApiTable.h for how it joins the module table.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 
+#include <algorithm>
 #include <cstring>
 #include <string>
 
@@ -11,6 +13,10 @@
 namespace framework {
 namespace WeaponsApi {
 namespace {
+
+// These records are embedded or returned by the legacy typed-array API.
+static_assert(sizeof(AbcUiWeaponSprite) == 116);
+static_assert(sizeof(AbcUiWeaponInfo) == 1044);
 
 // Copies a string into a fixed field, always terminating.
 void copyField(const std::string &text, char *out, size_t outSize) {
@@ -34,17 +40,7 @@ void copySprite(const weaponres::Weapon::SpriteSource &source,
   out.rect[3] = source.rect.bottom;
 }
 
-// Copies `full` into the caller's buffer honoring the size it declared
-// (ABI rule: a caller may be built against an older, shorter header; 0 means
-// "the framework's current size").
-void copyOut(const AbcUiWeaponInfo &full, AbcUiWeaponInfo &out) {
-  const size_t declared = out.structSize;
-  const size_t bytes =
-      declared == 0 || declared > sizeof(full) ? sizeof(full) : declared;
-  std::memcpy(&out, &full, bytes);
-}
-
-void fill(const weaponres::Weapon &weapon, AbcUiWeaponInfo &out) {
+void fill(const weaponres::Weapon &weapon, void *out) {
   AbcUiWeaponInfo full{};
   full.structSize = sizeof(AbcUiWeaponInfo);
   full.slot = weapon.slot;
@@ -68,7 +64,7 @@ void fill(const weaponres::Weapon &weapon, AbcUiWeaponInfo &out) {
   copySprite(weapon.autoaim, full.autoaim);
   copySprite(weapon.zoomedCrosshair, full.zoomedCrosshair);
   copySprite(weapon.zoomedAutoaim, full.zoomedAutoaim);
-  copyOut(full, out);
+  abi::copySnapshot(out, full);
 }
 
 int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {
@@ -78,10 +74,23 @@ int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {
   if (!out || capacity <= 0)
     return total;
   const int32_t count = total < capacity ? total : capacity;
-  for (int32_t i = 0; i < count; ++i) {
-    out[i] = AbcUiWeaponInfo{};
-    fill(*weapons[static_cast<size_t>(i)], out[i]);
-  }
+  for (int32_t i = 0; i < count; ++i)
+    fill(*weapons[static_cast<size_t>(i)], &out[i]);
+  return total;
+}
+
+int32_t apiListEx(void *out, uint32_t capacity, uint32_t stride) {
+  if (out && capacity != 0 && !abi::validArrayLayout(capacity, stride))
+    return -1;
+  const auto weapons = weaponres::allWeapons();
+  const int32_t total = static_cast<int32_t>(weapons.size());
+  if (!out || capacity == 0)
+    return total;
+  const uint32_t count = std::min(capacity, static_cast<uint32_t>(total));
+  if (!abi::validSnapshotArray(out, count, stride))
+    return -1;
+  for (uint32_t i = 0; i < count; ++i)
+    fill(*weapons[i], abi::arrayElement(out, i, stride));
   return total;
 }
 
@@ -91,8 +100,7 @@ int32_t apiGet(int32_t slot, int32_t slotPos, AbcUiWeaponInfo *out) {
   const weaponres::Weapon *weapon = weaponres::getWeapon(slot, slotPos);
   if (!weapon)
     return 0;
-  *out = AbcUiWeaponInfo{};
-  fill(*weapon, *out);
+  fill(*weapon, out);
   return 1;
 }
 
@@ -102,8 +110,7 @@ int32_t apiGetById(int32_t id, AbcUiWeaponInfo *out) {
   const weaponres::Weapon *weapon = weaponres::getWeapon(id);
   if (!weapon)
     return 0;
-  *out = AbcUiWeaponInfo{};
-  fill(*weapon, *out);
+  fill(*weapon, out);
   return 1;
 }
 
@@ -117,8 +124,7 @@ int32_t apiSelected(AbcUiWeaponInfo *out) {
   const weaponres::Weapon *weapon = weaponres::selectedWeapon();
   if (!weapon)
     return 0;
-  *out = AbcUiWeaponInfo{};
-  fill(*weapon, *out);
+  fill(*weapon, out);
   return 1;
 }
 
@@ -144,8 +150,7 @@ int32_t apiCurrent(AbcUiWeaponInfo *out) {
   const weaponres::Weapon *weapon = weaponres::currentWeapon();
   if (!weapon)
     return 0;
-  *out = AbcUiWeaponInfo{};
-  fill(*weapon, *out);
+  fill(*weapon, out);
   return 1;
 }
 
@@ -181,6 +186,7 @@ const AbcUiWeaponsApi kWeaponsApi = {
     apiCurrent,
     apiGetById,
     apiAmmoIcon,
+    apiListEx,
 };
 
 } // namespace

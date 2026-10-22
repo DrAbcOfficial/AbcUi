@@ -65,6 +65,21 @@ bool Prepared = false;
 std::vector<AbcUiConsoleLine> InitialLines;
 std::vector<AbcUiConsoleLine> WindowLines;
 
+int copyLines(uint64_t since, AbcUiConsoleLine *out, uint32_t count) {
+  const auto *api = Api->consolepage;
+  if (ABCUI_API_HAS_MEMBER(AbcUiConsolePageApi, api, copySinceEx))
+    return api->copySinceEx(since, out, count, sizeof(AbcUiConsoleLine));
+  return api->copySince(since, out, count);
+}
+
+int completeNames(const char *prefix, AbcUiConsoleSuggestion *out,
+                  uint32_t count) {
+  const auto *api = Api->consolepage;
+  if (ABCUI_API_HAS_MEMBER(AbcUiConsolePageApi, api, completeEx))
+    return api->completeEx(prefix, out, count, sizeof(AbcUiConsoleSuggestion));
+  return api->complete(prefix, out, count);
+}
+
 // --- selection model (panels::console::ConsoleSelection, ported) -----------
 
 struct SelectionPoint {
@@ -497,8 +512,8 @@ void render() {
     InitialLines.resize(static_cast<size_t>(kInitialLines));
     for (auto &line : InitialLines)
       line.structSize = sizeof(line);
-    const int count = Api->consolepage->copySince(
-        since, InitialLines.data(), static_cast<uint32_t>(kInitialLines));
+    const int count = copyLines(since, InitialLines.data(),
+                                static_cast<uint32_t>(kInitialLines));
     for (int i = 0; i < count; ++i)
       appendLine(InitialLines[i].text, InitialLines[i].developer != 0,
                  InitialLines[i].truncated != 0);
@@ -544,9 +559,8 @@ void render() {
   // The consumer window is bounded too: a long gap (the page was hidden
   // while output burst) pages from the newest tail, never from an
   // unbounded backlog.
-  const int count =
-      Api->consolepage->copySince(ProjectedSequence, WindowLines.data(),
-                                  static_cast<uint32_t>(kMaxDomLines));
+  const int count = copyLines(ProjectedSequence, WindowLines.data(),
+                              static_cast<uint32_t>(kMaxDomLines));
   for (int i = 0; i < count; ++i)
     appendLine(WindowLines[i].text, WindowLines[i].developer != 0,
                WindowLines[i].truncated != 0);
@@ -792,8 +806,7 @@ void rebuildCompletion(const std::string &prefix, bool apply) {
   AbcUiConsoleSuggestion matches[kMaxSuggestions + 1];
   for (auto &match : matches)
     match.structSize = sizeof(match);
-  const int total =
-      Api->consolepage->complete(prefix.c_str(), matches, kMaxSuggestions + 1);
+  const int total = completeNames(prefix.c_str(), matches, kMaxSuggestions + 1);
   const bool more = total > kMaxSuggestions;
   const int count = std::min<int>(total, kMaxSuggestions);
   for (int i = 0; i < count; ++i)

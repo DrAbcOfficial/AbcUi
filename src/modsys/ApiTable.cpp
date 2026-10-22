@@ -233,21 +233,18 @@ const AbcUiConsoleApi kConsoleApi = {
 
 AbcUiSubscription apiSubscribe(const char *channel, int priority,
                                AbcUiEventSink sink, void *userdata) {
-  return eventBus().subscribe(channel, priority,
-                              reinterpret_cast<EventSinkFn>(sink), userdata);
+  return eventBus().subscribe(channel, priority, sink, userdata);
 }
 
 AbcUiSubscription apiSubscribeVeto(const char *channel, int priority,
                                    AbcUiEventVeto sink, void *userdata) {
-  return eventBus().subscribeVeto(
-      channel, priority, reinterpret_cast<EventVetoFn>(sink), userdata);
+  return eventBus().subscribeVeto(channel, priority, sink, userdata);
 }
 
 AbcUiSubscription apiSubscribeVetoAggregate(const char *channel, int priority,
                                             AbcUiEventVeto sink,
                                             void *userdata) {
-  return eventBus().subscribeVetoAggregate(
-      channel, priority, reinterpret_cast<EventVetoFn>(sink), userdata);
+  return eventBus().subscribeVetoAggregate(channel, priority, sink, userdata);
 }
 
 void apiUnsubscribe(AbcUiSubscription subscription) {
@@ -360,8 +357,8 @@ AbcUiSubscription apiSubscribeCommand(const char *name, int priority,
   // The chained-command bus bridges every hooked command onto an aggregate
   // veto channel ("command.<name>"); see framework/Commands.cpp.
   const std::string channel = std::string("command.") + name;
-  return eventBus().subscribeVetoAggregate(
-      channel.c_str(), priority, reinterpret_cast<EventVetoFn>(sink), userdata);
+  return eventBus().subscribeVetoAggregate(channel.c_str(), priority, sink,
+                                           userdata);
 }
 
 int apiTextMenuOpen() {

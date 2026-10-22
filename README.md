@@ -113,6 +113,18 @@ the built-in modules used: `onLoad`, `onInit`, `onContextReady`, `onFrame`,
 teardown. A module that fails validation is skipped together with its
 dependents; the rest keep working.
 
+Module ids are lowercase alphanumeric segments separated by dots. Versions
+(`version` and `minAbcUi`) are non-empty dot-separated decimal segments, with
+no suffixes or empty segments; leading zeroes are numeric and omitted trailing
+segments compare as zero. The entry is a relative package path, with no empty,
+`.` or `..` segments; backslashes are normalized to `/`. `dependencies` and
+`conflicts` are optional arrays of module ids. Packaging and startup both check
+these fields; startup also checks the requested ABI and framework version.
+Duplicate ids are rejected rather than selected by scan order. Conflicts are
+mutual even if declared by only one module: the first successfully loaded
+module in dependency-resolution order wins, and the conflicting module and
+its dependents are skipped.
+
 Modules talk to the framework through the pure-C `AbcUiModuleApi` table
 (`sdk/abcui/`): versioned, append-only sections for console/cvars, the
 priority event bus, package files, HUD panels, interactive page documents,
@@ -121,6 +133,32 @@ documents and elements, chained commands, the weapon registry, the player
 resource and the settings page's row/bind/display/microphone models. Modules include `<abcui/module_api.h>`, export exactly one symbol
 (`AbcUiModule_Main`), must not include RmlUi headers or link the framework's
 static libraries, and must avoid static TLS and delay-loaded imports.
+Veto callbacks return an `int`: every nonzero value consumes the event,
+including values other than `1`; aggregate-veto channels still run every sink.
+An entry DLL with no PE initialization entry point is supported. Failed import
+binding or initialization releases the partial image without invoking its
+detach routine; detach runs only after a successful process attach.
+
+For output snapshots, initialize `structSize` to the size of your own SDK
+type. A nonzero size is the caller's capacity: reads preserve it across
+repeated calls, copy only the known prefix and leave unknown tails untouched.
+A size smaller than the four-byte header is ignored. Zero retains the legacy
+full-current-size write; it is not safe for cross-version callers and must
+not be used by new modules.
+
+The ABI v1 layouts of `AbcUiWeaponSprite`, `AbcUiWeaponInfo`,
+`AbcUiConsoleLine` and `AbcUiConsoleSuggestion` are frozen. Legacy array
+functions use those fixed element sizes, not each row's `structSize` as a
+stride. New code should prefer the appended `weapons->listEx`,
+`consolepage->copySinceEx` and `consolepage->completeEx` functions. Check
+`ABCUI_API_HAS_MEMBER(SectionType, section, function)` before accessing an
+appended function; older frameworks can still use the legacy paths.
+The Ex functions take the caller's explicit byte stride and require every
+returned row's nonzero capacity to be between four bytes and that stride.
+They return `-1` without writing any rows for invalid output layouts;
+stride padding and unknown tails remain untouched. Null outputs and zero
+counts keep the corresponding legacy query/no-op behavior. A larger record
+needs a new type and the stride-aware path, not an enlarged legacy array element.
 
 First-party modules in this repository: flashlight, textmenu, vote, motd,
 weaponchoose, killfeed, textfeed, sidetext, health, ammo, hudeffects,

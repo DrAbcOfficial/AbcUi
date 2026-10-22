@@ -33,7 +33,8 @@ public:
   // `data` is only read during the call: sections are copied into the
   // committed image.
   bool load(const void *data, size_t size, std::string *error);
-  // DllMain(DETACH), import release, image free. Idempotent.
+  // Detach only after a successful attach, then release imports and image.
+  // Safe after a partial load and idempotent.
   void unload();
 
   bool isLoaded() const {
@@ -45,9 +46,10 @@ public:
   void *getExport(const char *name) const;
 
 private:
-  void *Image = nullptr;       // committed image base (entry point lives here)
-  size_t ImageSize = 0;        // SizeOfImage (virtual)
-  std::vector<void *> Imports; // modules to FreeLibrary at unload
+  void *Image = nullptr; // committed image base (entry point lives here)
+  size_t ImageSize = 0;  // SizeOfImage (virtual)
+  void *AttachedEntry = nullptr; // set only after DllMain(ATTACH) succeeds
+  std::vector<void *> Imports;   // modules to FreeLibrary at unload
 };
 
 } // namespace framework

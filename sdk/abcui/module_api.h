@@ -508,6 +508,7 @@ typedef struct AbcUiCommandsApi {
 
 // One sprite crop ("sprites/<atlas>.txt" entry). invalid means the weapon's
 // sprite list had no matching entry, so the caller falls back to plain text.
+// ABI v1 layout is frozen: embedded by AbcUiWeaponInfo.
 typedef struct AbcUiWeaponSprite {
   int32_t valid;
   char atlas[ABCUI_WEAPON_ATLAS_MAX];
@@ -516,6 +517,7 @@ typedef struct AbcUiWeaponSprite {
 
 // Point-in-time snapshot of one registry weapon. Identity is (slot, slotPos):
 // the server's WeaponList assigns both and the registry keeps them stable.
+// ABI v1 layout is frozen because weapons->list uses a typed array.
 typedef struct AbcUiWeaponInfo {
   uint32_t structSize;
   int32_t slot;
@@ -567,6 +569,13 @@ typedef struct AbcUiWeaponsApi {
   int32_t (*getById)(int32_t id, AbcUiWeaponInfo *out);
   // Icon of an ammo type, taken from any weapon carrying it; 1 when found.
   int32_t (*ammoIcon)(int32_t ammoType, AbcUiWeaponSprite *out);
+  // Explicit-stride alternative to list. Each returned row starts with a
+  // nonzero uint32_t structSize in [4, stride], preserved on write. Copies
+  // only the known prefix; stride padding and unknown tails stay untouched.
+  // Returns the total registry size; null out or zero capacity only counts.
+  // Invalid layout returns -1 without writing any rows. Check availability
+  // with ABCUI_API_HAS_MEMBER before use on older frameworks.
+  int32_t (*listEx)(void *out, uint32_t capacity, uint32_t stride);
 } AbcUiWeaponsApi;
 
 // -------------------------------------------------------------- players ----
@@ -1262,6 +1271,7 @@ typedef struct AbcUiCreateGameApi {
 // incremental appends, tail follow, honest scroll) stays page-side.
 #define ABCUI_CONSOLE_TEXT_MAX 1024 // the buffer's own line byte cap
 
+// ABI v1 array element layouts are frozen, including their string caps.
 typedef struct AbcUiConsoleLine {
   uint32_t structSize;
   int32_t developer; // assembled from DPrintf fragments
@@ -1285,7 +1295,8 @@ typedef struct AbcUiConsolePageApi {
   uint64_t (*latestSequence)(void);
   int32_t (*lineCount)(void);
   // Copies up to `max` lines newer than `since` (the newest window when
-  // more qualify); returns the count. structSize honored per line.
+  // more qualify); returns the count. Fixed v1 stride; each row's nonzero
+  // structSize is its preserved capacity, not a stride.
   int32_t (*copySince)(uint64_t since, AbcUiConsoleLine *out, uint32_t max);
   // One local line into the same scrollback (the "] <command>" input
   // record; one call is one complete line).
@@ -1314,6 +1325,15 @@ typedef struct AbcUiConsolePageApi {
   // owner's routed ESC reads-and-clears the claim so one physical press
   // never closes two layers.
   void (*noteEscapeClaim)(void);
+  // Explicit-stride versions of copySince/complete. Returned rows use the
+  // listEx capacity rules above; stride may differ from sizeof the current
+  // SDK type. Invalid layout returns -1 without writing any rows.
+  // Null out or zero max keeps the corresponding legacy count/no-op
+  // behavior. Otherwise stride must be >= 4 and max * stride must fit size_t.
+  int32_t (*copySinceEx)(uint64_t since, void *out, uint32_t max,
+                         uint32_t stride);
+  int32_t (*completeEx)(const char *prefix, void *out, uint32_t max,
+                        uint32_t stride);
 } AbcUiConsolePageApi;
 
 // -------------------------------------------------------- serverbrowser ----

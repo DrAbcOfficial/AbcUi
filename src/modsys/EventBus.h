@@ -41,8 +41,8 @@ using EventSubscription = std::uint64_t;
 
 // Module-facing data sink. The payload pointer is only valid for the call.
 using EventSinkFn = void (*)(void *userdata, const void *payload);
-// Veto sink: returning true vetoes (intercepts) the event.
-using EventVetoFn = bool (*)(void *userdata, const void *payload);
+// Matches the C SDK callback exactly; every nonzero result is a veto.
+using EventVetoFn = int (*)(void *userdata, const void *payload);
 
 class EventBus {
 public:
@@ -50,7 +50,7 @@ public:
   // Returns 0 for a null channel or sink.
   EventSubscription subscribe(const char *channel, EventPriority priority,
                               EventSinkFn sink, void *userdata);
-  // Subscribes to a veto channel; the sink's bool joins the channel vote and
+  // Subscribes to a veto channel; a nonzero result joins the channel vote and
   // a true result stops the dispatch at this sink.
   EventSubscription subscribeVeto(const char *channel, EventPriority priority,
                                   EventVetoFn sink, void *userdata);

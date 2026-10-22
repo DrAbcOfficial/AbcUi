@@ -175,8 +175,15 @@ void rebuild() {
   std::vector<AbcUiWeaponInfo> registry(
       static_cast<size_t>(std::max(0, Api->weapons->list(nullptr, 0))));
   if (!registry.empty()) {
-    const int32_t total = Api->weapons->list(
-        registry.data(), static_cast<int32_t>(registry.size()));
+    for (auto &weapon : registry)
+      weapon.structSize = sizeof(weapon);
+    const int32_t total =
+        ABCUI_API_HAS_MEMBER(AbcUiWeaponsApi, Api->weapons, listEx)
+            ? Api->weapons->listEx(registry.data(),
+                                   static_cast<uint32_t>(registry.size()),
+                                   sizeof(AbcUiWeaponInfo))
+            : Api->weapons->list(registry.data(),
+                                 static_cast<int32_t>(registry.size()));
     if (total >= 0 && static_cast<size_t>(total) < registry.size())
       registry.resize(static_cast<size_t>(total));
   }
@@ -511,7 +518,7 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
   // whose tables are shorter than the members used below.
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi) ||
-      api->weapons->structSize < sizeof(AbcUiWeaponsApi))
+      !ABCUI_API_HAS_MEMBER(AbcUiWeaponsApi, api->weapons, ammoIcon))
     return 0;
   Api = api;
 

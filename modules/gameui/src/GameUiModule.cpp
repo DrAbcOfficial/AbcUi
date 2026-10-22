@@ -146,7 +146,8 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       api->social->structSize < sizeof(AbcUiSocialApi) ||
       api->inventory->structSize < sizeof(AbcUiInventoryApi) ||
       api->creategame->structSize < sizeof(AbcUiCreateGameApi) ||
-      api->consolepage->structSize < sizeof(AbcUiConsolePageApi) ||
+      !ABCUI_API_HAS_MEMBER(AbcUiConsolePageApi, api->consolepage,
+                            noteEscapeClaim) ||
       api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi) ||
       api->connection->structSize < sizeof(AbcUiConnectionApi) ||
       api->settings->structSize < sizeof(AbcUiSettingsApi))

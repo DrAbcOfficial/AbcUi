@@ -22,6 +22,7 @@ Exit code 0 only when every discovered module packed.
 import argparse
 import json
 import os
+import re
 import sys
 import zipfile
 
@@ -35,8 +36,6 @@ REQUIRED_FIELDS = (
     "abi",
     "minAbcUi",
     "entry",
-    "dependencies",
-    "conflicts",
 )
 # Fixed timestamp so repeated packs are byte-identical.
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
@@ -51,15 +50,38 @@ def load_manifest(module_dir):
     path = os.path.join(module_dir, "manifest.json")
     with open(path, "r", encoding="utf-8") as handle:
         manifest = json.load(handle)
+    if not isinstance(manifest, dict):
+        raise ValueError("%s: manifest must be an object" % path)
     for field in REQUIRED_FIELDS:
         if field not in manifest:
             raise ValueError("%s: missing field '%s'" % (path, field))
-    if manifest["abi"] != ABCUI_ABI_VERSION:
+        if field != "abi":
+            value = manifest[field]
+            if not isinstance(value, str) or "\0" in value:
+                raise ValueError("%s: '%s' must be a string without nulls" %
+                                 (path, field))
+    if type(manifest["abi"]) is not int or manifest["abi"] != ABCUI_ABI_VERSION:
         raise ValueError("%s: abi %r, expected %d" % (path, manifest["abi"],
                                                      ABCUI_ABI_VERSION))
+    id_pattern = r"[a-z0-9]+(?:\.[a-z0-9]+)*"
+    if re.fullmatch(id_pattern, manifest["id"]) is None:
+        raise ValueError("%s: invalid module id" % path)
+    for field in ("version", "minAbcUi"):
+        if re.fullmatch(r"[0-9]+(?:\.[0-9]+)*", manifest[field]) is None:
+            raise ValueError("%s: '%s' must be a dotted decimal version" %
+                             (path, field))
+    for field in ("dependencies", "conflicts"):
+        values = manifest.setdefault(field, [])
+        if not isinstance(values, list) or any(
+                not isinstance(value, str) or
+                re.fullmatch(id_pattern, value) is None for value in values):
+            raise ValueError("%s: '%s' must be an array of module ids" %
+                             (path, field))
     entry = manifest["entry"].replace("\\", "/")
-    if entry.startswith("/") or ".." in entry.split("/"):
-        raise ValueError("%s: entry must stay inside the package" % path)
+    if ":" in entry or any(part in ("", ".", "..") for part in entry.split("/")):
+        raise ValueError("%s: entry must be a relative package path without "
+                         "dot segments" % path)
+    manifest["entry"] = entry
     return manifest
 
 

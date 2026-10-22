@@ -33,6 +33,8 @@ bool parseManifest(const char *text, size_t size, ModuleManifest &out,
 
 // Compares dotted numeric versions ("0.8.1" vs "0.8"): negative when `left`
 // is older, zero when equal, positive when newer. Missing segments are zero.
+// Decimal segments are compared without integer conversion or overflow.
+// Inputs from package metadata must first pass parseManifest validation.
 int compareVersions(const std::string &left, const std::string &right);
 
 } // namespace framework

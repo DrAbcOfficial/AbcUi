@@ -1,6 +1,7 @@
 // framework::MenuApi - the sdk menu section (the replacement menu's
 // presentation seam). See ApiTable.h for how it joins the module table.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 
 #include <algorithm>
 #include <cstring>
@@ -16,11 +17,7 @@ void apiState(AbcUiMenuState *out) {
     return;
   AbcUiMenuState full{};
   services::menu::fill(full);
-  // An older caller's shorter snapshot keeps its own tail untouched.
-  uint32_t declared = out->structSize;
-  if (declared == 0)
-    declared = static_cast<uint32_t>(sizeof(full));
-  std::memcpy(out, &full, std::min<size_t>(declared, sizeof(full)));
+  abi::copySnapshot(out, full);
 }
 
 int32_t apiOpenPage(int32_t page) {

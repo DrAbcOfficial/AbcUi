@@ -45,7 +45,7 @@ EventSubscription EventBus::subscribeVeto(const char *channel,
   Channel &target = Channels[channel];
   VetoList &list = target.veto[priority];
   const auto handle = list.append([sink, userdata](const void *payload) {
-    return sink(userdata, payload);
+    return sink(userdata, payload) != 0;
   });
   ++target.count;
   const EventSubscription token = NextToken++;
@@ -66,7 +66,7 @@ EventSubscription EventBus::subscribeVetoAggregate(const char *channel,
   Channel &target = Channels[channel];
   VetoList &list = target.vetoAggregate[priority];
   const auto handle = list.append([sink, userdata](const void *payload) {
-    return sink(userdata, payload);
+    return sink(userdata, payload) != 0;
   });
   ++target.count;
   const EventSubscription token = NextToken++;

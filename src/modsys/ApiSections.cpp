@@ -1,6 +1,7 @@
 // framework::DataApi / framework::UiApi - sdk data and ui sections. See
 // ApiTable.h for how they join the module table.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 
 #include <cmath>
 #include <cstring>
@@ -902,17 +903,9 @@ const AbcUiUiApi *get() {
 namespace DataApi {
 namespace {
 
-// Snapshot writers honor the caller's declared structSize (ABI rule: a
-// caller may be built against an older, shorter header). 0 means "the
-// framework's current size".
-size_t declaredBytes(size_t declared, size_t full) {
-  return (declared == 0 || declared > full) ? full : declared;
-}
-
 void apiHudState(AbcUiHudState *out) {
   if (!out)
     return;
-  const size_t bytes = declaredBytes(out->structSize, sizeof(AbcUiHudState));
   AbcUiHudState state{};
   AbcUiHudState *target = &state;
   state.structSize = sizeof(AbcUiHudState);
@@ -933,7 +926,7 @@ void apiHudState(AbcUiHudState *out) {
     target->punchAngle[1] = punch[1];
     target->punchAngle[2] = punch[2];
   }
-  std::memcpy(out, &state, bytes);
+  abi::copySnapshot(out, state);
 }
 
 // The ScoreInfo feed carries the scoreboard rows; the local row's frags is
@@ -961,7 +954,6 @@ void watchScoreInfo() {
 void apiPlayerState(AbcUiPlayerState *out) {
   if (!out)
     return;
-  const size_t bytes = declaredBytes(out->structSize, sizeof(AbcUiPlayerState));
   AbcUiPlayerState state{};
   state.structSize = sizeof(AbcUiPlayerState);
   watchScoreInfo();
@@ -978,7 +970,7 @@ void apiPlayerState(AbcUiPlayerState *out) {
     state.messageNum = local->curstate.messagenum;
     gEngfuncs.GetViewAngles(state.angles);
   }
-  std::memcpy(out, &state, bytes);
+  abi::copySnapshot(out, state);
 }
 
 int32_t apiModelIndex(const char *path) {

@@ -2,6 +2,7 @@
 // definition and its engine facts). See ApiTable.h for how it joins the
 // module table.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 
 #include <algorithm>
 #include <cstring>
@@ -65,10 +66,7 @@ int32_t apiEntryAt(int32_t section, int32_t index, AbcUiMenuConfigEntry *out) {
   copyText(entry.Condition, full.condition, sizeof(full.condition));
 
   // The caller's declared size wins: never write past an older header.
-  const uint32_t declared = out->structSize == 0
-                                ? static_cast<uint32_t>(sizeof(full))
-                                : out->structSize;
-  std::memcpy(out, &full, std::min<size_t>(declared, sizeof(full)));
+  abi::copySnapshot(out, full);
   return 1;
 }
 
@@ -90,10 +88,7 @@ int32_t apiPlayerCard(AbcUiPlayerCard *out) {
   copyText(modelPath, full.modelPath, sizeof(full.modelPath));
   copyText(modelLabel, full.modelLabel, sizeof(full.modelLabel));
 
-  const uint32_t declared = out->structSize == 0
-                                ? static_cast<uint32_t>(sizeof(full))
-                                : out->structSize;
-  std::memcpy(out, &full, std::min<size_t>(declared, sizeof(full)));
+  abi::copySnapshot(out, full);
   return 1;
 }
 

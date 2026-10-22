@@ -163,8 +163,11 @@ size_t boot() {
   if (handle == INVALID_HANDLE_VALUE)
     return 0; // no module directory: zero modules is a valid setup
 
-  // Sorted by id: duplicate ids and the resolution order are deterministic.
+  // Reject every duplicate id before loading anything. Enumeration order
+  // must never choose which package provides an id.
   std::map<std::string, Candidate> candidates;
+  std::set<std::string> discoveredIds;
+  std::set<std::string> duplicateIds;
   std::string error;
   do {
     if (find.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)
@@ -190,6 +193,15 @@ size_t boot() {
                        find.cFileName, error.c_str());
       continue;
     }
+    const std::string id = candidate.manifest.id;
+    if (!discoveredIds.insert(id).second) {
+      duplicateIds.insert(id);
+      candidates.erase(id);
+      abc::ConsoleWarn("[AbcUi] module id \"%s\" is duplicated; "
+                       "all packages with this id skipped\n",
+                       id.c_str());
+      continue;
+    }
     if (candidate.manifest.abi != ABCUI_ABI_VERSION) {
       abc::ConsoleWarn("[AbcUi] module \"%s\" skipped: abi %d, expected %d\n",
                        candidate.manifest.id.c_str(), candidate.manifest.abi,
@@ -202,21 +214,25 @@ size_t boot() {
                        candidate.manifest.minAbcUi.c_str());
       continue;
     }
-    const std::string id = candidate.manifest.id;
-    if (!candidates.emplace(id, std::move(candidate)).second) {
-      abc::ConsoleWarn(
-          "[AbcUi] module id \"%s\" is duplicated; first package wins\n",
-          id.c_str());
-    }
+    candidates.emplace(id, std::move(candidate));
   } while (FindNextFileA(handle, &find));
   FindClose(handle);
+
+  // A conflict is symmetric even when only one manifest declares it.
+  std::map<std::string, std::set<std::string>> conflicts;
+  for (const auto &[id, candidate] : candidates) {
+    for (const std::string &other : candidate.manifest.conflicts) {
+      conflicts[id].insert(other);
+      conflicts[other].insert(id);
+    }
+  }
 
   // Deterministic resolution: repeatedly load every module whose
   // dependencies are satisfied (id order), fail the ones whose dependencies
   // are missing/failed or whose conflicts are loaded. Whatever remains was
   // part of a dependency cycle.
   std::set<std::string> loadedIds;
-  std::set<std::string> failedIds;
+  std::set<std::string> failedIds = duplicateIds;
   bool progress = true;
   while (progress) {
     progress = false;
@@ -226,7 +242,7 @@ size_t boot() {
       const ModuleManifest &manifest = candidate.manifest;
 
       bool blocked = false;
-      for (const std::string &conflict : manifest.conflicts) {
+      for (const std::string &conflict : conflicts[id]) {
         if (loadedIds.count(conflict)) {
           abc::ConsoleWarn(
               "[AbcUi] module \"%s\" skipped: conflicts with \"%s\"\n",
