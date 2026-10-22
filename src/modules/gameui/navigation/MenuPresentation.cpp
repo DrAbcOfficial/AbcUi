@@ -232,8 +232,11 @@ int32_t GameUiModule::openMenuPage(int32_t page) {
   if (!ensureMenuUp())
     return 0;
   reconcilePhase();
-  if (Controller.state().phase != menu::BackendPhase::kInGame)
-    return 0; // the in-game pages never open over the home screen
+  // Sub pages are legal on the no-map home screen too: the shell offers the
+  // server browser, create game and settings entries there, and the
+  // controller's own openPage already refuses only the phases that must hold
+  // input (Connecting/Loading/Fatal). A kInGame-only gate here contradicted
+  // that home menu and left every entry except Quit inert.
   Controller.dispatch(menu::makeOpenPage(target));
   finishDispatch();
   return Controller.state().pages.topIs(target) ? 1 : 0;
