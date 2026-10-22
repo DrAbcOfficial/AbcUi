@@ -32,13 +32,9 @@ void verifyInstalled() {
       {"abc/abcui/hud/spr/weapon_error.txt", "weapon sprite fallback"},
       // Batch B (feedback panels).
       // Batch D (render depth panels).
-      // T05 interactive documents. The main menu document moved into the
-      // abcui.gameui package; its stylesheet stays until the last menu page
-      // moves (the built-in documents share it).
-      {"abc/abcui/gameui/rcss/mainmenu.rcss", "main menu stylesheet"},
-      // The settings and video-confirmation pages moved into the
-      // abcui.gameui package with their page (the shared mainmenu.rcss above
-      // stays framework-side).
+      // Every UI document, page stylesheet and panel asset now ships inside
+      // its module package (abcui.*.zip); the framework validates only the
+      // assets the framework itself loads.
   };
   for (const auto &check : checks) {
     if (!fileExists(check.Path))

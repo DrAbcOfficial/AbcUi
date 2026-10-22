@@ -51,7 +51,7 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
 - HUD_Init/HUD_Shutdown repeat within one engine process (the client re-runs
   its HUD cycle on map init and the teardown path runs on the way out).
   Everything HUD_Shutdown tears down must be re-armed by H_HUD_Init: the
-  panel list (`installHudPanels` when `PanelManager` is empty) and module
+  panel list (the panel install when `PanelManager` is empty) and module
   documents (`onContextReady`). Cvars, commands and module registration stay
   process-scoped and are guarded by a one-shot latch; do not move them into
   the per-cycle path. Usermsg hooks are installed once and re-chained only by
@@ -81,11 +81,12 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
 The plugin is a UI-free framework plus loadable UI modules (zip packages). The
 implemented rules the transition must keep:
 
-- AbcUi.dll ends up UI-free: RmlUi runtime, render bridge, input bridge, IME,
+- AbcUi.dll is UI-free: RmlUi runtime, render bridge, input bridge, IME,
   theme/localization, texture services (sprites/avatars/custom elements), the
   data layer (NetworkMessages / WeaponResource / HudState / PlayerResource /
-  PlayerTrace / TextFeed) and the module machinery. No HUD panel or menu page
-  ships inside the framework.
+  PlayerTrace / TextFeed) and the module machinery. No HUD panel, menu page,
+  stub page, quit overlay, panel catalog or page stylesheet ships inside the
+  framework.
 - UI features live in modules under `modules/<id>/`: `manifest.json` + `src/`
   + `assets/` + a CMake `add_library(... MODULE)` target. Migrated so far:
   flashlight, textmenu, vote, motd, weaponchoose, killfeed, textfeed, sidetext,
@@ -93,8 +94,8 @@ implemented rules the transition must keep:
   radar, scoreboard and chat; `abcui.gameui` has every replacement menu
   page (the shell, the console, the server browser, the connection
   surfaces, the vote creation, player-list, command-menu, inventory,
-  create-game and settings pages, plus the display-mode confirmation
-  dialog); `demo` is the minimal example. modeltest/videotest stay
+  create-game and settings pages, plus the display-mode confirmation and the
+  quit confirmation); `demo` is the minimal example. modeltest/videotest stay
   development-only.
 - The module ABI is pure C, versioned struct tables under `sdk/abcui/`
   (same pattern as `AbcCore_CreateInterface`). A module DLL exports exactly
@@ -135,9 +136,9 @@ implemented rules the transition must keep:
   skipped together with its dependents; the process keeps running. Modules
   must avoid static TLS (`__declspec(thread)`) and delayimp.
 - Module panel descriptors are kept for the whole process and every
-  `installHudPanels` cycle builds fresh wrappers: `PanelManager::shutdown`
-  destroys the panel list on every HUD_Shutdown, so taking the wrappers once
-  would lose every module panel after the first map change.
+  HUD_Init cycle builds fresh wrappers: `PanelManager::shutdown` destroys the
+  panel list on every HUD_Shutdown, so taking the wrappers once would lose
+  every module panel after the first map change.
 - Interactive pages are module-owned documents (`documents->create`), never
   framework pages: the framework loads them on every context cycle, forwards
   ready/show/hide/close, and keeps the menu layer's focus guard and hide-all

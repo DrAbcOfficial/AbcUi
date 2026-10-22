@@ -149,7 +149,7 @@ typedef struct AbcUiVfsApi {
 // Registers a HUD panel: one Rml document fed by the framework frame pumps.
 // documentPath is a mod:// uri inside the module package ("mod://<id>/rml/
 // health.rml"). Registration is only legal from onLoad; the panel joins the
-// next installHudPanels pass (the same HUD_Init cycle).
+// next HUD_Init install pass (the same HUD_Init cycle).
 typedef struct AbcUiPanelDesc {
   uint32_t structSize;
   const char *name;         // unique panel name (debug lookup, cvar prefix)
@@ -773,6 +773,9 @@ typedef struct AbcUiVoiceApi {
 // confirmation outranks every menu surface (it is the only way back from a
 // bad mode) and carries no menu flag so a menu hide cannot drop it.
 #define ABCUI_DOC_ZINDEX_CONFIRM 650
+// The quit confirmation sits below the display-mode confirmation but above
+// every page surface (the old framework overlay used the same tier).
+#define ABCUI_DOC_ZINDEX_QUIT_CONFIRM 600
 
 typedef struct AbcUiDocumentDesc {
   uint32_t structSize;
@@ -894,6 +897,10 @@ typedef struct AbcUiMenuApi {
   // Toggles the direct-connect overlay (the shell's direct-connect entry,
   // when a definition declares it).
   void (*directConnect)(void);
+  // Resolves the quit confirmation overlay from its own buttons: 1 quits
+  // through the backend, 0 cancels. The controller pops the overlay and runs
+  // the confirmed quit exactly once.
+  void (*quitResolve)(int32_t confirmed);
 } AbcUiMenuApi;
 
 // ------------------------------------------------------------- votemenu ----

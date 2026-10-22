@@ -68,6 +68,12 @@ void shutdown();
 void unload();
 } // namespace settingspage
 
+namespace quitconfirmpage {
+void load();
+void shutdown();
+void unload();
+} // namespace quitconfirmpage
+
 namespace {
 
 void onModuleLoad() {
@@ -81,6 +87,7 @@ void onModuleLoad() {
   serverbrowserpage::load();
   connectionpage::load();
   settingspage::load();
+  quitconfirmpage::load();
 }
 
 void onModuleShutdown() {
@@ -95,6 +102,7 @@ void onModuleShutdown() {
   serverbrowserpage::shutdown();
   connectionpage::shutdown();
   settingspage::shutdown();
+  quitconfirmpage::shutdown();
 }
 
 void onModuleUnload() {
@@ -108,6 +116,7 @@ void onModuleUnload() {
   serverbrowserpage::unload();
   connectionpage::unload();
   settingspage::unload();
+  quitconfirmpage::unload();
   Api = nullptr;
 }
 

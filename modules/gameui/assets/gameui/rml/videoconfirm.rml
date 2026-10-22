@@ -2,7 +2,7 @@
 <head>
 	<link type="text/rcss" href="engine://abc/abcui/rcss/base.rcss"/>
 	<link type="text/rcss" href="engine://abc/abcui/rcss/theme.rcss"/>
-	<link type="text/rcss" href="engine://abc/abcui/gameui/rcss/mainmenu.rcss"/>
+	<link type="text/rcss" href="../rcss/mainmenu.rcss"/>
 	<link type="text/rcss" href="../rcss/videoconfirm.rcss"/>
 </head>
 <!-- T12 display-mode confirmation. Headline states the ACTUAL mode the

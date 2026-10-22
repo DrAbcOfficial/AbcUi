@@ -1,7 +1,6 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
-#include "modules/gameui/GameUiPages.h"
-#include "../../panels/menushared/MenuShellWindows.h"
+#include "modules/gameui/GameUiModule.h"
 
 #include "../../data/WeaponResource.h"
 #include "../../framework/ResourceLimits.h"
@@ -299,6 +298,9 @@ GameUiModule::GameUiModule()
   menuHost.ensureUp = [this] { return ensureMenuUp(); };
   menuHost.resume = [this] { return resumeFromMenu(); };
   menuHost.quit = [this] { menuQuit(); };
+  menuHost.quitResolve = [this](int32_t confirmed) {
+    menuQuitResolve(confirmed);
+  };
   menuHost.disconnect = [this] { menuDisconnect(); };
   menuHost.toggleConsole = [this] { menuToggleConsole(); };
   menuHost.directConnect = [this] {
@@ -317,8 +319,6 @@ VideoHost GameUiModule::MakeVideoHost() {
     // Every page is a module document now; the display confirmation outlives
     // a menu hide and stays up until it resolves.
     framework::module_documents::hideMenu();
-    if (SubStub)
-      SubStub->hide();
   };
   return host;
 }
@@ -742,17 +742,14 @@ void GameUiModule::onShutdown() {
   PageToken.release();
   // Stop callbacks and release queries before any observing document dies.
   ServerBrowser.closeContext();
-  SubStub.reset();
   Server->shutdown();
   Create->shutdown();
   Vote->shutdown();
   Command->shutdown();
   Inventory->shutdown();
   Video->shutdown();
-  ConfirmQuit.reset();
   Context = nullptr;
   MenuPresented = false;
-  LastStubPage = MenuPage::kMain;
 }
 
 namespace {

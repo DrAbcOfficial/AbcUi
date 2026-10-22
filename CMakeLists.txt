@@ -246,7 +246,6 @@ add_library(AbcUi MODULE
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
     src/modules/UiModuleRegistry.cpp
-    src/modules/HudPanelCatalog.cpp
     src/modules/gameui/GameUiModule.cpp
     src/modules/gameui/lifecycle/Frame.cpp
     src/modules/gameui/lifecycle/BackgroundWork.cpp
@@ -324,7 +323,6 @@ add_library(AbcUi MODULE
     src/framework/Theme.cpp
     src/framework/GlyphText.cpp
     src/framework/Projection.cpp
-    src/panels/menushared/MenuShellWindows.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
 )

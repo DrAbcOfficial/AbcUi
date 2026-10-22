@@ -4,7 +4,6 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Debugger.h>
 #include "modules/gameui/GameUiModule.h"
-#include "modules/gameui/GameUiPages.h"
 #include "modsys/ModuleDocuments.h"
 namespace gameui {
 void GameUiModule::pumpVisibleWork() {
@@ -40,13 +39,11 @@ void GameUiModule::pumpVisibleWork() {
        state.overlays.topIs(MenuOverlay::kDirectConnect));
   if (focus && !inputDialogUp) {
     Rml::ElementDocument *owner = focus->GetOwnerDocument();
-    // Only a VISIBLE menu document holds legitimate focus - a hidden
-    // one (stub/overlay just dismissed) is exactly the stale state
-    // this guard exists to repair.
+    // Only a VISIBLE module document holds legitimate focus - a hidden
+    // one (an overlay just dismissed) is exactly the stale state this
+    // guard exists to repair.
     if (owner && owner->IsVisible() &&
-        (framework::module_documents::ownsVisible(owner) ||
-         owner == (SubStub ? SubStub->document() : nullptr) ||
-         owner == (ConfirmQuit ? ConfirmQuit->document() : nullptr)))
+        framework::module_documents::ownsVisible(owner))
       return;
   }
   // T12: the display-mode confirmation outranks every other surface - it is
@@ -54,31 +51,8 @@ void GameUiModule::pumpVisibleWork() {
   // never steals it while the confirmation is up.
   if (Video->confirmPresented())
     return;
-  // T14 surfaces, top-most first (the same order the sync shows them).
-  if (state.overlays.contains(MenuOverlay::kConfirmQuit) && ConfirmQuit)
-    ConfirmQuit->refocusDefault();
-  else if (state.overlays.contains(MenuOverlay::kDirectConnect) ||
-           state.overlays.contains(MenuOverlay::kPassword) ||
-           state.overlays.contains(MenuOverlay::kConnectionError)) {
-    // The connection dialogs are module documents: each owns its field
-    // focus (the guard leaves a visible module document alone above).
-  } else if (state.overlays.contains(MenuOverlay::kConsole)) {
-    // The console page is a module document: it owns its editor focus.
-  } else if (!state.pages.empty()) {
-    if (state.pages.top() == MenuPage::kMain ||
-        state.pages.top() == MenuPage::kPause) {
-      // The menu home is a module document: it owns its entry focus (the
-      // guard leaves a visible module document alone above).
-    } else if (state.pages.top() == MenuPage::kSettings) {
-      // The settings page is a module document: it owns its focus (the guard
-      // leaves a visible module document alone above).
-    } else if (state.pages.top() == MenuPage::kServers) {
-      // The browser page is a module document: it owns its focus.
-    } else if (state.pages.top() == MenuPage::kLoading) {
-      // The loading page is a module document: it owns its Cancel focus.
-    } else if (SubStub) {
-      SubStub->refocusDefault();
-    }
-  }
+  // Every surface is a module document now, and each one restores its own
+  // safe default when its layer closes (the settings/bind/quit paths already
+  // do); the framework only guards against a hidden owner keeping focus.
 }
 } // namespace gameui
