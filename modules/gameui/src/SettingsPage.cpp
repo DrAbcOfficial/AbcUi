@@ -73,6 +73,13 @@ std::string ActiveLayer;
 // change while it runs; that programmatic churn is not user input.
 bool InRender = false;
 uint32_t RenderedRevision = ~0u;
+// Counts the skeleton DOM was last built from. The document can become ready
+// before the framework models are loaded (the page is created at context
+// ready, while the models load from onInit), so the first build may see an
+// empty bind list; render() rebuilds when a count moves.
+int BuiltRowCount = -1;
+int BuiltBindCount = -1;
+int BuiltPageCount = -1;
 // The generation last projected into the confirmation dialog (its facts
 // re-query the engine, so the dialog re-renders on change only).
 uint32_t ConfirmRenderedRevision = ~0u;
@@ -525,6 +532,11 @@ void projectPage() {
   setText("settings-description",
           havePage ? resolve(current.description) : std::string());
   setDisplay("settings-reset", havePage && current.cvarCount > 0);
+  // The singleton widget blocks (bindings, video, voice, spray, previews)
+  // live in the parking host until the active page claims them. Moving them
+  // also has to happen on the first projection, so the bind card is not left
+  // empty while its block sits in the hidden host.
+  projectWidgets();
 }
 
 void buildNavigation() {
@@ -2263,12 +2275,21 @@ bool requestLeave() {
     closeSprayBrowser();
     return true;
   }
-  if (!isDirty())
-    return false;
-  if (ActiveLayer == kLayerLeave) {
-    hideLayers(); // second request: dismissing the prompt is "stay"
+  // Any open page layer is the top-most surface: one ESC closes that layer
+  // and keeps the page (the same single-layer contract as the picker menu).
+  // Without this the menu layer navigates away and the overlay dies with it.
+  if (layerVisible()) {
+    // The bind-conflict prompt projects from the model's pending flag:
+    // hiding the DOM alone would re-show it on the next render, so resolve
+    // it as "cancel" exactly like the dialog's own cancel button.
+    if (ActiveLayer == kLayerBindConflict && Api->settings)
+      Api->settings->bindResolveConflict(0);
+    hideLayers();
+    render();
     return true;
   }
+  if (!isDirty())
+    return false;
   showLayer(kLayerLeave);
   return true;
 }
@@ -2283,11 +2304,33 @@ void discardAndReturn() {
 
 // -------------------------------------------------------------- render ----
 
+// The bind sources and the page tree are model data: a document that became
+// ready before they were loaded rebuilds its skeleton once the counts settle
+// (otherwise the bind list stays empty forever). The counts only move on the
+// first model load, so the steady-state cost is three integer compares.
+void ensureSkeleton() {
+  if (!Page || !Api->settings)
+    return;
+  const int rowsNow = Api->settings->rowCount();
+  const int bindsNow = Api->settings->bindRowCount();
+  const int pagesNow = pageCount();
+  if (rowsNow == BuiltRowCount && bindsNow == BuiltBindCount &&
+      pagesNow == BuiltPageCount)
+    return;
+  buildRows();
+  buildBindRows();
+  buildNavigation();
+  BuiltRowCount = rowsNow;
+  BuiltBindCount = bindsNow;
+  BuiltPageCount = pagesNow;
+}
+
 void render(const char *skipRow) {
   if (!Page || InRender)
     return;
   InRender = true;
   if (Api->settings) {
+    ensureSkeleton();
     const int32_t count = Api->settings->rowCount();
     for (int32_t index = 0; index < count; ++index) {
       AbcUiSettingRow row{};
@@ -2334,6 +2377,7 @@ void present(bool focusDefault) {
   if (!Page || !Api->settings)
     return;
   Api->documents->show(Page);
+  ensureSkeleton();
   if (!Presented) {
     // Fresh opening: the four models re-read their engine truth once, the
     // page then projects the settled state (the rest of the page's beats are
@@ -2466,6 +2510,7 @@ void onMenuPaint(void *, const void *payload) {
   }
   if (!Api->settings)
     return;
+  ensureSkeleton();
   // Model beats that need a per-frame check (cheap while nothing is
   // pending): the bind apply's queued rows and the command-channel settle.
   if (Api->settings->bindHasQueued())
@@ -2820,6 +2865,9 @@ void onDocumentReady(void *) {
   buildRows();
   buildBindRows();
   buildNavigation();
+  BuiltPageCount = pageCount();
+  BuiltRowCount = Api->settings ? Api->settings->rowCount() : 0;
+  BuiltBindCount = Api->settings ? Api->settings->bindRowCount() : 0;
   // The legacy all-in-one projection has no cards to claim the widgets: show
   // the parking host so the bind list and the hardware blocks stay reachable.
   if (pageCount() == 0)
