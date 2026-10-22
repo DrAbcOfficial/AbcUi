@@ -2149,6 +2149,7 @@ void handleSprayAction(const std::string &action, AbcUiElement *entry) {
     Api->settings->sprayMake(path.c_str());
     hideLayers();
     render();
+    refocusDefault();
     return;
   }
   renderSprayBrowser();
@@ -2627,6 +2628,7 @@ void onClick(AbcUiElement *target) {
   }
   if (action == kActionSprayCancel) {
     closeSprayBrowser();
+    refocusDefault();
     return;
   }
   if (action == kActionApply) {
@@ -2637,12 +2639,15 @@ void onClick(AbcUiElement *target) {
     resetCurrentPage();
     hideLayers();
     render();
+    refocusDefault();
   } else if (action == kActionResetNo) {
     hideLayers();
+    refocusDefault();
   } else if (action == kActionLeaveDiscard) {
     discardAndReturn();
   } else if (action == kActionLeaveStay) {
     hideLayers();
+    refocusDefault();
   } else if (action == kActionToggle && !rowKey.empty()) {
     AbcUiSettingRow row{};
     if (rowFound(rowKey.c_str(), row) && !(row.flags & ABCUI_SET_ROW_MISSING)) {
@@ -2704,14 +2709,18 @@ void onClick(AbcUiElement *target) {
     Api->settings->bindResetDefaults();
     hideLayers();
     render();
+    refocusDefault();
   } else if (action == kActionBindResetNo) {
     hideLayers();
+    refocusDefault();
   } else if (action == kActionBindConflictYes) {
     Api->settings->bindResolveConflict(1);
     render(); // the layer hides itself once the conflict is cleared
+    refocusDefault();
   } else if (action == kActionBindConflictNo) {
     Api->settings->bindResolveConflict(0);
     render();
+    refocusDefault();
   } else if (action == kActionVideoApply) {
     // The restart-driving apply belongs to the framework transaction, which
     // also presents the confirmation afterwards.
