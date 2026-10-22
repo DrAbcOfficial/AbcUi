@@ -33,13 +33,16 @@ bool existsDirectory(const std::string &path) {
   return std::filesystem::is_directory(path, error);
 }
 
+// Namespace scope, not a function-local static: the module image is mapped
+// without static TLS support and MSVC's local-static guard needs a TLS slot.
+const std::vector<std::string> ImageExtensions = {
+    ".png", ".jpg", ".jpeg", ".bmp",  ".tga",
+    ".gif", ".pcx", ".tif",  ".tiff", ".webp"};
+
 } // namespace
 
 const std::vector<std::string> &FileBrowser::imageExtensions() {
-  static const std::vector<std::string> Extensions = {
-      ".png", ".jpg", ".jpeg", ".bmp",  ".tga",
-      ".gif", ".pcx", ".tif",  ".tiff", ".webp"};
-  return Extensions;
+  return ImageExtensions;
 }
 
 bool FileBrowser::isImageName(const std::string &name) {
