@@ -458,8 +458,16 @@ void present(int32_t section, bool focusDefault) {
     // First presentation builds the entry buttons (the definition is the
     // framework's menuconfig section).
     buildEntries();
-    if (BoundRoot)
+    if (BoundRoot) {
       attachFocusBindings(BoundRoot);
+      // Delegated activation: buttons bubble their click to the root, and the
+      // handler walks up to the data-action carrier. Right clicks open the
+      // friends context menu through the same delegated mousedown.
+      ClickBinding =
+          Api->ui->elementAddListener(BoundRoot, "click", &onClick, nullptr);
+      MousedownBinding = Api->ui->elementAddListener(BoundRoot, "mousedown",
+                                                     &onMousedown, nullptr);
+    }
     Built = true;
   }
   showSection(section, focusDefault);
