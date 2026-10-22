@@ -333,6 +333,10 @@ struct ModuleElementListener final : Rml::EventListener {
   AbcUiElementListener callback = nullptr;
   void *userdata = nullptr;
   uint64_t id = 0;
+  // Registered in the capture phase? The element's dispatcher keys entries by
+  // (event id, phase), so removal must use the same phase or it silently
+  // misses and leaves a dangling pointer behind.
+  bool capture = false;
 
   void ProcessEvent(Rml::Event &event) override {
     if (!callback)
@@ -377,6 +381,7 @@ uint64_t apiElementAddListener(AbcUiElement *element, const char *type,
   entry->callback = listener;
   entry->userdata = userdata;
   entry->id = id;
+  entry->capture = false;
   target->AddEventListener(type, entry, false);
   elementListeners()[id] = entry;
   return id;
@@ -395,6 +400,7 @@ uint64_t apiElementAddListenerCapture(AbcUiElement *element, const char *type,
   entry->callback = listener;
   entry->userdata = userdata;
   entry->id = id;
+  entry->capture = true;
   target->AddEventListener(type, entry, true);
   elementListeners()[id] = entry;
   return id;
@@ -409,7 +415,7 @@ void apiElementRemoveListener(AbcUiElement *element, const char *type,
   elementListeners().erase(itor);
   if (Rml::Element *target = elementOf(element)) {
     if (type && *type)
-      target->RemoveEventListener(type, entry, false);
+      target->RemoveEventListener(type, entry, entry->capture);
   }
   delete entry;
 }
