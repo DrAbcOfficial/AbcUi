@@ -21,6 +21,7 @@
 #include "ModuleManager.h"
 #include "ModulePanel.h"
 #include "ModuleVfs.h"
+#include "ModuleServices.h"
 
 // The SDK's AbcUiFileView typedef sits at global scope (module_api.h), so its
 // definition must too; it owns one package entry view.
@@ -90,6 +91,10 @@ const AbcUiCoreApi kCoreApi = {
     apiWarn,
     apiError,
     apiFailInitialization,
+    module_services::registerService,
+    module_services::unregisterService,
+    module_services::available,
+    module_services::call,
 };
 
 // ------------------------------------------------------------- console ----
@@ -313,8 +318,9 @@ void apiUnsubscribe(AbcUiSubscription subscription) {
 }
 
 const AbcUiEventsApi kEventsApi = {
-    sizeof(AbcUiEventsApi),    apiSubscribe, apiSubscribeVeto, apiUnsubscribe,
-    apiSubscribeVetoAggregate,
+    sizeof(AbcUiEventsApi),    apiSubscribe,
+    apiSubscribeVeto,          apiUnsubscribe,
+    apiSubscribeVetoAggregate, module_services::publish,
 };
 
 // ----------------------------------------------------------------- vfs ----

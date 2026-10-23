@@ -32,6 +32,10 @@
 // Bumped on any breaking change to the structs below.
 #define ABCUI_ABI_VERSION 1
 
+// All entries, callbacks and service pointers use x86 cdecl, independently
+// of the consumer's /Gd, /Gz or /Gr default. Annotate callback definitions too.
+#define ABCUI_CALL __cdecl
+
 // Use a stable table pointer expression: it is evaluated more than once.
 // Short-circuiting tests the size before reading the appended pointer.
 #define ABCUI_API_HAS_MEMBER(type, api, member)                                \

@@ -85,6 +85,7 @@ bool loadModule(Candidate &candidate) {
   LoadedModule module;
   module.manifest = candidate.manifest;
   module.owner = std::make_shared<module_resources::Owner>(id);
+  module.owner->dependencies = candidate.manifest.dependencies;
   module.owner->initializing = true;
   if (!ModuleVfs::mount(id.c_str(), std::move(candidate.image))) {
     abc::ConsoleWarn("[AbcUi] module \"%s\": package mount refused\n",
@@ -104,10 +105,10 @@ bool loadModule(Candidate &candidate) {
     return false;
   }
   module.owner->imagePin = module.library;
-  const auto entry = reinterpret_cast<int (*)(uint32_t, const AbcUiModuleApi *,
-                                              AbcUiModuleDescriptor *)>(
+  const auto entry = reinterpret_cast<AbcUiModuleEntry>(
       module.library->getExport(kEntrySymbol));
   AbcUiModuleDescriptor descriptor{};
+  descriptor.structSize = sizeof(descriptor);
   int accepted = 0;
   const bool returned =
       entry && module_resources::attempt(module.owner, "AbcUiModule_Main", [&] {

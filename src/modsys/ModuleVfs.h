@@ -18,6 +18,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace framework {
 
@@ -34,6 +35,8 @@ void unmount(const char *moduleId);
 void unmountAll();
 
 bool isMounted(const char *moduleId);
+// Deterministic snapshot; callers must still check mount lifetime on lookup.
+std::vector<std::string> mountedIds();
 
 // Resolves "mod://<id>/<path>" into an entry view. The path may carry '.'
 // and '..' segments; they are collapsed before lookup.

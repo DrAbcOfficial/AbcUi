@@ -22,6 +22,8 @@
 
 #include "module_api.h"
 
+#pragma pack(push, 8)
+
 // hud.native.draw - veto, queried immediately before the native HUD redraw.
 // Nonzero hides only this native element for this redraw. Modules must return
 // zero while their replacement document is unavailable. No claim = native.
@@ -36,6 +38,14 @@
 typedef struct AbcUiNativeHudEvent {
   int32_t element;
 } AbcUiNativeHudEvent;
+
+// module.<id>.<name> - immutable envelope; payload borrowed for dispatch only.
+typedef struct AbcUiModuleEvent {
+  uint32_t structSize;
+  uint32_t schemaVersion;
+  uint32_t payloadSize;
+  const void *payload;
+} AbcUiModuleEvent;
 
 // netmsg.flashlight - flashlight toggled; battery 0..100.
 #define ABCUI_CHANNEL_NETMSG_FLASHLIGHT "netmsg.flashlight"
@@ -346,3 +356,5 @@ typedef struct AbcUiNoticeEvent {
   int32_t target;
   const char *text;
 } AbcUiNoticeEvent;
+
+#pragma pack(pop)

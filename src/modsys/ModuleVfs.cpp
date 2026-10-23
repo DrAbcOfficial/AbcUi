@@ -89,6 +89,14 @@ bool isMounted(const char *moduleId) {
   return table.find(moduleId) != table.end();
 }
 
+std::vector<std::string> mountedIds() {
+  std::vector<std::string> ids;
+  ids.reserve(mounts().size());
+  for (const auto &[id, mount] : mounts())
+    ids.push_back(id);
+  return ids;
+}
+
 bool open(const char *uri, PackageEntry &out, std::string *error) {
   if (!uri || !isModuleUri(uri)) {
     if (error)

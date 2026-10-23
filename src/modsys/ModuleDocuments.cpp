@@ -13,11 +13,22 @@
 #include <vector>
 
 #include "../framework/InteractiveDocument.h"
-#include "../services/menu/MenuHost.h"
 
 namespace framework {
 namespace module_documents {
 namespace {
+
+struct RecoveryProvider {
+  uint64_t id = 0;
+  std::string path;
+  AbcUiRecoveryDesc desc{};
+  module_resources::Registration lifetime;
+};
+
+std::shared_ptr<RecoveryProvider> &recoveryProvider() {
+  static std::shared_ptr<RecoveryProvider> instance;
+  return instance;
+}
 
 class ModuleDocument final
     : public InteractiveDocument,
@@ -27,19 +38,7 @@ public:
       : InteractiveDocument(desc.name, desc.path,
                             (desc.flags & ABCUI_DOC_FLAG_BACKDROP) != 0,
                             desc.zIndex),
-        Desc(desc) {
-    // The built-in emergency page's two affordances: Quit exits through the
-    // menu host's confirmed path (a fault-time exit cannot depend on a page
-    // that may be the broken one); Retry is acted on by pump().
-    setEmergencySink([](const char *intent) {
-      if (intent &&
-          std::strcmp(intent, InteractiveDocument::kEmergencyQuitIntent) == 0) {
-        const services::menu::Host &seam = services::menu::host();
-        if (seam.quitNow)
-          seam.quitNow();
-      }
-    });
-  }
+        Desc(desc) {}
 
   // Show/hide report transitions only: a repeated sync must not re-dispatch
   // page callbacks (InteractiveDocument::show/hide are idempotent for the
@@ -79,6 +78,16 @@ public:
     return (Desc.flags & ABCUI_DOC_FLAG_MENU) != 0;
   }
 
+  bool usesRecovery(const std::shared_ptr<RecoveryProvider> &provider) const {
+    return Recovery == provider;
+  }
+
+  bool mayRetry() const {
+    const auto current = module_resources::current();
+    return current == Lifetime.owner() ||
+           (Recovery && current == Recovery->lifetime.owner());
+  }
+
 protected:
   void onDocumentReady() override {
     // Never fires for the built-in emergency page (degraded() reports it):
@@ -87,12 +96,36 @@ protected:
                              Desc.userdata);
   }
 
+  const char *recoveryPath() override {
+    Recovery = recoveryProvider();
+    if (!Recovery || !module_resources::enabled(Recovery->lifetime.owner()))
+      return nullptr;
+    return Recovery->path.c_str();
+  }
+
+  void onRecoveryReady() override {
+    const auto provider = Recovery;
+    if (provider)
+      module_resources::invoke(provider->lifetime.owner(), "recovery ready",
+                               provider->desc.onReady, provider->desc.userdata,
+                               reinterpret_cast<AbcUiDocument *>(this));
+  }
+
+  void onRecoveryClose() override {
+    const auto provider = std::move(Recovery);
+    if (provider)
+      module_resources::invoke(provider->lifetime.owner(), "recovery close",
+                               provider->desc.onClose, provider->desc.userdata,
+                               reinterpret_cast<AbcUiDocument *>(this));
+  }
+
 public:
   module_resources::Registration Lifetime;
 
 private:
   bool Closing = false;
   AbcUiDocumentDesc Desc;
+  std::shared_ptr<RecoveryProvider> Recovery;
 };
 
 std::vector<std::shared_ptr<ModuleDocument>> &documents() {
@@ -124,6 +157,53 @@ void loadDocument(ModuleDocument &doc) {
 }
 
 } // namespace
+
+AbcUiRecoveryRegistration registerRecovery(const AbcUiRecoveryDesc *desc) {
+  const auto owner = module_resources::current();
+  if (!owner || !owner->loading || !module_resources::accepting() ||
+      recoveryProvider() || !desc ||
+      desc->structSize < sizeof(AbcUiRecoveryDesc) || !desc->path)
+    return 0;
+  const std::string prefix = "mod://" + owner->id + "/";
+  if (!std::string_view(desc->path).starts_with(prefix))
+    return 0;
+  static uint64_t next = 1;
+  auto provider = std::make_shared<RecoveryProvider>();
+  provider->id = next++;
+  provider->desc = *desc;
+  provider->path = desc->path;
+  const uint64_t id = provider->id;
+  provider->lifetime.track([id] { removeRecovery(id); });
+  recoveryProvider() = std::move(provider);
+  return id;
+}
+
+// Internal cleanup does not require a caller identity (failure rollback).
+void removeRecovery(AbcUiRecoveryRegistration id) {
+  const auto provider = recoveryProvider();
+  if (!provider || provider->id != id)
+    return;
+  recoveryProvider().reset(); // prevent re-entrant loads using this provider
+  const auto snapshot = documents();
+  for (const auto &doc : snapshot)
+    if (doc->usesRecovery(provider))
+      doc->closeDocument();
+}
+
+void unregisterRecovery(AbcUiRecoveryRegistration id) {
+  const auto provider = recoveryProvider();
+  if (provider && provider->lifetime.owner() == module_resources::current())
+    removeRecovery(id);
+}
+
+int32_t requestRetry(AbcUiDocument *handle) {
+  const auto doc = resolve(handle);
+  if (!doc || !doc->mayRetry() || !module_resources::accepting() ||
+      !doc->isDegraded())
+    return 0;
+  doc->requestRetry();
+  return 1;
+}
 
 AbcUiDocument *create(const AbcUiDocumentDesc &desc) {
   if (!module_resources::accepting())
@@ -203,6 +283,7 @@ int32_t retry(AbcUiDocument *doc) {
   ModuleDocument *document = resolve(doc);
   if (!document)
     return 0;
+  const auto keepAlive = document->shared_from_this();
   if (Rml::Context *context = liveContext()) {
     const InteractiveDocument::LoadOutcome outcome = document->retry(context);
     if (outcome == InteractiveDocument::LoadOutcome::kFailed)

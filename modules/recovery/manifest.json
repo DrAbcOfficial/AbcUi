@@ -1,0 +1,12 @@
+{
+  "id": "abcui.recovery",
+  "name": "Recovery",
+  "description": "Independent minimal Retry and Quit UI for missing feature documents.",
+  "author": "DrAbc",
+  "version": "1.0.0",
+  "abi": 1,
+  "minAbcUi": "0.8.5",
+  "entry": "entry/abcui_recovery.dll",
+  "dependencies": [],
+  "conflicts": []
+}

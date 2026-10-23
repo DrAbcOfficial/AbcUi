@@ -140,10 +140,11 @@ void onModuleUnload() {
 
 } // namespace
 
-ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
-                                         const AbcUiModuleApi *api,
-                                         AbcUiModuleDescriptor *out) {
-  if (abiVersion != ABCUI_ABI_VERSION || !api || !out)
+ABCUI_MODULE_EXPORT int ABCUI_CALL
+AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
+                 AbcUiModuleDescriptor *out) {
+  if (abiVersion != ABCUI_ABI_VERSION || !api ||
+      !AbcUiModule_InitDescriptor(out))
     return 0;
   // Every section the pages act through (see PageShared.h and the page
   // sources for which calls each one makes).
@@ -157,8 +158,9 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
   if (!ABCUI_API_HAS_MEMBER(AbcUiMenuApi, api->menu, dispatchCommand) ||
       !ABCUI_API_HAS_MEMBER(AbcUiCoreApi, api->core, failInitialization) ||
       api->ui->structSize < sizeof(AbcUiUiApi) ||
-      api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
-      api->menu->structSize < sizeof(AbcUiMenuApi) ||
+      api->documents->structSize <
+          offsetof(AbcUiDocumentsApi, registerRecovery) ||
+      api->menu->structSize < offsetof(AbcUiMenuApi, quitNow) ||
       api->votemenu->structSize < sizeof(AbcUiVoteMenuApi) ||
       api->playerlist->structSize < sizeof(AbcUiPlayerListApi) ||
       api->commandmenu->structSize < sizeof(AbcUiCommandMenuApi) ||

@@ -73,6 +73,12 @@ void apiDirectConnect(void) {
     seam.directConnect();
 }
 
+void apiQuitNow() {
+  const auto &seam = services::menu::host();
+  if (seam.quitNow)
+    seam.quitNow();
+}
+
 module_resources::Registration &takeoverLifetime() {
   static module_resources::Registration lifetime;
   return lifetime;
@@ -103,10 +109,20 @@ int32_t apiDispatchCommand(const char *name) {
 }
 
 const AbcUiMenuApi kMenuApi = {
-    sizeof(AbcUiMenuApi), apiState,           apiOpenPage,    apiBack,
-    apiEnsureUp,          apiResume,          apiQuit,        apiDisconnect,
-    apiToggleConsole,     apiDirectConnect,   apiQuitResolve,
-    apiSetNativeTakeover, apiDispatchCommand,
+    sizeof(AbcUiMenuApi),
+    apiState,
+    apiOpenPage,
+    apiBack,
+    apiEnsureUp,
+    apiResume,
+    apiQuit,
+    apiDisconnect,
+    apiToggleConsole,
+    apiDirectConnect,
+    apiQuitResolve,
+    apiSetNativeTakeover,
+    apiDispatchCommand,
+    apiQuitNow,
 };
 
 } // namespace

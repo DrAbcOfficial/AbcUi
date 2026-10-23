@@ -10,6 +10,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace framework::module_resources {
 
@@ -26,6 +27,7 @@ struct Cleanup {
 struct Owner {
   explicit Owner(std::string id) : id(std::move(id)) {}
   std::string id;
+  std::vector<std::string> dependencies;
   bool enabled = true;
   bool accepting = true;
   bool loading = false;

@@ -338,7 +338,7 @@ int32_t apiPageNext(void) {
 
 void apiSetFilter(const AbcUiSbFilter *filter) {
   auto *target = session();
-  if (!target || !filter)
+  if (!target || !filter || filter->structSize < sizeof(AbcUiSbFilter))
     return;
   ServerFilter updated = target->List.filter();
   updated.hideEmpty = filter->hideEmpty != 0;
@@ -348,8 +348,9 @@ void apiSetFilter(const AbcUiSbFilter *filter) {
   updated.InsecureOnly = filter->insecureOnly != 0;
   updated.HideUnresponsive = filter->hideUnresponsive != 0;
   updated.MaxPing = filter->maxPing > 0 ? filter->maxPing : 0;
-  updated.Name = filter->name;
-  updated.Map = filter->map;
+  updated.Name.assign(filter->name,
+                      strnlen(filter->name, sizeof(filter->name)));
+  updated.Map.assign(filter->map, strnlen(filter->map, sizeof(filter->map)));
   // The game identity (gamedir) stays the framework's own fact.
   target->List.setFilter(updated);
 }

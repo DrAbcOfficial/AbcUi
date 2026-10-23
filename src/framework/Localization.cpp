@@ -6,8 +6,10 @@
 #include <abc/Console.h>
 
 #include "Language.h"
+#include "../modsys/ModuleVfs.h"
 
 #include <cstring>
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -16,20 +18,25 @@ namespace framework {
 namespace {
 std::unordered_map<std::string, std::string> Table;
 
-// "key = value" lines; '#' starts a comment. Values keep interior spaces.
-void parseTableFile(const std::string &path) {
-  std::vector<unsigned char> bytes;
-  if (!ResourceFile::read(path, bytes, 1024 * 1024))
-    return;
+using TranslationTable = std::unordered_map<std::string, std::string>;
+std::map<std::string, TranslationTable> &moduleTables() {
+  static std::map<std::string, TranslationTable> instance;
+  return instance;
+}
 
+// "key = value" lines; '#' starts a comment. Values keep interior spaces.
+void parseTable(const unsigned char *bytes, size_t size,
+                TranslationTable &table, const std::string &prefix = {}) {
   std::string line;
   auto parseLine = [&]() {
     std::string key, value;
-    if (TextUtil::parseTranslationLine(line, key, value))
-      Table[key] = value;
+    if (TextUtil::parseTranslationLine(line, key, value) &&
+        (prefix.empty() || key.starts_with(prefix)))
+      table[key] = value;
     line.clear();
   };
-  for (const unsigned char ch : bytes) {
+  for (size_t i = 0; i < size; ++i) {
+    const unsigned char ch = bytes[i];
     if (ch == '\n')
       parseLine();
     else if (line.size() < 65536)
@@ -37,10 +44,26 @@ void parseTableFile(const std::string &path) {
   }
   parseLine();
 }
+
+void parseTableFile(const std::string &path) {
+  std::vector<unsigned char> bytes;
+  if (ResourceFile::read(path, bytes, 1024 * 1024))
+    parseTable(bytes.data(), bytes.size(), Table);
+}
+
+void parseModuleTable(const std::string &id, const std::string &language) {
+  PackageEntry entry;
+  const std::string path = "lang/" + language + ".txt";
+  if (ModuleVfs::openPath(id.c_str(), path.c_str(), entry, nullptr) &&
+      entry.size <= 1024 * 1024)
+    parseTable(static_cast<const unsigned char *>(entry.data), entry.size,
+               moduleTables()[id], id + "/");
+}
 } // namespace
 
 void Localization::load() {
   Table.clear();
+  moduleTables().clear();
 
   const char *language = CurrentLanguage();
   if (!language || !*language)
@@ -60,9 +83,25 @@ void Localization::load() {
         language);
     parseTableFile("abc/abcui/lang/english.txt");
   }
+  for (const auto &id : ModuleVfs::mountedIds()) {
+    parseModuleTable(id, "english");
+    if (strcmp(language, "english") != 0)
+      parseModuleTable(id, language);
+  }
 }
 
 bool Localization::translate(std::string &out, const std::string &token) {
+  // Package namespaces end with a slash (ids cannot contain one). Never expose
+  // translations from a retired package.
+  for (auto it = moduleTables().rbegin(); it != moduleTables().rend(); ++it) {
+    if (!ModuleVfs::isMounted(it->first.c_str()))
+      continue;
+    const auto entry = it->second.find(token);
+    if (entry != it->second.end()) {
+      out = entry->second;
+      return true;
+    }
+  }
   const auto itor = Table.find(token);
   if (itor == Table.end())
     return false;

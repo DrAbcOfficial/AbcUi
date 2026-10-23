@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pack first-party UI module packages.
 
-Every directory under modules/ that carries a manifest.json becomes one zip
+Every release directory under modules/ carrying a manifest.json becomes one zip
 package at <out-dir>/<id>-<version>.zip:
 
     manifest.json            (archive root)
@@ -39,6 +39,8 @@ REQUIRED_FIELDS = (
 )
 # Fixed timestamp so repeated packs are byte-identical.
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
+# The SDK example is opt-in, never a release UI feature.
+EXAMPLE_MODULES = {"demo"}
 
 
 def fail(message):
@@ -147,7 +149,7 @@ def main(argv):
     parser.add_argument("--config", default="Release")
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--module", action="append", default=[],
-                        help="module directory name (repeatable); default all")
+                        help="module directory name (repeatable); default release modules")
     args = parser.parse_args(argv)
 
     modules_root = os.path.join(args.source_dir, "modules")
@@ -157,7 +159,8 @@ def main(argv):
     else:
         module_dirs = [os.path.join(modules_root, name)
                        for name in sorted(os.listdir(modules_root))
-                       if os.path.isfile(os.path.join(modules_root, name,
+                       if name not in EXAMPLE_MODULES and
+                       os.path.isfile(os.path.join(modules_root, name,
                                                       "manifest.json"))]
 
     failures = 0

@@ -181,6 +181,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiConnection.cpp
     src/modsys/ApiSettings.cpp
     src/modsys/ModuleDocuments.cpp
+    src/modsys/ModuleServices.cpp
     src/render/Render.cpp
     src/render/RadarRender.cpp
     src/render/ScreenMetrics.cpp
@@ -340,6 +341,7 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
 
 # First-party UI modules (each its own DLL + package; see modules/<id>/).
 add_subdirectory(modules/demo)
+add_subdirectory(modules/recovery)
 add_subdirectory(modules/flashlight)
 add_subdirectory(modules/textmenu)
 add_subdirectory(modules/ammo)
