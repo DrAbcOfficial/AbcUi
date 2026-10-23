@@ -8,10 +8,10 @@
 #include <RmlUi/Core/SystemInterface.h>
 
 #include <abc/Console.h>
+#include <abc/Parse.h>
 
 #include <algorithm>
 #include <cmath>
-#include <cstdlib>
 #include <utility>
 #include <vector>
 
@@ -59,11 +59,10 @@ bool parseBool(const Rml::String &text, bool &value) {
 bool parseFloat(const Rml::String &text, float &value) {
   if (text.empty())
     return false;
-  char *end = nullptr;
-  const float parsed = std::strtof(text.c_str(), &end);
-  if (end == text.c_str() || *end != '\0' || !std::isfinite(parsed))
+  const auto parsed = abc::ParseFloat(text);
+  if (!parsed || !std::isfinite(*parsed))
     return false;
-  value = parsed;
+  value = *parsed;
   return true;
 }
 

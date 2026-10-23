@@ -1,7 +1,8 @@
 #include "ItemList.h"
 
 #include <algorithm>
-#include <cstdlib>
+#include <charconv>
+#include <system_error>
 #include <utility>
 
 namespace itemlist {
@@ -24,6 +25,15 @@ std::vector<std::string> tokenize(const std::string &content) {
   return tokens;
 }
 
+int parseChannel(const std::string &text) {
+  int value = 0;
+  const char *const end = text.data() + text.size();
+  const auto result = std::from_chars(text.data(), end, value);
+  if (result.ec != std::errc{} || result.ptr != end)
+    return 0;
+  return value;
+}
+
 } // namespace
 
 bool parse(const std::string &content, std::vector<Entry> &out) {
@@ -34,8 +44,8 @@ bool parse(const std::string &content, std::vector<Entry> &out) {
     entry.path = tokens[record * 6];
     entry.nameToken = tokens[record * 6 + 1];
     for (int channel = 0; channel < 4; ++channel)
-      entry.color[channel] = static_cast<unsigned char>(std::clamp(
-          std::atoi(tokens[record * 6 + 2 + channel].c_str()), 0, 255));
+      entry.color[channel] = static_cast<unsigned char>(
+          std::clamp(parseChannel(tokens[record * 6 + 2 + channel]), 0, 255));
     out.push_back(std::move(entry));
   }
   return tokens.size() % 6 == 0;

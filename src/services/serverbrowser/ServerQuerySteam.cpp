@@ -39,6 +39,8 @@
 #include <steam/isteammatchmaking.h>
 #include <steam/isteamutils.h>
 
+#include <abc/Parse.h>
+
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -76,10 +78,10 @@ uint32_t readSteamAppIdFile() {
   std::fclose(file);
   if (read == 0)
     return 0;
-  const long value = std::strtol(buffer, nullptr, 10);
-  if (value <= 0 || value > 0xffffff)
+  const auto value = abc::ParseInt(buffer);
+  if (!value || *value <= 0 || *value > 0xffffff)
     return 0;
-  return static_cast<uint32_t>(value);
+  return static_cast<uint32_t>(*value);
 }
 
 // The shared provider -> model queue. Bounded; overflow drops the newest

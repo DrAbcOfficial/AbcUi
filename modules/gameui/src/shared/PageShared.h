@@ -9,10 +9,40 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
+#include <charconv>
+#include <cmath>
+#include <optional>
 #include <string>
+#include <string_view>
+#include <system_error>
 
 // The framework's table, borrowed once per process and dropped on unload.
 inline const AbcUiModuleApi *Api = nullptr;
+
+// Strict, locale-independent number parsing (std::from_chars): nullopt on
+// empty input, trailing junk or overflow. Module packages cannot include
+// the framework's abc::ParseNumber, so this is the local twin.
+inline std::optional<int> parseInt(std::string_view text) {
+  if (text.empty())
+    return std::nullopt;
+  int value = 0;
+  const char *const end = text.data() + text.size();
+  const auto result = std::from_chars(text.data(), end, value);
+  if (result.ec != std::errc{} || result.ptr != end)
+    return std::nullopt;
+  return value;
+}
+
+inline std::optional<float> parseFloat(std::string_view text) {
+  if (text.empty())
+    return std::nullopt;
+  float value = 0.0f;
+  const char *const end = text.data() + text.size();
+  const auto result = std::from_chars(text.data(), end, value);
+  if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(value))
+    return std::nullopt;
+  return value;
+}
 
 // ui->translate is not a measure-then-copy call (it takes the whole string
 // in one shot), so use a fixed table-sized buffer and keep the token when

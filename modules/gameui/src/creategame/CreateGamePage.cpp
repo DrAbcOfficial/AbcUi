@@ -79,7 +79,7 @@ std::string selectedMap() {
 // settings.scr NUMBER semantics; the model still range-checks).
 std::string playersText() {
   const std::string raw = inputValue("cg-players");
-  return std::to_string(static_cast<int>(std::strtof(raw.c_str(), nullptr)));
+  return std::to_string(static_cast<int>(parseFloat(raw).value_or(0.0f)));
 }
 
 // Option names become element ids ("cg-option-<name>") in the generated

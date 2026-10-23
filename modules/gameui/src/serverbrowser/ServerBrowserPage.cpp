@@ -637,7 +637,7 @@ void handleChange(AbcUiElement *target, const std::string &value) {
   const char *id = Api->ui->elementId(target);
   if (!id)
     return;
-  if (std::strlen(value.c_str()) > 256)
+  if (value.size() > 256)
     return;
   AbcUiSbFilter filter{};
   filter.structSize = sizeof(filter);
@@ -651,11 +651,11 @@ void handleChange(AbcUiElement *target, const std::string &value) {
     changed = std::strcmp(filter.map, value.c_str()) != 0;
     std::snprintf(filter.map, sizeof(filter.map), "%s", value.c_str());
   } else if (!std::strcmp(id, "sb-filter-ping")) {
-    const int parsed = std::atoi(value.c_str());
-    if (parsed < 0 || parsed > 500)
+    const auto parsed = parseInt(value);
+    if (!parsed || *parsed < 0 || *parsed > 500)
       return;
-    changed = filter.maxPing != parsed;
-    filter.maxPing = parsed;
+    changed = filter.maxPing != *parsed;
+    filter.maxPing = *parsed;
   } else if (!std::strcmp(id, "sb-filter-password")) {
     const bool on = value == "1";
     changed = filter.noPassword != on;
@@ -728,7 +728,7 @@ int32_t onMousedown(void *, AbcUiElement *target,
   AbcUiElement *row = rowNodeOf(target);
   if (!row)
     return 0;
-  const int browserRow = std::atoi(attributeOf(row, "data-row").c_str());
+  const int browserRow = parseInt(attributeOf(row, "data-row")).value_or(0);
   Api->serverbrowser->selectRow(browserRow, 0); // a view action: no detail
   openContextMenu(event->mouseX, event->mouseY);
   if (AbcUiElement *first = node("sb-menu-join"))
@@ -822,7 +822,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
   // trip; the re-render is the next beat's - the DOM is never rebuilt from
   // inside its own event dispatch).
   if (action == "sb-row") {
-    const int row = std::atoi(attributeOf(entry, "data-row").c_str());
+    const int row = parseInt(attributeOf(entry, "data-row")).value_or(0);
     Api->serverbrowser->selectRow(row, 1); // the left click opens the window
     DetailsOpen = Api->serverbrowser->selectedRow() >= 0;
     Projected = false;

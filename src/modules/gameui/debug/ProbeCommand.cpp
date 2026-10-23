@@ -10,6 +10,7 @@
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
+#include <abc/Parse.h>
 
 #include <keydefs.h>
 #include <abc/Math.h>
@@ -109,7 +110,7 @@ void consoleStatusCommand() {
 void consoleDumpCommand() {
   int newest = 10;
   if (gEngfuncs.Cmd_Argc() >= 2)
-    newest = atoi(gEngfuncs.Cmd_Argv(1));
+    newest = abc::ParseInt(gEngfuncs.Cmd_Argv(1)).value_or(0);
   if (newest <= 0)
     newest = 10;
   if (newest > 64)
@@ -633,9 +634,12 @@ void wheelDownCommand() {
 
 // Deterministic client-key seam; does not pretend to be hardware input.
 void mouseKeyCommand() {
-  const int key =
-      gEngfuncs.Cmd_Argc() > 1 ? atoi(gEngfuncs.Cmd_Argv(1)) : K_MOUSE2;
-  const int down = gEngfuncs.Cmd_Argc() > 2 ? atoi(gEngfuncs.Cmd_Argv(2)) : 1;
+  const int key = gEngfuncs.Cmd_Argc() > 1
+                      ? abc::ParseInt(gEngfuncs.Cmd_Argv(1)).value_or(K_MOUSE2)
+                      : K_MOUSE2;
+  const int down = gEngfuncs.Cmd_Argc() > 2
+                       ? abc::ParseInt(gEngfuncs.Cmd_Argv(2)).value_or(1)
+                       : 1;
   const int result = hooks::debugKeyEvent(down, key);
   abc::ConsolePrint("[AbcUi] input-test key=%d down=%d result=%d owner=%d "
                     "cursor=%d wheel=%d\n",
@@ -672,7 +676,10 @@ void inputTextCommand() {
 
 void inputComposeCommand() {
   const char *text = gEngfuncs.Cmd_Argc() > 1 ? gEngfuncs.Cmd_Argv(1) : "";
-  const int start = gEngfuncs.Cmd_Argc() > 2 ? atoi(gEngfuncs.Cmd_Argv(2)) : 0;
+  const int start =
+      gEngfuncs.Cmd_Argc() > 2
+          ? abc::ParseInt(gEngfuncs.Cmd_Argv(2)).value_or(0)
+          : 0;
   rmlui::feedTextEditing(text, start);
   printFocusedValue("compose");
 }
@@ -777,8 +784,12 @@ void domAtCommand() {
   Rml::Context *ctx = rmlui::context();
   if (!ctx)
     return;
-  const int px = gEngfuncs.Cmd_Argc() > 1 ? atoi(gEngfuncs.Cmd_Argv(1)) : -1;
-  const int py = gEngfuncs.Cmd_Argc() > 2 ? atoi(gEngfuncs.Cmd_Argv(2)) : -1;
+  const int px = gEngfuncs.Cmd_Argc() > 1
+                     ? abc::ParseInt(gEngfuncs.Cmd_Argv(1)).value_or(-1)
+                     : -1;
+  const int py = gEngfuncs.Cmd_Argc() > 2
+                     ? abc::ParseInt(gEngfuncs.Cmd_Argv(2)).value_or(-1)
+                     : -1;
   abc::ConsolePrint("[AbcUi] dom-at point=(%d,%d) documents=%d\n", px, py,
                     ctx->GetNumDocuments());
   for (int i = 0; i < ctx->GetNumDocuments(); ++i) {

@@ -45,16 +45,19 @@ void onChange(AbcUiElement *target) {
     if (videoFacts(facts) && facts.available && !facts.awaitingConfirm) {
       const std::size_t separator = value.find('x');
       if (separator != std::string::npos) {
-        const int width = std::atoi(value.substr(0, separator).c_str());
-        const int height = std::atoi(value.substr(separator + 1).c_str());
+        const auto width =
+            parseInt(std::string_view(value).substr(0, separator));
+        const auto height =
+            parseInt(std::string_view(value).substr(separator + 1));
         // Re-entrancy guard: a programmatic value write can re-enter here
         // with the value already staged.
         const int currentWidth =
             facts.hasStaged ? facts.stagedWidth : facts.actualWidth;
         const int currentHeight =
             facts.hasStaged ? facts.stagedHeight : facts.actualHeight;
-        if (currentWidth != width || currentHeight != height)
-          Api->settings->videoStageResolution(width, height);
+        if (width && height &&
+            (currentWidth != *width || currentHeight != *height))
+          Api->settings->videoStageResolution(*width, *height);
       }
     }
     render();
@@ -210,17 +213,18 @@ void onClick(AbcUiElement *target) {
     // Start a capture session: the model takes the row, the framework takes
     // the router token (kCapture tier) and the input clamp. A click on an
     // already-capturing row is a no-op (the model refuses a second session).
-    Api->settings->bindBeginCapture(std::atoi(rowKey.c_str()));
+    Api->settings->bindBeginCapture(parseInt(rowKey).value_or(0));
     render();
   } else if (action == kActionBindClear && !rowKey.empty()) {
-    Api->settings->bindClear(std::atoi(rowKey.c_str()));
+    Api->settings->bindClear(parseInt(rowKey).value_or(0));
     render();
   } else if (action == kActionBindRemove && !rowKey.empty()) {
     // data-row carries "<action>:<keyname>" for the single-key remove.
     const std::size_t separator = rowKey.find(':');
     if (separator != std::string::npos) {
-      Api->settings->bindRemove(std::atoi(rowKey.substr(0, separator).c_str()),
-                                rowKey.substr(separator + 1).c_str());
+      Api->settings->bindRemove(
+          parseInt(std::string_view(rowKey).substr(0, separator)).value_or(0),
+          rowKey.substr(separator + 1).c_str());
     }
     render();
   } else if (action == kActionBindReset) {

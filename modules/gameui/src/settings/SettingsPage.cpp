@@ -167,11 +167,10 @@ bool isOn(float value) {
 bool parseNumber(const char *text, float &out) {
   if (!text || !*text)
     return false;
-  char *end = nullptr;
-  const double parsed = std::strtod(text, &end);
-  if (end != text + std::strlen(text) || !std::isfinite(parsed))
+  const auto parsed = parseFloat(text);
+  if (!parsed)
     return false;
-  out = static_cast<float>(parsed);
+  out = *parsed;
   return true;
 }
 

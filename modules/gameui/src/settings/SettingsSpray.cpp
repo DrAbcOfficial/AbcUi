@@ -29,7 +29,7 @@ std::string sprayPreviewText() {
 
 int32_t attributeIndex(AbcUiElement *element, const char *name) {
   const std::string text = attributeOf(element, name);
-  return text.empty() ? -1 : std::atoi(text.c_str());
+  return text.empty() ? -1 : parseInt(text).value_or(0);
 }
 
 void renderSprayBrowser() {

@@ -8,6 +8,7 @@
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
+#include <abc/Parse.h>
 
 #include <algorithm>
 #include <cstring>
@@ -101,10 +102,10 @@ void ElementBackdrop::OnAttributeChange(const Rml::ElementAttributes &Changed) {
                          text.c_str(), GetId().c_str());
     } else if (Name == "blur") {
       hasBlur = true;
-      const int value = std::clamp(atoi(text.c_str()), 0, 4);
+      const int value = std::clamp(abc::ParseInt(text).value_or(0), 0, 4);
       rounds = value;
     } else if (Name == "dim") {
-      dim = std::clamp(static_cast<float>(atof(text.c_str())), 0.0f, 1.0f);
+      dim = std::clamp(abc::ParseFloat(text).value_or(0.0f), 0.0f, 1.0f);
     }
   }
   // Only explicit attributes steer the shared backdrop (the cvars own the

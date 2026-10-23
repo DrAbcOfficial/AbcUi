@@ -6,6 +6,7 @@
 #include <cdll_int.h>
 #include <entity_state.h>
 
+#include <abc/Parse.h>
 #include <abcui/events.h>
 
 #include "../modsys/EventBus.h"
@@ -86,7 +87,8 @@ void onUpdateClientData(const client_data_s *cdata) {
 
   // Longjump module: physinfo "slj", polled on the same cadence as the old
   // g_EventHudUpdateClientData handler.
-  const bool longJump = atoi(gEngfuncs.PhysInfo_ValueForKey("slj")) != 0;
+  const bool longJump =
+      abc::ParseInt(gEngfuncs.PhysInfo_ValueForKey("slj")).value_or(0) != 0;
   if (longJump != LongJump) {
     LongJump = longJump;
     LongJumpChanged(longJump);
