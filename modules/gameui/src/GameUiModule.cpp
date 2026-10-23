@@ -6,7 +6,7 @@
 // owns
 // its DOM, its local gestures and its model-section calls; the framework
 // keeps the models, the seams and the navigation state machine.
-#include "PageShared.h"
+#include "shared/PageShared.h"
 
 namespace votepage {
 void load();

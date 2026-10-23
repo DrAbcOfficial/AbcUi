@@ -9,7 +9,7 @@
 //
 // No full-window backdrop: the world remains visible behind the columns
 // (the document carries the menu flag only).
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstring>
 #include <string>

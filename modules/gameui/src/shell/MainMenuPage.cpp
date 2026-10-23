@@ -16,7 +16,7 @@
 // the data-label status line. The default focus per section is the
 // section's first available entry, deferred while an overlay holds the
 // screen (the state's overlays bitmask).
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstdio>
 #include <cstdlib>

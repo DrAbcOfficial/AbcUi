@@ -8,7 +8,7 @@
 // `votemenu` command stay in the framework; this page owns only the DOM,
 // the local tab/filter/selection gestures and the server-command send
 // (console->serverCommand, the wire path ABCEnchance used).
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstdio>
 #include <cstring>

@@ -11,7 +11,7 @@
 // map outside the filtered set). The Apply latch (one report per opening;
 // the backend's per-generation latch is the second guard) and the LAN
 // toggle stay page-local. Every dynamic string reaches the DOM escaped.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstdio>
 #include <cstdlib>

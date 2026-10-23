@@ -13,7 +13,7 @@
 // key's close rule framework-side) answers the menu.commandkey veto feed;
 // actions execute framework-side (the window closes, then the client
 // command runs) and the read-through rule keeps the list truthful.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstdio>
 #include <cstdlib>

@@ -25,7 +25,7 @@
 // ui->translate + ui->escapeRml (draft text is user input); all layout is dp.
 // Visibility of the layers is tracked in page members, never inferred from
 // the document.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 #include "SettingsFileBrowser.h"
 
 #include <algorithm>

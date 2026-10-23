@@ -17,7 +17,7 @@
 // logged); the lead line keys on the model's per-generation prompt count.
 // The direct-connect dialog validates with the model's grammar inside the
 // section - a refused entry shows the inline hint and stays put.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <algorithm>
 #include <cstring>

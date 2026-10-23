@@ -10,7 +10,7 @@
 // (Muted / CPU Player / Spectating), the mute label toggles and is disabled
 // exactly when the shipped button was, and every player-derived string is
 // escaped before it reaches the DOM.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstdlib>
 #include <cstring>

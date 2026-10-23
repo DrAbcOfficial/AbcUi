@@ -2,7 +2,7 @@
 // panel). The controller owns the overlay state; this page presents its own
 // document from the menu.state overlay bit and resolves it through the menu
 // section. Cancel autofocuses, so a stray Enter never ends the game.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <cstring>
 

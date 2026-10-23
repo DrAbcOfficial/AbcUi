@@ -12,7 +12,7 @@
 // unknown ("-" ping, "?" players); the bounded page window is the render
 // cap; the per-beat rebuild is signature-gated (including a digest over
 // the visible rows and the read-through favorite state).
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <algorithm>
 #include <cstdio>

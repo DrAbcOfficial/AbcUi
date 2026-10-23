@@ -25,7 +25,7 @@
 //   - ESC layering: a press the page consumed on one of its own layers
 //     (context menu / confirm pane / completion list) is claimed through
 //     the section, so the menu owner's routed ESC closes exactly one layer.
-#include "PageShared.h"
+#include "../shared/PageShared.h"
 
 #include <algorithm>
 #include <cstdio>
