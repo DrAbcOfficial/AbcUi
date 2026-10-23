@@ -676,10 +676,9 @@ void inputTextCommand() {
 
 void inputComposeCommand() {
   const char *text = gEngfuncs.Cmd_Argc() > 1 ? gEngfuncs.Cmd_Argv(1) : "";
-  const int start =
-      gEngfuncs.Cmd_Argc() > 2
-          ? abc::ParseInt(gEngfuncs.Cmd_Argv(2)).value_or(0)
-          : 0;
+  const int start = gEngfuncs.Cmd_Argc() > 2
+                        ? abc::ParseInt(gEngfuncs.Cmd_Argv(2)).value_or(0)
+                        : 0;
   rmlui::feedTextEditing(text, start);
   printFocusedValue("compose");
 }
