@@ -194,6 +194,7 @@ add_library(AbcUi MODULE
     src/rmlui/backdrop/ElementBackdrop.cpp
     src/rmlui/video/ElementVideo.cpp
     src/rmlui/animated/AnimatedImage.cpp
+    src/rmlui/animated/ApngDecoder.cpp
     src/rmlui/animated/WebPDecoder.cpp
     src/rmlui/animated/ElementAnimatedImage.cpp
     src/rmlui/backdrop/Backdrop.cpp

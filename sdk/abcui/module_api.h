@@ -761,6 +761,13 @@ typedef struct AbcUiPlayersApi {
   // Re-reads the engine mirrors (identity + live ping/loss). `full` = the
   // heavy identity pass (old per-row update()); 0 = ping/loss only.
   void(ABCUI_CALL *refresh)(int32_t full);
+  // Steam animated-avatar (APNG) probe/cache. OK when the animation bytes are
+  // cached: build "avataranim://<steamid64>?gen=<generation>". PENDING while
+  // the profile/download is in flight (keep the static avatar), NOT_FOUND when
+  // the user has none (or the runtime cannot serve one), UNAVAILABLE without
+  // Steam, LIMIT at the cache bound. Appended; use ABCUI_API_HAS_MEMBER.
+  int32_t(ABCUI_CALL *avatarAnimated)(uint64_t steamId64,
+                                      int32_t *generation);
 } AbcUiPlayersApi;
 
 // ---------------------------------------------------------------- radar ----

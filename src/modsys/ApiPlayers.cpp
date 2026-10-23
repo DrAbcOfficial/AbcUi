@@ -114,6 +114,15 @@ int32_t apiAvatar(uint64_t steamId64, int32_t *generation) {
   return result;
 }
 
+int32_t apiAvatarAnimated(uint64_t steamId64, int32_t *generation) {
+  if (!generation)
+    return ABCUI_ERROR_INVALID;
+  int value = 0;
+  const int result = avatars::animatedStatus(steamId64, value);
+  *generation = value;
+  return result;
+}
+
 int32_t apiTeamNameToken(int32_t team, char *out, uint32_t outSize) {
   const char *token =
       teamres::teamNameToken(static_cast<teamres::TeamId>(team));
@@ -137,6 +146,7 @@ void apiRefresh(int32_t full) {
 const AbcUiPlayersApi kPlayersApi = {
     sizeof(AbcUiPlayersApi), apiLocal,  apiGet,           apiEntity,
     apiClientColor,          apiAvatar, apiTeamNameToken, apiRefresh,
+    apiAvatarAnimated,
 };
 
 } // namespace

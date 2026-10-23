@@ -1,6 +1,7 @@
 // rmlui::animated::AnimatedImage implementation - see AnimatedImage.h.
 #include "AnimatedImage.h"
 
+#include "ApngDecoder.h"
 #include "WebPDecoder.h"
 
 #include "../../framework/ResourceFile.h"
@@ -16,7 +17,8 @@ using detail::Backend;
 // the caller never guesses from the file extension (mod trees, downloads and
 // Steam avatar buffers all carry whatever name they like).
 const std::vector<const Backend *> &backends() {
-  static const std::vector<const Backend *> List = {&detail::webpBackend()};
+  static const std::vector<const Backend *> List = {&detail::webpBackend(),
+                                                    &detail::apngBackend()};
   return List;
 }
 
