@@ -405,15 +405,21 @@ void rebuildTable() {
       out += "<div class='cell c-avatar'></div>";
       return;
     }
-    appendFmt(
-        out,
-        "<div class='cell c-avatar'><div class='avatar-frame' "
-        "style='width:{:.0f}px; height:{:.0f}px;'>"
-        "<img class='avatar' style='width:100%; height:100%;' "
-        "src='{}'/>",
-        avatarSize, avatarSize,
-        moduleui::avatarUri(Api, info.steamId64,
-                            "mod://abcui.scoreboard/img/default_avatar.png"));
+    // Steam animated avatars play through the framework's generic <animimg>;
+    // every other row keeps the static <img> path unchanged.
+    std::string source;
+    const bool animated =
+        info.steamId64 != 0 &&
+        moduleui::animatedAvatarUri(Api, info.steamId64, source);
+    if (!animated)
+      source = moduleui::avatarUri(
+          Api, info.steamId64, "mod://abcui.scoreboard/img/default_avatar.png");
+    appendFmt(out,
+              "<div class='cell c-avatar'><div class='avatar-frame' "
+              "style='width:{:.0f}px; height:{:.0f}px;'>"
+              "<{} class='avatar' style='position:absolute; left:0px; "
+              "top:0px; width:100%; height:100%;' src='{}'/>",
+              avatarSize, avatarSize, animated ? "animimg" : "img", source);
     if (info.admin == 1)
       appendFmt(out,
                 "<img class='admin' style='width:100%; height:100%;' "
@@ -964,7 +970,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.scoreboard";
-  out->version = "2.0.0";
+  out->version = "2.1.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;
