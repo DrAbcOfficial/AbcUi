@@ -290,6 +290,11 @@ typedef struct AbcUiHudState {
   int32_t waterLevel;
   float fov;
   float punchAngle[3]; // predicted view punch (old hudstate::punchangle)
+  // Local player observer state (entity_state iuser1/iuser2). spectateMode is
+  // 0 outside observer mode; spectateTarget is the target entindex (1..32).
+  // Native SpectatorPanel reads the same pair; appended in AbcUi 0.9.1.
+  int32_t spectateMode;
+  int32_t spectateTarget;
 } AbcUiHudState;
 
 // Local player readout (data->playerState): copied out, never a pointer.

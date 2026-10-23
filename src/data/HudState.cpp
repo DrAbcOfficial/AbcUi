@@ -22,6 +22,8 @@ constexpr int kWeaponSuitBit = 1 << 31;
 bool Suit = false;
 bool LongJump = false;
 bool Spectate = false;
+int SpectateMode = 0;
+int SpectateTarget = 0;
 int HideTokens = 0;
 clientdata_s ClientDataValue{};
 const clientdata_s *ClientData = nullptr;
@@ -96,9 +98,14 @@ void onUpdateClientData(const client_data_s *cdata) {
     framework::eventBus().publish(ABCUI_CHANNEL_HUD_LONG_JUMP, moduleEvent);
   }
 
-  // Spectate: local player iuser1 (old SetSpectate check).
+  // Spectate: local player iuser1 (old SetSpectate check). The mode/target
+  // pair rides the same call: iuser1 is the observer mode, iuser2 the target
+  // entindex (both 0 when not spectating). Native SpectatorPanel reads the
+  // same two fields through g_iUser1/g_iUser2.
   const cl_entity_t *local = gEngfuncs.GetLocalPlayer();
-  const bool spectate = local && local->curstate.iuser1 > 0;
+  SpectateMode = local ? local->curstate.iuser1 : 0;
+  SpectateTarget = local ? local->curstate.iuser2 : 0;
+  const bool spectate = SpectateMode > 0;
   if (spectate != Spectate) {
     Spectate = spectate;
     SpectateChanged(spectate);
@@ -114,6 +121,7 @@ const MessageSnapshot &messages() {
 void reset() {
   Snapshot = {};
   Suit = LongJump = Spectate = false;
+  SpectateMode = SpectateTarget = 0;
   HideTokens = 0;
   ClientData = nullptr;
   ClientDataValue = {};
@@ -130,6 +138,14 @@ bool hasLongJump() {
 
 bool isSpectate() {
   return Spectate;
+}
+
+int spectateMode() {
+  return SpectateMode;
+}
+
+int spectateTarget() {
+  return SpectateTarget;
 }
 
 bool isHudHidden(int token) {

@@ -897,6 +897,8 @@ void apiHudState(AbcUiHudState *out) {
   state.structSize = sizeof(AbcUiHudState);
   target->suit = hudstate::hasSuit() ? 1 : 0;
   target->spectate = hudstate::isSpectate() ? 1 : 0;
+  target->spectateMode = hudstate::spectateMode();
+  target->spectateTarget = hudstate::spectateTarget();
   target->longjump = hudstate::hasLongJump() ? 1 : 0;
   target->hideBits = hudstate::debugHideTokens();
   const hudstate::MessageSnapshot &messages = hudstate::messages();
