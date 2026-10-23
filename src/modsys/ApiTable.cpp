@@ -5,7 +5,8 @@
 #include <cstdio>
 #include <cstring>
 #include <map>
-#include <set>
+#include <memory>
+#include <new>
 #include <string>
 #include <vector>
 
@@ -325,29 +326,27 @@ const AbcUiEventsApi kEventsApi = {
 
 // ----------------------------------------------------------------- vfs ----
 
-std::set<AbcUiFileView *> &fileViews() {
-  static std::set<AbcUiFileView *> views;
+std::map<AbcUiFileView *, std::unique_ptr<AbcUiFileView>> &fileViews() {
+  static std::map<AbcUiFileView *, std::unique_ptr<AbcUiFileView>> views;
   return views;
 }
 
 void apiViewFree(AbcUiFileView *view) {
-  if (fileViews().erase(view))
-    delete view;
+  fileViews().erase(view);
 }
 
 AbcUiFileView *apiVfsOpen(const char *moduleId, const char *path) {
   if (!module_resources::accepting())
     return nullptr;
-  auto *view = new (std::nothrow) AbcUiFileView();
+  std::unique_ptr<AbcUiFileView> view(new (std::nothrow) AbcUiFileView());
   if (!view)
     return nullptr;
-  if (!ModuleVfs::openPath(moduleId, path, view->entry, nullptr)) {
-    delete view;
+  if (!ModuleVfs::openPath(moduleId, path, view->entry, nullptr))
     return nullptr;
-  }
-  fileViews().insert(view);
-  view->lifetime.track([view] { apiViewFree(view); });
-  return view;
+  AbcUiFileView *raw = view.get();
+  fileViews().emplace(raw, std::move(view));
+  raw->lifetime.track([raw] { apiViewFree(raw); });
+  return raw;
 }
 
 const void *apiViewData(AbcUiFileView *view) {

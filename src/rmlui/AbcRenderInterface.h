@@ -59,6 +59,7 @@
 #include "TextureBlend.h"
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -177,6 +178,11 @@ private:
     Rml::String ExternalPrefix;
   };
   std::unordered_map<Rml::TextureHandle, TextureRecord> Textures;
+  // Baked geometry is owned through the handle RmlUi returns; releasing the
+  // handle erases (and destroys) the record.
+  std::unordered_map<Rml::CompiledGeometryHandle,
+                     std::unique_ptr<CompiledGeometry>>
+      Geometries;
   Rml::TextureHandle NextTexture = 1;
   Rml::TextureHandle retainTexture(int id, bool owned,
                                    Rml::String external = {});

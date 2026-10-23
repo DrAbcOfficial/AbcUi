@@ -127,17 +127,15 @@ void EventBus::unsubscribe(EventSubscription subscription) {
     }
     }
   }
-  delete record.wrapper;
   Records.erase(it);
 }
 
-void EventBus::ownWrapper(EventSubscription token, FnWrapperBase *wrapper) {
+void EventBus::ownWrapper(EventSubscription token,
+                          std::unique_ptr<FnWrapperBase> wrapper) {
   const auto it = Records.find(token);
-  if (it == Records.end()) {
-    delete wrapper;
-    return;
-  }
-  it->second.wrapper = wrapper;
+  if (it == Records.end())
+    return; // the unique_ptr releases an unowned wrapper
+  it->second.wrapper = std::move(wrapper);
 }
 
 void EventBus::publishRaw(const char *channel, const void *payload) {

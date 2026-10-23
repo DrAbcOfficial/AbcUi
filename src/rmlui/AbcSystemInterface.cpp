@@ -17,6 +17,7 @@
 #include <cstdio>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <new>
 #include <string>
 
@@ -165,14 +166,15 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
     framework::PackageEntry entry;
     if (!framework::ModuleVfs::open(resolved.c_str(), entry, nullptr))
       return 0;
-    auto *resource = new (std::nothrow) ResourceHandle{};
+    std::unique_ptr<ResourceHandle> resource(new (std::nothrow)
+                                                 ResourceHandle{});
     if (!resource)
       return 0;
     resource->ModuleData = static_cast<const unsigned char *>(entry.data);
     resource->ModuleSize = entry.size;
     resource->ModulePos = 0;
     resource->ModuleEntry = std::move(entry);
-    return reinterpret_cast<Rml::FileHandle>(resource);
+    return reinterpret_cast<Rml::FileHandle>(resource.release());
   }
 
   // Rml documents and their resources follow the engine mount order, which
@@ -185,12 +187,13 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
     FILE *local = nullptr;
     if (fopen_s(&local, resolved.c_str(), "rb") != 0 || !local)
       return 0;
-    auto *resource = new (std::nothrow) ResourceHandle{nullptr, local};
+    std::unique_ptr<ResourceHandle> resource(
+        new (std::nothrow) ResourceHandle{nullptr, local});
     if (!resource) {
       fclose(local);
       return 0;
     }
-    return reinterpret_cast<Rml::FileHandle>(resource);
+    return reinterpret_cast<Rml::FileHandle>(resource.release());
   }
 
   std::string normalized;
@@ -200,23 +203,23 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
   FileHandle_t file = abc::g_pFileSystem->Open(normalized.c_str(), "rb");
   if (!file)
     return 0;
-  auto *resource = new (std::nothrow) ResourceHandle{file, nullptr};
+  std::unique_ptr<ResourceHandle> resource(new (std::nothrow)
+                                               ResourceHandle{file, nullptr});
   if (!resource) {
     abc::g_pFileSystem->Close(file);
     return 0;
   }
-  return reinterpret_cast<Rml::FileHandle>(resource);
+  return reinterpret_cast<Rml::FileHandle>(resource.release());
 }
 
 void AbcFileInterface::Close(Rml::FileHandle file) {
-  ResourceHandle *resource = handleFor(file);
+  std::unique_ptr<ResourceHandle> resource(handleFor(file));
   if (!resource)
     return;
   if (resource->LocalFile)
     fclose(resource->LocalFile);
   else if (abc::g_pFileSystem && resource->EngineFile)
     abc::g_pFileSystem->Close(resource->EngineFile);
-  delete resource;
 }
 
 size_t AbcFileInterface::Read(void *buffer, size_t size, Rml::FileHandle file) {

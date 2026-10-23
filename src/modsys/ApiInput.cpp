@@ -4,6 +4,7 @@
 #include "ModuleResources.h"
 
 #include <map>
+#include <memory>
 #include <new>
 #include <string>
 
@@ -63,7 +64,7 @@ private:
 };
 
 struct TokenRecord {
-  ModuleOwner *owner = nullptr;
+  std::unique_ptr<ModuleOwner> owner;
   uiinput::Token token;
   module_resources::Registration lifetime;
 };
@@ -83,14 +84,15 @@ AbcUiInputToken apiTakeToken(const AbcUiInputCallbacks *callbacks) {
       rmlui::uiRouter().tearingDown() ||
       callbacks->structSize < sizeof(AbcUiInputCallbacks))
     return 0;
-  auto *owner = new (std::nothrow) ModuleOwner(*callbacks);
+  std::unique_ptr<ModuleOwner> owner(new (std::nothrow)
+                                         ModuleOwner(*callbacks));
   if (!owner)
     return 0;
   const AbcUiInputToken id = NextToken++;
   TokenRecord record;
-  record.owner = owner;
-  record.token =
-      rmlui::uiRouter().acquire(owner, uiinput::OwnerTier::kInteractiveHud);
+  record.owner = std::move(owner);
+  record.token = rmlui::uiRouter().acquire(record.owner.get(),
+                                           uiinput::OwnerTier::kInteractiveHud);
   tokens()[id] = std::move(record);
   tokens()[id].lifetime.track([id] { apiReleaseToken(id); },
                               module_resources::Lifetime::Context);
@@ -103,7 +105,6 @@ void apiReleaseToken(AbcUiInputToken token) {
     return;
   auto closing = tokens().extract(itor);
   closing.mapped().token.release();
-  delete closing.mapped().owner;
 }
 
 int32_t apiTokenHeld(AbcUiInputToken token) {

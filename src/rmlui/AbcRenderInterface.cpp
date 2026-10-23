@@ -116,7 +116,7 @@ AbcRenderInterface::CompileGeometry(Rml::Span<const Rml::Vertex> vertices,
   if (vertices.empty() || indices.empty())
     return {};
 
-  auto geometry = new CompiledGeometry();
+  auto geometry = std::make_unique<CompiledGeometry>();
   // One-time bake (05 §8): colours un-premultiplied, indices widened -
   // RenderGeometry never repeats this work.
   geometry->Textured.resize(vertices.size());
@@ -133,7 +133,10 @@ AbcRenderInterface::CompileGeometry(Rml::Span<const Rml::Vertex> vertices,
   geometry->Indices.reserve(indices.size());
   for (const int index : indices)
     geometry->Indices.push_back(static_cast<uint32_t>(index));
-  return reinterpret_cast<Rml::CompiledGeometryHandle>(geometry);
+  const auto handle =
+      reinterpret_cast<Rml::CompiledGeometryHandle>(geometry.get());
+  Geometries.emplace(handle, std::move(geometry));
+  return handle;
 }
 
 void AbcRenderInterface::RenderGeometry(Rml::CompiledGeometryHandle geometry,
@@ -363,7 +366,7 @@ void AbcRenderInterface::unregisterExternalTexture(
 }
 
 void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
-  delete reinterpret_cast<CompiledGeometry *>(geometry);
+  Geometries.erase(geometry);
 }
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,

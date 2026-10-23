@@ -28,6 +28,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <map>
+#include <memory>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -74,10 +75,10 @@ public:
   EventSubscription subscribeFn(const char *channel, EventPriority priority,
                                 Fn &&fn) {
     using Wrapper = FnWrapper<T, std::decay_t<Fn>>;
-    Wrapper *wrapper = new Wrapper(std::forward<Fn>(fn));
+    auto wrapper = std::make_unique<Wrapper>(std::forward<Fn>(fn));
     const EventSubscription token =
-        subscribe(channel, priority, &Wrapper::thunk, wrapper);
-    ownWrapper(token, wrapper);
+        subscribe(channel, priority, &Wrapper::thunk, wrapper.get());
+    ownWrapper(token, std::move(wrapper));
     return token;
   }
 
@@ -149,13 +150,14 @@ private:
     DataList::Handle dataHandle;
     VetoList::Handle vetoHandle;
     VetoList::Handle vetoAggregateHandle;
-    FnWrapperBase *wrapper = nullptr; // owned; set through ownWrapper
+    std::unique_ptr<FnWrapperBase> wrapper; // set through ownWrapper
     module_resources::Registration lifetime;
   };
 
   Channel *find(const char *channel);
   const Channel *find(const char *channel) const;
-  void ownWrapper(EventSubscription token, FnWrapperBase *wrapper);
+  void ownWrapper(EventSubscription token,
+                  std::unique_ptr<FnWrapperBase> wrapper);
 
   std::map<std::string, Channel, std::less<>> Channels;
   std::map<EventSubscription, Record> Records;
