@@ -13,6 +13,7 @@
 // cap; the per-beat rebuild is signature-gated (including a digest over
 // the visible rows and the read-through favorite state).
 #include "../shared/PageShared.h"
+#include "ProjectionSignature.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -182,87 +183,6 @@ const char *tabActionOf(int kind) {
   default:
     return "sb-tab-internet";
   }
-}
-
-// FNV-1a byte mixin for the projection signature.
-void mix(std::size_t &hash, const void *data, std::size_t size) {
-  const unsigned char *bytes = static_cast<const unsigned char *>(data);
-  for (std::size_t i = 0; i < size; ++i) {
-    hash ^= bytes[i];
-    hash *= 16777619u;
-  }
-}
-template <typename T> void mixValue(std::size_t &hash, const T &value) {
-  mix(hash, &value, sizeof(T));
-}
-void mixText(std::size_t &hash, const std::string &text) {
-  mix(hash, text.data(), text.size());
-}
-
-std::size_t projectionSignature() {
-  std::size_t hash = 2166136261u;
-  mixValue(hash, Api->serverbrowser->status());
-  mixValue(hash, Api->serverbrowser->failure());
-  mixValue(hash, Api->serverbrowser->kind());
-  mixValue(hash, Api->serverbrowser->generation());
-  mixValue(hash, Api->serverbrowser->serverCount());
-  mixValue(hash, Api->serverbrowser->noServersListed());
-  mixValue(hash, Api->serverbrowser->detailKind());
-  mixValue(hash, Api->serverbrowser->detailStatus());
-  mixValue(hash, Api->serverbrowser->detailFailed());
-  mixValue(hash, Api->serverbrowser->playerCount());
-  mixValue(hash, Api->serverbrowser->rowCount());
-  mixValue(hash, Api->serverbrowser->page());
-  mixValue(hash, Api->serverbrowser->pageCount());
-  mixValue(hash, Api->serverbrowser->sortColumn());
-  mixValue(hash, Api->serverbrowser->sortAscending());
-  mixValue(hash, Api->serverbrowser->blockedOnly());
-  mixValue(hash, Api->serverbrowser->ruleRevision());
-  mixValue(hash, DetailsOpen);
-  mixValue(hash, MenuOpen);
-  mixValue(hash, AutoRetryJoin);
-  AbcUiSbFilter filter{};
-  filter.structSize = sizeof(filter);
-  Api->serverbrowser->filter(&filter);
-  mixValue(hash, filter.hideEmpty);
-  mixValue(hash, filter.hideFull);
-  mixValue(hash, filter.secureOnly);
-  mixText(hash, filter.gameDir);
-  mixText(hash, filter.name);
-  mixText(hash, filter.map);
-  mixValue(hash, filter.maxPing);
-  mixValue(hash, filter.noPassword);
-  mixValue(hash, filter.insecureOnly);
-  mixValue(hash, filter.hideUnresponsive);
-  for (int row = 0; row < ABCUI_SB_PAGE_SIZE; ++row) {
-    AbcUiSbEntry entry;
-    entry.structSize = sizeof(entry);
-    if (!Api->serverbrowser->entryAt(row, &entry))
-      break;
-    mixValue(hash, row);
-    mixText(hash, entry.name);
-    mixText(hash, entry.map);
-    mixValue(hash, entry.players);
-    mixValue(hash, entry.maxPlayers);
-    mixValue(hash, entry.pingMs);
-    mixValue(hash, entry.responded);
-    mixValue(hash, entry.secure);
-    mixValue(hash, entry.password);
-    mixValue(hash, entry.botPlayers);
-  }
-  for (int i = 0; i < Api->serverbrowser->playerCount(); ++i) {
-    AbcUiSbPlayer player;
-    player.structSize = sizeof(player);
-    if (!Api->serverbrowser->playerAt(i, &player))
-      continue;
-    mixText(hash, player.name);
-    mixValue(hash, player.score);
-  }
-  // The selected server's favorite state is read-through (Steam is the one
-  // truth); it must move the signature so a change re-projects even when
-  // the list did not move.
-  mixValue(hash, Api->serverbrowser->selectedFavorite());
-  return hash;
 }
 
 void renderControls();
@@ -1029,7 +949,8 @@ void onMenuPaint(void *, const void *payload) {
   // rebuild only when the projection signature changed.
   if (Api->serverbrowser->sync())
     Projected = false; // the view model moved: rebuild once
-  const std::size_t signature = projectionSignature();
+  const std::size_t signature =
+      projectionSignature(DetailsOpen, MenuOpen, AutoRetryJoin);
   if (Projected && HaveSignature && signature == LastSignature)
     return;
   render();

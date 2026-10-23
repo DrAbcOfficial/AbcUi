@@ -13,6 +13,7 @@ add_library(abcui_mod_gameui MODULE
             src/shell/QuitConfirmPage.cpp
             src/console/ConsolePage.cpp
             src/serverbrowser/ServerBrowserPage.cpp
+            src/serverbrowser/ProjectionSignature.cpp
             src/connection/ConnectionPage.cpp
             src/vote/VoteMenuPage.cpp
             src/playerlist/PlayerListPage.cpp
