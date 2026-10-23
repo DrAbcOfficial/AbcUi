@@ -8,7 +8,9 @@
 #include "Language.h"
 #include "../modsys/ModuleVfs.h"
 
+#include <cstdint>
 #include <cstring>
+#include <span>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -26,8 +28,8 @@ std::map<std::string, TranslationTable> &moduleTables() {
 }
 
 // "key = value" lines; '#' starts a comment. Values keep interior spaces.
-void parseTable(const unsigned char *bytes, size_t size,
-                TranslationTable &table, const std::string &prefix = {}) {
+void parseTable(std::span<const std::uint8_t> bytes, TranslationTable &table,
+                const std::string &prefix = {}) {
   std::string line;
   auto parseLine = [&]() {
     std::string key, value;
@@ -36,8 +38,8 @@ void parseTable(const unsigned char *bytes, size_t size,
       table[key] = value;
     line.clear();
   };
-  for (size_t i = 0; i < size; ++i) {
-    const unsigned char ch = bytes[i];
+  for (const std::uint8_t byte : bytes) {
+    const unsigned char ch = byte;
     if (ch == '\n')
       parseLine();
     else if (line.size() < 65536)
@@ -49,7 +51,7 @@ void parseTable(const unsigned char *bytes, size_t size,
 void parseTableFile(const std::string &path) {
   std::vector<unsigned char> bytes;
   if (ResourceFile::read(path, bytes, 1024 * 1024))
-    parseTable(bytes.data(), bytes.size(), Table);
+    parseTable(bytes, Table);
 }
 
 void parseModuleTable(const std::string &id, const std::string &language) {
@@ -57,7 +59,7 @@ void parseModuleTable(const std::string &id, const std::string &language) {
   const std::string path = "lang/" + language + ".txt";
   if (ModuleVfs::openPath(id.c_str(), path.c_str(), entry, nullptr) &&
       entry.size <= 1024 * 1024)
-    parseTable(static_cast<const unsigned char *>(entry.data), entry.size,
+    parseTable({static_cast<const std::uint8_t *>(entry.data), entry.size},
                moduleTables()[id], id + "/");
 }
 } // namespace

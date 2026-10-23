@@ -32,7 +32,7 @@ public:
   // Maps and initializes the image. False with `error` set on any failure.
   // `data` is only read during the call: sections are copied into the
   // committed image.
-  bool load(const void *data, size_t size, std::string *error);
+  [[nodiscard]] bool load(const void *data, size_t size, std::string *error);
   // Detach only after a successful attach, then release imports and image.
   // Safe after a partial load and idempotent.
   void unload();

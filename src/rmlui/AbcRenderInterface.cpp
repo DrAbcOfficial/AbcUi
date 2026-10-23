@@ -512,7 +512,7 @@ AbcRenderInterface::loadModuleTexture(Rml::Vector2i &dimensions,
     return 0;
   framework::ImageLoader::DecodedImage image;
   if (!framework::ImageLoader::loadFromMemory(
-          static_cast<const unsigned char *>(entry.data), entry.size, image))
+          {static_cast<const std::uint8_t *>(entry.data), entry.size}, image))
     return 0;
   const int textureId =
       uploadSurfaceTexture(image.Pixels.data(), image.Width, image.Height);

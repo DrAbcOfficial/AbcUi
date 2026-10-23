@@ -40,10 +40,10 @@ std::vector<std::string> mountedIds();
 
 // Resolves "mod://<id>/<path>" into an entry view. The path may carry '.'
 // and '..' segments; they are collapsed before lookup.
-bool open(const char *uri, PackageEntry &out, std::string *error);
+[[nodiscard]] bool open(const char *uri, PackageEntry &out, std::string *error);
 // Same, for a path inside a known module.
-bool openPath(const char *moduleId, const char *path, PackageEntry &out,
-              std::string *error);
+[[nodiscard]] bool openPath(const char *moduleId, const char *path,
+                            PackageEntry &out, std::string *error);
 
 } // namespace ModuleVfs
 

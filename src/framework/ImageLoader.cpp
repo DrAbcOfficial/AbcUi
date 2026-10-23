@@ -236,18 +236,18 @@ bool loadFromFile(const char *path, DecodedImage &out) {
   return loadStream(io, &stream, out, {}, FreeImage_GetFIFFromFilename(path));
 }
 
-bool loadFromMemory(const unsigned char *Data, std::size_t Size,
-                    DecodedImage &Output, const PaletteTransform &Transform) {
+bool loadFromMemory(std::span<const std::uint8_t> Data, DecodedImage &Output,
+                    const PaletteTransform &Transform) {
   Output = DecodedImage();
-  if (!Data || Size == 0 || Size > ResourceLimits::MaxFileBytes)
+  if (Data.empty() || Data.size() > ResourceLimits::MaxFileBytes)
     return false;
   FreeImageIO io = {};
   io.read_proc = streamRead;
   io.seek_proc = streamSeek;
   io.tell_proc = streamTell;
   MemoryStream stream;
-  stream.Data = Data;
-  stream.Size = Size;
+  stream.Data = Data.data();
+  stream.Size = Data.size();
   return loadStream(io, &stream, Output, Transform);
 }
 

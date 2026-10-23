@@ -27,11 +27,11 @@ namespace {
 constexpr int kSprSignature = 0x50534449; // "IDSP"
 constexpr int kSprVersion = 2;
 
-enum SpriteFormat {
-  kFormatNormal = 0,
-  kFormatAdditive = 1,
-  kFormatIndexAlpha = 2,
-  kFormatAlphaTest = 3,
+enum class SpriteFormat {
+  kNormal = 0,
+  kAdditive = 1,
+  kIndexAlpha = 2,
+  kAlphaTest = 3,
 };
 
 struct HudEntry {
@@ -83,8 +83,9 @@ void decodeFramePixels(const unsigned char *indexed, int pixelCount,
                        const unsigned char *palette, int paletteSize,
                        int format, unsigned char *rgba) {
   const bool fullPalette = paletteSize == 256;
-  const bool indexIsAlpha = format == kFormatIndexAlpha;
-  const bool blackIsEmpty = format == kFormatAdditive;
+  const bool indexIsAlpha =
+      format == static_cast<int>(SpriteFormat::kIndexAlpha);
+  const bool blackIsEmpty = format == static_cast<int>(SpriteFormat::kAdditive);
   // Key colour = palette entry 255 (colour compare, not index compare) for
   // every non-IndexAlpha format with a full palette (SPRView rule).
   unsigned char keyR = 0, keyG = 0, keyB = 0;

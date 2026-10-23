@@ -66,8 +66,7 @@ void SprayMaker::run(const std::string &path) {
   stream.close();
   // Decode (FreeImage, format detected from the content).
   framework::ImageLoader::DecodedImage image;
-  if (!framework::ImageLoader::loadFromMemory(bytes.data(), bytes.size(),
-                                              image)) {
+  if (!framework::ImageLoader::loadFromMemory(bytes, image)) {
     fail("#Settings_SprayMakerDecodeError", {});
     return;
   }

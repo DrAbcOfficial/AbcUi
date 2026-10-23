@@ -37,8 +37,8 @@ struct PackageEntry {
 class PackageFile {
 public:
   // Parses the central directory of `base`; null with `error` set on failure.
-  static std::unique_ptr<PackageFile> open(const void *base, size_t size,
-                                           std::string *error);
+  [[nodiscard]] static std::unique_ptr<PackageFile>
+  open(const void *base, size_t size, std::string *error);
   ~PackageFile();
 
   PackageFile(const PackageFile &) = delete;

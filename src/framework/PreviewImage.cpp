@@ -109,8 +109,7 @@ bool decodePreview(const PreviewRequest &Request,
   // FreeImage owns format detection, header validation, decompression and
   // palette access. This callback only supplies the preview's color policy.
   return ImageLoader::loadFromMemory(
-      Bytes.data(), Bytes.size(), Output,
-      [&](unsigned Index, ImageLoader::PaletteColor &Pixel) {
+      Bytes, Output, [&](unsigned Index, ImageLoader::PaletteColor &Pixel) {
         if (Request.Model) {
           if (Index >= 160 && Index <= 191)
             hue(Pixel, Request.Top);
