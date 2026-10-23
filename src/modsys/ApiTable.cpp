@@ -487,11 +487,16 @@ void apiSetTextMenuOpen(int open) {
   ::commands::setTextMenuOpen(open != 0);
 }
 
+int32_t apiEnsureFirstCommand(const char *name) {
+  return ::commands::ensureFirst(name);
+}
+
 const AbcUiCommandsApi kCommandsApi = {
     sizeof(AbcUiCommandsApi),
     apiSubscribeCommand,
     apiTextMenuOpen,
     apiSetTextMenuOpen,
+    apiEnsureFirstCommand,
 };
 
 } // namespace

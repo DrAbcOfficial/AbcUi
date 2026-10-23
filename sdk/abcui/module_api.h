@@ -333,6 +333,13 @@ typedef struct AbcUiDataApi {
   void(ABCUI_CALL *serverInfo)(char *serverName, uint32_t serverNameSize,
                                char *nextMap, uint32_t nextMapSize,
                                int32_t *timeEnd);
+  // AbcUi >= 0.9.1: promotes the framework's SayText usermsg hook to the head
+  // of the engine chain and remembers the displaced head as its upstream
+  // link. The outermost hook publishes the textfeed.saytext veto once and
+  // forwards to that link only while no sink consumes the line; an older
+  // displaced hook forwards straight to the chain tail. Returns 1 when the
+  // hook is at the head, 0 on refusal. Main thread only.
+  int32_t(ABCUI_CALL *ensureSayTextFirst)(void);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----
@@ -620,6 +627,15 @@ typedef struct AbcUiCommandsApi {
   // modules and the framework gate on it.
   int(ABCUI_CALL *textMenuOpen)(void);
   void(ABCUI_CALL *setTextMenuOpen)(int open);
+  // AbcUi >= 0.9.1: promotes an existing subscribeCommand bridge to the head
+  // of the engine's command chain (the rule a replacement chat uses to win
+  // over another plugin regardless of load order). The displaced head becomes
+  // the bridge's upstream link: when no sink consumed the command the
+  // outermost link calls it, so a stand-down still reaches the other plugin.
+  // Returns 1 when the bridge is at the head, 0 when the name has no bridge,
+  // the engine callback is missing, or the bridge is currently dispatching.
+  // Main thread only.
+  int32_t(ABCUI_CALL *ensureFirstCommand)(const char *name);
 } AbcUiCommandsApi;
 
 // -------------------------------------------------------------- weapons ----

@@ -42,8 +42,10 @@ constexpr size_t kMaxBuffer = 256;
 constexpr int kMaxWindowRows = 6;
 constexpr float kRowHeightDp = 13.0f;
 
-// Persisted contract (never rename): abc_ui_chat is AbcUi's own switch; the
-// hud_saytext_* set belongs to the game client and is only read.
+// Persisted contract (never rename): abc_ui_chat is AbcUi's owner-priority
+// switch (0 = off, 1 = prefer CaptionMod while cap_newchat is set, 2 = take
+// chat even then); the hud_saytext_* set belongs to the game client and is
+// only read.
 constexpr const char *kChatMode = "abc_ui_chat";
 
 AbcUiCvarHandle ChatMode = nullptr;
@@ -71,6 +73,8 @@ int HistoryCursor = -1;
 std::string HistoryDraft;
 AbcUiInputToken Token = 0;
 std::string ImeBadge;
+bool StandDownHinted = false;
+bool TakeoverHinted = false;
 
 AbcUiDocument *panelDocument() {
   return Api->ui->panelDocument(kPanelName);
@@ -111,17 +115,78 @@ std::string escapeText(const std::string &text) {
 
 // ---- visibility (abc_ui_chat / hud_saytext / CaptionMod) ----
 
-bool otherOwnerActive() {
+AbcUiCvarHandle captionModChat() {
+  // CaptionMod may register cap_newchat after this module's onInit; retry
+  // until the engine knows it.
+  if (!CaptionModChat)
+    CaptionModChat = Api->console->findCvar("cap_newchat");
+  return CaptionModChat;
+}
+
+bool captionModActive() {
   // CaptionMod ships cap_newchat (default 1) as its chat replacement switch.
-  return CaptionModChat && cvarInt(CaptionModChat, 0) != 0;
+  const AbcUiCvarHandle cvar = captionModChat();
+  return cvar && cvarInt(cvar, 0) != 0;
 }
 
 bool chatEnabled() {
-  return cvarInt(ChatMode, 1) > 0 && !otherOwnerActive();
+  const int mode = cvarInt(ChatMode, 1);
+  if (mode <= 0)
+    return false;
+  if (mode >= 2)
+    return true;
+  return !captionModActive();
 }
 
 bool chatVisible() {
   return chatEnabled() && cvarInt(SayTextEnabled, 1) > 0;
+}
+
+void hintStandDown() {
+  if (StandDownHinted)
+    return;
+  StandDownHinted = true;
+  Api->core->print("chat: CaptionMod owns chat (cap_newchat is set); set "
+                   "cap_newchat 0 or abc_ui_chat 2 to use the AbcUi chat\n");
+}
+
+void hintTakeover() {
+  if (TakeoverHinted)
+    return;
+  TakeoverHinted = true;
+  Api->core->print("chat: taking chat ownership while cap_newchat is set "
+                   "(abc_ui_chat 2)\n");
+}
+
+// Promotes AbcUi's command and SayText hooks above the other chat plugin's
+// links. Both are order-sensitive: CaptionMod replaces the hook head when it
+// loads (or re-hooks on a map cycle), so the election is re-applied until the
+// head is ours. No-op while AbcUi stands down.
+void ensureOwnershipHooks() {
+  if (ABCUI_API_HAS_MEMBER(AbcUiCommandsApi, Api->commands,
+                           ensureFirstCommand)) {
+    Api->commands->ensureFirstCommand("messagemode");
+    Api->commands->ensureFirstCommand("messagemode2");
+  }
+  if (ABCUI_API_HAS_MEMBER(AbcUiDataApi, Api->data, ensureSayTextFirst))
+    Api->data->ensureSayTextFirst();
+}
+
+void maintainChatOwnership() {
+  const int mode = cvarInt(ChatMode, 1);
+  if (mode <= 0)
+    return;
+  const AbcUiCvarHandle caption = captionModChat();
+  if (!caption)
+    return; // no competing chat switch: the natural chain is enough
+  const bool active = cvarInt(caption, 0) != 0;
+  if (active && mode == 1) {
+    hintStandDown();
+    return;
+  }
+  if (active)
+    hintTakeover();
+  ensureOwnershipHooks();
 }
 
 double sayTextTime() {
@@ -572,6 +637,7 @@ void panelOnData(void *, double frameTime) {
 
 void onModuleFrame(double) {
   Ime.frame();
+  maintainChatOwnership();
 }
 
 void onModuleLoad() {
@@ -602,6 +668,7 @@ void onModuleInit() {
   SayTextLines = Api->console->findCvar("hud_saytext_lines");
   SayTextBlockMuted = Api->console->findCvar("hud_saytext_block_muted");
   CaptionModChat = Api->console->findCvar("cap_newchat");
+  maintainChatOwnership();
 }
 
 void onModuleShutdown() {
@@ -643,7 +710,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.chat";
-  out->version = "2.0.0";
+  out->version = "2.1.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;
