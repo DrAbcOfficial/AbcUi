@@ -21,6 +21,8 @@
 // - the pickup prompt hides when the aim item walks out of the 86u reach.
 // - a malformed item list warns and drops the trailing record.
 // - entity-index reuse re-assigns the tracked item.
+#include "items/ItemList.h"
+
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -29,6 +31,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <utility>
 #include <unordered_map>
 #include <vector>
 
@@ -225,35 +228,20 @@ void loadItemList() {
   std::string content;
   if (data && size > 0 && size <= kItemListMaxBytes)
     content.assign(data, size);
+  std::vector<itemlist::Entry> parsed;
   Api->vfs->viewFree(view);
   if (content.empty())
     return;
 
-  // Tokenize on whitespace (the old COM_ParseFile contract).
-  std::vector<std::string> tokens;
-  size_t at = 0;
-  while (at < content.size()) {
-    while (at < content.size() && (content[at] == ' ' || content[at] == '\t' ||
-                                   content[at] == '\r' || content[at] == '\n'))
-      at++;
-    const size_t begin = at;
-    while (at < content.size() && content[at] != ' ' && content[at] != '\t' &&
-           content[at] != '\r' && content[at] != '\n')
-      at++;
-    if (at > begin)
-      tokens.push_back(content.substr(begin, at - begin));
-  }
-  const size_t records = tokens.size() / 6;
-  for (size_t r = 0; r < records; r++) {
+  const bool complete = itemlist::parse(content, parsed);
+  for (itemlist::Entry &entry : parsed) {
     Item item;
-    item.path = tokens[r * 6];
-    item.nameToken = tokens[r * 6 + 1];
-    for (int c = 0; c < 4; c++)
-      item.color[c] = static_cast<unsigned char>(
-          std::clamp(atoi(tokens[r * 6 + 2 + c].c_str()), 0, 255));
+    item.path = std::move(entry.path);
+    item.nameToken = std::move(entry.nameToken);
+    std::memcpy(item.color, entry.color, sizeof(item.color));
     Items.push_back(std::move(item));
   }
-  if (tokens.size() % 6 != 0)
+  if (!complete)
     Api->core->warn("itemhighlight: %s has a trailing partial record (dropped)",
                     kItemListPath);
   Api->core->print("itemhighlight: %d item(s) on the highlight list",
