@@ -3,7 +3,10 @@
 # quit confirmation), console, serverbrowser, connection, vote, playerlist,
 # commandmenu, inventory, creategame and settings; shared/ carries the borrowed
 # api table and the text/DOM helpers every page repeats, while GameUiModule.cpp
-# is the entry that validates the table before any page sees it.
+# is the entry that validates the table before any page sees it. The settings
+# surface is further split by responsibility (rows, bindings, video, voice,
+# colours, previews, model picker, spray picker, events, presentation) behind
+# its own SettingsInternal.h seam.
 add_library(abcui_mod_gameui MODULE
             src/GameUiModule.cpp
             src/shell/MainMenuPage.cpp
@@ -17,6 +20,16 @@ add_library(abcui_mod_gameui MODULE
             src/inventory/InventoryPage.cpp
             src/creategame/CreateGamePage.cpp
             src/settings/SettingsPage.cpp
+            src/settings/SettingsRows.cpp
+            src/settings/SettingsBindings.cpp
+            src/settings/SettingsVideo.cpp
+            src/settings/SettingsVoice.cpp
+            src/settings/SettingsColors.cpp
+            src/settings/SettingsPreviews.cpp
+            src/settings/SettingsModelPicker.cpp
+            src/settings/SettingsSpray.cpp
+            src/settings/SettingsEvents.cpp
+            src/settings/SettingsPresentation.cpp
             src/settings/SettingsFileBrowser.cpp)
 target_include_directories(abcui_mod_gameui PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../sdk")
