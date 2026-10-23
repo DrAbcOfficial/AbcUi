@@ -15,6 +15,7 @@
 
 #include <abcui/events.h>
 #include <abcui/module_api.h>
+#include "../../common/ImeOverlay.h"
 
 #include <algorithm>
 #include <cmath>
@@ -27,6 +28,7 @@
 namespace {
 
 const AbcUiModuleApi *Api = nullptr;
+moduleui::ImeOverlay Ime;
 AbcUiPanelDesc Panel = {};
 
 constexpr const char *kPanelName = "chat";
@@ -568,7 +570,12 @@ void panelOnData(void *, double frameTime) {
 
 // ---- lifecycle ----
 
+void onModuleFrame(double) {
+  Ime.frame();
+}
+
 void onModuleLoad() {
+  Ime.load(Api, "abcui.chat");
   Panel.structSize = sizeof(Panel);
   Panel.name = kPanelName;
   Panel.documentPath = kDocumentPath;
@@ -598,6 +605,7 @@ void onModuleInit() {
 }
 
 void onModuleShutdown() {
+  Ime.reset();
   // The document dies with the context; drop the token and the rows.
   closeInput();
   Lines.clear();
@@ -608,6 +616,7 @@ void onModuleShutdown() {
 }
 
 void onModuleUnload() {
+  Ime.unload();
   Api = nullptr;
 }
 
@@ -621,7 +630,8 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
       !api->events || !api->ui || !api->console || !api->data ||
-      !api->players || !api->input || !api->voice || !api->commands)
+      !api->documents || !api->players || !api->input || !api->voice ||
+      !api->commands)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi) ||
@@ -633,11 +643,11 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.chat";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;
-  out->onFrame = nullptr;
+  out->onFrame = &onModuleFrame;
   out->onVidInit = nullptr;
   out->onShutdown = &onModuleShutdown;
   out->onUnload = &onModuleUnload;

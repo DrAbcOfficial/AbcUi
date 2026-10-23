@@ -1,5 +1,7 @@
 // <animimg> implementation - see ElementAnimatedImage.h.
 #include "ElementAnimatedImage.h"
+#include "modsys/ModuleVfs.h"
+#include <RmlUi/Core/ElementDocument.h>
 
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Core.h>
@@ -175,8 +177,12 @@ bool ElementAnimatedImage::ensureOpen() {
   if (Source.empty())
     return false;
 
-  std::string error;
-  std::unique_ptr<AnimatedImage> image = openFile(Source, error);
+  std::string error, resolved;
+  auto *document = GetOwnerDocument();
+  if (!document || !framework::ModuleVfs::resolve(document->GetSourceURL(),
+                                                  Source, resolved))
+    return false;
+  std::unique_ptr<AnimatedImage> image = openFile(resolved, error);
   if (!image) {
     // Remember the failure so a missing asset warns once, not every frame; a
     // different source (or invalidate()) retries.

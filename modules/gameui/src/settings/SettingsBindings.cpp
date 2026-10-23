@@ -64,7 +64,8 @@ void buildBindRows() {
       markup += "<div class=\"bind-header\"><span>" +
                 escapeText(bindActionLabel(row)) +
                 "</span><span class=\"bind-header-columns\">" +
-                escapeText(resolve("#Settings_BindColumns")) + "</span></div>";
+                escapeText(resolve("#abcui.gameui/Settings_BindColumns")) +
+                "</span></div>";
       continue;
     }
     const std::string id = std::to_string(row.index);
@@ -114,33 +115,34 @@ void renderBindRow(const AbcUiBindAction &row) {
     keys += key;
   }
   if (keys.empty())
-    keys = resolve("#Settings_BindNone");
+    keys = resolve("#abcui.gameui/Settings_BindNone");
   setInnerRml(node("bindrow-" + id + "-keys"), escapeText(keys));
 
   // Buttons: capture text flips while this row is capturing; clear is the
   // unbind-all-keys affordance of the row (drafts only until Apply).
-  setInnerRml(node("bindrow-" + id + "-capture"),
-              escapeText(resolve(capturing ? "#Settings_BindCancelCapture"
-                                           : "#Settings_BindCapture")));
+  setInnerRml(
+      node("bindrow-" + id + "-capture"),
+      escapeText(resolve(capturing ? "#abcui.gameui/Settings_BindCancelCapture"
+                                   : "#abcui.gameui/Settings_BindCapture")));
   setInnerRml(node("bindrow-" + id + "-clear"),
-              escapeText(resolve("#Settings_BindClear")));
+              escapeText(resolve("#abcui.gameui/Settings_BindClear")));
 
   std::string status;
   if (capturing) {
-    status = resolve("#Settings_BindPressKey");
+    status = resolve("#abcui.gameui/Settings_BindPressKey");
   } else {
     switch (row.state) {
     case ABCUI_BIND_STATE_DIRTY:
-      status = resolve("#Settings_BindDirty");
+      status = resolve("#abcui.gameui/Settings_BindDirty");
       break;
     case ABCUI_BIND_STATE_QUEUED:
-      status = resolve("#Settings_BindQueued");
+      status = resolve("#abcui.gameui/Settings_BindQueued");
       break;
     case ABCUI_BIND_STATE_APPLY_FAILED:
-      status = resolve("#Settings_BindFailed");
+      status = resolve("#abcui.gameui/Settings_BindFailed");
       break;
     case ABCUI_BIND_STATE_UNAVAILABLE:
-      status = resolve("#Settings_BindUnavailable");
+      status = resolve("#abcui.gameui/Settings_BindUnavailable");
       break;
     case ABCUI_BIND_STATE_CLEAN:
       break;
@@ -166,10 +168,10 @@ void renderBindConflict() {
     Api->settings->bindConflictKeyName(keyName, sizeof(keyName));
     Api->settings->bindConflictOtherLabel(otherLabel, sizeof(otherLabel));
     setInnerRml(node("bind-conflict-text"),
-                escapeText(resolve("#Settings_BindConflictLead")) + " " +
-                    escapeText(keyName) + " " +
-                    escapeText(resolve("#Settings_BindBoundTo")) + " " +
-                    escapeText(bindLabelText(otherLabel)) + "?");
+                escapeText(resolve("#abcui.gameui/Settings_BindConflictLead")) +
+                    " " + escapeText(keyName) + " " +
+                    escapeText(resolve("#abcui.gameui/Settings_BindBoundTo")) +
+                    " " + escapeText(bindLabelText(otherLabel)) + "?");
     if (ActiveLayer != kLayerBindConflict)
       showLayer(kLayerBindConflict);
   } else if (ActiveLayer == kLayerBindConflict) {
@@ -182,13 +184,13 @@ void setBindStatusSummary() {
     return;
   std::string text;
   if (!Api->settings->bindReadsAvailable()) {
-    text = resolve("#Settings_BindUnavailable");
+    text = resolve("#abcui.gameui/Settings_BindUnavailable");
   } else if (Api->settings->bindConflictPending()) {
-    text = resolve("#Settings_BindConflictSummary");
+    text = resolve("#abcui.gameui/Settings_BindConflictSummary");
   } else if (!Api->settings->bindDirty()) {
-    text = resolve("#Settings_BindClean");
+    text = resolve("#abcui.gameui/Settings_BindClean");
   } else {
-    text = resolve("#Settings_BindDirtySummary");
+    text = resolve("#abcui.gameui/Settings_BindDirtySummary");
   }
   setInnerRml(node("bind-status"), escapeText(text));
 }

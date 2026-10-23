@@ -44,7 +44,7 @@ std::vector<LoadedModule> &loaded() {
 size_t loadedCount() {
   return static_cast<size_t>(
       std::count_if(loaded().begin(), loaded().end(), [](const auto &module) {
-        return module.library && module_resources::enabled(module.owner);
+        return module_resources::enabled(module.owner);
       }));
 }
 
@@ -87,10 +87,15 @@ bool loadModule(Candidate &candidate) {
   module.owner = std::make_shared<module_resources::Owner>(id);
   module.owner->dependencies = candidate.manifest.dependencies;
   module.owner->initializing = true;
-  if (!ModuleVfs::mount(id.c_str(), std::move(candidate.image))) {
+  if (!ModuleVfs::mount(id.c_str(), std::move(candidate.image),
+                        candidate.manifest.dependencies)) {
     abc::ConsoleWarn("[AbcUi] module \"%s\": package mount refused\n",
                      id.c_str());
     return false;
+  }
+  if (module.manifest.resourcesOnly) {
+    loaded().push_back(std::move(module));
+    return true;
   }
 
   PackageEntry entryDll;
@@ -406,6 +411,9 @@ bool acceptPanel(const AbcUiPanelDesc &desc) {
         desc.name);
     return false;
   }
+  if (!desc.documentPath || !std::string_view(desc.documentPath)
+                                 .starts_with("mod://" + owner->id + "/"))
+    return false;
   for (const auto &accepted : pendingPanels()) {
     if (std::string(accepted.desc.name) == desc.name) {
       abc::ConsoleWarn("[AbcUi] panel \"%s\" registered twice, refused\n",

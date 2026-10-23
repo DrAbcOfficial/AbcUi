@@ -32,7 +32,6 @@
 #include "../data/NetworkMessages.h"
 #include "../data/PlayerTrace.h"
 #include "../framework/ColorUtil.h"
-#include "../framework/GlyphText.h"
 #include "../framework/HudPanel.h"
 #include "../framework/Localization.h"
 #include "../framework/Projection.h"
@@ -180,21 +179,6 @@ void apiElementSetProperty(AbcUiElement *element, const char *name,
 void apiElementSetInnerRML(AbcUiElement *element, const char *rml) {
   if (element && rml)
     elementOf(element)->SetInnerRML(rml);
-}
-
-int apiInkMarkup(const char *text, const char *tint, char *out,
-                 uint32_t outSize) {
-  if (!text || !out || outSize == 0)
-    return 0;
-  const std::string markup =
-      glyphs::inkMarkup(text, tint && *tint ? tint : glyphs::kAccentTint);
-  if (markup.empty())
-    return 0;
-  uint32_t i = 0;
-  for (; i + 1 < outSize && i < markup.size(); ++i)
-    out[i] = markup[i];
-  out[i] = '\0';
-  return 1;
 }
 
 int apiTranslate(const char *token, char *out, uint32_t outSize) {
@@ -832,7 +816,7 @@ const AbcUiUiApi kUiApi = {
     apiQuerySelector,
     apiElementSetProperty,
     apiElementSetInnerRML,
-    apiInkMarkup,
+
     apiTranslate,
     apiEscapeRml,
     apiKeyNameForKey,

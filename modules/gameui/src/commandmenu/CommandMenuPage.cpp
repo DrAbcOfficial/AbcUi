@@ -137,8 +137,9 @@ void render() {
 
   if (AbcUiElement *title = node("cm-title")) {
     const std::string text = resolveLabel(Api->commandmenu->title());
-    const std::string shown =
-        text.empty() ? resolve("#CommandMenu_Title") : escapeText(text);
+    const std::string shown = text.empty()
+                                  ? resolve("#abcui.gameui/CommandMenu_Title")
+                                  : escapeText(text);
     Api->ui->elementSetInnerRML(title, shown.c_str());
   }
 
@@ -159,7 +160,7 @@ void render() {
   if (count == 0) {
     markup += "<div class=\"cm-column\" id=\"cm-column-empty\">";
     markup += "<div class=\"cm-empty\">";
-    markup += escapeText(resolve("#CommandMenu_Empty"));
+    markup += escapeText(resolve("#abcui.gameui/CommandMenu_Empty"));
     markup += "</div></div>";
   } else {
     for (int32_t column = first; column < first + count; ++column)

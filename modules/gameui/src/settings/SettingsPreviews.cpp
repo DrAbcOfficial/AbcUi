@@ -51,8 +51,8 @@ void renderPreviews() {
         Api->ui->elementSetAttribute(preview, "src", path.c_str());
     }
   }
-  // The engine's stored colour token ("#Valve_Ltblue") normalizes to the bare
-  // palette name the preview decoder expects.
+  // The engine's stored colour token ("#abcui.gameui/Valve_Ltblue") normalizes
+  // to the bare palette name the preview decoder expects.
   setPreviewSource("spray-preview", "preview://spray/" + textOf("cl_logofile") +
                                         "/" +
                                         logoColorName(textOf("cl_logocolor")));

@@ -1,5 +1,7 @@
 // framework::ApiTable implementation - see ApiTable.h.
 #include "ApiTable.h"
+#include "ApiTextures.h"
+#include "ApiAudio.h"
 
 #include <cstdarg>
 #include <cstddef>
@@ -332,40 +334,81 @@ std::map<AbcUiFileView *, std::unique_ptr<AbcUiFileView>> &fileViews() {
   return views;
 }
 
-void apiViewFree(AbcUiFileView *view) {
+void removeView(AbcUiFileView *view) {
   fileViews().erase(view);
 }
 
-AbcUiFileView *apiVfsOpen(const char *moduleId, const char *path) {
-  if (!module_resources::accepting())
-    return nullptr;
-  std::unique_ptr<AbcUiFileView> view(new (std::nothrow) AbcUiFileView());
-  if (!view)
-    return nullptr;
-  if (!ModuleVfs::openPath(moduleId, path, view->entry, nullptr))
-    return nullptr;
+bool ownsView(AbcUiFileView *view) {
+  const auto it = fileViews().find(view);
+  return it != fileViews().end() &&
+         it->second->lifetime.owner() == module_resources::current();
+}
+void apiViewFree(AbcUiFileView *view) {
+  if (ownsView(view))
+    removeView(view);
+}
+
+int32_t apiVfsOpen(const char *uri, AbcUiFileView **out) {
+  if (out)
+    *out = nullptr;
+  if (!uri || !out || !ModuleVfs::isModuleUri(uri))
+    return ABCUI_ERROR_INVALID;
+  const auto owner = module_resources::current();
+  if (!owner || !module_resources::accepting() ||
+      !ModuleVfs::canRead(owner->id, uri))
+    return ABCUI_ERROR_FORBIDDEN;
+  auto view = std::make_unique<AbcUiFileView>();
+  if (!ModuleVfs::open(uri, view->entry, nullptr))
+    return ABCUI_ERROR_NOT_FOUND;
+  if (view->entry.size > UINT32_MAX)
+    return ABCUI_ERROR_LIMIT;
   AbcUiFileView *raw = view.get();
   fileViews().emplace(raw, std::move(view));
-  raw->lifetime.track([raw] { apiViewFree(raw); });
-  return raw;
+  raw->lifetime.track([raw] { removeView(raw); });
+  *out = raw;
+  return ABCUI_OK;
 }
 
 const void *apiViewData(AbcUiFileView *view) {
-  return fileViews().count(view) ? view->entry.data : nullptr;
+  return ownsView(view) ? view->entry.data : nullptr;
 }
 
 uint32_t apiViewSize(AbcUiFileView *view) {
-  return fileViews().count(view) ? static_cast<uint32_t>(view->entry.size) : 0;
+  return ownsView(view) ? static_cast<uint32_t>(view->entry.size) : 0;
 }
 
-int apiVfsExists(const char *moduleId, const char *path) {
-  PackageEntry entry;
-  return ModuleVfs::openPath(moduleId, path, entry, nullptr) ? 1 : 0;
+int32_t apiVfsEnumerate(const char *directory, AbcUiFileSink sink,
+                        void *userdata) {
+  const auto owner = module_resources::current();
+  if (!directory || !sink)
+    return ABCUI_ERROR_INVALID;
+  std::string probe = std::string(directory) + "/_";
+  if (!owner || !ModuleVfs::canRead(owner->id, probe))
+    return ABCUI_ERROR_FORBIDDEN;
+  const auto files = ModuleVfs::list(directory);
+  for (const auto &uri : files)
+    module_resources::invoke(owner, "VFS enumeration", sink, userdata,
+                             uri.c_str());
+  return ABCUI_OK;
+}
+
+int32_t apiVfsResolve(const char *base, const char *path, char *out,
+                      uint32_t outSize) {
+  std::string uri;
+  if (!path || !ModuleVfs::resolve(base ? base : "", path, uri))
+    return ABCUI_ERROR_INVALID;
+  const auto owner = module_resources::current();
+  if (!owner || !ModuleVfs::canRead(owner->id, uri))
+    return ABCUI_ERROR_FORBIDDEN;
+  if (!out || outSize <= uri.size())
+    return ABCUI_ERROR_LIMIT;
+  std::memcpy(out, uri.c_str(), uri.size() + 1);
+  return ABCUI_OK;
 }
 
 int apiReadEngineFile(const char *path, void *out, uint32_t outSize,
                       uint32_t maxBytes) {
-  if (!path || !*path)
+  if (!path || !*path || std::string_view(path).starts_with("abc/abcui/"))
     return -1;
   std::vector<std::byte> bytes;
   if (!ResourceFile::read(path, bytes, maxBytes ? maxBytes : 65536u))
@@ -380,8 +423,8 @@ int apiReadEngineFile(const char *path, void *out, uint32_t outSize,
 }
 
 const AbcUiVfsApi kVfsApi = {
-    sizeof(AbcUiVfsApi), apiVfsOpen,   apiViewData,       apiViewSize,
-    apiViewFree,         apiVfsExists, apiReadEngineFile,
+    sizeof(AbcUiVfsApi), apiVfsOpen,      apiViewData,   apiViewSize,
+    apiViewFree,         apiVfsEnumerate, apiVfsResolve, apiReadEngineFile,
 };
 
 // -------------------------------------------------------------- panels ----
@@ -412,8 +455,12 @@ void apiRadarSetActive(int32_t active) {
   radarrender::setActive(active != 0);
 }
 
-void apiRadarSetMaskRound(int32_t round) {
-  radarrender::setMaskRound(round != 0);
+int32_t apiRadarSetMask(AbcUiTexture texture) {
+  const int id = TexturesApi::textureId(texture);
+  if (texture && !id)
+    return ABCUI_ERROR_INVALID;
+  radarrender::setMask(id);
+  return ABCUI_OK;
 }
 
 void apiRadarSetZoom(float zoom) {
@@ -421,8 +468,8 @@ void apiRadarSetZoom(float zoom) {
 }
 
 const AbcUiRadarApi kRadarApi = {
-    sizeof(AbcUiRadarApi), apiRadarReady,        apiRadarGeneration,
-    apiRadarSetActive,     apiRadarSetMaskRound, apiRadarSetZoom,
+    sizeof(AbcUiRadarApi), apiRadarReady,   apiRadarGeneration,
+    apiRadarSetActive,     apiRadarSetMask, apiRadarSetZoom,
 };
 
 // ------------------------------------------------------------- commands ----
@@ -479,7 +526,7 @@ bool tableComplete(const AbcUiModuleApi &api) {
          api.documents && api.menu && api.votemenu && api.playerlist &&
          api.commandmenu && api.menuconfig && api.social && api.inventory &&
          api.creategame && api.consolepage && api.serverbrowser &&
-         api.connection && api.settings;
+         api.connection && api.settings && api.textures && api.audio;
 }
 
 void verifySections() {
@@ -509,7 +556,8 @@ void verifySections() {
       allMembersSet(*ConsolePageApi::get()) &&
       allMembersSet(*ServerBrowserApi::get()) &&
       allMembersSet(*ConnectionApi::get()) &&
-      allMembersSet(*SettingsApi::get());
+      allMembersSet(*SettingsApi::get()) &&
+      allMembersSet(*TexturesApi::get()) && allMembersSet(*AudioApi::get());
   if (!complete) {
     abc::ConsoleError("[AbcUi] module api table has null section members");
   }
@@ -550,6 +598,8 @@ const AbcUiModuleApi *get() {
       ServerBrowserApi::get(),
       ConnectionApi::get(),
       SettingsApi::get(),
+      TexturesApi::get(),
+      AudioApi::get(),
   };
   static const bool complete = tableComplete(kApi);
   if (!complete)

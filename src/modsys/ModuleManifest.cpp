@@ -121,9 +121,26 @@ bool parseManifest(const char *text, size_t size, ModuleManifest &out,
       !readString(document, "description", parsed.description, error) ||
       !readString(document, "author", parsed.author, error) ||
       !readString(document, "version", parsed.version, error) ||
-      !readString(document, "minAbcUi", parsed.minAbcUi, error) ||
-      !readString(document, "entry", parsed.entry, error))
+      !readString(document, "minAbcUi", parsed.minAbcUi, error))
     return false;
+  if (document.HasMember("type")) {
+    std::string type;
+    if (!readString(document, "type", type, error))
+      return false;
+    if (type != "module" && type != "resources") {
+      fail(error, "manifest type must be 'module' or 'resources'");
+      return false;
+    }
+    parsed.resourcesOnly = type == "resources";
+  }
+  if (parsed.resourcesOnly) {
+    if (document.HasMember("entry")) {
+      fail(error, "resource packages must not declare an entry");
+      return false;
+    }
+  } else if (!readString(document, "entry", parsed.entry, error)) {
+    return false;
+  }
 
   if (!document.HasMember("abi") || !document["abi"].IsInt()) {
     fail(error, "manifest field 'abi' must be an integer");
@@ -156,7 +173,7 @@ bool parseManifest(const char *text, size_t size, ModuleManifest &out,
          "manifest versions must contain decimal segments separated by dots");
     return false;
   }
-  if (!validEntry(parsed.entry)) {
+  if (!parsed.resourcesOnly && !validEntry(parsed.entry)) {
     fail(error,
          "manifest entry must be a relative package path without dot segments");
     return false;

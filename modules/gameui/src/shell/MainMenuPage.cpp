@@ -1,3 +1,4 @@
+#include "../../../common/Avatars.h"
 // The menu home page (moved from panels::mainmenu). ONE interactive document
 // carrying the two home sections of the state machine: kMain (no-map) and
 // kPause (in-game). Which section is visible is presentation of the
@@ -100,8 +101,9 @@ bool conditionAllows(const char *condition, bool multiplayer) {
 // One entry, exactly the old page's markup so the stylesheet is unchanged.
 void buildEntries() {
   const char *title = Api->menuconfig->title();
-  const std::string titleText =
-      title && *title ? resolveLabel(title) : resolve("#MainMenu_Title");
+  const std::string titleText = title && *title
+                                    ? resolveLabel(title)
+                                    : resolve("#abcui.gameui/MainMenu_Title");
   setInnerRml("title", escapeText(titleText.c_str()));
 
   for (const int32_t section :
@@ -161,7 +163,7 @@ void updateFocusStatus(AbcUiElement *focused) {
       label = resolveLabel(raw.c_str());
   }
   if (label.empty())
-    label = resolve("#MainMenu_FocusNone");
+    label = resolve("#abcui.gameui/MainMenu_FocusNone");
   setInnerRml("focus-status", escapeText(label.c_str()));
 }
 
@@ -251,8 +253,9 @@ void projectFriends() {
     // The shipped empty state: a centered muted note inside the list box.
     const bool available = Api->social->steamAvailable() != 0;
     std::string markup = "<div id=\"friends-list-empty\" class=\"abc-muted\">";
-    markup += escapeText(resolve(available ? "#MainMenu_FriendsEmpty"
-                                           : "#MainMenu_FriendsUnavailable"));
+    markup += escapeText(
+        resolve(available ? "#abcui.gameui/MainMenu_FriendsEmpty"
+                          : "#abcui.gameui/MainMenu_FriendsUnavailable"));
     markup += "</div>";
     Api->ui->elementSetInnerRML(list, markup.c_str());
     if (AbcUiElement *empty = node("friends-list-empty")) {
@@ -280,8 +283,9 @@ void projectFriends() {
     markup += escapeAttribute(row.connect);
     markup += "\">";
     if (row.steamId != 0) {
-      markup += "<img class=\"friend-avatar\" src=\"avatar://";
-      markup += std::to_string(row.steamId);
+      markup += "<img class=\"friend-avatar\" src=\"";
+      markup += moduleui::avatarUri(
+          Api, row.steamId, "mod://abcui.gameui/img/default_avatar.png");
       markup += "\"/>";
     }
     markup += "<span class=\"friend-name\">";
@@ -290,12 +294,14 @@ void projectFriends() {
     // Joinable friends in this game carry the game's name; in-game friends
     // without an address are just "in game".
     const char *state =
-        row.self ? "#MainMenu_You"
-                 : (row.otherGame
-                        ? "#MainMenu_FriendOtherGame"
-                        : (*row.connect
-                               ? row.game
-                               : (row.inGame ? "#MainMenu_FriendInGame" : "")));
+        row.self
+            ? "#abcui.gameui/MainMenu_You"
+            : (row.otherGame
+                   ? "#abcui.gameui/MainMenu_FriendOtherGame"
+                   : (*row.connect
+                          ? row.game
+                          : (row.inGame ? "#abcui.gameui/MainMenu_FriendInGame"
+                                        : "")));
     if (*state) {
       markup += "<span class=\"friend-state\">";
       markup += escapeText(resolve(state));
@@ -312,7 +318,16 @@ void render() {
     return;
   // The facts the player can edit mid-session re-project every beat; the
   // friends board alone is change-gated on the model's generation.
-  const uint32_t generation = Api->social->generation();
+  uint32_t generation = Api->social->generation();
+  for (int32_t i = 0; i < Api->social->rowCount(); ++i) {
+    AbcUiFriendRow row{};
+    row.structSize = sizeof(row);
+    if (Api->social->rowAt(i, &row)) {
+      int32_t avatar = 0;
+      Api->players->avatar(row.steamId, &avatar);
+      generation = generation * 16777619u ^ static_cast<uint32_t>(avatar);
+    }
+  }
   const bool generationMoved = generation != RenderedRevision;
   projectConditions();
   projectFacts();

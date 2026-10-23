@@ -3,6 +3,7 @@
 #include "../../services/video/AsyncDecoder.h"
 #include "../../services/video/Options.h"
 #include "VideoTexture.h"
+#include "modsys/ModuleVfs.h"
 
 #include <windows.h>
 
@@ -172,7 +173,11 @@ Rml::Vector2i ElementVideo::applyFit(Rml::Vector2i box) {
 }
 
 bool ElementVideo::openMedia(const char *reason) {
-  const std::string path = abc::ModPath(Config->Source.c_str());
+  std::string path;
+  const auto *document = GetOwnerDocument();
+  if (!document || !framework::ModuleVfs::resolve(document->GetSourceURL(),
+                                                  Config->Source, path))
+    return false;
   const int width = DecodeSize.x > 0 ? DecodeSize.x : kMaxDecodeEdge;
   const int height = DecodeSize.y > 0 ? DecodeSize.y : kMaxDecodeEdge;
   if (Media->open(path.c_str(), width, height)) {

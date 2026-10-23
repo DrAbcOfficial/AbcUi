@@ -13,7 +13,6 @@
 
 #include <keydefs.h>
 
-#include "../framework/Assets.h"
 #include "../framework/FatalExit.h"
 #include "../framework/Localization.h"
 #include "../framework/PanelManager.h"
@@ -38,11 +37,13 @@
 #include "InputBridge.h"
 #include "PaintGate.h"
 #include "ImeOverlay.h"
+#include "modsys/ApiAudio.h"
 #include "TextInput.h"
 #include "VGUI2ExtensionImport.h"
 #include "../services/GameUiBridge.h"
 
 #include <format>
+#include <string>
 
 namespace rmlui {
 
@@ -80,7 +81,16 @@ constexpr const char *kFontFiles[] = {
     "msyhbd.ttc",   // Microsoft YaHei bold
     "consola.ttf",  // Consolas (fallback face)
 };
-constexpr const char *kFontDirectory = "C:\\Windows\\Fonts\\";
+const std::string &systemFontDirectory() {
+  static const std::string directory = [] {
+    char root[MAX_PATH]{};
+    const UINT length = GetWindowsDirectoryA(root, MAX_PATH);
+    if (length == 0 || length >= MAX_PATH)
+      return std::string{};
+    return std::string(root, length) + "\\Fonts\\";
+  }();
+  return directory;
+}
 
 // Context/renderer singletons (declared before RendererCallbacks: its
 // renderFrame reads them).
@@ -204,6 +214,8 @@ int LoadedFonts = 0;
 
 void loadFonts(const char *directory, int &loaded) {
   loaded = 0;
+  if (!directory || !*directory)
+    return;
   for (const char *file : kFontFiles) {
     const std::string path = std::format("{}{}", directory, file);
     if (GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES)
@@ -225,7 +237,7 @@ const char *fontDirectoryOverride() {
       next && *next)
     return next;
 #endif
-  return kFontDirectory;
+  return systemFontDirectory().c_str();
 }
 
 // T21 first-frame evidence (Debug only). The acceptance forbids "a
@@ -415,18 +427,12 @@ void init() {
   framework::Localization::load();
   framework::Theme::applyScale(Context);
   sprites::vidInit();
-  avatars::init();
-  framework::Assets::verifyInstalled();
   // HUD document ready callbacks run before the menu/context lifecycle beat.
   framework::module_resources::contextRegistrationsOpen() = true;
   framework::PanelManager::initAll(Context);
 
   Rml::Debugger::Initialise(Context);
   Rml::Debugger::SetVisible(false);
-  // IME composition/candidate overlay: a plain document on this context, so
-  // it serves the HUD, the menus and the console alike.
-  ime::init(Context);
-
   abc::MetaRenderer()->RegisterRenderCallbacks(&Callbacks);
   Initialised = true;
   abc::ConsolePrint("[AbcUi] RmlUi %s ready (context %dx%d)\n",
@@ -489,11 +495,6 @@ void shutdown() {
 
 void registerCommands() {
   abc::ADD_COMMAND("abc_ui_debugger", debuggerCommand);
-  // Menu backdrop knobs (the element reads them every sync; an explicit
-  // attribute on the <backdrop> node still wins).
-  abc::CREATE_CVAR("abc_ui_menu_video", menubackdrop::kDefaultVideoSource,
-                   abc::FCVAR_VALUE, nullptr);
-  abc::CREATE_CVAR("abc_ui_menu_backdrop_blur", "2", abc::FCVAR_VALUE, nullptr);
 }
 
 void onFrame(double frameTime) {
@@ -529,6 +530,7 @@ void onFrame(double frameTime) {
   // same Context::Update (order contract, modules/Module.h).
   if (Sink.frame)
     Sink.frame(frameTime);
+  framework::AudioApi::pump();
   // Queued <colorpicker> change events fire here, outside the drag/event
   // stack: a page handler may destroy the picker (see pumpChanges).
   colorpicker::ElementColorPicker::pumpChanges();

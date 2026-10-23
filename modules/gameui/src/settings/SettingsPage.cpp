@@ -189,10 +189,10 @@ bool toggleDraftOn(const AbcUiSettingRow &row) {
   return isOn(row.draftValue);
 }
 
-// The engine stores cl_logocolor as a localized token ("#Valve_Ltblue") while
-// the shipped option table uses bare names ("Ltblue"); both spellings select
-// the same spray colour, so labels and the preview URI normalize to the bare
-// name. Other values pass through unchanged.
+// The engine stores cl_logocolor as a localized token
+// ("#abcui.gameui/Valve_Ltblue") while the shipped option table uses bare names
+// ("Ltblue"); both spellings select the same spray colour, so labels and the
+// preview URI normalize to the bare name. Other values pass through unchanged.
 std::string logoColorName(const std::string &value) {
   std::string name = value;
   if (!name.empty() && name[0] == '#')
@@ -406,8 +406,8 @@ void projectPage() {
   setDisplay("bind-reset", hasComponent("bindings"));
   AbcUiSettingsPage current{};
   const bool havePage = active >= 0 && pageAt(active, current);
-  setText("title",
-          havePage ? resolve(current.label) : resolve("#Settings_Title"));
+  setText("title", havePage ? resolve(current.label)
+                            : resolve("#abcui.gameui/Settings_Title"));
   setText("settings-description",
           havePage ? resolve(current.description) : std::string());
   setDisplay("settings-reset", havePage && current.cvarCount > 0);
@@ -491,15 +491,15 @@ void applyAndReport() {
   const int32_t touched = applied + failed + queued + bindTouched;
   std::string text;
   if (touched == 0) {
-    text = resolve("#Settings_StatusClean");
+    text = resolve("#abcui.gameui/Settings_StatusClean");
   } else if (failed == 0) {
-    text = resolve("#Settings_Applied");
+    text = resolve("#abcui.gameui/Settings_Applied");
     if (queued > 0)
       text += " | " + std::to_string(queued) + " " +
-              resolve("#Settings_QueuedPlural");
+              resolve("#abcui.gameui/Settings_QueuedPlural");
   } else {
     text = std::to_string(applied) + "/" + std::to_string(applied + failed) +
-           " " + resolve("#Settings_ApplyPartial");
+           " " + resolve("#abcui.gameui/Settings_ApplyPartial");
   }
   setInnerRml(node("settings-status"), escapeText(text));
   render();

@@ -25,6 +25,7 @@
 #include "framework/Commands.h"
 #include "data/NetworkMessages.h"
 #include "modsys/ModuleDocuments.h"
+#include "modsys/ModuleVfs.h"
 #include "modules/gameui/engine/MenuBindings.h"
 #include "modules/gameui/engine/SettingsBindings.h"
 #include "modules/gameui/engine/VideoBindings.h"
@@ -80,16 +81,12 @@ namespace {
 bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
                                std::string &error) {
   const std::string path =
-      abc::ModPath("abc/abcui/gameui/config/commandmenu.json");
-  std::ifstream stream(path, std::ios::binary);
-  if (!stream) {
-    error = "cannot open file";
+      services::uiconfig::resourceRoot() + "/commandmenu.json";
+  std::string contents;
+  if (!framework::ModuleVfs::readText(path.c_str(), contents)) {
+    error = "cannot open package entry";
     return false;
   }
-  std::string contents{std::istreambuf_iterator<char>(stream),
-                       std::istreambuf_iterator<char>()};
-  if (contents.compare(0, 3, "\xef\xbb\xbf") == 0)
-    contents.erase(0, 3);
   services::commandmenu::ParseError parseError;
   if (!services::commandmenu::DefinitionParser::parse(contents, definition,
                                                       parseError)) {
@@ -553,26 +550,35 @@ void GameUiModule::onInit() {
   // Parsing/loading finishes before any document or transaction observes it.
   abc::CREATE_CVAR("abc_ui_browser_hide_unresponsive", "1", abc::FCVAR_VALUE,
                    nullptr);
-  // Menu score (WS4): the shipped track plus its level; the music service
-  // reads the source once per presentation change and the volume live.
-  abc::CREATE_CVAR("abc_ui_menu_music",
-                   "abc/abcui/gameui/scence/audio/opfor.mp3", abc::FCVAR_VALUE,
-                   nullptr);
   // The character card's model source override; empty follows the player's
   // own `model` cvar (gameui::engine::playerCardFacts).
   abc::CREATE_CVAR("abc_ui_menu_model_path", "", abc::FCVAR_VALUE, nullptr);
   std::string ServerScript = readModFile("settings.scr");
   if (ServerScript.empty())
-    ServerScript = readModFile("abc/abcui/gameui/config/server_options.scr");
+    framework::ModuleVfs::readText(
+        (services::uiconfig::resourceRoot() + "/server_options.scr").c_str(),
+        ServerScript);
   Create->setOptions(services::creategame::parseServerOptions(ServerScript));
   if (Create->optionsEmpty()) {
     abc::ConsoleWarn("[AbcUi] settings.scr unavailable or malformed; using "
                      "shipped server option definitions\n");
-    Create->setOptions(services::creategame::parseServerOptions(
-        readModFile("abc/abcui/gameui/config/server_options.scr")));
+    framework::ModuleVfs::readText(
+        (services::uiconfig::resourceRoot() + "/server_options.scr").c_str(),
+        ServerScript);
+    Create->setOptions(services::creategame::parseServerOptions(ServerScript));
   }
   const auto Advanced = loadAdvancedScript();
-  UiConfig.load(abc::ModPath("abc/abcui/gameui/config"), Advanced.Rows);
+  const auto &root = services::uiconfig::resourceRoot();
+  if (!root.empty())
+    UiConfig.load(
+        root,
+        [](const std::string &uri, std::string &text) {
+          return framework::ModuleVfs::readText(uri.c_str(), text);
+        },
+        [](const std::string &uri) {
+          return framework::ModuleVfs::list(uri.c_str());
+        },
+        Advanced.Rows);
   for (const auto &Error : UiConfig.errors())
     abc::ConsoleWarn("[AbcUi] %s: %s: %s\n", Error.File.c_str(),
                      Error.Field.c_str(), Error.Message.c_str());
@@ -599,29 +605,33 @@ void GameUiModule::onInit() {
                                      scanModDirectories("models/player"));
     else if (Source == "logos")
       SettingsModel.setStringOptions(Row.Cvar, scanModFileBasenames("logos"));
-    else if (Source == "scence/video") {
-      // Menu background videos: the player drops files into the plugin
-      // tree; the dropdown lists them by stem and the cvar stores the
-      // path the backdrop decoder opens.
-      static const char *const VideoExtensions[] = {".mp4", ".webm", ".ivf",
-                                                    ".avi", ".mkv"};
-      SettingsModel.setStringChoices(
-          Row.Cvar,
-          scanModMediaFiles("abc/abcui/gameui/scence/video", VideoExtensions,
-                            static_cast<int>(std::size(VideoExtensions)),
-                            "abc/abcui/gameui/scence/video/"));
-    } else if (Source == "scence/audio") {
-      // Menu music: the engine's mp3 player resolves the path relative
-      // to the mod dir (the legacy plugin played media/*.mp3 the same
-      // way), so the scanned folder is the whole story.
-      static const char *const AudioExtensions[] = {".mp3"};
-      SettingsModel.setStringChoices(
-          Row.Cvar,
-          scanModMediaFiles("abc/abcui/gameui/scence/audio", AudioExtensions,
-                            static_cast<int>(std::size(AudioExtensions)),
-                            "abc/abcui/gameui/scence/audio/"));
+    else if (Source == "scence/video" || Source == "scence/audio") {
+      std::string directory;
+      const std::string suffix = Source == "scence/video" ? "video" : "audio";
+      framework::ModuleVfs::resolve(root + "/_", "../scence/" + suffix + "/_",
+                                    directory);
+      if (directory.size() >= 2)
+        directory.resize(directory.size() - 2);
+      std::vector<services::settings::StringChoice> choices;
+      for (const auto &uri : framework::ModuleVfs::list(directory.c_str())) {
+        const auto slash = uri.rfind('/');
+        const auto dot = uri.rfind('.');
+        if (dot == uri.npos || dot < slash)
+          continue;
+        const auto extension = uri.substr(dot);
+        const bool supported =
+            suffix == "audio" ? (extension == ".mp3" || extension == ".wav" ||
+                                 extension == ".ogg")
+                              : (extension == ".mp4" || extension == ".webm" ||
+                                 extension == ".mkv" || extension == ".avi" ||
+                                 extension == ".ivf");
+        if (supported && choices.size() < 512)
+          choices.push_back({uri, uri.substr(slash + 1, dot - slash - 1)});
+      }
+      SettingsModel.setStringChoices(Row.Cvar, std::move(choices));
     }
   }
+
   // T11 bind sources live in the mod dir (engine-owned data, not abcui
   // assets): the action list, the factory defaults and the label table.
   // Missing files degrade to an empty action table - the settings page

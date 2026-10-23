@@ -162,6 +162,9 @@ add_library(AbcUi MODULE
     src/modsys/ModulePanel.cpp
     src/modsys/ApiTable.cpp
     src/modsys/ModuleManager.cpp
+    src/modsys/ApiAudio.cpp
+    src/modsys/ApiTextures.cpp
+    src/services/media/FfmpegApi.cpp
     src/modsys/ApiSections.cpp
     src/modsys/ApiWeapons.cpp
     src/modsys/ApiPlayers.cpp
@@ -194,7 +197,6 @@ add_library(AbcUi MODULE
     src/rmlui/animated/WebPDecoder.cpp
     src/rmlui/animated/ElementAnimatedImage.cpp
     src/rmlui/backdrop/Backdrop.cpp
-    src/services/menumusic/MenuMusic.cpp
     src/services/friends/FriendsModel.cpp
     src/services/friends/FriendsSteam.cpp
     src/rmlui/modelpreview/Options.cpp
@@ -223,7 +225,6 @@ add_library(AbcUi MODULE
     src/services/steam/SteamApiBridge.cpp
     src/services/steam/SteamApiNative.cpp
     src/rmlui/VGUI2ExtensionImport.cpp
-    src/framework/Assets.cpp
     src/framework/ResourceFile.cpp
     src/framework/ShellActions.cpp
     src/framework/Commands.cpp
@@ -323,7 +324,6 @@ add_library(AbcUi MODULE
     src/framework/PanelManager.cpp
     src/framework/PanelManagerLifecycle.cpp
     src/framework/Theme.cpp
-    src/framework/GlyphText.cpp
     src/framework/Projection.cpp
     # Generic CreateInterface export (EXPOSE_SINGLE_INTERFACE implementation)
     "${METAHOOK_INCLUDE_DIR}/HLSDK/common/interface.cpp"
@@ -434,18 +434,9 @@ if(ABC_GAME_DIR)
     install(TARGETS AbcUi
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins")
-    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui")
-        # Plugin resources live under <mod>/abc/<plugin> (the abc group dir):
-        # AbcUi owns abc/abcui, sibling to AbcEssential's abc/abcessential.
-        install(DIRECTORY assets/abc/abcui DESTINATION "${ABC_GAME_DIR}/svencoop/abc"
-            PATTERN ".gitkeep" EXCLUDE)
-    endif()
     # Module packages produced by tools/pack.py (build a Release pack first).
     install(DIRECTORY "${ABCUI_MODULE_PACK_DIR}/"
         DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
-    # The menu score ships inside abc/abcui/gameui/scence/audio (installed with
-    # the tree above). MenuMusic drives the engine's mp3 player with the
-    # mod-relative path selected by abc_ui_menu_music.
     add_custom_target(deploy
         DEPENDS AbcUi pack_modules
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
@@ -457,7 +448,7 @@ endif()
 # AbcUi-<version>.zip with the game root at the archive root, so it can be
 # extracted directly into the Sven Co-op directory:
 #   svencoop/metahook/plugins/AbcUi.dll
-#   svencoop/abc/abcui/** (gameui/, hud/, shared rcss/lang/img)
+#   svencoop/abc/abcui/modules/*.zip (all UI resources)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
 # configuration that thirdparty/FreeImage pulls in.
@@ -478,10 +469,6 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/abc"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:AbcUi>"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui"
-        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui"
-    COMMAND "${CMAKE_COMMAND}" -E rm -f "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/.gitkeep"
     COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"

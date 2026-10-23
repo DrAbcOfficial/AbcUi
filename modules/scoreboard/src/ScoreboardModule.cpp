@@ -18,6 +18,7 @@
 //   the bundled default until steam delivers).
 #include <abcui/events.h>
 #include <abcui/module_api.h>
+#include "../../common/Avatars.h"
 
 #include <algorithm>
 #include <cmath>
@@ -404,13 +405,15 @@ void rebuildTable() {
       out += "<div class='cell c-avatar'></div>";
       return;
     }
-    appendFmt(out,
-              "<div class='cell c-avatar'><div class='avatar-frame' "
-              "style='width:{:.0f}px; height:{:.0f}px;'>"
-              "<img class='avatar' style='width:100%; height:100%;' "
-              "src='avatar://{}?gen={}'/>",
-              avatarSize, avatarSize, info.steamId64,
-              Api->players->avatarGeneration(info.steamId64));
+    appendFmt(
+        out,
+        "<div class='cell c-avatar'><div class='avatar-frame' "
+        "style='width:{:.0f}px; height:{:.0f}px;'>"
+        "<img class='avatar' style='width:100%; height:100%;' "
+        "src='{}'/>",
+        avatarSize, avatarSize,
+        moduleui::avatarUri(Api, info.steamId64,
+                            "mod://abcui.scoreboard/img/default_avatar.png"));
     if (info.admin == 1)
       appendFmt(out,
                 "<img class='admin' style='width:100%; height:100%;' "
@@ -961,7 +964,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.scoreboard";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

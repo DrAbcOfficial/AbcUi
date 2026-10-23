@@ -70,17 +70,13 @@ std::vector<AbcUiConsoleLine> WindowLines;
 
 int copyLines(uint64_t since, AbcUiConsoleLine *out, uint32_t count) {
   const auto *api = Api->consolepage;
-  if (ABCUI_API_HAS_MEMBER(AbcUiConsolePageApi, api, copySinceEx))
-    return api->copySinceEx(since, out, count, sizeof(AbcUiConsoleLine));
-  return api->copySince(since, out, count);
+  return api->copySince(since, out, count, sizeof(AbcUiConsoleLine));
 }
 
 int completeNames(const char *prefix, AbcUiConsoleSuggestion *out,
                   uint32_t count) {
   const auto *api = Api->consolepage;
-  if (ABCUI_API_HAS_MEMBER(AbcUiConsolePageApi, api, completeEx))
-    return api->completeEx(prefix, out, count, sizeof(AbcUiConsoleSuggestion));
-  return api->complete(prefix, out, count);
+  return api->complete(prefix, out, count, sizeof(AbcUiConsoleSuggestion));
 }
 
 // --- page state -------------------------------------------------------------

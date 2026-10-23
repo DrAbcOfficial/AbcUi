@@ -119,8 +119,8 @@ void renderLoading() {
   // Title: the attempt-kind token from the state payload (the T19 local
   // start / an engine map change), else the shipped connect title. Always
   // re-applied so a reused page cannot keep the previous attempt's title.
-  const char *titleToken = "#Loading_Title";
-  const char *statusFallback = "#Loading_Connecting";
+  const char *titleToken = "#abcui.gameui/Loading_Title";
+  const char *statusFallback = "#abcui.gameui/Loading_Connecting";
   const AbcUiMenuState state = [&] {
     AbcUiMenuState out{};
     out.structSize = sizeof(out);
@@ -128,10 +128,10 @@ void renderLoading() {
     return out;
   }();
   if (state.attemptKind == ABCUI_MENU_ATTEMPT_LOCAL_GAME) {
-    titleToken = "#CG_LoadingTitle";
+    titleToken = "#abcui.gameui/CG_LoadingTitle";
   } else if (state.attemptKind == ABCUI_MENU_ATTEMPT_MAP_LOAD) {
-    titleToken = "#Loading_MapTitle";
-    statusFallback = "#Loading_MapStatus";
+    titleToken = "#abcui.gameui/Loading_MapTitle";
+    statusFallback = "#abcui.gameui/Loading_MapStatus";
   }
   setInnerRml(LoadingPage, "loading-title",
               escapeText(resolveText(titleToken)));
@@ -213,7 +213,8 @@ void showError() {
   if (!ErrorShown || key != ErrorReasonShown) {
     ErrorReasonShown = key;
     const std::string text =
-        reason[0] ? resolveText(reason) : resolveText("#Loading_ErrorGeneric");
+        reason[0] ? resolveText(reason)
+                  : resolveText("#abcui.gameui/Loading_ErrorGeneric");
     setInnerRml(ErrorPage, "connerror-reason", escapeText(text));
     ErrorShown = true;
   }
@@ -234,8 +235,9 @@ void hideError() {
 void preparePassword() {
   const bool invalid = Api->connection->passwordInvalid() != 0;
   setInnerRml(PasswordPage, "password-lead",
-              escapeText(resolveText(invalid ? "#Loading_PasswordInvalid"
-                                             : "#Loading_PasswordRequired")));
+              escapeText(resolveText(
+                  invalid ? "#abcui.gameui/Loading_PasswordInvalid"
+                          : "#abcui.gameui/Loading_PasswordRequired")));
   setInnerRml(PasswordPage, "password-hint", "");
   setInputValue(PasswordPage, "password-field", "");
 }

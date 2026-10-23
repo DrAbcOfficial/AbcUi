@@ -130,14 +130,15 @@ void renderModelPicker() {
         markup += " on";
       markup += "\" data-action=\"" + std::string(kActionModelFav) +
                 "\" data-choice=\"" + escapeAttribute(choice) + "\">" +
-                escapeText(resolve("#Settings_ModelStar")) + "</span></button>";
+                escapeText(resolve("#abcui.gameui/Settings_ModelStar")) +
+                "</span></button>";
     }
     if (shown == 0) {
-      markup +=
-          "<div class=\"model-picker-empty\">" +
-          escapeText(resolve(total == 0 ? "#Settings_ModelPickerEmpty"
-                                        : "#Settings_ModelPickerNoMatch")) +
-          "</div>";
+      markup += "<div class=\"model-picker-empty\">" +
+                escapeText(resolve(
+                    total == 0 ? "#abcui.gameui/Settings_ModelPickerEmpty"
+                               : "#abcui.gameui/Settings_ModelPickerNoMatch")) +
+                "</div>";
     }
     Api->ui->elementSetInnerRML(list, markup.c_str());
   }
@@ -147,12 +148,12 @@ void renderModelPicker() {
   Api->ui->elementSetClass(favOnly, "on", ModelFavOnly);
   std::string statusText;
   if (!Api->settings->favoritesAvailable()) {
-    statusText = resolve("#Settings_ModelFavLocked");
+    statusText = resolve("#abcui.gameui/Settings_ModelFavLocked");
   } else if (total == 0) {
-    statusText = resolve("#Settings_ModelPickerEmpty");
+    statusText = resolve("#abcui.gameui/Settings_ModelPickerEmpty");
   } else {
     statusText = std::to_string(shown) + " / " + std::to_string(total) + " " +
-                 resolve("#Settings_ModelPickerModels");
+                 resolve("#abcui.gameui/Settings_ModelPickerModels");
   }
   setInnerRml(status, escapeText(statusText));
 }
@@ -232,8 +233,8 @@ void openModelContextMenu(AbcUiElement *entry, float mouseX, float mouseY) {
   // current state.
   setInnerRml(node("model-picker-context-fav"),
               escapeText(resolve(favoriteOn(ModelContextModel.c_str())
-                                     ? "#Settings_ModelFavRemove"
-                                     : "#Settings_ModelFavAdd")));
+                                     ? "#abcui.gameui/Settings_ModelFavRemove"
+                                     : "#abcui.gameui/Settings_ModelFavAdd")));
   setDisplay(menu, true);
   ModelContextOpen = true;
 }

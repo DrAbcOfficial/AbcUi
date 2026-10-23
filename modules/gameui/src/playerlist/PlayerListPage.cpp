@@ -89,17 +89,17 @@ void appendRow(std::string &markup, const AbcUiPlayerRow &row) {
 
   std::string state;
   if (row.flags & ABCUI_PL_FLAG_LOCAL)
-    state = resolve("#PL_You");
+    state = resolve("#abcui.gameui/PL_You");
   else if (row.flags & ABCUI_PL_FLAG_BOT)
-    state = resolve("#PL_Bot");
+    state = resolve("#abcui.gameui/PL_Bot");
   if (row.flags & ABCUI_PL_FLAG_MUTED) {
     if (!state.empty())
       state += " ";
-    state += resolve("#PL_MutedLabel");
+    state += resolve("#abcui.gameui/PL_MutedLabel");
   } else if (row.flags & ABCUI_PL_FLAG_SPECTATING) {
     if (!state.empty())
       state += " ";
-    state += resolve("#PL_Spectating");
+    state += resolve("#abcui.gameui/PL_Spectating");
   }
   if (!state.empty()) {
     markup += "<span class=\"pl-state\">";
@@ -136,7 +136,8 @@ void render() {
   // when the roster holds only the local player (the shipped dialog listed
   // every non-empty name including your own row).
   if (rows == 0)
-    markup = "<p id=\"pl-empty\">" + escapeText(resolve("#PL_Empty")) + "</p>";
+    markup = "<p id=\"pl-empty\">" +
+             escapeText(resolve("#abcui.gameui/PL_Empty")) + "</p>";
   setInnerRml("pl-list", markup);
 
   // Mute control: label follows the selected player's ACTUAL backend state
@@ -151,11 +152,11 @@ void render() {
         selected.structSize != 0 && selected.steamId64 != 0 &&
         !(selected.flags & ABCUI_PL_FLAG_BOT) &&
         !(selected.flags & ABCUI_PL_FLAG_LOCAL) && available;
-    const char *labelToken = "#PL_Mute";
+    const char *labelToken = "#abcui.gameui/PL_Mute";
     if (!available)
-      labelToken = "#PL_MuteUnavailable";
+      labelToken = "#abcui.gameui/PL_MuteUnavailable";
     else if (selected.structSize != 0 && (selected.flags & ABCUI_PL_FLAG_MUTED))
-      labelToken = "#PL_Unmute";
+      labelToken = "#abcui.gameui/PL_Unmute";
     if (AbcUiElement *text = node("pl-mute-label"))
       Api->ui->elementSetInnerRML(text,
                                   escapeText(resolve(labelToken)).c_str());
@@ -170,7 +171,7 @@ void render() {
   if (AbcUiElement *status = node("pl-status")) {
     const std::string line = Api->playerlist->muteAvailable()
                                  ? std::string()
-                                 : resolve("#PL_MuteUnavailable");
+                                 : resolve("#abcui.gameui/PL_MuteUnavailable");
     Api->ui->elementSetInnerRML(status, escapeText(line.c_str()).c_str());
     Api->ui->elementSetProperty(status, "display",
                                 line.empty() ? "none" : "block");

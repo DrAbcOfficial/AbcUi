@@ -34,7 +34,6 @@
 #include "../../../rmlui/VGUI2ExtensionImport.h"
 #include "../../../rmlui/backdrop/ElementBackdrop.h"
 #include "../../../rmlui/backdrop/Backdrop.h"
-#include "../../../services/menumusic/MenuMusic.h"
 #include "../../../services/friends/FriendsModel.h"
 #include "../../../services/GameUiBridge.h"
 #include "../../../services/console/ConsoleBackend.h"
@@ -446,14 +445,6 @@ void probeCommand() {
                       service.Width, service.Height, service.VideoOpen ? 1 : 0,
                       service.VideoSeconds);
   }
-  // Menu score (UI overhaul WS4): the track the module hands to the engine's
-  // mp3 player (looping and loudness are the engine's own; see MenuMusic).
-  {
-    const auto &music = menumusic::menuMusic();
-    abc::ConsolePrint("[AbcUi] probe: music src='%s' on=%d playing=%d\n",
-                      music.source().c_str(), music.enabled() ? 1 : 0,
-                      music.playing() ? 1 : 0);
-  }
   // Friends board (UI overhaul WS4): provider reach, the row set and each
   // row's joinability.
   {
@@ -482,28 +473,7 @@ void probeCommand() {
                       rmlui::uiMouseOwner() ? 1 : 0,
                       framework::scoreseat::wantsWheel() ? 1 : 0);
   }
-  const char *rml =
-      "<rml>"
-      "<head>"
-      "<link type=\"text/rcss\" href=\"abc/abcui/rcss/base.rcss\"/>"
-      "<style>"
-      "	body { margin: 0dp; width: 640dp; height: 640dp;"
-      "		background-color: #101418e0; }"
-      "	div { display: block; }"
-      "	#a { font-family: \"Verdana\"; font-size: 40px; color: #ff0000; }"
-      "	#b { font-family: \"Microsoft YaHei\"; font-size: 40px; color: "
-      "#00ff00; }"
-      "	#c { font-size: 40px; color: #ffff00; }"
-      "</style>"
-      "</head>"
-      "<body>"
-      "<div id=\"a\">PROBE-VERDANA-123</div>"
-      "<div id=\"b\">PROBE-YAHEI-ABC abc \xe6\xb5\x8b\xe8\xaf\x95</div>"
-      "<div id=\"c\">PROBE-UNSPECIFIED-456</div>"
-      "<div id=\"d\" class=\"font-default\">PROBE-BASECSS-789</div>"
-      "</body>"
-      "</rml>";
-  ProbeDoc = context->LoadDocumentFromMemory(rml);
+  ProbeDoc = context->LoadDocument("mod://abcui.gameui/debug/probe.rml");
   if (ProbeDoc) {
     ProbeDoc->Show();
     // Keydown follows the focus chain; the doc must own focus for the

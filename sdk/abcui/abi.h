@@ -11,18 +11,11 @@
 // entry. Modules never include RmlUi headers and never link the framework's
 // static libraries.
 //
-// Extensibility rules (mirroring AbcCore's append-only table):
-//  - versioned tables and snapshots start with a uint32_t structSize;
-//  - new functions are appended, existing members never move or change
-//    signature; breaking changes bump ABCUI_ABI_VERSION;
-//  - check both section size and function presence with ABCUI_API_HAS_MEMBER
-//    before calling an optional appended member on an older framework;
-//  - output snapshot structSize is caller capacity and is preserved when
-//    nonzero. Initialize it to sizeof the caller's type. Zero retains the
-//    legacy full-current-size write and must not be used by new code;
-//  - legacy typed-array element layouts and embedded records are frozen.
-//    A growing record requires a new type and an explicit-stride interface,
-//    not a change to a legacy array's element size.
+// ABI 2 deliberately breaks the old resource/array APIs. There is no ABI-1
+// adapter. Tables and snapshots retain size headers for capacity validation;
+// array APIs take explicit byte strides. Initialize snapshot structSize to
+// sizeof the caller's record. Breaking changes require another ABI bump.
+// ABCUI_API_HAS_MEMBER is a table-validation helper, not a legacy fallback.
 //
 // Module build constraints (MemoryDll): Win32 x86 DLL, dynamic CRT (/MD),
 // no static TLS (`__declspec(thread)`), no delayimp, system DLLs/CRT only in
@@ -30,7 +23,7 @@
 // table, so no import library is needed.
 
 // Bumped on any breaking change to the structs below.
-#define ABCUI_ABI_VERSION 1
+#define ABCUI_ABI_VERSION 2
 
 // All entries, callbacks and service pointers use x86 cdecl, independently
 // of the consumer's /Gd, /Gz or /Gr default. Annotate callback definitions too.

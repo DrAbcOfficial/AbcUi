@@ -280,8 +280,9 @@ void updateTiles(int32_t bitsDamage) {
 }
 
 void tilesDocumentReady(void *) {
-  // Old labels were vgui-localized tokens ("#DMGTiles_Poison"); resolve them
-  // once here (raw token fallback = the old missing-entry behavior).
+  // Old labels were vgui-localized tokens ("#abcui.damage/DMGTiles_Poison");
+  // resolve them once here (raw token fallback = the old missing-entry
+  // behavior).
   AbcUiDocument *doc = panelDocument(kTilesPanel);
   if (!doc)
     return;
@@ -847,7 +848,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.damage";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

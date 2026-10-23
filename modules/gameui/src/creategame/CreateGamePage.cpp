@@ -157,7 +157,7 @@ void prepare() {
   {
     std::string name = Api->creategame->defaultName();
     if (name.empty())
-      name = resolve("#CG_DefaultName");
+      name = resolve("#abcui.gameui/CG_DefaultName");
     Api->ui->elementSetValue(node("cg-name"), name.c_str());
   }
   Api->ui->elementSetValue(node("cg-password"), "");
@@ -215,9 +215,11 @@ void prepare() {
     int32_t selected = 0;
     if (option.toggle) {
       Api->ui->elementSelectAdd(
-          select, escapeText(resolve("#Settings_Off")).c_str(), "0");
+          select, escapeText(resolve("#abcui.gameui/Settings_Off")).c_str(),
+          "0");
       Api->ui->elementSelectAdd(
-          select, escapeText(resolve("#Settings_On")).c_str(), "1");
+          select, escapeText(resolve("#abcui.gameui/Settings_On")).c_str(),
+          "1");
       selected = option.defaultValue > 0 ? 1 : 0;
     } else {
       for (int32_t choice = 0; choice < option.choiceCount; ++choice) {
@@ -234,7 +236,7 @@ void prepare() {
     }
     Api->ui->elementSelectSetSelection(select, selected);
   }
-  setInnerRml("cg-lan", escapeText(resolve("#Settings_Off")));
+  setInnerRml("cg-lan", escapeText(resolve("#abcui.gameui/Settings_Off")));
 
   showHint(nullptr);
   setInnerRml("cg-players-value", "8");
@@ -362,7 +364,7 @@ void apply() {
   if (!Api->creategame->submit(fields.data(),
                                static_cast<int32_t>(fields.size()), hint,
                                sizeof(hint))) {
-    showHint(hint[0] ? hint : "#CG_ErrorMap");
+    showHint(hint[0] ? hint : "#abcui.gameui/CG_ErrorMap");
   }
 }
 
@@ -394,8 +396,9 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
   if (action == kActionLan) {
     Lan = !Lan;
     Api->ui->elementSetInnerRML(
-        entry,
-        escapeText(resolve(Lan ? "#Settings_On" : "#Settings_Off")).c_str());
+        entry, escapeText(resolve(Lan ? "#abcui.gameui/Settings_On"
+                                      : "#abcui.gameui/Settings_Off"))
+                   .c_str());
     return 1;
   }
   if (action == kActionApply) {

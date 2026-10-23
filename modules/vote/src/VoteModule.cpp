@@ -159,7 +159,7 @@ int onKeyEvent(void *, const void *payload) {
 // ---- panel callbacks ----
 
 void panelDocumentReady(void *) {
-  // Old ctor label: the static "#Vote_DefaultMessage" title strip.
+  // Old ctor label: the static "#abcui.vote/Vote_DefaultMessage" title strip.
   const std::string title =
       escapeText(defaultCaption("Vote_DefaultMessage", "").c_str());
   setInnerRml("title", title.c_str());
@@ -237,7 +237,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.vote";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

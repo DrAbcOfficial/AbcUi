@@ -80,6 +80,8 @@ bool optionTokenValid(const char *text) {
 bool fileChoiceValueValid(const char *text) {
   if (!text || !*text)
     return false;
+  if (std::string_view(text).starts_with("mod://"))
+    text += 6;
   for (const char *p = text; *p; ++p) {
     const unsigned char c = static_cast<unsigned char>(*p);
     if (c < 0x20 || c == 0x7f)

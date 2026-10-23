@@ -371,8 +371,7 @@ void AbcRenderInterface::ReleaseGeometry(Rml::CompiledGeometryHandle geometry) {
 
 Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
                                                    const Rml::String &source) {
-  // engine:// lets package documents reference shared framework art by its
-  // absolute engine path; the rest of the chain below speaks plain paths.
+  // Explicit native game content, never shared framework UI resources.
   if (source.rfind("engine://", 0) == 0)
     return loadFileTexture(dimensions, source.substr(9));
   if (source.rfind("preview://", 0) == 0) {
@@ -453,34 +452,17 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
     }
     return handle;
   }
-  if (source.rfind("tex://", 0) == 0) {
-    // Mod-relative file, straight alpha: the non-additive twin of texadd://.
-    // The scheme keeps Rml from joining the document directory, so markup
-    // composed in code (the additive glyph stacks) resolves from anywhere.
-    return loadFileTexture(dimensions, source.substr(6));
-  }
   if (source.rfind("mod://", 0) == 0) {
     // Module package image: resolve through the module VFS, decode from the
     // (zero-copy) entry view.
     return loadModuleTexture(dimensions, source, false);
   }
   if (source.rfind("modadd://", 0) == 0) {
-    // Additive twin of mod:// - the package-internal flavor of texadd://.
+    // Additive package-image twin of mod://.
     return loadModuleTexture(dimensions, "mod://" + source.substr(9), true);
   }
-  if (source.rfind("texadd://", 0) == 0) {
-    // Mod-relative file loaded additive (old kRenderTransAdd TGA panels -
-    // the pain indicator arc). Shares the FreeImage path below.
-    const Rml::TextureHandle handle =
-        loadFileTexture(dimensions, source.substr(9));
-    if (handle)
-      AdditiveTextures.insert(handle);
-    return handle;
-  }
-
-  // `source` is the RML-referenced path (Rml joins the document directory);
-  // resolve against the mod dir like every other abcui asset.
-  return loadFileTexture(dimensions, source);
+  // No implicit engine-path lookup and no legacy loose-resource schemes.
+  return 0;
 }
 
 Rml::TextureHandle

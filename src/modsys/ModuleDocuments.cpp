@@ -1,6 +1,7 @@
 // framework::module_documents implementation - see ModuleDocuments.h.
 #include "ModuleDocuments.h"
 #include "ModuleResources.h"
+#include "ModuleVfs.h"
 
 #include <abc/Console.h>
 
@@ -47,7 +48,12 @@ public:
     auto keepAlive = shared_from_this();
     if (isVisible())
       return;
-    InteractiveDocument::show();
+    if ((Desc.flags & ABCUI_DOC_FLAG_DECORATION) && document()) {
+      document()->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
+      document()->PullToFront();
+    } else {
+      InteractiveDocument::show();
+    }
     module_resources::invoke(Lifetime.owner(), "document show", Desc.onShow,
                              Desc.userdata);
   }
@@ -90,6 +96,8 @@ public:
 
 protected:
   void onDocumentReady() override {
+    if ((Desc.flags & ABCUI_DOC_FLAG_DECORATION) && document())
+      document()->SetProperty("pointer-events", "none");
     // Never fires for the built-in emergency page (degraded() reports it):
     // the page's ids do not exist there.
     module_resources::invoke(Lifetime.owner(), "document ready", Desc.onReady,
@@ -207,6 +215,10 @@ int32_t requestRetry(AbcUiDocument *handle) {
 
 AbcUiDocument *create(const AbcUiDocumentDesc &desc) {
   if (!module_resources::accepting())
+    return nullptr;
+  const auto owner = module_resources::current();
+  if (!owner || !desc.path ||
+      !std::string_view(desc.path).starts_with("mod://" + owner->id + "/"))
     return nullptr;
   if (!desc.name || !*desc.name) {
     abc::ConsoleWarn("[AbcUi] module document without a name refused\n");

@@ -225,14 +225,32 @@ void drawDefaultCrosshair() {
     AbcUiHudState state{};
     state.structSize = sizeof(state);
     Api->data->hudState(&state);
+    // The module, not the registry, selects the game's default crosshair.
+    const auto fallback = [](AbcUiWeaponSprite &sprite, bool target) {
+      if (sprite.status == ABCUI_OK)
+        return;
+      sprite.status = ABCUI_OK;
+      std::snprintf(sprite.atlas, sizeof(sprite.atlas), "%s", "crosshairs.spr");
+      sprite.rect[0] = target ? 72 : 0;
+      sprite.rect[1] = target ? 72 : 48;
+      sprite.rect[2] = sprite.rect[0] + 24;
+      sprite.rect[3] = sprite.rect[1] + 24;
+    };
+    fallback(weapon.crosshair, false);
+    fallback(weapon.autoaim, true);
+    if (weapon.zoomedCrosshair.status != ABCUI_OK)
+      weapon.zoomedCrosshair = weapon.crosshair;
+    if (weapon.zoomedAutoaim.status != ABCUI_OK)
+      weapon.zoomedAutoaim = weapon.zoomedCrosshair;
     const bool onTarget = (weapon.state & kStateOnTarget) != 0;
     const float defaultFov = cvarValue(DefaultFov, 90.0f);
     const bool zoomed = state.fov < defaultFov;
     if (!zoomed) {
-      source = (onTarget && weapon.autoaim.valid) ? &weapon.autoaim
-                                                  : &weapon.crosshair;
+      source = (onTarget && (weapon.autoaim.status == ABCUI_OK))
+                   ? &weapon.autoaim
+                   : &weapon.crosshair;
     } else {
-      source = (onTarget && weapon.zoomedAutoaim.valid)
+      source = (onTarget && (weapon.zoomedAutoaim.status == ABCUI_OK))
                    ? &weapon.zoomedAutoaim
                    : &weapon.zoomedCrosshair;
     }
@@ -241,7 +259,7 @@ void drawDefaultCrosshair() {
   // cvar / missing sprite, and vgui repainted the spr fresh every frame, so a
   // stale image could not linger - the Rml img needs an explicit hide
   // wherever this frame does not draw it.
-  if (!haveWeapon || !source || !source->valid) {
+  if (!haveWeapon || !source || source->status != ABCUI_OK) {
     SprUri.clear();
     Api->ui->elementSetProperty(spr, "display", "none");
     return;
@@ -495,7 +513,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.crosshair";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

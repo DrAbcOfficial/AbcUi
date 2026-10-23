@@ -36,7 +36,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.demo";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &DemoOnLoad;
   out->onInit = nullptr;
   out->onContextReady = nullptr;

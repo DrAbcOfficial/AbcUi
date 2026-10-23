@@ -42,7 +42,7 @@ void renderVideoSection() {
   // model-state guards. The select is a real form control.
   if (!available) {
     setInnerRml(node("video-status"),
-                escapeText(resolve("#Settings_VideoUnavailable")));
+                escapeText(resolve("#abcui.gameui/Settings_VideoUnavailable")));
     Api->ui->elementSetDisabled(select, 1);
     Api->ui->elementSetClass(toggle, "video-disabled", 1);
     Api->ui->elementSetDisabled(apply, 1);
@@ -108,8 +108,9 @@ void renderVideoSection() {
   }
   if (toggle) {
     setInnerRml(toggle, escapeText(resolve(
-                            targetWindowed ? "#Settings_VideoWindowedOn"
-                                           : "#Settings_VideoWindowedOff")));
+                            targetWindowed
+                                ? "#abcui.gameui/Settings_VideoWindowedOn"
+                                : "#abcui.gameui/Settings_VideoWindowedOff")));
   }
   // While a confirmation is outstanding the whole section is locked (the
   // pending switch owns the engine state); otherwise the controls follow the
@@ -122,16 +123,16 @@ void renderVideoSection() {
   Api->ui->elementSetClass(apply, "video-disabled", !canApply);
 
   std::string text =
-      resolve("#Settings_VideoActual") + " " +
+      resolve("#abcui.gameui/Settings_VideoActual") + " " +
       describeMode(facts.actualWidth, facts.actualHeight, facts.actualWindowed);
   text += " | ";
   if (locked) {
-    text += resolve("#Settings_VideoAwaiting");
+    text += resolve("#abcui.gameui/Settings_VideoAwaiting");
   } else if (facts.hasStaged) {
-    text += resolve("#Settings_VideoStaged") + " " +
+    text += resolve("#abcui.gameui/Settings_VideoStaged") + " " +
             describeMode(targetWidth, targetHeight, targetWindowed);
   } else {
-    text += resolve("#Settings_VideoNone");
+    text += resolve("#abcui.gameui/Settings_VideoNone");
   }
   setInnerRml(node("video-status"), escapeText(text));
 }
@@ -147,26 +148,26 @@ void renderConfirm(bool focusDefault) {
   const std::string actualText =
       facts.actualKnown ? describeMode(facts.actualWidth, facts.actualHeight,
                                        facts.actualWindowed)
-                        : resolve("#VideoConfirm_Unknown");
+                        : resolve("#abcui.gameui/VideoConfirm_Unknown");
   setInnerRml(confirmNode("videoconfirm-actual"), escapeText(actualText));
   setInnerRml(
       confirmNode("videoconfirm-requested"),
       escapeText(describeMode(facts.requestedWidth, facts.requestedHeight,
                               facts.requestedWindowed)));
-  const char *lead = "#VideoConfirm_Lead";
+  const char *lead = "#abcui.gameui/VideoConfirm_Lead";
   switch (facts.confirmKind) {
   case ABCUI_VIDEO_CONFIRM_APPLIED:
-    lead = "#VideoConfirm_Lead";
+    lead = "#abcui.gameui/VideoConfirm_Lead";
     break;
   case ABCUI_VIDEO_CONFIRM_NOT_APPLIED:
-    lead = "#VideoConfirm_NotApplied";
+    lead = "#abcui.gameui/VideoConfirm_NotApplied";
     break;
   default:
-    lead = "#VideoConfirm_Unknown";
+    lead = "#abcui.gameui/VideoConfirm_Unknown";
     break;
   }
   setInnerRml(confirmNode("videoconfirm-lead"), escapeText(resolve(lead)));
-  std::string timeout = resolve("#VideoConfirm_TimeoutTime");
+  std::string timeout = resolve("#abcui.gameui/VideoConfirm_TimeoutTime");
   const std::string marker = "{0}";
   const std::string seconds = std::to_string(facts.remainingSeconds);
   const std::size_t at = timeout.find(marker);

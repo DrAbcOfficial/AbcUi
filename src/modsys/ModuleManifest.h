@@ -21,6 +21,7 @@ struct ModuleManifest {
   std::string version;
   int abi = 0;
   std::string minAbcUi;
+  bool resourcesOnly = false;
   std::string entry; // package-internal path of the entry DLL
   std::vector<std::string> dependencies;
   std::vector<std::string> conflicts;

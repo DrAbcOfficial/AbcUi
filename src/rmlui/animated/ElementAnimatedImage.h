@@ -16,7 +16,7 @@
 //
 // Attribute contract:
 //   src       mod-relative image path, e.g.
-//             abc/abcui/hud/img/water/face_rainleft.webp
+//             mod://abcui.hudeffects/hud/img/water/face_rainleft.webp
 //   loop      true|false (default true): restart at the end of the sequence
 //   autoplay  true|false (default true): start playing once the source loads
 //   speed     0.05 .. 8 playback multiplier (default 1)

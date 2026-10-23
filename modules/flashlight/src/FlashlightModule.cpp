@@ -6,6 +6,7 @@
 // drains (module-local color math where the built-in used ColorUtil).
 #include <abcui/events.h>
 #include <abcui/module_api.h>
+#include "../../common/Glyphs.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -14,6 +15,7 @@
 namespace {
 
 const AbcUiModuleApi *Api = nullptr;
+moduleui::Glyphs GlyphInk;
 AbcUiPanelDesc Panel = {};
 
 // HUD accent amber (255 176 0, base.rcss --abc-hud-accent); saturation and
@@ -131,11 +133,8 @@ void setFlashBattery(int battery) {
   elementSetProperty("power-bar", "image-color", value.c_str());
 
   value = std::format("{}%", battery);
-  char ink[256];
-  const char *markup =
-      Api->ui->inkMarkup(value.c_str(), nullptr, ink, sizeof(ink))
-          ? ink
-          : value.c_str();
+  const std::string ink = GlyphInk.ink(Api, value);
+  const char *markup = ink.empty() ? value.c_str() : ink.c_str();
   if (AbcUiDocument *doc = panelDocument()) {
     if (AbcUiElement *element = Api->ui->querySelector(doc, "message"))
       Api->ui->elementSetInnerRML(element, markup);
@@ -234,6 +233,10 @@ void onModuleLoad() {
                          nullptr);
 }
 
+void onModuleShutdown() {
+  GlyphInk.reset();
+}
+
 void onModuleUnload() {
   // Subscriptions are process-lifetime by design; the bus outlives every
   // module (the framework unloads in reverse order after Rml is down).
@@ -248,19 +251,19 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->data || !api->ui)
+      !api->textures || !api->events || !api->data || !api->ui)
     return 0;
   Api = api;
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.flashlight";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = nullptr;
   out->onContextReady = nullptr;
   out->onFrame = nullptr;
   out->onVidInit = nullptr;
-  out->onShutdown = nullptr;
+  out->onShutdown = &onModuleShutdown;
   out->onUnload = &onModuleUnload;
   return 1;
 }

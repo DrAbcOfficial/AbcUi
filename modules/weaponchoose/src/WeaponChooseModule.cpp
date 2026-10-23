@@ -172,18 +172,14 @@ void rebuild() {
 
   // Owned weapons grouped by slot (old InsertWeapon slot lists; the registry
   // also carries the full WeaponList - ownership filters it).
-  std::vector<AbcUiWeaponInfo> registry(
-      static_cast<size_t>(std::max(0, Api->weapons->list(nullptr, 0))));
+  std::vector<AbcUiWeaponInfo> registry(static_cast<size_t>(
+      std::max(0, Api->weapons->list(nullptr, 0, sizeof(AbcUiWeaponInfo)))));
   if (!registry.empty()) {
     for (auto &weapon : registry)
       weapon.structSize = sizeof(weapon);
-    const int32_t total =
-        ABCUI_API_HAS_MEMBER(AbcUiWeaponsApi, Api->weapons, listEx)
-            ? Api->weapons->listEx(registry.data(),
-                                   static_cast<uint32_t>(registry.size()),
-                                   sizeof(AbcUiWeaponInfo))
-            : Api->weapons->list(registry.data(),
-                                 static_cast<int32_t>(registry.size()));
+    const int32_t total = Api->weapons->list(
+        registry.data(), static_cast<uint32_t>(registry.size()),
+        sizeof(AbcUiWeaponInfo));
     if (total >= 0 && static_cast<size_t>(total) < registry.size())
       registry.resize(static_cast<size_t>(total));
   }
@@ -286,10 +282,18 @@ void rebuild() {
 
       // Active sprite while highlighted, inactive otherwise; the ammo bar
       // pair rides the item top (old item PerformLayout).
-      const AbcUiWeaponSprite &source =
-          active ? weapon.active : weapon.inactive;
+      AbcUiWeaponSprite source = active ? weapon.active : weapon.inactive;
+      if (source.status != ABCUI_OK) {
+        source.status = ABCUI_OK;
+        std::snprintf(source.atlas, sizeof(source.atlas), "%s",
+                      "mod://abcui.weaponchoose/hud/spr/weapon_error.spr");
+        source.rect[0] = 0;
+        source.rect[1] = active ? 46 : 0;
+        source.rect[2] = 170;
+        source.rect[3] = source.rect[1] + 45;
+      }
       std::string img;
-      if (source.valid) {
+      if ((source.status == ABCUI_OK)) {
         buffer = std::format(
             "<img src='spricon://{}/{},{},{},{}' style='width:100%; "
             "height:100%; image-color: rgba({}, {}, {}, {});'/>",
@@ -536,7 +540,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.weaponchoose";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

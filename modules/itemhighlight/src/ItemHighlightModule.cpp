@@ -218,7 +218,10 @@ void loadItemList() {
   if (ListLoaded || ListWarned)
     return;
   ListWarned = true;
-  AbcUiFileView *view = Api->vfs->open(kItemListModule, kItemListPath);
+  AbcUiFileView *view = nullptr;
+  const std::string uri =
+      std::string("mod://") + kItemListModule + "/" + kItemListPath;
+  Api->vfs->open(uri.c_str(), &view);
   if (!view) {
     Api->core->warn("itemhighlight: no item list file %s", kItemListPath);
     return;
@@ -658,7 +661,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.itemhighlight";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

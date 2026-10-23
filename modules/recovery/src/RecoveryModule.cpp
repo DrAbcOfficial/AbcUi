@@ -10,10 +10,9 @@ struct Bindings {
   uint64_t quit = 0;
 };
 
-std::map<AbcUiDocument *, Bindings> &bindings() {
-  static std::map<AbcUiDocument *, Bindings> instance;
-  return instance;
-}
+// MSVC's guarded local-static initialization introduces a TLS directory,
+// which manually mapped modules cannot use. The module CRT owns this state.
+std::map<AbcUiDocument *, Bindings> BindingRecords;
 
 int32_t ABCUI_CALL onRetry(void *userdata, AbcUiElement *,
                            const AbcUiElementEvent *) {
@@ -34,17 +33,17 @@ void ABCUI_CALL onReady(void *, AbcUiDocument *document) {
   if (auto *element = Api->ui->querySelector(document, "emergency-quit"))
     bound.quit =
         Api->ui->elementAddListener(element, "click", onQuit, document);
-  bindings()[document] = bound;
+  BindingRecords[document] = bound;
 }
 
 void ABCUI_CALL onClose(void *, AbcUiDocument *document) {
-  const auto it = bindings().find(document);
-  if (it == bindings().end())
+  const auto it = BindingRecords.find(document);
+  if (it == BindingRecords.end())
     return;
   // Listener tokens remember their actual target, even after DOM teardown.
   Api->ui->elementRemoveListener(nullptr, "click", it->second.retry);
   Api->ui->elementRemoveListener(nullptr, "click", it->second.quit);
-  bindings().erase(it);
+  BindingRecords.erase(it);
 }
 
 void ABCUI_CALL onLoad() {
@@ -71,7 +70,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
     return 0;
   Api = api;
   out->id = "abcui.recovery";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = onLoad;
   return 1;
 }

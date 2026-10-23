@@ -1,6 +1,10 @@
 // framework input section - the sdk view of the UI input router. See
 // ApiTable.h for how it joins the module table.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
+#include "rmlui/RmlUiModule.h"
+#include <RmlUi/Core/Context.h>
+#include <RmlUi/Core/ElementDocument.h>
 #include "ModuleResources.h"
 
 #include <map>
@@ -139,10 +143,26 @@ int32_t apiImeLanguageTag(char *out, uint32_t outSize) {
   return static_cast<int32_t>(tag.size());
 }
 
+int32_t apiImeState(AbcUiImeState *out) {
+  if (!out)
+    return ABCUI_ERROR_INVALID;
+  AbcUiImeState state{};
+  state.structSize = sizeof(state);
+  auto *context = rmlui::context();
+  auto *focus = context ? context->GetFocusElement() : nullptr;
+  auto *document = focus ? focus->GetOwnerDocument() : nullptr;
+  const auto owner = module_resources::current();
+  if (owner && document && document->IsVisible() &&
+      document->GetSourceURL().starts_with("mod://" + owner->id + "/"))
+    rmlui::ime::snapshot(state);
+  abi::copySnapshot(out, state);
+  return ABCUI_OK;
+}
+
 const AbcUiInputApi kInputApi = {
-    sizeof(AbcUiInputApi), apiTakeToken, apiReleaseToken,
-    apiTokenHeld,          apiExclusive, apiTextComposing,
-    apiCancelComposition,  apiMenuUp,    apiImeLanguageTag,
+    sizeof(AbcUiInputApi), apiTakeToken,     apiReleaseToken,      apiTokenHeld,
+    apiExclusive,          apiTextComposing, apiCancelComposition, apiMenuUp,
+    apiImeLanguageTag,     apiImeState,
 };
 
 } // namespace

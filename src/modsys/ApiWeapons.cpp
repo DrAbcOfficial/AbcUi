@@ -8,6 +8,7 @@
 #include <string>
 
 #include "../data/WeaponResource.h"
+#include "rmlui/texture/SpriteResource.h"
 #include "../framework/ResourceLimits.h"
 
 namespace framework {
@@ -15,8 +16,6 @@ namespace WeaponsApi {
 namespace {
 
 // These records are embedded or returned by the legacy typed-array API.
-static_assert(sizeof(AbcUiWeaponSprite) == 116);
-static_assert(sizeof(AbcUiWeaponInfo) == 1044);
 
 // Copies a string into a fixed field, always terminating.
 void copyField(const std::string &text, char *out, size_t outSize) {
@@ -30,9 +29,10 @@ void copyField(const std::string &text, char *out, size_t outSize) {
 
 void copySprite(const weaponres::Weapon::SpriteSource &source,
                 AbcUiWeaponSprite &out) {
-  out.valid = source.valid ? 1 : 0;
+  out.status = source.valid ? sprites::resourceStatus(source.atlas, source.rect)
+                            : ABCUI_ERROR_NOT_FOUND;
   out.atlas[0] = '\0';
-  if (source.valid)
+  if (out.status == ABCUI_OK)
     copyField(source.atlas, out.atlas, sizeof(out.atlas));
   out.rect[0] = source.rect.left;
   out.rect[1] = source.rect.top;
@@ -67,19 +67,7 @@ void fill(const weaponres::Weapon &weapon, void *out) {
   abi::copySnapshot(out, full);
 }
 
-int32_t apiList(AbcUiWeaponInfo *out, int32_t capacity) {
-  const std::vector<const weaponres::Weapon *> weapons =
-      weaponres::allWeapons();
-  const int32_t total = static_cast<int32_t>(weapons.size());
-  if (!out || capacity <= 0)
-    return total;
-  const int32_t count = total < capacity ? total : capacity;
-  for (int32_t i = 0; i < count; ++i)
-    fill(*weapons[static_cast<size_t>(i)], &out[i]);
-  return total;
-}
-
-int32_t apiListEx(void *out, uint32_t capacity, uint32_t stride) {
+int32_t apiList(void *out, uint32_t capacity, uint32_t stride) {
   if (out && capacity != 0 && !abi::validArrayLayout(capacity, stride))
     return -1;
   const auto weapons = weaponres::allWeapons();
@@ -156,19 +144,22 @@ int32_t apiCurrent(AbcUiWeaponInfo *out) {
 
 int32_t apiAmmoIcon(int32_t ammoType, AbcUiWeaponSprite *out) {
   if (!out)
-    return 0;
+    return ABCUI_ERROR_INVALID;
   std::string atlas;
   wrect_t rect{};
-  if (!weaponres::ammoIcon(ammoType, atlas, rect))
-    return 0;
+  if (!weaponres::ammoIcon(ammoType, atlas, rect)) {
+    *out = {};
+    out->status = ABCUI_ERROR_NOT_FOUND;
+    return ABCUI_ERROR_NOT_FOUND;
+  }
   *out = AbcUiWeaponSprite{};
-  out->valid = 1;
+  out->status = sprites::resourceStatus(atlas, rect);
   copyField(atlas, out->atlas, sizeof(out->atlas));
   out->rect[0] = rect.left;
   out->rect[1] = rect.top;
   out->rect[2] = rect.right;
   out->rect[3] = rect.bottom;
-  return 1;
+  return out->status;
 }
 
 // One initializer per member, in declaration order (see the console table
@@ -186,7 +177,6 @@ const AbcUiWeaponsApi kWeaponsApi = {
     apiCurrent,
     apiGetById,
     apiAmmoIcon,
-    apiListEx,
 };
 
 } // namespace

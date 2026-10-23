@@ -67,20 +67,7 @@ void fillLine(const services::console::ConsoleLine &line, void *out) {
   abi::copySnapshot(out, full);
 }
 
-int32_t apiCopySince(uint64_t since, AbcUiConsoleLine *out, uint32_t max) {
-  if (!out || max == 0)
-    return 0;
-  std::vector<services::console::ConsoleLine> lines;
-  buffer().copySince(since, lines, max);
-  const uint32_t count =
-      std::min<uint32_t>(max, static_cast<uint32_t>(lines.size()));
-  for (uint32_t i = 0; i < count; ++i)
-    fillLine(lines[i], &out[i]);
-  return static_cast<int32_t>(count);
-}
-
-int32_t apiCopySinceEx(uint64_t since, void *out, uint32_t max,
-                       uint32_t stride) {
+int32_t apiCopySince(uint64_t since, void *out, uint32_t max, uint32_t stride) {
   if (!out || max == 0)
     return 0;
   if (!abi::validArrayLayout(max, stride))
@@ -158,22 +145,8 @@ void fillSuggestion(const std::string &name, void *out) {
   abi::copySnapshot(out, full);
 }
 
-int32_t apiComplete(const char *prefix, AbcUiConsoleSuggestion *out,
-                    uint32_t max) {
-  if (!prefix || !*prefix)
-    return 0;
-  std::vector<std::string> matches = backend().complete(prefix, max);
-  const uint32_t count =
-      out && max > 0
-          ? std::min<uint32_t>(max, static_cast<uint32_t>(matches.size()))
-          : 0;
-  for (uint32_t i = 0; i < count; ++i)
-    fillSuggestion(matches[i], &out[i]);
-  return static_cast<int32_t>(matches.size());
-}
-
-int32_t apiCompleteEx(const char *prefix, void *out, uint32_t max,
-                      uint32_t stride) {
+int32_t apiComplete(const char *prefix, void *out, uint32_t max,
+                    uint32_t stride) {
   if (!prefix || !*prefix)
     return 0;
   if (out && max != 0 && !abi::validArrayLayout(max, stride))
@@ -218,8 +191,6 @@ const AbcUiConsolePageApi kConsolePageApi = {
     apiComplete,
     apiRequestClose,
     apiNoteEscapeClaim,
-    apiCopySinceEx,
-    apiCompleteEx,
 };
 
 } // namespace

@@ -1,12 +1,12 @@
 // framework::Localization implementation - see Localization.h.
 #include "Localization.h"
-#include "ResourceFile.h"
 #include "TextUtil.h"
 
 #include <abc/Console.h>
 
 #include "Language.h"
 #include "../modsys/ModuleVfs.h"
+#include "../modsys/ModuleResources.h"
 
 #include <cstdint>
 #include <cstddef>
@@ -20,7 +20,6 @@
 namespace framework {
 
 namespace {
-std::unordered_map<std::string, std::string> Table;
 
 using TranslationTable = std::unordered_map<std::string, std::string>;
 std::map<std::string, TranslationTable> &moduleTables() {
@@ -49,12 +48,6 @@ void parseTable(std::span<const std::byte> bytes, TranslationTable &table,
   parseLine();
 }
 
-void parseTableFile(const std::string &path) {
-  std::vector<std::byte> bytes;
-  if (ResourceFile::read(path, bytes, 1024 * 1024))
-    parseTable(bytes, Table);
-}
-
 void parseModuleTable(const std::string &id, const std::string &language) {
   PackageEntry entry;
   const std::string path = "lang/" + language + ".txt";
@@ -66,27 +59,12 @@ void parseModuleTable(const std::string &id, const std::string &language) {
 } // namespace
 
 void Localization::load() {
-  Table.clear();
   moduleTables().clear();
 
   const char *language = CurrentLanguage();
   if (!language || !*language)
     language = "english";
 
-  // Sven Co-op reports "schinese"; keep a translation-free alias chain so a
-  // missing language file degrades to english instead of an empty UI.
-  std::string path = "abc/abcui/lang/";
-  path += language;
-  path += ".txt";
-  parseTableFile("abc/abcui/lang/english.txt");
-  if (std::string_view(language) != "english")
-    parseTableFile(path);
-  if (Table.empty() && std::string_view(language) != "english") {
-    abc::ConsoleWarn(
-        "[AbcUi] no localization for \"%s\", falling back to english\n",
-        language);
-    parseTableFile("abc/abcui/lang/english.txt");
-  }
   for (const auto &id : ModuleVfs::mountedIds()) {
     parseModuleTable(id, "english");
     if (std::string_view(language) != "english")
@@ -95,21 +73,27 @@ void Localization::load() {
 }
 
 bool Localization::translate(std::string &out, const std::string &token) {
-  // Package namespaces end with a slash (ids cannot contain one). Never expose
-  // translations from a retired package.
-  for (auto it = moduleTables().rbegin(); it != moduleTables().rend(); ++it) {
-    if (!ModuleVfs::isMounted(it->first.c_str()))
-      continue;
-    const auto entry = it->second.find(token);
-    if (entry != it->second.end()) {
-      out = entry->second;
-      return true;
-    }
+  std::string qualified = token;
+  if (qualified.find('/') == std::string::npos) {
+    const auto owner = module_resources::current();
+    if (!owner)
+      return false;
+    qualified = owner->id + "/" + token;
   }
-  const auto itor = Table.find(token);
-  if (itor == Table.end())
+  const auto slash = qualified.find('/');
+  const auto id = qualified.substr(0, slash);
+  const auto owner = module_resources::current();
+  if (owner && !ModuleVfs::canRead(owner->id, "mod://" + id + "/_"))
     return false;
-  out = itor->second;
+  if (!ModuleVfs::isMounted(id.c_str()))
+    return false;
+  const auto table = moduleTables().find(id);
+  if (table == moduleTables().end())
+    return false;
+  const auto entry = table->second.find(qualified);
+  if (entry == table->second.end())
+    return false;
+  out = entry->second;
   return true;
 }
 

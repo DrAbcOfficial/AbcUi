@@ -187,23 +187,66 @@ typedef struct AbcUiEventsApi {
 
 typedef struct AbcUiFileView AbcUiFileView; // opaque opened package entry
 
+// Resource results: success is zero; failures never supply a fallback asset.
+#define ABCUI_OK 0
+#define ABCUI_ERROR_INVALID (-1)
+#define ABCUI_ERROR_NOT_FOUND (-2)
+#define ABCUI_ERROR_FORBIDDEN (-3)
+#define ABCUI_ERROR_UNAVAILABLE (-4)
+#define ABCUI_ERROR_DECODE (-5)
+#define ABCUI_ERROR_LIMIT (-6)
+#define ABCUI_ERROR_PENDING (-7)
+#define ABCUI_ERROR_UPLOAD (-8)
+
+typedef void(ABCUI_CALL *AbcUiFileSink)(void *userdata, const char *uri);
+
 typedef struct AbcUiVfsApi {
   uint32_t structSize;
-  // Opens "path" inside the module's own package ("rml/health.rml"). The
-  // view stays valid until viewFree or the module unloads.
-  AbcUiFileView *(ABCUI_CALL *open)(const char *moduleId, const char *path);
+  // Only mod:// URIs, inside self or a direct manifest dependency. Read-only.
+  // Views retain their backing zip until free/unload, even after unmount.
+  int32_t(ABCUI_CALL *open)(const char *uri, AbcUiFileView **out);
   const void *(ABCUI_CALL *viewData)(AbcUiFileView *view);
   uint32_t(ABCUI_CALL *viewSize)(AbcUiFileView *view);
-  // Releases a view (no-op for zero-copy entries, frees extracted ones).
   void(ABCUI_CALL *viewFree)(AbcUiFileView *view);
-  int(ABCUI_CALL *exists)(const char *moduleId, const char *path);
-  // Reads an engine-relative file through the engine filesystem (the same
-  // mounted search path the framework's resource reader uses). Returns the
-  // byte count, or -1 when the file is missing, invalid or larger than
-  // maxBytes. Pass out == null (or a null outSize) to measure first.
-  int(ABCUI_CALL *readEngineFile)(const char *path, void *out, uint32_t outSize,
-                                  uint32_t maxBytes);
+  // Recursive, sorted package enumeration; borrowed URIs during each call.
+  int32_t(ABCUI_CALL *enumerate)(const char *directory, AbcUiFileSink sink,
+                                 void *userdata);
+  // Resolves relative references without leaving the package root. Writes a
+  // complete URI or returns LIMIT; cross-package reads require a dependency.
+  int32_t(ABCUI_CALL *resolve)(const char *base, const char *path, char *out,
+                               uint32_t outSize);
+  // Explicit game-content seam. Never searches old framework asset folders.
+  // Byte count, or negative on error; null output measures the required size.
+  int32_t(ABCUI_CALL *readEngineFile)(const char *path, void *out,
+                                      uint32_t outSize, uint32_t maxBytes);
 } AbcUiVfsApi;
+
+typedef uint64_t AbcUiTexture;
+typedef struct AbcUiTexturesApi {
+  uint32_t structSize;
+  // Context-owned handles, revoked on shutdown/failure/unload. RGBA8, tightly
+  // packed, straight alpha. additive selects src*alpha+dst, not source-over.
+  int32_t(ABCUI_CALL *upload)(const void *rgba, uint32_t bytes, int32_t width,
+                              int32_t height, int32_t additive,
+                              AbcUiTexture *out);
+  int32_t(ABCUI_CALL *load)(const char *uri, int32_t additive,
+                            AbcUiTexture *out);
+  int32_t(ABCUI_CALL *uri)(AbcUiTexture texture, char *out, uint32_t outSize);
+  void(ABCUI_CALL *release)(AbcUiTexture texture);
+} AbcUiTexturesApi;
+
+typedef uint64_t AbcUiAudio;
+typedef struct AbcUiAudioApi {
+  uint32_t structSize;
+  // Async package-only decode; retains a mapped view. No temporary files.
+  // Channels start paused. status: PENDING / OK / negative resource error.
+  int32_t(ABCUI_CALL *open)(const char *uri, int32_t loop, AbcUiAudio *out);
+  int32_t(ABCUI_CALL *status)(AbcUiAudio audio);
+  void(ABCUI_CALL *setPaused)(AbcUiAudio audio, int32_t paused);
+  // Per-channel linear gain, 0..1. The module selects its cvar/volume policy.
+  void(ABCUI_CALL *setVolume)(AbcUiAudio audio, float volume);
+  void(ABCUI_CALL *close)(AbcUiAudio audio);
+} AbcUiAudioApi;
 
 // -------------------------------------------------------------- panels ----
 
@@ -355,12 +398,6 @@ typedef struct AbcUiUiApi {
   void(ABCUI_CALL *elementSetProperty)(AbcUiElement *elem, const char *name,
                                        const char *value);
   void(ABCUI_CALL *elementSetInnerRML)(AbcUiElement *elem, const char *rml);
-  // Additive digit-glyph markup for readouts (framework glyph atlas; the
-  // accent tint is used when `tint` is null). Returns 0 when the text lacks
-  // glyph coverage and plain text is the fallback. Writes at most
-  // outSize-1 bytes plus the terminator.
-  int(ABCUI_CALL *inkMarkup)(const char *text, const char *tint, char *out,
-                             uint32_t outSize);
   // Localizes a translation token ("Vote_DefaultYes") through the game
   // language table. Returns 1 and writes the translation (at most outSize-1
   // bytes plus terminator); 0 when the token is unknown (out untouched).
@@ -596,18 +633,18 @@ typedef struct AbcUiCommandsApi {
 #define ABCUI_ITEM_FLAG_SELECT_ON_EMPTY (1 << 0)
 #define ABCUI_ITEM_FLAG_EXHAUSTIBLE (1 << 4)
 
-// One sprite crop ("sprites/<atlas>.txt" entry). invalid means the weapon's
-// sprite list had no matching entry, so the caller falls back to plain text.
-// ABI v1 layout is frozen: embedded by AbcUiWeaponInfo.
+// One sprite crop ("sprites/<atlas>.txt" entry). An error means the weapon's
+// sprite list or atlas could not be read; the module chooses its fallback.
+// Embedded resource record for AbcUiWeaponInfo.
 typedef struct AbcUiWeaponSprite {
-  int32_t valid;
+  int32_t status; // ABCUI_OK or a resource error; no framework fallback
   char atlas[ABCUI_WEAPON_ATLAS_MAX];
   int32_t rect[4]; // left, top, right, bottom
 } AbcUiWeaponSprite;
 
 // Point-in-time snapshot of one registry weapon. Identity is (slot, slotPos):
 // the server's WeaponList assigns both and the registry keeps them stable.
-// ABI v1 layout is frozen because weapons->list uses a typed array.
+// Array snapshots use caller-provided byte strides.
 typedef struct AbcUiWeaponInfo {
   uint32_t structSize;
   int32_t slot;
@@ -626,7 +663,7 @@ typedef struct AbcUiWeaponInfo {
   AbcUiWeaponSprite active;          // "weapon_s" sprite (highlighted item)
   AbcUiWeaponSprite inactive;        // "weapon" sprite
   AbcUiWeaponSprite ammo;            // "ammo" sprite (ammo bar / pickup stack)
-  AbcUiWeaponSprite ammo2;           // "ammo2" sprite (falls back to "ammo")
+  AbcUiWeaponSprite ammo2;           // "ammo2" sprite (module chooses fallback)
   AbcUiWeaponSprite crosshair;       // per-weapon crosshair ("crosshair")
   AbcUiWeaponSprite autoaim;         // on-target crosshair ("autoaim")
   AbcUiWeaponSprite zoomedCrosshair; // zoomed crosshair
@@ -637,7 +674,9 @@ typedef struct AbcUiWeaponsApi {
   uint32_t structSize;
   // Fills up to `capacity` snapshots of every registered weapon; returns the
   // total registry size (a larger total means the list was truncated).
-  int32_t(ABCUI_CALL *list)(AbcUiWeaponInfo *out, int32_t capacity);
+  // Caller supplies byte stride and initializes each row's structSize.
+  // Null output measures the count; invalid layouts return INVALID.
+  int32_t(ABCUI_CALL *list)(void *out, uint32_t capacity, uint32_t stride);
   // Snapshot by identity; 1 when the weapon exists.
   int32_t(ABCUI_CALL *get)(int32_t slot, int32_t slotPos, AbcUiWeaponInfo *out);
   int32_t(ABCUI_CALL *selectedSlot)(void);
@@ -657,15 +696,8 @@ typedef struct AbcUiWeaponsApi {
   int32_t(ABCUI_CALL *current)(AbcUiWeaponInfo *out);
   // Snapshot by the engine/server weapon id; 1 when the registry knows it.
   int32_t(ABCUI_CALL *getById)(int32_t id, AbcUiWeaponInfo *out);
-  // Icon of an ammo type, taken from any weapon carrying it; 1 when found.
+  // Icon of an ammo type, taken from a registered weapon; resource result.
   int32_t(ABCUI_CALL *ammoIcon)(int32_t ammoType, AbcUiWeaponSprite *out);
-  // Explicit-stride alternative to list. Each returned row starts with a
-  // nonzero uint32_t structSize in [4, stride], preserved on write. Copies
-  // only the known prefix; stride padding and unknown tails stay untouched.
-  // Returns the total registry size; null out or zero capacity only counts.
-  // Invalid layout returns -1 without writing any rows. Check availability
-  // with ABCUI_API_HAS_MEMBER before use on older frameworks.
-  int32_t(ABCUI_CALL *listEx)(void *out, uint32_t capacity, uint32_t stride);
 } AbcUiWeaponsApi;
 
 // -------------------------------------------------------------- players ----
@@ -719,9 +751,10 @@ typedef struct AbcUiPlayersApi {
   int32_t(ABCUI_CALL *entity)(int32_t index, AbcUiEntityState *out);
   // Client dll per-player tint (GetClientColor, 0..1 RGB); 1 when available.
   int32_t(ABCUI_CALL *clientColor)(int32_t index, float out[3]);
-  // Avatar cache-bust generation for a SteamID64 (append to the avatar://
-  // uri as "?gen=N"); 0 when the avatar service has no entry yet.
-  int32_t(ABCUI_CALL *avatarGeneration)(uint64_t steamId64);
+  // Fetch/poll a real avatar. PENDING, NOT_FOUND, LIMIT, UPLOAD or OK.
+  // Generation is positive only for an uploaded image; modules choose their
+  // own fallback URI whenever this returns an error.
+  int32_t(ABCUI_CALL *avatar)(uint64_t steamId64, int32_t *generation);
   // Localization token for a team id ("Team_Red", ...); same
   // measure-then-copy contract as ui->escapeRml.
   int32_t(ABCUI_CALL *teamNameToken)(int32_t team, char *out, uint32_t outSize);
@@ -747,8 +780,9 @@ typedef struct AbcUiRadarApi {
   int32_t(ABCUI_CALL *generation)(void);
   // The plate is on screen: render the world pass on the next pre-view.
   void(ABCUI_CALL *setActive)(int32_t active);
-  // Plate shape (square/round) - selects the mask the draw applies.
-  void(ABCUI_CALL *setMaskRound)(int32_t round);
+  // A texture uploaded by this module; zero removes the mask. No built-in
+  // mask textures. The host borrows the texture until replaced or released.
+  int32_t(ABCUI_CALL *setMask)(AbcUiTexture texture);
   // hud_radar_zoom: visible span = 2 * (ABCUI_RADAR_ORTHO_BASE / zoom).
   void(ABCUI_CALL *setZoom)(float zoom);
 } AbcUiRadarApi;
@@ -799,6 +833,17 @@ typedef struct AbcUiInputCallbacks {
 
 typedef uint64_t AbcUiInputToken; // 0 is never issued.
 
+typedef struct AbcUiImeState {
+  uint32_t structSize;
+  int32_t visible;
+  int32_t selected;
+  int32_t candidateCount;
+  int32_t cursorBytes;
+  float x, y, lineHeight; // context pixels
+  char composition[1024];
+  char candidates[9][256];
+} AbcUiImeState;
+
 typedef struct AbcUiInputApi {
   uint32_t structSize;
   // Takes an interactive-HUD token. Callbacks are copied; the module keeps
@@ -817,6 +862,7 @@ typedef struct AbcUiInputApi {
   // Active input-method short tag (CN/TW/HK/JP/KR), "" when none. Same
   // measure-then-copy contract as ui->escapeRml.
   int32_t(ABCUI_CALL *imeLanguageTag)(char *out, uint32_t outSize);
+  int32_t(ABCUI_CALL *imeState)(AbcUiImeState *out);
 } AbcUiInputApi;
 
 // --------------------------------------------------------------- shell ----
@@ -861,8 +907,9 @@ typedef struct AbcUiVoiceApi {
 // element for delegated listeners (querySelector resolves ids inside it),
 // and every element handle follows the same per-callback lifetime rule.
 #define ABCUI_DOC_FLAG_BACKDROP                                                \
-  (1 << 0) // wall-sized surface: attach the
-           // shared blurred backdrop
+  (1 << 0)                                 // wall-sized surface: attach the
+                                           // shared blurred backdrop
+#define ABCUI_DOC_FLAG_DECORATION (1 << 2) // noninteractive, never takes focus
 #define ABCUI_DOC_FLAG_MENU                                                    \
   (1 << 1) // part of the menu layer: hidden
            // when the menu lowers and honored
@@ -1229,6 +1276,10 @@ typedef struct AbcUiMenuConfigEntry {
 
 typedef struct AbcUiMenuConfigApi {
   uint32_t structSize;
+  // Startup only: configuration root in the caller's package. The menu
+  // controller parses this catalog during its onInit. No built-in defaults.
+  int32_t(ABCUI_CALL *setResourceRoot)(const char *uri);
+
   // Definition title token (may be empty; the shell falls back to its own).
   const char *(ABCUI_CALL *title)(void);
   int32_t(ABCUI_CALL *entryCount)(int32_t section); // ABCUI_MENU_SECTION_*
@@ -1393,7 +1444,7 @@ typedef struct AbcUiCreateGameApi {
 // incremental appends, tail follow, honest scroll) stays page-side.
 #define ABCUI_CONSOLE_TEXT_MAX 1024 // the buffer's own line byte cap
 
-// ABI v1 array element layouts are frozen, including their string caps.
+// Console snapshots use caller-provided byte strides.
 typedef struct AbcUiConsoleLine {
   uint32_t structSize;
   int32_t developer; // assembled from DPrintf fragments
@@ -1417,10 +1468,10 @@ typedef struct AbcUiConsolePageApi {
   uint64_t(ABCUI_CALL *latestSequence)(void);
   int32_t(ABCUI_CALL *lineCount)(void);
   // Copies up to `max` lines newer than `since` (the newest window when
-  // more qualify); returns the count. Fixed v1 stride; each row's nonzero
-  // structSize is its preserved capacity, not a stride.
-  int32_t(ABCUI_CALL *copySince)(uint64_t since, AbcUiConsoleLine *out,
-                                 uint32_t max);
+  // more qualify); returns the count. Every row needs a nonzero structSize
+  // no larger than the supplied byte stride.
+  int32_t(ABCUI_CALL *copySince)(uint64_t since, void *out, uint32_t max,
+                                 uint32_t stride);
   // One local line into the same scrollback (the "] <command>" input
   // record; one call is one complete line).
   void(ABCUI_CALL *pushLocalLine)(const char *text);
@@ -1438,8 +1489,8 @@ typedef struct AbcUiConsolePageApi {
   // Case-insensitive prefix completion over the runtime catalogs (sorted,
   // exact-name deduplicated). Returns the match count which MAY exceed
   // `max` (the "more exist" row); `out` receives at most `max`.
-  int32_t(ABCUI_CALL *complete)(const char *prefix, AbcUiConsoleSuggestion *out,
-                                uint32_t max);
+  int32_t(ABCUI_CALL *complete)(const char *prefix, void *out, uint32_t max,
+                                uint32_t stride);
   // The close funnel (the page's close button): the same bridge request
   // path the engine console hotkey uses, engine flag included.
   void(ABCUI_CALL *requestClose)(void);
@@ -1448,15 +1499,6 @@ typedef struct AbcUiConsolePageApi {
   // owner's routed ESC reads-and-clears the claim so one physical press
   // never closes two layers.
   void(ABCUI_CALL *noteEscapeClaim)(void);
-  // Explicit-stride versions of copySince/complete. Returned rows use the
-  // listEx capacity rules above; stride may differ from sizeof the current
-  // SDK type. Invalid layout returns -1 without writing any rows.
-  // Null out or zero max keeps the corresponding legacy count/no-op
-  // behavior. Otherwise stride must be >= 4 and max * stride must fit size_t.
-  int32_t(ABCUI_CALL *copySinceEx)(uint64_t since, void *out, uint32_t max,
-                                   uint32_t stride);
-  int32_t(ABCUI_CALL *completeEx)(const char *prefix, void *out, uint32_t max,
-                                  uint32_t stride);
 } AbcUiConsolePageApi;
 
 // -------------------------------------------------------- serverbrowser ----
@@ -2021,11 +2063,10 @@ typedef struct AbcUiModuleDescriptor {
   void(ABCUI_CALL *onUnload)(void);
 } AbcUiModuleDescriptor;
 
-// ABI 1 freezes this entry output at 40 bytes on Win32. An older host
-// passes zero; newer hosts seed structSize with output capacity. Never grow
-// this type under ABI 1: old hosts cannot protect a larger module write.
+// The host must supply the descriptor capacity. ABI 2 has no zero-capacity
+// compatibility path.
 static inline int AbcUiModule_InitDescriptor(AbcUiModuleDescriptor *out) {
-  if (!out || (out->structSize != 0 && out->structSize < sizeof(*out)))
+  if (!out || out->structSize < sizeof(*out))
     return 0;
   AbcUiModuleDescriptor empty = {0};
   *out = empty;
@@ -2066,6 +2107,8 @@ typedef struct AbcUiModuleApi {
   const AbcUiServerBrowserApi *serverbrowser;
   const AbcUiConnectionApi *connection;
   const AbcUiSettingsApi *settings;
+  const AbcUiTexturesApi *textures;
+  const AbcUiAudioApi *audio;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

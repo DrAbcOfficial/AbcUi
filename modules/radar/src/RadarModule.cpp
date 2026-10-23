@@ -14,6 +14,7 @@
 // stay raw pixels, exactly the old code's mixed-unit behaviour.
 #include <abcui/events.h>
 #include <abcui/module_api.h>
+#include "../../common/Avatars.h"
 
 #include <algorithm>
 #include <cmath>
@@ -43,6 +44,7 @@ AbcUiCvarHandle RadarAvatar = nullptr;
 AbcUiCvarHandle RadarAvatarSize = nullptr;
 
 bool Scaled = false;
+AbcUiTexture Masks[2]{};
 
 // Avatar <img> elements keyed by player index (rebuilt incrementally; a row
 // that leaves the plate is removed).
@@ -99,6 +101,13 @@ void clearAvatars() {
 
 // ---- panel callbacks ----
 
+void panelReady(void *) {
+  Api->textures->load("mod://abcui.radar/hud/img/radar/radar_mask.png", 0,
+                      &Masks[0]);
+  Api->textures->load("mod://abcui.radar/hud/img/radar/radar_roundmask.png", 0,
+                      &Masks[1]);
+}
+
 void panelReset(void *) {
   // Old CRadarPanel::Reset: SetScale(false).
   setPlateSize(false);
@@ -144,7 +153,7 @@ void panelOnData(void *, double) {
   const bool roundPlate = cvarFloat(Radar, 1.0f) > 1.0f;
   setProperty(square, "display", roundPlate ? "none" : "block");
   setProperty(round, "display", roundPlate ? "block" : "none");
-  Api->radar->setMaskRound(roundPlate ? 1 : 0);
+  Api->radar->setMask(Masks[roundPlate ? 1 : 0]);
 
   const float zoom = cvarFloat(RadarZoom, 2.5f);
   Api->radar->setZoom(zoom > 0.0f ? zoom : 2.5f);
@@ -247,9 +256,8 @@ void panelOnData(void *, double) {
 
     // Old SetPlayer(i+1, 32x32): the avatar texture resolves through the
     // framework avatar service with the cache-bust generation.
-    const std::string uri =
-        std::format("avatar://{}?gen={}", info.steamId64,
-                    Api->players->avatarGeneration(info.steamId64));
+    const std::string uri = moduleui::avatarUri(
+        Api, info.steamId64, "mod://abcui.radar/img/default_avatar.png");
     used.insert(index);
     AbcUiElement *&image = AvatarElements[index];
     if (!image) {
@@ -297,7 +305,7 @@ void onModuleLoad() {
   // the scoreboard) readable.
   Panel.zIndex = -1;
   Panel.userdata = nullptr;
-  Panel.onDocumentReady = nullptr;
+  Panel.onDocumentReady = &panelReady;
   Panel.onData = &panelOnData;
   Panel.onRedraw = nullptr;
   Panel.reset = &panelReset;
@@ -316,6 +324,7 @@ void onModuleInit() {
 }
 
 void onModuleShutdown() {
+  Masks[0] = Masks[1] = 0;
   // The document dies with the context; stop the world pass and drop the
   // avatar handles (they belonged to the dead document).
   Api->radar->setActive(0);
@@ -350,7 +359,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.radar";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

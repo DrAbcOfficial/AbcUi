@@ -68,25 +68,26 @@ bool parseKind(const std::string &text, int &out) {
 const char *startToken(int kind) {
   switch (kind) {
   case ABCUI_VOTE_KIND_BAN:
-    return "#VoteMenu_StartBan";
+    return "#abcui.gameui/VoteMenu_StartBan";
   case ABCUI_VOTE_KIND_KICK:
-    return "#VoteMenu_StartKick";
+    return "#abcui.gameui/VoteMenu_StartKick";
   case ABCUI_VOTE_KIND_KILL:
-    return "#VoteMenu_StartKill";
+    return "#abcui.gameui/VoteMenu_StartKill";
   case ABCUI_VOTE_KIND_MAP:
-    return "#VoteMenu_StartMap";
+    return "#abcui.gameui/VoteMenu_StartMap";
   }
-  return "#VoteMenu_Start";
+  return "#abcui.gameui/VoteMenu_Start";
 }
 
 const char *filterToken(int kind) {
-  return kind == ABCUI_VOTE_KIND_MAP ? "#VoteMenu_FilterMapHint"
-                                     : "#VoteMenu_FilterPlayerHint";
+  return kind == ABCUI_VOTE_KIND_MAP
+             ? "#abcui.gameui/VoteMenu_FilterMapHint"
+             : "#abcui.gameui/VoteMenu_FilterPlayerHint";
 }
 
 const char *emptyToken(int kind) {
-  return kind == ABCUI_VOTE_KIND_MAP ? "#VoteMenu_NoMaps"
-                                     : "#VoteMenu_NoPlayers";
+  return kind == ABCUI_VOTE_KIND_MAP ? "#abcui.gameui/VoteMenu_NoMaps"
+                                     : "#abcui.gameui/VoteMenu_NoPlayers";
 }
 
 AbcUiElement *node(const char *id) {
@@ -194,7 +195,7 @@ void render() {
   if (selectedIndex >= 0 && fetchRow(selectedIndex, selected))
     selectedName = selected.name;
   if (selectedName.empty())
-    selectedName = resolve("#VoteMenu_NoneSelected");
+    selectedName = resolve("#abcui.gameui/VoteMenu_NoneSelected");
   setInnerRml("vm-selected", escapeText(selectedName.c_str()));
 
   if (AbcUiElement *submit = node("vm-submit")) {
@@ -262,7 +263,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
   }
   if (action == kActionSubmit) {
     if (Api->votemenu->selectedIndex() < 0) {
-      showHint("#VoteMenu_NoSelection");
+      showHint("#abcui.gameui/VoteMenu_NoSelection");
       return 1;
     }
     char command[256];
@@ -272,7 +273,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
     if (!Api->votemenu->submit(command, sizeof(command), error,
                                sizeof(error))) {
       render(); // the revalidation may have dropped the selection
-      showHint(error[0] ? error : "#VoteMenu_NoSelection");
+      showHint(error[0] ? error : "#abcui.gameui/VoteMenu_NoSelection");
       return 1;
     }
     // ABCEnchance sent these verbs through pfnServerCmd; keep that wire path.

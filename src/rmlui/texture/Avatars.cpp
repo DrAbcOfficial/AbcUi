@@ -2,6 +2,7 @@
 #include <metahook.h>
 
 #include "Avatars.h"
+#include <abcui/module_api.h>
 
 #include <unordered_map>
 
@@ -30,30 +31,6 @@ double NowSeconds() {
 }
 
 std::unordered_map<std::uint64_t, Entry> Entries;
-int DefaultAvatarTexture = 0;
-int DefaultAvatarWidth = 0;
-int DefaultAvatarHeight = 0;
-
-bool loadDefaultAvatar() {
-  // Mod-relative image through the shared FreeImage loader (format is
-  // detected from the file content, so the shipped asset's format is free
-  // to change without touching this layer).
-  if (!framework::texture::available())
-    return false;
-  framework::ImageLoader::DecodedImage image;
-  if (!framework::ImageLoader::loadFromFile("abc/abcui/img/default_avatar.png",
-                                            image))
-    return false;
-  DefaultAvatarTexture = framework::texture::create();
-  if (!DefaultAvatarTexture)
-    return false;
-  framework::texture::upload(DefaultAvatarTexture, image.Pixels.data(),
-                             image.Width, image.Height);
-  DefaultAvatarWidth = image.Width;
-  DefaultAvatarHeight = image.Height;
-  return true;
-}
-
 bool upload(Entry &entry) {
   if (!framework::texture::available())
     return false;
@@ -94,34 +71,25 @@ bool tryFetch(Entry &entry, std::uint64_t steamId64, double now) {
 
 } // namespace
 
-void init() {
-  loadDefaultAvatar();
-}
-
 void shutdown() {
   for (const auto &[id, entry] : Entries)
     if (entry.textureId)
       framework::texture::release(entry.textureId);
-  if (DefaultAvatarTexture)
-    framework::texture::release(DefaultAvatarTexture);
   Entries.clear();
-  DefaultAvatarTexture = 0;
-  DefaultAvatarWidth = 0;
-  DefaultAvatarHeight = 0;
 }
 
 int textureFor(std::uint64_t steamId64, int &width, int &height,
                bool triggerFetch) {
   if (!steamId64) {
-    width = DefaultAvatarWidth;
-    height = DefaultAvatarHeight;
-    return DefaultAvatarTexture;
+    width = 0;
+    height = 0;
+    return 0;
   }
 
   if (!Entries.count(steamId64) && Entries.size() >= 256) {
-    width = DefaultAvatarWidth;
-    height = DefaultAvatarHeight;
-    return DefaultAvatarTexture;
+    width = 0;
+    height = 0;
+    return 0;
   }
   Entry &entry = Entries[steamId64];
   if (entry.textureId && !entry.rgba.empty()) {
@@ -139,9 +107,9 @@ int textureFor(std::uint64_t steamId64, int &width, int &height,
     return entry.textureId;
   }
 
-  width = DefaultAvatarWidth;
-  height = DefaultAvatarHeight;
-  return DefaultAvatarTexture;
+  width = 0;
+  height = 0;
+  return 0;
 }
 
 bool touch(std::uint64_t steamId64) {
@@ -151,11 +119,26 @@ bool touch(std::uint64_t steamId64) {
 }
 
 void onFrame() {
-  if (!DefaultAvatarTexture)
-    loadDefaultAvatar();
   const double now = NowSeconds();
   for (auto &[id, entry] : Entries)
     tryFetch(entry, id, now);
+}
+
+int status(std::uint64_t steamId64, int &generationOut) {
+  generationOut = 0;
+  if (!steamId64)
+    return ABCUI_ERROR_NOT_FOUND;
+  if (!steamapi::available())
+    return ABCUI_ERROR_UNAVAILABLE;
+  if (!Entries.count(steamId64) && Entries.size() >= 256)
+    return ABCUI_ERROR_LIMIT;
+  touch(steamId64);
+  const auto &entry = Entries.at(steamId64);
+  if (entry.textureId) {
+    generationOut = entry.generation;
+    return ABCUI_OK;
+  }
+  return entry.rgba.empty() ? ABCUI_ERROR_PENDING : ABCUI_ERROR_UPLOAD;
 }
 
 int generation(std::uint64_t steamId64) {

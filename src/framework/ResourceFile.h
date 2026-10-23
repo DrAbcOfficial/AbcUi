@@ -1,9 +1,9 @@
 #pragma once
 
-// framework::ResourceFile - read-only access to engine resources.
+// framework::ResourceFile - read-only module and native engine content.
 //
-// Resource paths are engine-relative and resolve through the Metahook
-// IFileSystem (mh_interface_t::FileSystem). VGUI2Extension binds that same
+// mod:// paths resolve only in their package. Native relative paths use the
+// Metahook IFileSystem. VGUI2Extension binds that same
 // instance as g_pFullFileSystem, so this is the engine's mounted search path
 // view rather than the process CWD: GAME, GAME_DOWNLOADS, GAME_ADDON and the
 // other Sven Co-op mounts are all visible here.

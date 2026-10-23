@@ -26,7 +26,7 @@ import re
 import sys
 import zipfile
 
-ABCUI_ABI_VERSION = 1
+ABCUI_ABI_VERSION = 2
 REQUIRED_FIELDS = (
     "id",
     "name",
@@ -35,7 +35,6 @@ REQUIRED_FIELDS = (
     "version",
     "abi",
     "minAbcUi",
-    "entry",
 )
 # Fixed timestamp so repeated packs are byte-identical.
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
@@ -79,11 +78,20 @@ def load_manifest(module_dir):
                 re.fullmatch(id_pattern, value) is None for value in values):
             raise ValueError("%s: '%s' must be an array of module ids" %
                              (path, field))
-    entry = manifest["entry"].replace("\\", "/")
-    if ":" in entry or any(part in ("", ".", "..") for part in entry.split("/")):
-        raise ValueError("%s: entry must be a relative package path without "
-                         "dot segments" % path)
-    manifest["entry"] = entry
+    kind = manifest.get("type", "module")
+    if kind not in ("module", "resources"):
+        raise ValueError("invalid package type")
+    if kind == "resources":
+        if "entry" in manifest:
+            raise ValueError("resource package must not declare an entry")
+    else:
+        entry = manifest.get("entry")
+        if not isinstance(entry, str) or not entry or "\0" in entry:
+            raise ValueError("module package needs a nonempty entry")
+        entry = entry.replace("\\", "/")
+        if ":" in entry or any(part in ("", ".", "..") for part in entry.split("/")):
+            raise ValueError("entry must be a relative package path")
+        manifest["entry"] = entry
     return manifest
 
 
@@ -94,7 +102,7 @@ def entry_dll_path(build_dir, module_dir, manifest, config):
                         config, "abcui_%s.dll" % suffix)
 
 
-def asset_entries(module_dir):
+def asset_entries(module_dir, config="Release"):
     assets = os.path.join(module_dir, "assets")
     if not os.path.isdir(assets):
         return []
@@ -103,6 +111,8 @@ def asset_entries(module_dir):
         for name in files:
             absolute = os.path.join(root, name)
             relative = os.path.relpath(absolute, assets).replace("\\", "/")
+            if config != "Debug" and relative.startswith("debug/"):
+                continue
             if relative.startswith(".."):
                 raise ValueError("%s: asset escapes the package" % absolute)
             found.append((relative, absolute))
@@ -120,9 +130,10 @@ def write_package(out_path, manifest, dll_path, assets):
 
         add("manifest.json", json.dumps(manifest, indent=2,
                                         ensure_ascii=False) + "\n")
-        entry = manifest["entry"].replace("\\", "/")
-        with open(dll_path, "rb") as handle:
-            add(entry, handle.read())
+        if dll_path is not None:
+            entry = manifest["entry"]
+            with open(dll_path, "rb") as handle:
+                add(entry, handle.read())
         for relative, absolute in assets:
             with open(absolute, "rb") as handle:
                 add(relative, handle.read())
@@ -130,11 +141,11 @@ def write_package(out_path, manifest, dll_path, assets):
 
 def pack_module(module_dir, build_dir, config, out_dir):
     manifest = load_manifest(module_dir)
-    dll = entry_dll_path(build_dir, module_dir, manifest, config)
-    if not os.path.isfile(dll):
+    dll = None if manifest.get("type") == "resources" else entry_dll_path(build_dir, module_dir, manifest, config)
+    if dll is not None and not os.path.isfile(dll):
         raise FileNotFoundError("missing entry DLL: %s (build the module "
                                 "target for config %s first)" % (dll, config))
-    assets = asset_entries(module_dir)
+    assets = asset_entries(module_dir, config)
     out_path = os.path.join(out_dir, "%s-%s.zip" % (manifest["id"],
                                                     manifest["version"]))
     write_package(out_path, manifest, dll, assets)

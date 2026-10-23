@@ -277,10 +277,11 @@ void renderRow(AbcUiSettingRow &row, bool skipInput) {
 
   if (missing) {
     // Unavailable: fail-closed presentation, no editable control path.
-    const std::string text = row.requireCvar[0]
-                                 ? resolve("#Settings_DependencyUnavailable") +
-                                       " " + std::string(row.requireCvar)
-                                 : resolve("#Settings_Unavailable");
+    const std::string text =
+        row.requireCvar[0]
+            ? resolve("#abcui.gameui/Settings_DependencyUnavailable") + " " +
+                  std::string(row.requireCvar)
+            : resolve("#abcui.gameui/Settings_Unavailable");
     setInnerRml(node("row-" + cvar + "-status"), escapeText(text));
     return;
   }
@@ -336,7 +337,8 @@ void renderRow(AbcUiSettingRow &row, bool skipInput) {
                                                  : isOn(row.engineValue))
             : toggleDraftOn(row);
     setInnerRml(control,
-                escapeText(resolve(on ? "#Settings_On" : "#Settings_Off")));
+                escapeText(resolve(on ? "#abcui.gameui/Settings_On"
+                                      : "#abcui.gameui/Settings_Off")));
   } else if (select) {
     // Options transfer through the widget's Add() (inline RML children only
     // become matchable on the next Update). The set is rebuilt only when it
@@ -401,7 +403,7 @@ void renderRow(AbcUiSettingRow &row, bool skipInput) {
       // live value = clean). An empty live value gets an "unset" placeholder
       // so the widget still shows something honest.
       if (shownText.empty())
-        addOption("", resolve("#Settings_Unset"));
+        addOption("", resolve("#abcui.gameui/Settings_Unset"));
       else
         addOption(shownText, stringLabel(shownText));
       for (int32_t index = 0; index < row.optionCount; ++index) {
@@ -465,66 +467,68 @@ void renderRow(AbcUiSettingRow &row, bool skipInput) {
   std::string status;
   switch (row.kind) {
   case ABCUI_SET_KIND_FLOAT:
-    status =
-        (row.flags & ABCUI_SET_ROW_BOUNDED)
-            ? numberText(row.minValue) + "-" + numberText(row.maxValue) + " " +
-                  resolve("#Settings_Default") + " " +
-                  numberText(row.defaultValue)
-            : resolve("#Settings_Default") + " " + numberText(row.defaultValue);
+    status = (row.flags & ABCUI_SET_ROW_BOUNDED)
+                 ? numberText(row.minValue) + "-" + numberText(row.maxValue) +
+                       " " + resolve("#abcui.gameui/Settings_Default") + " " +
+                       numberText(row.defaultValue)
+                 : resolve("#abcui.gameui/Settings_Default") + " " +
+                       numberText(row.defaultValue);
     break;
   case ABCUI_SET_KIND_ENUM:
     status = std::to_string(row.optionCount) + " " +
-             resolve("#Settings_Choices") + " | " +
-             resolve("#Settings_Default") + " " + numberText(row.defaultValue);
+             resolve("#abcui.gameui/Settings_Choices") + " | " +
+             resolve("#abcui.gameui/Settings_Default") + " " +
+             numberText(row.defaultValue);
     break;
   case ABCUI_SET_KIND_TEXT:
-    status = std::to_string(kTextMaxBytes) + " " + resolve("#Settings_TextMax");
+    status = std::to_string(kTextMaxBytes) + " " +
+             resolve("#abcui.gameui/Settings_TextMax");
     break;
   case ABCUI_SET_KIND_NEGATE:
-    status = resolve("#Settings_NegateDomain");
+    status = resolve("#abcui.gameui/Settings_NegateDomain");
     break;
   case ABCUI_SET_KIND_STRING_ENUM:
-    status = resolve("#Settings_EnumDomain");
+    status = resolve("#abcui.gameui/Settings_EnumDomain");
     break;
   case ABCUI_SET_KIND_COMMAND_TOGGLE:
-    status = resolve("#Settings_CommandDomain");
+    status = resolve("#abcui.gameui/Settings_CommandDomain");
     break;
   case ABCUI_SET_KIND_BOOL:
-    status = resolve("#Settings_BoolDomain");
+    status = resolve("#abcui.gameui/Settings_BoolDomain");
     break;
   }
   if (!(row.flags & ABCUI_SET_ROW_HAS_DEFAULT))
-    status = resolve("#Settings_NoDefault");
+    status = resolve("#abcui.gameui/Settings_NoDefault");
   switch (row.state) {
   case ABCUI_SET_STATE_DIRTY:
-    status += " | " + resolve("#Settings_Dirty");
+    status += " | " + resolve("#abcui.gameui/Settings_Dirty");
     break;
   case ABCUI_SET_STATE_INVALID:
     // The typed text is user input: it rides the status string and the
     // single escape below makes it inert (no inner escaping here - that
     // would double-encode).
-    status += " | " + resolve("#Settings_Invalid") + " (" +
+    status += " | " + resolve("#abcui.gameui/Settings_Invalid") + " (" +
               std::string(row.draftText) + ")";
     break;
   case ABCUI_SET_STATE_CONFLICT:
-    status += " | " + resolve("#Settings_Conflict") + " " +
+    status += " | " + resolve("#abcui.gameui/Settings_Conflict") + " " +
               (row.kind == ABCUI_SET_KIND_TEXT ||
                        row.kind == ABCUI_SET_KIND_STRING_ENUM
                    ? std::string(row.engineText)
                    : numberText(row.engineValue));
     break;
   case ABCUI_SET_STATE_QUEUED:
-    status += " | " + resolve("#Settings_Queued");
+    status += " | " + resolve("#abcui.gameui/Settings_Queued");
     break;
   case ABCUI_SET_STATE_APPLY_FAILED:
-    status += " | " + resolve("#Settings_ApplyFailed");
+    status += " | " + resolve("#abcui.gameui/Settings_ApplyFailed");
     break;
   case ABCUI_SET_STATE_CLEAN:
   case ABCUI_SET_STATE_MISSING:
     break;
   }
   if (row.flags & ABCUI_SET_ROW_READ_ONLY)
-    status = resolve("#Settings_ReadOnly");
+    status = resolve("#abcui.gameui/Settings_ReadOnly");
   setInnerRml(node("row-" + cvar + "-status"), escapeText(status));
 }
 
@@ -533,11 +537,11 @@ void setStatusSummary() {
     return;
   std::string text;
   if (!Api->settings->dirty()) {
-    text = resolve("#Settings_StatusClean");
+    text = resolve("#abcui.gameui/Settings_StatusClean");
   } else {
-    text = resolve("#Settings_StatusDirty");
+    text = resolve("#abcui.gameui/Settings_StatusDirty");
     if (Api->settings->hasConflicts())
-      text += " | " + resolve("#Settings_StatusConflict");
+      text += " | " + resolve("#abcui.gameui/Settings_StatusConflict");
   }
   setInnerRml(node("settings-status"), escapeText(text));
 }

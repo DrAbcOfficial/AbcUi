@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "Backdrop.h"
-#include "../../framework/AssetPaths.h"
 #include "../../framework/MenuBackdrop.h"
 
 namespace rmlui::backdrop {
@@ -125,8 +124,7 @@ bool ElementBackdrop::sync() {
   // attribute still wins per document.
   if (cvar_t *source = abc::CVAR_GET_POINTER("abc_ui_menu_video")) {
     if (source->string && AppliedVideoCvar != source->string) {
-      AppliedVideoCvar =
-          framework::assets::remapLegacyMenuMedia(source->string);
+      AppliedVideoCvar = source->string;
       menubackdrop::menuBackdrop().setVideoSource(AppliedVideoCvar);
     }
   }

@@ -61,19 +61,23 @@ void renderSprayBrowser() {
           "\" data-entry=\"" + std::to_string(index++) + "\">" +
           "<span class=\"spray-file-name\">" + escapeText(item.Name) +
           "</span><span class=\"spray-file-tag\">" +
-          escapeText(resolve(item.Directory ? "#Settings_SprayMakerFolder"
-                                            : "#Settings_SprayMakerImage")) +
+          escapeText(resolve(item.Directory
+                                 ? "#abcui.gameui/Settings_SprayMakerFolder"
+                                 : "#abcui.gameui/Settings_SprayMakerImage")) +
           "</span></div>";
     }
     if (markup.empty())
       markup = "<div class=\"spray-file-empty\">" +
-               escapeText(resolve("#Settings_SprayMakerEmpty")) + "</div>";
+               escapeText(resolve("#abcui.gameui/Settings_SprayMakerEmpty")) +
+               "</div>";
     Api->ui->elementSetInnerRML(list, markup.c_str());
   }
   if (AbcUiElement *status = node("spray-file-status")) {
-    setInnerRml(status, escapeText(Browser.error().empty()
-                                       ? resolve("#Settings_SprayMakerHint")
-                                       : Browser.error()));
+    setInnerRml(
+        status,
+        escapeText(Browser.error().empty()
+                       ? resolve("#abcui.gameui/Settings_SprayMakerHint")
+                       : Browser.error()));
   }
 }
 
