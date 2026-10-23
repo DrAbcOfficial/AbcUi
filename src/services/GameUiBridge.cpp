@@ -66,7 +66,7 @@ bool NativeUiBridge::gatePaintAttempt(const char *module) {
   // The module rule is the whole filter; while disarmed every attempt
   // passes (a half-installed gate must not half-suppress - T08 step 7's
   // atomic install).
-  if (!Armed || !nativeUiModule(module))
+  if (!armed() || !nativeUiModule(module))
     return false;
   ++Counters.PaintBlocked[(int)bucket];
   return true;
@@ -75,7 +75,7 @@ bool NativeUiBridge::gatePaintAttempt(const char *module) {
 bool NativeUiBridge::gateHitTestAttempt(const char *module) {
   const PaintBucket bucket = bucketFor(module);
   ++Counters.HitTestAttempts[(int)bucket];
-  if (!Armed || !nativeUiModule(module))
+  if (!armed() || !nativeUiModule(module))
     return false;
   ++Counters.HitTestBlocked[(int)bucket];
   return true;
@@ -114,7 +114,7 @@ bool NativeUiBridge::requestConsoleOpen(NativeUiOrigin origin) {
   // Pre-arm entries are latched, never presented: the takeover has not
   // installed its gate yet, so the vanilla path stays authoritative until
   // arm() delivers the intent (T08 atomic-install rule).
-  if (!Armed) {
+  if (!armed()) {
     PendingConsoleOpen = true;
     return false;
   }
@@ -133,7 +133,7 @@ bool NativeUiBridge::requestConsoleOpen(NativeUiOrigin origin) {
 }
 
 bool NativeUiBridge::requestConsoleClose(NativeUiOrigin) {
-  if (!Armed) {
+  if (!armed()) {
     PendingConsoleClose = true;
     return false;
   }
@@ -162,14 +162,14 @@ bool NativeUiBridge::consumeEscRoute() {
 }
 
 ToggleAction NativeUiBridge::engineActivate() {
-  if (!Armed)
+  if (!armed())
     return ToggleAction::kNone;
   return requestMenuUp(NativeUiOrigin::kBaseUi) ? ToggleAction::kOpened
                                                 : ToggleAction::kNone;
 }
 
 ToggleAction NativeUiBridge::engineHide() {
-  if (!Armed || !MenuUp)
+  if (!armed() || !MenuUp)
     return ToggleAction::kNone;
   // The shipped CGameUI::HideGameUI only acts when the engine reports a
   // connection; without a level the home page stays put (T04) and the

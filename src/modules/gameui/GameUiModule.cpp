@@ -1,6 +1,7 @@
 // Extracted from GameUiModule.cpp (UTF-8). Responsibility: GameUiModule.
 #include "modules/gameui/GameUiModule.h"
-#include "modules/gameui/GameUiModule.h"
+
+#include <cstring>
 
 #include "../../data/WeaponResource.h"
 #include "../../framework/ResourceLimits.h"
@@ -308,6 +309,24 @@ GameUiModule::GameUiModule()
     finishDispatch();
   };
   menuHost.quitNow = [this] { menuBackend().quitGame(); };
+  menuHost.dispatchCommand = [this](const char *name) -> int32_t {
+    if (!Context || !services::nativeUiBridge().armed())
+      return 0;
+    if (std::strcmp(name, "votemenu") == 0)
+      Vote->open();
+    else if (std::strcmp(name, "+commandmenu") == 0)
+      Command->toggle();
+    else if (std::strcmp(name, "-commandmenu") == 0) {
+      // The press owns the toggle; release must not reopen the native menu.
+    } else if (std::strcmp(name, "inventory") == 0 ||
+               std::strcmp(name, "+inventory") == 0)
+      Inventory->open();
+    else if (std::strcmp(name, "-inventory") == 0)
+      Inventory->close();
+    else
+      return 0;
+    return 1;
+  };
 }
 
 VideoHost GameUiModule::MakeVideoHost() {
@@ -620,70 +639,12 @@ void GameUiModule::onInit() {
   // just one disk directory. Unreadable/missing -> empty catalog (the
   // page then refuses every request fail-closed with CG_ErrorUnavailable).
   Create->loadCatalog();
-  // The old ABCEnchance hook swallowed the client-side "votemenu" command
-  // and opened its own dialog. AbcUi now owns that command and page.
-  if (!VoteMenuCommandBound) {
-    if (abc::CChainedCommand *command = commands::get("votemenu")) {
-      command->Event().append([this]() {
-        Vote->open();
-        return false; // always keep the legacy GameUI dialog closed
-      });
-      VoteMenuCommandBound = true;
-    } else {
-      abc::ConsoleWarn("[AbcUi] votemenu command unavailable; pause entry "
-                       "still opens the vote page\n");
-    }
-  }
   if (!VoteMenuMapListBound) {
     netmsg::MapList.append([this](const netmsg::MapListData &data) {
       Vote->applyMapList(data.clearAll, data.allCount, data.start, data.end,
                          data.maps);
     });
     VoteMenuMapListBound = true;
-  }
-  if (!CommandMenuCommandBound) {
-    abc::CChainedCommand *open = commands::get("+commandmenu");
-    abc::CChainedCommand *release = commands::get("-commandmenu");
-    if (open && release) {
-      open->Event().append([this]() {
-        Command->toggle();
-        return false; // the native command menu never opens
-      });
-      release->Event().append([]() {
-        return false; // +commandmenu owns the whole toggle session
-      });
-      CommandMenuCommandBound = true;
-    } else {
-      abc::ConsoleWarn("[AbcUi] commandmenu commands unavailable; the Rml "
-                       "command menu cannot open\n");
-    }
-  }
-  // Issue 10: the native inventory window. The three client commands open
-  // the viewport panel (CInventoryPanel::ShowPanel); swallowing them here is
-  // what keeps that panel off-screen. `inventory` and `+inventory` both open
-  // (the native command did not toggle), `-inventory` closes.
-  if (!InventoryCommandBound) {
-    abc::CChainedCommand *open = commands::get("inventory");
-    abc::CChainedCommand *hold = commands::get("+inventory");
-    abc::CChainedCommand *release = commands::get("-inventory");
-    if (open && hold && release) {
-      open->Event().append([this]() {
-        Inventory->open();
-        return false; // the native CInventoryPanel never opens
-      });
-      hold->Event().append([this]() {
-        Inventory->open();
-        return false;
-      });
-      release->Event().append([this]() {
-        Inventory->close();
-        return false;
-      });
-      InventoryCommandBound = true;
-    } else {
-      abc::ConsoleWarn("[AbcUi] inventory commands unavailable; the Rml "
-                       "inventory window cannot open\n");
-    }
   }
   if (!InventoryFeedBound) {
     // The item stream feeds the model directly (the page owns only the DOM);

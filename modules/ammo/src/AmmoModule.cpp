@@ -517,7 +517,14 @@ void registerPanel(AbcUiPanelDesc &desc, const char *name, const char *doc,
   Api->panels->registerPanel(&desc);
 }
 
+int onNativeHudDraw(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiNativeHudEvent *>(payload);
+  return barDocument() && (event->element == ABCUI_NATIVE_HUD_AMMO);
+}
+
 void onModuleLoad() {
+  Api->events->subscribeVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW, 0, &onNativeHudDraw,
+                             nullptr);
   AmmoStack.panelName = kAmmoStackPanel;
   AmmoStack.maxItems = 200 / 20; // tall 200 / item_tall 20
   WeaponStack.panelName = kWeaponStackPanel;

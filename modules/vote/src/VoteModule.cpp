@@ -138,9 +138,12 @@ void startVote(int type, const char *content, const char *yes, const char *no) {
 
 // ---- event sinks ----
 
-void onVoteMenu(void *, const void *payload) {
+int onVoteMenu(void *, const void *payload) {
+  if (!panelDocument())
+    return 0;
   const auto *event = static_cast<const AbcUiVoteMenuEvent *>(payload);
   startVote(event->type, event->content, event->yes, event->no);
+  return 1;
 }
 
 void onEndVote(void *, const void *) {
@@ -188,8 +191,8 @@ void onModuleLoad() {
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
 
-  Api->events->subscribe(ABCUI_CHANNEL_NETMSG_VOTE_MENU, 0, &onVoteMenu,
-                         nullptr);
+  Api->events->subscribeVeto(ABCUI_CHANNEL_NETMSG_VOTE_MENU, 0, &onVoteMenu,
+                             nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_END_VOTE, 0, &onEndVote, nullptr);
   Api->events->subscribeVeto(ABCUI_CHANNEL_INPUT_KEY, 0, &onKeyEvent, nullptr);
 }

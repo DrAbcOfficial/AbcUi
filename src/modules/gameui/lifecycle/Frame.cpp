@@ -9,6 +9,8 @@ namespace gameui {
 using namespace engine;
 
 void GameUiModule::onFrame(double FrameTime) {
+  if (!services::nativeUiBridge().armed())
+    return;
   LastFrameTime = FrameTime;
   // Menu score: plays only while a replacement page is on screen with no
   // level loaded, so the track never bleeds into gameplay (the bridge

@@ -423,13 +423,7 @@ const AbcUiRadarApi kRadarApi = {
 
 AbcUiSubscription apiSubscribeCommand(const char *name, int priority,
                                       AbcUiEventVeto sink, void *userdata) {
-  if (!name)
-    return 0;
-  // The chained-command bus bridges every hooked command onto an aggregate
-  // veto channel ("command.<name>"); see framework/Commands.cpp.
-  const std::string channel = std::string("command.") + name;
-  return eventBus().subscribeVetoAggregate(channel.c_str(), priority, sink,
-                                           userdata);
+  return ::commands::subscribe(name, priority, sink, userdata);
 }
 
 int apiTextMenuOpen() {

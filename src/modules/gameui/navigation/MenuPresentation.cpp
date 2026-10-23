@@ -37,7 +37,7 @@ void GameUiModule::onNativeConsoleClose() {
 // The home pages are module documents; Rml assembly (the context) is the
 // readiness fact the takeover and every page flow's shellReady seam use.
 void GameUiModule::presentMenu() {
-  if (!Context || MenuPresented)
+  if (!Context || MenuPresented || !services::nativeUiBridge().armed())
     return;
   MenuPresented = true;
   // Real ownership token (T06): the menu claims keys/wheel; mouse
@@ -181,7 +181,7 @@ services::menu::Snapshot GameUiModule::menuSnapshot() const {
 }
 
 int32_t GameUiModule::ensureMenuUp() {
-  if (!Context)
+  if (!Context || !services::nativeUiBridge().armed())
     return 0; // the command landed before Rml assembly
   if (!MenuPresented) {
     if (!services::nativeUiBridge().menuUp())

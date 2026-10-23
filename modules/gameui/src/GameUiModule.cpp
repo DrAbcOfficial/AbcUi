@@ -76,7 +76,25 @@ void unload();
 
 namespace {
 
+int onMenuCommand(void *userdata, const void *) {
+  return Api->menu->dispatchCommand(static_cast<const char *>(userdata));
+}
+
 void onModuleLoad() {
+  if (!Api->menu->setNativeTakeover(1)) {
+    Api->core->failInitialization("native menu takeover already owned");
+    return;
+  }
+  static const char *const commands[] = {"votemenu",     "+commandmenu",
+                                         "-commandmenu", "inventory",
+                                         "+inventory",   "-inventory"};
+  for (const char *name : commands) {
+    if (!Api->commands->subscribeCommand(name, 0, onMenuCommand,
+                                         const_cast<char *>(name))) {
+      Api->core->failInitialization("native menu command hook unavailable");
+      return;
+    }
+  }
   votepage::load();
   playerlistpage::load();
   commandmenupage::load();
@@ -134,9 +152,11 @@ ABCUI_MODULE_EXPORT int AbcUiModule_Main(uint32_t abiVersion,
       !api->votemenu || !api->playerlist || !api->commandmenu ||
       !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
       !api->consolepage || !api->input || !api->shell || !api->serverbrowser ||
-      !api->connection || !api->settings)
+      !api->connection || !api->settings || !api->commands)
     return 0;
-  if (api->ui->structSize < sizeof(AbcUiUiApi) ||
+  if (!ABCUI_API_HAS_MEMBER(AbcUiMenuApi, api->menu, dispatchCommand) ||
+      !ABCUI_API_HAS_MEMBER(AbcUiCoreApi, api->core, failInitialization) ||
+      api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
       api->menu->structSize < sizeof(AbcUiMenuApi) ||
       api->votemenu->structSize < sizeof(AbcUiVoteMenuApi) ||

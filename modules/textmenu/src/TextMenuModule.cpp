@@ -249,9 +249,12 @@ void panelReset(void *) {
 
 // ---- event sinks ----
 
-void onShowMenu(void *, const void *payload) {
+int onShowMenu(void *, const void *payload) {
+  if (!Api->ui->panelDocument("textmenu"))
+    return 0;
   const auto *event = static_cast<const AbcUiShowMenuEvent *>(payload);
   showMenu(event->validSlots, event->displaySeconds, event->bits, event->text);
+  return 1;
 }
 
 void onInitHud(void *, const void *) {
@@ -283,8 +286,8 @@ void onModuleLoad() {
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
 
-  Api->events->subscribe(ABCUI_CHANNEL_NETMSG_SHOW_MENU, 0, &onShowMenu,
-                         nullptr);
+  Api->events->subscribeVeto(ABCUI_CHANNEL_NETMSG_SHOW_MENU, 0, &onShowMenu,
+                             nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_INIT_HUD, 0, &onInitHud, nullptr);
   for (intptr_t i = 0; i < 10; i++) {
     char name[8];

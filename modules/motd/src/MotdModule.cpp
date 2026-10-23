@@ -267,6 +267,8 @@ void onMotd(void *, const void *payload) {
 }
 
 int onVguiMenu(void *, const void *payload) {
+  if (!panelDocument())
+    return 0;
   const auto *event = static_cast<const AbcUiVguiMenuEvent *>(payload);
   // The vanilla mission brief never opens: the missionbriefing command chain
   // feeds this panel instead.
@@ -369,6 +371,8 @@ void onModuleLoad() {
   Api->commands->subscribeCommand(
       "missionbriefing", 0,
       [](void *, const void *) -> int {
+        if (!panelDocument())
+          return 0;
         showMotd();
         return 1;
       },

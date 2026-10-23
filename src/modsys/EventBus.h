@@ -16,7 +16,9 @@
 // within a bucket the eventpp CallbackList keeps registration order. Veto
 // channels stop at the first sink that returns true - a higher-priority
 // interception hides the event from every sink below it. A sink must not
-// subscribe or unsubscribe its own channel while a dispatch is running.
+// subscribe or unsubscribe its own data/short-circuit-veto channel while a
+// dispatch is running. Aggregate veto dispatch snapshots its handlers: removed
+// handlers are skipped and new ones join the next dispatch.
 //
 // Subscriptions return an opaque token; unsubscribe is idempotent. The bus is
 // a process-lifetime service: SDK sinks retain their creating module's scope

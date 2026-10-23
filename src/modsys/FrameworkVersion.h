@@ -7,6 +7,6 @@
 
 namespace framework {
 
-inline constexpr const char *kFrameworkVersion = "0.8.1";
+inline constexpr const char *kFrameworkVersion = "0.8.4";
 
 } // namespace framework

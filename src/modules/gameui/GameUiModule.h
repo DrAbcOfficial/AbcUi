@@ -155,10 +155,7 @@ private:
   // Debug diagnostics (abc_ui_menu_model): the last module frame delta, so a
   // stalled pump is distinguishable from a stalled refresh.
   double LastFrameTime = 0.0;
-  bool VoteMenuCommandBound = false;
   bool VoteMenuMapListBound = false;
-  bool CommandMenuCommandBound = false;
-  bool InventoryCommandBound = false;
   bool InventoryFeedBound = false;
   // 自动重试 (the browser's toggle): a failed join attempt re-enters the
   // existing typed retry path, bounded per failure chain. The page owns the

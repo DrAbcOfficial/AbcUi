@@ -22,6 +22,21 @@
 
 #include "module_api.h"
 
+// hud.native.draw - veto, queried immediately before the native HUD redraw.
+// Nonzero hides only this native element for this redraw. Modules must return
+// zero while their replacement document is unavailable. No claim = native.
+// These are whole client elements: AMMO includes its weapon-selection UI;
+// HEALTH includes damage indicators. TRAIN is intentionally not claimable.
+#define ABCUI_CHANNEL_HUD_NATIVE_DRAW "hud.native.draw"
+#define ABCUI_NATIVE_HUD_HEALTH 0
+#define ABCUI_NATIVE_HUD_BATTERY 1
+#define ABCUI_NATIVE_HUD_AMMO 2
+#define ABCUI_NATIVE_HUD_FLASHLIGHT 4
+#define ABCUI_NATIVE_HUD_CROSSHAIR 5
+typedef struct AbcUiNativeHudEvent {
+  int32_t element;
+} AbcUiNativeHudEvent;
+
 // netmsg.flashlight - flashlight toggled; battery 0..100.
 #define ABCUI_CHANNEL_NETMSG_FLASHLIGHT "netmsg.flashlight"
 typedef struct AbcUiFlashlightEvent {
@@ -111,6 +126,8 @@ typedef struct AbcUiRedrawEvent {
 // dispatch-scoped pointer: copy before the sink returns. Chunked menus
 // arrive as several events (bits & 0x7f = more chunks pending, bit 7 =
 // ammo-selection menu).
+// Data subscribers observe only; subscribeVeto explicitly consumes the native
+// message when a replacement can handle it. No veto = original handler.
 #define ABCUI_CHANNEL_NETMSG_SHOW_MENU "netmsg.showmenu"
 typedef struct AbcUiShowMenuEvent {
   int32_t validSlots;
@@ -126,6 +143,8 @@ typedef struct AbcUiShowMenuEvent {
 // vote enum (1 kill, 2 kick, 3 ban, 4 map, ...). The three strings are
 // dispatch-scoped pointers: copy before the sink returns. The message is
 // only routed while the hud_vote gate is on (console->setVoteGate).
+// Data subscribers observe only; subscribeVeto explicitly consumes the native
+// message when a replacement can handle it. No veto = original handler.
 #define ABCUI_CHANNEL_NETMSG_VOTE_MENU "netmsg.votemenu"
 typedef struct AbcUiVoteMenuEvent {
   int32_t type;
@@ -308,6 +327,8 @@ typedef struct AbcUiSayTextEvent {
 // textfeed.killfeed - one routed kill line. All three strings are
 // dispatch-scoped pointers; `attacker` is empty for a suicide. `inflictor`
 // is the localized weapon phrase (the old kill feed's bracket text).
+// Data subscribers observe only; subscribeVeto explicitly consumes the native
+// message when a replacement can handle it. No veto = original handler.
 #define ABCUI_CHANNEL_TEXTFEED_KILL_FEED "textfeed.killfeed"
 typedef struct AbcUiKillFeedEvent {
   const char *victim;
@@ -318,6 +339,8 @@ typedef struct AbcUiKillFeedEvent {
 // textfeed.notice - one routed centerprint/notify line. `text` is a
 // dispatch-scoped pointer; `target` is the old HUDNOTICE value (1 notify,
 // 4 center).
+// Data subscribers observe only; subscribeVeto explicitly consumes the native
+// message when a replacement can handle it. No veto = original handler.
 #define ABCUI_CHANNEL_TEXTFEED_NOTICE "textfeed.notice"
 typedef struct AbcUiNoticeEvent {
   int32_t target;

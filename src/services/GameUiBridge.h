@@ -219,8 +219,25 @@ public:
   // one.
   void arm();
   void disarm();
+  void setTakeoverEnabled(bool enabled) {
+    if (TakeoverEnabled == enabled)
+      return;
+    TakeoverEnabled = enabled;
+    if (enabled && Armed) {
+      arm(); // Replay console intent even when the gate installed first.
+      if (!HasLevel)
+        requestMenuUp(NativeUiOrigin::kOwnUi);
+    }
+    if (!enabled) {
+      MenuUp = false;
+      PageShown = false;
+      ConsoleRequested = false;
+      PendingConsoleOpen = false;
+      PendingConsoleClose = false;
+    }
+  }
   bool armed() const {
-    return Armed;
+    return Armed && TakeoverEnabled;
   }
 
   // PaintTraverse gate: true = swallow the traversal (never call the
@@ -389,6 +406,7 @@ private:
   INativeMenuSink *MenuSink = nullptr;
   NativeUiCounters Counters;
   bool Armed = false;
+  bool TakeoverEnabled = false;
   bool MenuUp = false;
   bool PageShown = false;
   bool HasLevel = false;

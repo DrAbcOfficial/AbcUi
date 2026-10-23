@@ -298,9 +298,10 @@ int __MsgFunc_ShowMenu(const char *pszName, int iSize, void *pbuf) {
   const AbcUiShowMenuEvent moduleEvent{validSlots, displaySeconds, bits,
                                        text.c_str()};
   framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, moduleEvent);
-  // The old hook unconditionally swallowed ShowMenu so the vanilla VGUI
-  // menu never flashes - the TextMenu panel owns this message.
-  return 1;
+  return framework::eventBus().publishVeto(ABCUI_CHANNEL_NETMSG_SHOW_MENU,
+                                           moduleEvent)
+             ? 1
+             : original_ShowMenu(pszName, iSize, pbuf);
 }
 
 int __MsgFunc_FlashBat(const char *pszName, int iSize, void *pbuf) {
@@ -477,7 +478,10 @@ int __MsgFunc_VoteMenu(const char *pszName, int iSize, void *pbuf) {
   const AbcUiVoteMenuEvent moduleEvent{data.type, data.content.c_str(),
                                        data.yes.c_str(), data.no.c_str()};
   framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_VOTE_MENU, moduleEvent);
-  return 1;
+  return framework::eventBus().publishVeto(ABCUI_CHANNEL_NETMSG_VOTE_MENU,
+                                           moduleEvent)
+             ? 1
+             : original_VoteMenu(pszName, iSize, pbuf);
 }
 
 int __MsgFunc_EndVote(const char *pszName, int iSize, void *pbuf) {

@@ -5,7 +5,7 @@
   "author": "DrAbc",
   "version": "1.0.0",
   "abi": 1,
-  "minAbcUi": "0.8.0",
+  "minAbcUi": "0.8.3",
   "entry": "entry/abcui_textfeed.dll",
   "dependencies": [],
   "conflicts": []

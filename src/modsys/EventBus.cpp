@@ -1,6 +1,8 @@
 // framework::EventBus implementation - see EventBus.h.
 #include "EventBus.h"
 
+#include <vector>
+
 namespace framework {
 namespace {
 
@@ -77,12 +79,15 @@ EventSubscription EventBus::subscribeVetoAggregate(const char *channel,
   Channel &target = Channels[channel];
   VetoList &list = target.vetoAggregate[priority];
   const auto owner = module_resources::current();
-  const auto handle = list.append([sink, userdata, owner](const void *payload) {
-    return module_resources::invoke(owner, "aggregate veto event", sink,
-                                    userdata, payload) != 0;
-  });
-  ++target.count;
   const EventSubscription token = NextToken++;
+  const auto handle =
+      list.append([this, token, sink, userdata, owner](const void *payload) {
+        if (Records.find(token) == Records.end())
+          return false;
+        return module_resources::invoke(owner, "aggregate veto event", sink,
+                                        userdata, payload) != 0;
+      });
+  ++target.count;
   Record &record = Records[token];
   record.channel = channel;
   record.priority = priority;
@@ -174,15 +179,20 @@ bool EventBus::publishVetoAggregateRaw(const char *channel,
   const Channel *target = find(channel);
   if (!target)
     return false;
-  bool vetoed = false;
+  // Copy before calling module code so hooks may change during dispatch.
+  // New handlers join the next dispatch; revoked tokens are skipped.
+  std::vector<VetoList::Callback> callbacks;
   for (const auto &bucket : target->vetoAggregate) {
     const VetoList &list = bucket.second;
     list.forEach(
         [&](const VetoList::Handle &, const VetoList::Callback &callback) {
-          if (callback(payload))
-            vetoed = true;
+          callbacks.push_back(callback);
         });
   }
+  bool vetoed = false;
+  for (const auto &callback : callbacks)
+    if (callback(payload))
+      vetoed = true;
   return vetoed;
 }
 

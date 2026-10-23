@@ -85,12 +85,15 @@ void updateHidden(NoticeState &state) {
 
 // ---- event sinks ----
 
-void onNotice(void *, const void *payload) {
+int onNotice(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiNoticeEvent *>(payload);
-  if (event->target == Notify.target)
-    showMessage(Notify, event->text);
-  else if (event->target == Center.target)
-    showMessage(Center, event->text);
+  NoticeState *state = event->target == Notify.target   ? &Notify
+                       : event->target == Center.target ? &Center
+                                                        : nullptr;
+  if (!state || !Api->ui->panelDocument(state->Panel.name))
+    return 0;
+  showMessage(*state, event->text);
+  return 1;
 }
 
 void onHideToken(void *, const void *payload) {
@@ -147,7 +150,8 @@ void onModuleLoad() {
   Notify.hideAll = (state.hideBits & ABCUI_HIDEBIT_ALL) != 0;
   Center.hideAll = Notify.hideAll;
 
-  Api->events->subscribe(ABCUI_CHANNEL_TEXTFEED_NOTICE, 0, &onNotice, nullptr);
+  Api->events->subscribeVeto(ABCUI_CHANNEL_TEXTFEED_NOTICE, 0, &onNotice,
+                             nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_HUD_HIDE_TOKEN, 0, &onHideToken,
                          nullptr);
 }

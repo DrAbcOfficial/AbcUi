@@ -185,7 +185,7 @@ void installPaintGate() {
   Installed = true;
   services::nativeUiBridge().arm();
   abc::ConsolePrint("[AbcUi] paint gate: installed (IPanel gamedata slots; "
-                    "native UI suppression armed)\n");
+                    "suppression requires module takeover)\n");
 }
 
 void uninstallPaintGate() {

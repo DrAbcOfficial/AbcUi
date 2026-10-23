@@ -493,13 +493,18 @@ typedef struct AbcUiUiApi {
 
 typedef struct AbcUiCommandsApi {
   uint32_t structSize;
-  // Subscribes a chained console command from the framework bus
-  // ("slot1".."slot10", "missionbriefing", "invnext", "invprev",
-  // "+/-showscores", "votemenu", "+attack", "+/-commandmenu",
-  // "messagemode", "messagemode2", "inventory", "+/-inventory"). Every sink
-  // runs in priority order regardless of the other sinks' results;
-  // returning nonzero consumes the command (the engine's original path is
-  // skipped).
+  // Dynamically hooks any existing callback-backed engine command. AbcUi
+  // >= 0.8.4 has no whitelist, fixed slot count or init-only restriction.
+  // ASCII case variants share one bridge; punctuation/non-ASCII names work.
+  // Supply one command token (no arguments, whitespace, quotes or semicolons).
+  // Returns 0 for invalid/missing names, null native callbacks or unavailable
+  // engine seams. Aliases, cvars and server-only verbs have no callback to hook;
+  // register a new client command via console->registerCommand first if needed.
+  // Every sink runs in priority order; nonzero skips the original. Revoke via
+  // events->unsubscribe (also automatic on module failure/unload). Changes
+  // during dispatch are safe: removed sinks are skipped; new sinks join the
+  // next dispatch. Empty bridges remain process-owned native pass-throughs
+  // so another plugin may safely retain the dispatcher as its predecessor.
   AbcUiSubscription (*subscribeCommand)(const char *name, int priority,
                                         AbcUiEventVeto sink, void *userdata);
   // The shared number-menu-open flag: the text-menu module writes it, other
@@ -923,6 +928,14 @@ typedef struct AbcUiMenuApi {
   // through the backend, 0 cancels. The controller pops the overlay and runs
   // the confirmed quit exactly once.
   void (*quitResolve)(int32_t confirmed);
+  // Explicit process-scoped ownership of the native GameUI/console takeover.
+  // Declare during Main/onLoad/onInit only. One module may own it;
+  // failure/unload revokes it. Does not hook commands.
+  int32_t (*setNativeTakeover)(int32_t enabled);
+  // Runs a replacement menu flow for votemenu, +/-commandmenu and
+  // inventory/+inventory/-inventory. Call from a subscribeCommand handler.
+  // 0 means unavailable/unknown, so the handler should allow the native path.
+  int32_t (*dispatchCommand)(const char *name);
 } AbcUiMenuApi;
 
 // ------------------------------------------------------------- votemenu ----

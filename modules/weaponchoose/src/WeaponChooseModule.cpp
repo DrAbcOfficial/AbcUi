@@ -432,6 +432,8 @@ void panelReset(void *) {
 // ---- lifecycle ----
 
 int onSlotCommand(void *userdata, const void *) {
+  if (!panelDocument())
+    return 0;
   // The old weaponres slot handler ran the selection walk and left the
   // original engine slot command chained; the TextMenu owns the keys while
   // its menu is open (left entirely to the textmenu module then).
@@ -443,20 +445,33 @@ int onSlotCommand(void *userdata, const void *) {
 }
 
 int onInvNext(void *, const void *) {
+  if (!panelDocument())
+    return 0;
   Api->weapons->selectSlot(Api->weapons->selectedSlot(), 1, 1);
   return 0;
 }
 
 int onInvPrev(void *, const void *) {
+  if (!panelDocument())
+    return 0;
   Api->weapons->selectSlot(Api->weapons->selectedSlot(), -1, 1);
   return 0;
 }
 
 int onAttack(void *, const void *) {
+  if (!panelDocument())
+    return 0;
   return attackConfirm();
 }
 
+int onNativeHudDraw(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiNativeHudEvent *>(payload);
+  return panelDocument() && (event->element == ABCUI_NATIVE_HUD_AMMO);
+}
+
 void onModuleLoad() {
+  Api->events->subscribeVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW, 0, &onNativeHudDraw,
+                             nullptr);
   Panel.structSize = sizeof(Panel);
   Panel.name = kPanelName;
   Panel.documentPath = kDocumentPath;

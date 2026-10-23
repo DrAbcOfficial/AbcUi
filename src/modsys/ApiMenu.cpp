@@ -7,6 +7,8 @@
 #include <cstring>
 
 #include "../services/menu/MenuHost.h"
+#include "../services/GameUiBridge.h"
+#include "ModuleResources.h"
 
 namespace framework {
 namespace MenuApi {
@@ -71,10 +73,40 @@ void apiDirectConnect(void) {
     seam.directConnect();
 }
 
+module_resources::Registration &takeoverLifetime() {
+  static module_resources::Registration lifetime;
+  return lifetime;
+}
+
+int32_t apiSetNativeTakeover(int32_t enabled) {
+  const auto owner = module_resources::current();
+  auto &lifetime = takeoverLifetime();
+  if (!owner || !owner->initializing || !module_resources::accepting() ||
+      (lifetime.tracked() && lifetime.owner() != owner))
+    return 0;
+  lifetime.forget();
+  lifetime = module_resources::Registration{};
+  services::nativeUiBridge().setTakeoverEnabled(enabled != 0);
+  if (enabled)
+    lifetime.track([] {
+      services::nativeUiBridge().setTakeoverEnabled(false);
+      takeoverLifetime().forget();
+    });
+  return 1;
+}
+
+int32_t apiDispatchCommand(const char *name) {
+  const auto &seam = services::menu::host();
+  return name && services::nativeUiBridge().armed() && seam.dispatchCommand
+             ? seam.dispatchCommand(name)
+             : 0;
+}
+
 const AbcUiMenuApi kMenuApi = {
-    sizeof(AbcUiMenuApi), apiState,         apiOpenPage,    apiBack,
-    apiEnsureUp,          apiResume,        apiQuit,        apiDisconnect,
-    apiToggleConsole,     apiDirectConnect, apiQuitResolve,
+    sizeof(AbcUiMenuApi), apiState,           apiOpenPage,    apiBack,
+    apiEnsureUp,          apiResume,          apiQuit,        apiDisconnect,
+    apiToggleConsole,     apiDirectConnect,   apiQuitResolve,
+    apiSetNativeTakeover, apiDispatchCommand,
 };
 
 } // namespace

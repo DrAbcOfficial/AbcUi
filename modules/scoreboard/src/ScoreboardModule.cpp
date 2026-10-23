@@ -761,6 +761,8 @@ void onPointer(void *, const void *payload) {
 // ---- commands ----
 
 int32_t onShowScores(void *, const void *) {
+  if (!panelDocument())
+    return 0;
   if (!Api->score->intermission()) {
     setVisible(true);
     // Old Viewport m_bInScore: the button state the usercmd stream reports
@@ -772,6 +774,8 @@ int32_t onShowScores(void *, const void *) {
 }
 
 int32_t onHideScores(void *, const void *) {
+  if (!panelDocument())
+    return 0;
   if (!Api->score->intermission()) {
     setVisible(false);
     Api->score->setPointerMode(0);
