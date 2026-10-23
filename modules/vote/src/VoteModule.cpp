@@ -115,8 +115,9 @@ int answerKey(int down, int keynum) {
 // Old StartVote: server text in the content panel, the answer rows carry the
 // bound key name plus the server caption (typed/default votes fall back to
 // the localized default caption).
-void startVote(int type, const char *content, const char *yes, const char *no) {
-  (void)type; // the caption is server text; the enum carries no layout
+// The caption is server text; the vote type carries no layout.
+void startVote([[maybe_unused]] int type, const char *content, const char *yes,
+               const char *no) {
   const std::string escapedContent = escapeText(content);
   setInnerRml("content", escapedContent.c_str());
 

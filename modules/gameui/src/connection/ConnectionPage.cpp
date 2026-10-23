@@ -461,7 +461,8 @@ void load() {
                                              &onMenuPaint, nullptr);
 
   const auto create = [](const char *name, const char *path, bool backdrop,
-                         int zIndex, AbcUiElementListener listener) {
+                         int zIndex,
+                         [[maybe_unused]] AbcUiElementListener listener) {
     AbcUiDocumentDesc desc{};
     desc.structSize = sizeof(desc);
     desc.name = name;
@@ -473,7 +474,6 @@ void load() {
     desc.onShow = nullptr;
     desc.onHide = nullptr;
     desc.onClose = nullptr;
-    (void)listener;
     return Api->documents->create(&desc);
   };
   LoadingPage =

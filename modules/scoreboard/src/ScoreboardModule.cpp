@@ -343,10 +343,8 @@ void rebuildTable() {
     });
   }
   std::vector<int> order;
-  for (const auto &[team, rows] : sections) {
-    (void)rows;
-    order.push_back(team);
-  }
+  for (const auto &entry : sections)
+    order.push_back(entry.first);
   std::sort(order.begin(), order.end(), [&](int a, int b) {
     const TeamScore &sa = teamScores[a];
     const TeamScore &sb = teamScores[b];
@@ -835,9 +833,8 @@ void panelOnData(void *, double frameTime) {
   // spacing cvars overriding the defaults.
   const float density = Api->ui->scale();
   int screenHeight = 0;
-  int screenWidth = 0;
+  [[maybe_unused]] int screenWidth = 0;
   Api->ui->documentSize(panelDocument(), &screenWidth, &screenHeight);
-  (void)screenWidth;
   const auto spacing = [&](AbcUiCvarHandle cvar, float fallback) {
     const float value = cvarFloat(cvar, 0.0f);
     return std::isfinite(value) && value > 0.0f

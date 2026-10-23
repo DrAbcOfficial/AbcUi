@@ -346,8 +346,8 @@ void AbcRenderInterface::registerExternalTexture(const Rml::String &uriPrefix,
   // a file/font texture still carries the same id (possible after a
   // frame-buffer regen recycles the GL texture name), releasing that record
   // would delete a texture the external owner now controls.
-  for (auto &[handle, record] : Textures) {
-    (void)handle;
+  for (auto &entry : Textures) {
+    TextureRecord &record = entry.second;
     if (record.Owned && record.Id == static_cast<int>(texture))
       record.Owned = false;
   }

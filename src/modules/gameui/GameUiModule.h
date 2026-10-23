@@ -109,9 +109,8 @@ private:
   class KeyCaptureOwner final : public framework::uiinput::Owner {
   public:
     explicit KeyCaptureOwner(GameUiModule *owner) : Owner(owner) {}
-    bool claimsKey(int down, int keynum) override {
-      (void)down;
-      (void)keynum;
+    bool claimsKey([[maybe_unused]] int down,
+                   [[maybe_unused]] int keynum) override {
       return true;
     }
     bool claimsWheel() override {

@@ -303,8 +303,8 @@ size_t boot() {
       progress = true;
     }
   }
-  for (const auto &[id, candidate] : candidates) {
-    (void)candidate;
+  for (const auto &entry : candidates) {
+    const std::string &id = entry.first;
     if (!loadedIds.count(id) && !failedIds.count(id))
       abc::ConsoleWarn("[AbcUi] module \"%s\" skipped: dependency cycle\n",
                        id.c_str());
