@@ -31,7 +31,7 @@
 #include "modules/gameui/debug/ProbeCommand.h"
 #include "rmlui/RmlUiModule.h"
 #include <fstream>
-#include <sstream>
+#include <iterator>
 #include <string_view>
 
 namespace gameui {
@@ -86,9 +86,8 @@ bool loadCommandMenuDefinition(services::commandmenu::Definition &definition,
     error = "cannot open file";
     return false;
   }
-  std::ostringstream text;
-  text << stream.rdbuf();
-  std::string contents = text.str();
+  std::string contents{std::istreambuf_iterator<char>(stream),
+                       std::istreambuf_iterator<char>()};
   if (contents.compare(0, 3, "\xef\xbb\xbf") == 0)
     contents.erase(0, 3);
   services::commandmenu::ParseError parseError;

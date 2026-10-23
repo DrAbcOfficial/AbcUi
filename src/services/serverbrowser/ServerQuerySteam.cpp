@@ -93,7 +93,7 @@ struct EventQueue {
   uint64_t dropped = 0;
 
   void push(QueryEvent &&event) {
-    std::lock_guard<std::mutex> lock(mutex);
+    std::lock_guard lock(mutex);
     if (static_cast<int>(events.size()) >= kMaxQueuedEvents) {
       ++dropped;
       return;
@@ -496,7 +496,7 @@ public:
     if (!out || max <= 0)
       return 0;
     EventQueue &q = queue();
-    std::lock_guard<std::mutex> lock(q.mutex);
+    std::lock_guard lock(q.mutex);
     int count = 0;
     while (count < max && !q.events.empty()) {
       out[count++] = std::move(q.events.front());
