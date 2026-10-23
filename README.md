@@ -199,6 +199,36 @@ pauses while hidden/in-game/map-loading, and follows `mp3volume`. Changing the
 music source replaces the channel. Previously archived loose-media paths are
 not compatible: reset those cvars or select a packaged track/movie.
 
+### Media player
+
+`abcui.mediaplayer` replaces the client's VGUI "Sven Co-op Media Player"
+window (HOME, command `MediaPlayer`, issue 11). The module chains that command,
+swallows the native window and presents its own Rml document; ESC or the close
+button dismisses it, and the native window never appears.
+
+Playback goes through the engine's own mp3 stream (`mp3 playfile`,
+`mp3 pause`, `mp3 resume`, `mp3 stop`), never the client's FMOD media player
+and never a new decoder. The engine path is the only one that can start an
+arbitrary playlist entry by path and still pause/resume, so the page owns the
+transport. Volume is the engine's `MP3Volume` cvar, which the volume slider
+writes (the level's CD soundtrack shares that stream). A map change stops the
+player and closes the page because the level owns the engine stream again;
+closing the page leaves the music running, and quitting stops it.
+
+The playlist is `playlist.txt` (or `playlist.m3u`, with nested `.m3u`
+expansion) from the game configuration directory, read the same way the native
+window's `RelPls` does. When neither file exists the page lists the built-in
+Half-Life, Prospero and Suspense soundtrack instead of starting empty.
+Add/Remove/Up/Down edit the session list only: the module ABI has no
+filesystem write path, so the playlist file is not rewritten (the native
+playlist editor tool owns that). Only MPEG audio is played; the engine appends
+`.mp3` to a path without the extension and cannot open other containers, and
+its 200-entry per-process track table caps the playlist at 160 entries.
+Progress is estimated from the MP3 frame headers because the engine exposes no
+stream position; that estimate drives the automatic next-track hand-off.
+Server-driven Playlist messages are not routed to modules, so a playlist the
+server names is picked up after the next map change or a manual Reload.
+
 ### Lifecycle and C API
 
 Code modules export only `AbcUiModule_Main` and use pure-C tables and POD
