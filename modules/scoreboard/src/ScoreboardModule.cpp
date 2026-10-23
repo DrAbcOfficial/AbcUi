@@ -21,14 +21,15 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cstdarg>
 #include <cstdint>
-#include <cstdio>
 #include <cstring>
+#include <format>
+#include <iterator>
 #include <map>
 #include <string>
-#include <vector>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -200,33 +201,15 @@ std::string pingColor(int ping, int loss) {
                   std::clamp(std::fabs(value) / 255.0f * 90.0f, 0.0f, 90.0f));
 }
 
-void appendFmt(std::string &out, const char *format, ...) {
-  va_list args;
-  va_start(args, format);
-  const int needed = vsnprintf(nullptr, 0, format, args);
-  va_end(args);
-  if (needed <= 0)
-    return;
-  const size_t at = out.size();
-  out.resize(at + static_cast<size_t>(needed));
-  va_start(args, format);
-  vsnprintf(out.data() + at, static_cast<size_t>(needed) + 1, format, args);
-  va_end(args);
+template <typename... Args>
+void appendFmt(std::string &out, std::format_string<Args...> format,
+               Args &&...args) {
+  std::format_to(std::back_inserter(out), format, std::forward<Args>(args)...);
 }
 
-std::string strFmt(const char *format, ...) {
-  std::string out;
-  va_list args;
-  va_start(args, format);
-  const int needed = vsnprintf(nullptr, 0, format, args);
-  va_end(args);
-  if (needed <= 0)
-    return out;
-  out.resize(static_cast<size_t>(needed));
-  va_start(args, format);
-  vsnprintf(out.data(), static_cast<size_t>(needed) + 1, format, args);
-  va_end(args);
-  return out;
+template <typename... Args>
+std::string strFmt(std::format_string<Args...> format, Args &&...args) {
+  return std::format(format, std::forward<Args>(args)...);
 }
 
 // ---- header ----
@@ -262,7 +245,7 @@ void updateHeader() {
       playerCount++;
   }
   setHeaderRml(2, "player-count",
-               strFmt("%d/%d", playerCount, ABCUI_MAX_PLAYERS));
+               strFmt("{}/{}", playerCount, ABCUI_MAX_PLAYERS));
   if (!NextMap.empty())
     setHeaderRml(3, "next-map", escapeText(NextMap));
   if (TimeEndCount > 0) {
@@ -270,7 +253,7 @@ void updateHeader() {
         static_cast<double>(TimeEndCount) - (ClientTimeNow - TimeEndBase);
     const int seconds = static_cast<int>(std::max(0.0, remaining));
     setHeaderRml(4, "time-end",
-                 strFmt("%02d:%02d", seconds / 60, seconds % 60));
+                 strFmt("{:02d}:{:02d}", seconds / 60, seconds % 60));
   }
 }
 
@@ -423,27 +406,26 @@ void rebuildTable() {
     }
     appendFmt(out,
               "<div class='cell c-avatar'><div class='avatar-frame' "
-              "style='width:%.0fpx; height:%.0fpx;'>"
-              "<img class='avatar' style='width:100%%; height:100%%;' "
-              "src='avatar://%llu?gen=%d'/>",
-              static_cast<double>(avatarSize), static_cast<double>(avatarSize),
-              static_cast<unsigned long long>(info.steamId64),
+              "style='width:{:.0f}px; height:{:.0f}px;'>"
+              "<img class='avatar' style='width:100%; height:100%;' "
+              "src='avatar://{}?gen={}'/>",
+              avatarSize, avatarSize, info.steamId64,
               Api->players->avatarGeneration(info.steamId64));
     if (info.admin == 1)
       appendFmt(out,
-                "<img class='admin' style='width:100%%; height:100%%;' "
-                "src='%s'/>",
-                iconUri("admin_icon32").c_str());
+                "<img class='admin' style='width:100%; height:100%;' "
+                "src='{}'/>",
+                iconUri("admin_icon32"));
     else if (info.admin == 2)
       appendFmt(out,
-                "<img class='admin' style='width:100%%; height:100%%;' "
-                "src='%s'/>",
-                iconUri("serverowner_icon32").c_str());
+                "<img class='admin' style='width:100%; height:100%;' "
+                "src='{}'/>",
+                iconUri("serverowner_icon32"));
     if (Api->voice->available() && Api->voice->isBlocked(info.index))
       appendFmt(out,
-                "<img class='mute' style='width:100%%; height:100%%;' "
-                "src='%s'/>",
-                iconUri("mute_icon32").c_str());
+                "<img class='mute' style='width:100%; height:100%;' "
+                "src='{}'/>",
+                iconUri("mute_icon32"));
     out += "</div></div>";
   };
 
@@ -459,16 +441,16 @@ void rebuildTable() {
                 "<div class='row section'>"
                 "<div class='cell c-avatar'></div>"
                 "<div class='cell c-donor'></div>"
-                "<div class='cell c-name'>%s (%d/%d)</div>",
-                escapeText(teamName).c_str(), static_cast<int>(rows.size()),
+                "<div class='cell c-name'>{} ({}/{})</div>",
+                escapeText(teamName), static_cast<int>(rows.size()),
                 connectedTotal);
       if (showSteamId)
         rml += "<div class='cell c-steamid'></div>";
       rml += "<div class='cell c-health'></div><div class='cell "
              "c-armor'></div>";
-      appendFmt(rml, "<div class='cell c-frags'>%d</div>",
+      appendFmt(rml, "<div class='cell c-frags'>{}</div>",
                 teamScores[team].frags);
-      appendFmt(rml, "<div class='cell c-deaths'>%d</div>",
+      appendFmt(rml, "<div class='cell c-deaths'>{}</div>",
                 teamScores[team].deaths);
       rml += "<div class='cell c-ping'></div></div>";
     }
@@ -485,22 +467,21 @@ void rebuildTable() {
         const int r = static_cast<int>(tint[0] * 255.0f);
         const int g = static_cast<int>(tint[1] * 255.0f);
         const int b = static_cast<int>(tint[2] * 255.0f);
-        style = strFmt("color: rgba(%d, %d, %d, 255);", r, g, b);
+        style = strFmt("color: rgba({}, {}, {}, 255);", r, g, b);
         if (!isLocal)
-          style += strFmt(" background-color: rgba(%d, %d, %d, 80);", r, g, b);
+          style += strFmt(" background-color: rgba({}, {}, {}, 80);", r, g, b);
       }
-      appendFmt(rowOpen, "' style='%s height: %.1fpx;' data-client='%d'>",
-                style.c_str(), static_cast<double>(rowHeight), info.index);
+      appendFmt(rowOpen, "' style='{} height: {:.1f}px;' data-client='{}'>",
+                style, rowHeight, info.index);
       rml += rowOpen;
 
       appendAvatar(info, rml);
       const char *donor = donorIcon(info.donor);
       if (donor[0])
         appendFmt(rml,
-                  "<div class='cell c-donor'><img style='width:%.0fpx; "
-                  "height:%.0fpx;' src='%s'/></div>",
-                  static_cast<double>(donorSize),
-                  static_cast<double>(donorSize), iconUri(donor).c_str());
+                  "<div class='cell c-donor'><img style='width:{:.0f}px; "
+                  "height:{:.0f}px;' src='{}'/></div>",
+                  donorSize, donorSize, iconUri(donor));
       else
         rml += "<div class='cell c-donor'></div>";
 
@@ -510,8 +491,7 @@ void rebuildTable() {
         name += info.realName;
         name += ")";
       }
-      appendFmt(rml, "<div class='cell c-name'>%s</div>",
-                escapeText(name).c_str());
+      appendFmt(rml, "<div class='cell c-name'>{}</div>", escapeText(name));
 
       if (showSteamId) {
         std::string steam;
@@ -521,11 +501,11 @@ void rebuildTable() {
           } else {
             const std::uint32_t accountId =
                 static_cast<std::uint32_t>(info.steamId64 & 0xFFFFFFFFull);
-            steam = strFmt("STEAM_0:%d:%d", accountId & 1, accountId >> 1);
+            steam = strFmt("STEAM_0:{}:{}", accountId & 1, accountId >> 1);
           }
         }
-        appendFmt(rml, "<div class='cell c-steamid'>%s</div>",
-                  escapeText(steam).c_str());
+        appendFmt(rml, "<div class='cell c-steamid'>{}</div>",
+                  escapeText(steam));
       }
 
       if (info.spectate) {
@@ -537,42 +517,39 @@ void rebuildTable() {
                escapeText(na) + "</div>";
       } else {
         if (info.health < 0)
-          appendFmt(rml, "<div class='cell c-health'>%s</div>",
-                    escapeText(deadTag).c_str());
+          appendFmt(rml, "<div class='cell c-health'>{}</div>",
+                    escapeText(deadTag));
         else
-          appendFmt(
-              rml, "<div class='cell c-health' style='color: %s;'>%d</div>",
-              percentColor(info.health).c_str(), static_cast<int>(info.health));
+          appendFmt(rml,
+                    "<div class='cell c-health' style='color: {};'>{}</div>",
+                    percentColor(info.health), static_cast<int>(info.health));
         if (info.armor < 0)
-          appendFmt(rml, "<div class='cell c-armor'>%s</div>",
-                    escapeText(na).c_str());
+          appendFmt(rml, "<div class='cell c-armor'>{}</div>", escapeText(na));
         else
-          appendFmt(
-              rml, "<div class='cell c-armor' style='color: %s;'>%d</div>",
-              percentColor(info.armor).c_str(), static_cast<int>(info.armor));
+          appendFmt(rml,
+                    "<div class='cell c-armor' style='color: {};'>{}</div>",
+                    percentColor(info.armor), static_cast<int>(info.armor));
       }
 
       appendFmt(rml,
-                "<div class='cell c-frags'>%d</div>"
-                "<div class='cell c-deaths'>%d</div>",
+                "<div class='cell c-frags'>{}</div>"
+                "<div class='cell c-deaths'>{}</div>",
                 static_cast<int>(info.frags), info.deaths);
       if (showLoss)
-        appendFmt(
-            rml, "<div class='cell c-ping' style='color: %s;'>%d/%d</div>",
-            pingColor(info.ping, info.loss).c_str(), info.ping, info.loss);
+        appendFmt(rml,
+                  "<div class='cell c-ping' style='color: {};'>{}/{}</div>",
+                  pingColor(info.ping, info.loss), info.ping, info.loss);
       else
-        appendFmt(rml, "<div class='cell c-ping' style='color: %s;'>%d</div>",
-                  pingColor(info.ping, 0).c_str(), info.ping);
+        appendFmt(rml, "<div class='cell c-ping' style='color: {};'>{}</div>",
+                  pingColor(info.ping, 0), info.ping);
       rml += "</div>";
     }
   }
 
   Api->ui->elementSetInnerRML(table, rml.c_str());
   Api->ui->elementSetClass(table, "no-steamid", showSteamId ? 0 : 1);
-  char lineHeight[32];
-  std::snprintf(lineHeight, sizeof(lineHeight), "%gpx",
-                static_cast<double>(rowHeight));
-  setProperty(table, "line-height", lineHeight);
+  const std::string lineHeight = std::format("{:g}px", rowHeight);
+  setProperty(table, "line-height", lineHeight.c_str());
 }
 
 // ---- context menu ----
@@ -588,8 +565,7 @@ void menuAction(Action action) {
   if (!Api->players->get(MenuClient, &info) || !info.valid)
     return;
   const std::string profileUrl =
-      strFmt("http://steamcommunity.com/profiles/%llu",
-             static_cast<unsigned long long>(info.steamId64));
+      strFmt("http://steamcommunity.com/profiles/{}", info.steamId64);
   switch (action) {
   case Action::kOpenProfile:
     Api->shell->openUrl(profileUrl.c_str());
@@ -607,7 +583,7 @@ void menuAction(Action action) {
     const std::uint32_t accountId =
         static_cast<std::uint32_t>(info.steamId64 & 0xFFFFFFFFull);
     Api->shell->copyText(
-        strFmt("STEAM_0:%d:%d", accountId & 1, accountId >> 1).c_str());
+        strFmt("STEAM_0:{}:{}", accountId & 1, accountId >> 1).c_str());
     break;
   }
   case Action::kCopySteamId64:
@@ -702,12 +678,10 @@ void openContextMenu(int clientIndex, float mouseX, float mouseY) {
         y, 0.0f,
         std::max(0.0f, static_cast<float>(height) - 100.0f * Api->ui->scale()));
   }
-  char left[32];
-  char top[32];
-  std::snprintf(left, sizeof(left), "%gpx", static_cast<double>(x));
-  std::snprintf(top, sizeof(top), "%gpx", static_cast<double>(y));
-  setProperty(menu, "left", left);
-  setProperty(menu, "top", top);
+  const std::string left = std::format("{:g}px", x);
+  const std::string top = std::format("{:g}px", y);
+  setProperty(menu, "left", left.c_str());
+  setProperty(menu, "top", top.c_str());
   setProperty(menu, "display", "block");
 }
 
@@ -889,9 +863,8 @@ void panelOnData(void *, double frameTime) {
       if (screenHeight > 0) {
         const float top = std::max(
             0.0f, (static_cast<float>(screenHeight) - boxHeight) * 0.5f);
-        char value[32];
-        std::snprintf(value, sizeof(value), "%gpx", static_cast<double>(top));
-        setProperty(box, "top", value);
+        const std::string value = std::format("{:g}px", top);
+        setProperty(box, "top", value.c_str());
       }
     }
   }

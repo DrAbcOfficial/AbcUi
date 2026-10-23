@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <string>
 
 namespace {
@@ -120,11 +121,9 @@ void applyVital(const char *labelId, const char *barId, const char *iconId,
   // additive sprite. The danger rule retints both.
   if (AbcUiElement *bar = Api->ui->querySelector(doc, barId)) {
     const float pct = std::clamp(value / 100.0f, 0.0f, 1.0f);
-    char width[32];
-    std::snprintf(width, sizeof(width), "%gdp",
-                  static_cast<double>(pct * kBarWidth));
+    const std::string width = std::format("{:g}dp", pct * kBarWidth);
     Api->ui->elementSetProperty(bar, "background-color", color.c_str());
-    Api->ui->elementSetProperty(bar, "width", width);
+    Api->ui->elementSetProperty(bar, "width", width.c_str());
   }
   if (AbcUiElement *icon = Api->ui->querySelector(doc, iconId))
     Api->ui->elementSetProperty(icon, "image-color", color.c_str());

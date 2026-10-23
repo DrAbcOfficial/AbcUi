@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -312,20 +313,20 @@ void tilesOnData(void *, double frameTime) {
     if (!tile.visible)
       continue;
     const double elapsed = TilesTime - tile.showTime;
-    char opacity[32];
+    std::string opacity;
     if (elapsed < kTileFadeIn) {
       // Ramp up (old Linear 0.0 -> 0.1 to 255).
-      std::snprintf(opacity, sizeof(opacity), "%g", elapsed / kTileFadeIn);
+      opacity = std::format("{:g}", elapsed / kTileFadeIn);
       setElementProperty(kTilesPanel, kTileIds[i], "display", "block");
-      setElementProperty(kTilesPanel, kTileIds[i], "opacity", opacity);
+      setElementProperty(kTilesPanel, kTileIds[i], "opacity", opacity.c_str());
     } else if (elapsed < kTileFadeIn + kTileHold) {
       setElementProperty(kTilesPanel, kTileIds[i], "display", "block");
       setElementProperty(kTilesPanel, kTileIds[i], "opacity", "1");
     } else if (elapsed < kTileFadeIn + kTileHold + kTileFadeOut) {
-      std::snprintf(opacity, sizeof(opacity), "%g",
-                    1.0 - (elapsed - kTileFadeIn - kTileHold) / kTileFadeOut);
+      opacity = std::format("{:g}", 1.0 - (elapsed - kTileFadeIn - kTileHold) /
+                                              kTileFadeOut);
       setElementProperty(kTilesPanel, kTileIds[i], "display", "block");
-      setElementProperty(kTilesPanel, kTileIds[i], "opacity", opacity);
+      setElementProperty(kTilesPanel, kTileIds[i], "opacity", opacity.c_str());
     } else {
       // Old sequence end: the tile stays invisible until the next Show.
       tile.visible = false;
@@ -417,12 +418,11 @@ void indicatorOnData(void *, double frameTime) {
         degAngle = 270.0f;
     }
 
-    char transform[48];
-    std::snprintf(transform, sizeof(transform), "rotate(%.1fdeg)",
-                  static_cast<double>(degAngle));
+    const std::string transform = std::format("rotate({:.1f}deg)", degAngle);
     if (slot.appliedAngle != transform) {
       slot.appliedAngle = transform;
-      setElementProperty(kIndicatorPanel, kRotorIds[i], "transform", transform);
+      setElementProperty(kIndicatorPanel, kRotorIds[i], "transform",
+                         transform.c_str());
     }
 
     // Old alpha ramp: hold 255 for keep_time, linear fade over fade_time.
@@ -430,10 +430,10 @@ void indicatorOnData(void *, double frameTime) {
         elapsed <= kIndicatorKeepTime
             ? 1.0f
             : 1.0f - (elapsed - kIndicatorKeepTime) / kIndicatorFadeTime;
-    char opacity[32];
-    std::snprintf(opacity, sizeof(opacity), "%g", static_cast<double>(alpha));
+    const std::string opacity = std::format("{:g}", alpha);
     setElementProperty(kIndicatorPanel, kRotorIds[i], "display", "block");
-    setElementProperty(kIndicatorPanel, kRotorIds[i], "opacity", opacity);
+    setElementProperty(kIndicatorPanel, kRotorIds[i], "opacity",
+                       opacity.c_str());
     anyActive = true;
   }
   if (!anyActive)
@@ -577,19 +577,15 @@ void popNumOnRedraw(void *, double frameTime) {
       const float age = static_cast<float>(PopNumTime - number.createTime);
       const float ratio = -std::sin(age) / 2.0f;
       if (number.element) {
-        char left[32];
-        char top[32];
-        char opacity[32];
-        std::snprintf(left, sizeof(left), "%gpx",
-                      static_cast<double>(screen[0] - boxWidth / 2.0f));
-        std::snprintf(top, sizeof(top), "%gpx",
-                      static_cast<double>(screen[1] - boxHeight * ratio));
-        std::snprintf(opacity, sizeof(opacity), "%g",
-                      static_cast<double>(number.alpha / 255.0f));
+        const std::string left =
+            std::format("{:g}px", screen[0] - boxWidth / 2.0f);
+        const std::string top =
+            std::format("{:g}px", screen[1] - boxHeight * ratio);
+        const std::string opacity = std::format("{:g}", number.alpha / 255.0f);
         Api->ui->elementSetProperty(number.element, "display", "block");
-        Api->ui->elementSetProperty(number.element, "left", left);
-        Api->ui->elementSetProperty(number.element, "top", top);
-        Api->ui->elementSetProperty(number.element, "opacity", opacity);
+        Api->ui->elementSetProperty(number.element, "left", left.c_str());
+        Api->ui->elementSetProperty(number.element, "top", top.c_str());
+        Api->ui->elementSetProperty(number.element, "opacity", opacity.c_str());
       }
     } else if (number.element) {
       Api->ui->elementSetProperty(number.element, "display", "none");
@@ -711,15 +707,11 @@ void grenadeOnRedraw(void *, double frameTime) {
       float screen[2] = {};
       Api->ui->project(tracked.origin, screen);
       // Old 24x24 box centered on the projection.
-      char left[32];
-      char top[32];
-      std::snprintf(left, sizeof(left), "%gpx",
-                    static_cast<double>(screen[0] - 12.0f));
-      std::snprintf(top, sizeof(top), "%gpx",
-                    static_cast<double>(screen[1] - 12.0f));
+      const std::string left = std::format("{:g}px", screen[0] - 12.0f);
+      const std::string top = std::format("{:g}px", screen[1] - 12.0f);
       Api->ui->elementSetProperty(tracked.marker, "display", "block");
-      Api->ui->elementSetProperty(tracked.marker, "left", left);
-      Api->ui->elementSetProperty(tracked.marker, "top", top);
+      Api->ui->elementSetProperty(tracked.marker, "left", left.c_str());
+      Api->ui->elementSetProperty(tracked.marker, "top", top.c_str());
     } else {
       Api->ui->elementSetProperty(tracked.marker, "display", "none");
     }

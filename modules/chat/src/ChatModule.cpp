@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -230,9 +231,8 @@ void updateFade() {
   if (percent == FadeOpacity)
     return;
   FadeOpacity = percent;
-  char value[8] = {};
-  std::snprintf(value, sizeof(value), "%.2f", percent / 100.0);
-  Api->ui->documentSetProperty(doc, "opacity", value);
+  const std::string value = std::format("{:.2f}", percent / 100.0);
+  Api->ui->documentSetProperty(doc, "opacity", value.c_str());
 }
 
 void updateVisibility() {
@@ -249,9 +249,8 @@ void applyWindowHeight() {
     return;
   WindowRows = rows;
   if (AbcUiElement *log = chatLog()) {
-    char value[16] = {};
-    std::snprintf(value, sizeof(value), "%.0fdp", rows * kRowHeightDp);
-    setProperty(log, "max-height", value);
+    const std::string value = std::format("{:.0f}dp", rows * kRowHeightDp);
+    setProperty(log, "max-height", value.c_str());
   }
 }
 
@@ -310,12 +309,13 @@ void setInputText(const std::string &text) {
 
 void setPrompt(Mode mode) {
   if (AbcUiElement *prompt = query("chat-prompt")) {
-    char out[128];
     const char *token = mode == Mode::kTeam ? "Chat_Team" : "Chat_Say";
-    if (!Api->ui->translate(token, out, sizeof(out)))
-      std::snprintf(out, sizeof(out), "%s",
-                    mode == Mode::kTeam ? "#Chat_Team" : "#Chat_Say");
-    Api->ui->elementSetInnerRML(prompt, escapeText(out).c_str());
+    char translated[128];
+    const std::string text =
+        Api->ui->translate(token, translated, sizeof(translated))
+            ? std::string(translated)
+            : std::format("#{}", token);
+    Api->ui->elementSetInnerRML(prompt, escapeText(text).c_str());
   }
 }
 

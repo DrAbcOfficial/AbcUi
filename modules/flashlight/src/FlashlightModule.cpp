@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 
 namespace {
 
@@ -111,9 +112,8 @@ void hsvToRgb(const float hsv[3], float rgb[3]) {
 void setFlashBattery(int battery) {
   const float ratio =
       std::clamp(static_cast<float>(battery) / 100.0f, 0.0f, 1.0f);
-  char value[48];
-  std::snprintf(value, sizeof(value), "%gdp", ratio * kPowerWrapWidth);
-  elementSetProperty("power-wrap", "width", value);
+  std::string value = std::format("{:g}dp", ratio * kPowerWrapWidth);
+  elementSetProperty("power-wrap", "width", value.c_str());
 
   // Old SetFlashBattery: icon colour hue *= ratio (amber -> red), the
   // scheme alpha rides along.
@@ -124,16 +124,18 @@ void setFlashBattery(int battery) {
   rgbToHsv(base, hsv);
   hsv[0] *= ratio;
   hsvToRgb(hsv, rgb);
-  std::snprintf(value, sizeof(value), "rgba(%d, %d, %d, %d)",
-                static_cast<int>(rgb[0] * 255.0f + 0.5f),
-                static_cast<int>(rgb[1] * 255.0f + 0.5f),
-                static_cast<int>(rgb[2] * 255.0f + 0.5f), kIconAlpha);
-  elementSetProperty("power-bar", "image-color", value);
+  value = std::format("rgba({}, {}, {}, {})",
+                      static_cast<int>(rgb[0] * 255.0f + 0.5f),
+                      static_cast<int>(rgb[1] * 255.0f + 0.5f),
+                      static_cast<int>(rgb[2] * 255.0f + 0.5f), kIconAlpha);
+  elementSetProperty("power-bar", "image-color", value.c_str());
 
-  std::snprintf(value, sizeof(value), "%d%%", battery);
+  value = std::format("{}%", battery);
   char ink[256];
   const char *markup =
-      Api->ui->inkMarkup(value, nullptr, ink, sizeof(ink)) ? ink : value;
+      Api->ui->inkMarkup(value.c_str(), nullptr, ink, sizeof(ink))
+          ? ink
+          : value.c_str();
   if (AbcUiDocument *doc = panelDocument()) {
     if (AbcUiElement *element = Api->ui->querySelector(doc, "message"))
       Api->ui->elementSetInnerRML(element, markup);

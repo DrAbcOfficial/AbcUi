@@ -29,6 +29,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <utility>
@@ -359,18 +360,15 @@ Marker *updateMarker(int entindex, int itemIndex, float ratio,
       std::memcmp(marker.bounds, bounds, sizeof(bounds)) != 0) {
     marker.boundsValid = true;
     std::memcpy(marker.bounds, bounds, sizeof(bounds));
-    char left[32];
-    char top[32];
-    char width[32];
-    std::snprintf(left, sizeof(left), "%gpx", static_cast<double>(bounds[0]));
-    std::snprintf(top, sizeof(top), "%gpx", static_cast<double>(bounds[1]));
-    std::snprintf(width, sizeof(width), "%gpx", static_cast<double>(bounds[2]));
-    setProperty(marker.box, "width", width);
-    setProperty(marker.box, "height", width);
-    setProperty(marker.box, "left", left);
-    setProperty(marker.box, "top", top);
+    const std::string left = std::format("{:g}px", bounds[0]);
+    const std::string top = std::format("{:g}px", bounds[1]);
+    const std::string width = std::format("{:g}px", bounds[2]);
+    setProperty(marker.box, "width", width.c_str());
+    setProperty(marker.box, "height", width.c_str());
+    setProperty(marker.box, "left", left.c_str());
+    setProperty(marker.box, "top", top.c_str());
     setProperty(marker.box, "display", "block");
-    setProperty(marker.label, "line-height", width);
+    setProperty(marker.label, "line-height", width.c_str());
   }
 
   // Default (non-aim) state each frame - the aim pass re-flags the target.

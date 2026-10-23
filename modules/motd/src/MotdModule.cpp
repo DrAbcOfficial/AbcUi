@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -310,10 +311,9 @@ void panelOnData(void *, double frameTime) {
   if (remaining > 0.0) {
     if (AbcUiElement *progress = Api->ui->querySelector(doc, "progress")) {
       const float ratio = static_cast<float>(remaining / kKeepTime);
-      char width[32];
-      std::snprintf(width, sizeof(width), "%gdp",
-                    122.0 * std::clamp(ratio, 0.0f, 1.0f));
-      Api->ui->elementSetProperty(progress, "width", width);
+      const std::string width =
+          std::format("{:g}dp", 122.0 * std::clamp(ratio, 0.0f, 1.0f));
+      Api->ui->elementSetProperty(progress, "width", width.c_str());
     }
     Fading = false;
     return;

@@ -10,6 +10,7 @@
 #include <abcui/module_api.h>
 
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 
@@ -201,10 +202,9 @@ void showMenu(int validSlots, int displaySeconds, int bits, const char *text) {
 // Old SelectMenuItem: valid slot -> menuselect/as_menuselect + fade out.
 void selectMenuItem(int slot) {
   if (slot > 0 && (ValidSlots & (1 << (slot - 1)))) {
-    char command[32];
-    std::snprintf(command, sizeof(command), "%s %d\n",
-                  IsASMenu ? "as_menuselect" : "menuselect", slot);
-    Api->console->engineCommand(command);
+    const std::string command =
+        std::format("{} {}\n", IsASMenu ? "as_menuselect" : "menuselect", slot);
+    Api->console->engineCommand(command.c_str());
     setMenuOpen(false);
     closeForFade();
   }
@@ -290,9 +290,8 @@ void onModuleLoad() {
                              nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_INIT_HUD, 0, &onInitHud, nullptr);
   for (intptr_t i = 0; i < 10; i++) {
-    char name[8];
-    std::snprintf(name, sizeof(name), "slot%d", static_cast<int>(i) + 1);
-    Api->commands->subscribeCommand(name, 0, &onSlotCommand,
+    const std::string name = std::format("slot{}", i + 1);
+    Api->commands->subscribeCommand(name.c_str(), 0, &onSlotCommand,
                                     reinterpret_cast<void *>(i));
   }
 }

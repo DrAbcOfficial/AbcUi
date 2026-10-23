@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -92,10 +93,8 @@ void setPoolVisible(int pool, bool visible) {
 }
 
 std::string spriteUri(const AbcUiWeaponSprite &sprite) {
-  char uri[256];
-  std::snprintf(uri, sizeof(uri), "spricon://%s/%d,%d,%d,%d", sprite.atlas,
-                sprite.rect[0], sprite.rect[1], sprite.rect[2], sprite.rect[3]);
-  return uri;
+  return std::format("spricon://{}/{},{},{},{}", sprite.atlas, sprite.rect[0],
+                     sprite.rect[1], sprite.rect[2], sprite.rect[3]);
 }
 
 void updatePool(int pool, const AbcUiWeaponSprite &sprite,
@@ -287,18 +286,16 @@ void tickStack(StackState &stack, double frameTime) {
     }
     if (item.fadeInPending) {
       item.fadeInPending = false;
-      char transition[64];
-      std::snprintf(transition, sizeof(transition), "opacity %.2fs linear-in",
-                    stack.fadeIn);
-      Api->ui->elementSetProperty(item.element, "transition", transition);
+      Api->ui->elementSetProperty(
+          item.element, "transition",
+          std::format("opacity {:.2f}s linear-in", stack.fadeIn).c_str());
       Api->ui->elementSetProperty(item.element, "opacity", "1");
     }
     if (item.fadeStartTime < 0.0 && stack.clientTimeNow >= item.expireTime) {
       item.fadeStartTime = stack.clientTimeNow;
-      char transition[64];
-      std::snprintf(transition, sizeof(transition), "opacity %.2fs linear-in",
-                    stack.fadeOut);
-      Api->ui->elementSetProperty(item.element, "transition", transition);
+      Api->ui->elementSetProperty(
+          item.element, "transition",
+          std::format("opacity {:.2f}s linear-in", stack.fadeOut).c_str());
       Api->ui->elementSetProperty(item.element, "opacity", "0");
     }
     if (item.fadeStartTime >= 0.0 &&

@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <string>
 #include <vector>
 
@@ -153,11 +154,10 @@ void setContentSize(float width, float height) {
   AbcUiElement *content = Api->ui->querySelector(doc, "content");
   if (!content)
     return;
-  char value[32];
-  std::snprintf(value, sizeof(value), "%gdp", width);
-  Api->ui->elementSetProperty(content, "width", value);
-  std::snprintf(value, sizeof(value), "%gdp", height);
-  Api->ui->elementSetProperty(content, "height", value);
+  const std::string widthValue = std::format("{:g}dp", width);
+  Api->ui->elementSetProperty(content, "width", widthValue.c_str());
+  const std::string heightValue = std::format("{:g}dp", height);
+  Api->ui->elementSetProperty(content, "height", heightValue.c_str());
 }
 
 // Rebuilds the bar DOM from the weapon registry (old PerformLayout); keeps the
@@ -216,7 +216,7 @@ void rebuild() {
   // m_pHandledWeapon GetBounds - the bucket rides them, y included).
   float selX = 0.0f, selY = 0.0f, selW = 0.0f, selH = 0.0f;
   bool selFound = false;
-  char buffer[1024];
+  std::string buffer;
 
   // Old item bars: abw=w/10, abx=w/20, abg=w/30, abh=h/10; fill rides the
   // reserve count over max (scheme AmmoBar colors, empty = Red).
@@ -237,15 +237,14 @@ void rebuild() {
               ? std::clamp(static_cast<float>(count) / maxes[bar], 0.0f, 1.0f)
               : 1.0f;
       const float bx = abx + bar * (abw + abg);
-      std::snprintf(buffer, sizeof(buffer),
-                    "<div class='bar-bg' style='left:%.1fdp; top:0dp; "
-                    "width:%.1fdp; height:%.1fdp;'></div>"
-                    "<div class='bar-fill' style='left:%.1fdp; top:0dp; "
-                    "width:%.1fdp; height:%.1fdp; "
-                    "background-color: %s;'></div>",
-                    bx, abw, abh, bx, abw * ratio, abh,
-                    count > 0 ? "rgba(255, 255, 0, 125)"
-                              : "rgba(255, 0, 0, 255)");
+      buffer = std::format(
+          "<div class='bar-bg' style='left:{:.1f}dp; top:0dp; "
+          "width:{:.1f}dp; height:{:.1f}dp;'></div>"
+          "<div class='bar-fill' style='left:{:.1f}dp; top:0dp; "
+          "width:{:.1f}dp; height:{:.1f}dp; "
+          "background-color: {};'></div>",
+          bx, abw, abh, bx, abw * ratio, abh,
+          count > 0 ? "rgba(255, 255, 0, 125)" : "rgba(255, 0, 0, 255)");
       rml += buffer;
     }
   };
@@ -256,10 +255,9 @@ void rebuild() {
     // slotN_icon assets; the icons tint by scheme SlotColor). Additive
     // (modadd://) like the rest of the HUD ink, so the digits glow over the
     // scene instead of sitting on it.
-    std::snprintf(
-        buffer, sizeof(buffer),
-        "<div class='slot' style='left:%.0fdp; top:0dp;'>"
-        "<img src='modadd://abcui.weaponchoose/hud/img/slot%d_icon.png' "
+    buffer = std::format(
+        "<div class='slot' style='left:{:.0f}dp; top:0dp;'>"
+        "<img src='modadd://abcui.weaponchoose/hud/img/slot{}_icon.png' "
         "style='image-color: rgba(255, 176, 0, 160);'/></div>",
         x, (slot + 1) % 10);
     rml += buffer;
@@ -292,19 +290,19 @@ void rebuild() {
           active ? weapon.active : weapon.inactive;
       std::string img;
       if (source.valid) {
-        std::snprintf(buffer, sizeof(buffer),
-                      "<img src='spricon://%s/%d,%d,%d,%d' style='width:100%%; "
-                      "height:100%%; image-color: rgba(%d, %d, %d, %d);'/>",
-                      source.atlas, source.rect[0], source.rect[1],
-                      source.rect[2], source.rect[3], active ? r : ri,
-                      active ? g : gi, active ? b : bi, active ? a : ai);
+        buffer = std::format(
+            "<img src='spricon://{}/{},{},{},{}' style='width:100%; "
+            "height:100%; image-color: rgba({}, {}, {}, {});'/>",
+            source.atlas, source.rect[0], source.rect[1], source.rect[2],
+            source.rect[3], active ? r : ri, active ? g : gi, active ? b : bi,
+            active ? a : ai);
         img = buffer;
       }
 
-      std::snprintf(buffer, sizeof(buffer),
-                    "<div class='item%s' style='left:%.0fdp; top:%.0fdp; "
-                    "width:%.0fdp; height:%.0fdp;'>",
-                    active ? " active" : "", x, y, w, h);
+      buffer =
+          std::format("<div class='item{}' style='left:{:.0f}dp; top:{:.0f}dp; "
+                      "width:{:.0f}dp; height:{:.0f}dp;'>",
+                      active ? " active" : "", x, y, w, h);
       rml += buffer;
       if (active) {
         selX = x;
@@ -328,11 +326,10 @@ void rebuild() {
   // list (dropped while shown) hides the frame, like the old ChooseWeapon
   // empty-slot path.
   if (selFound) {
-    std::snprintf(
-        buffer, sizeof(buffer),
+    buffer = std::format(
         "<img id='bucket' "
         "src='mod://abcui.weaponchoose/hud/img/select_icon.png' "
-        "style='left:%.0fdp; top:%.0fdp; width:%.0fdp; height:%.0fdp; "
+        "style='left:{:.0f}dp; top:{:.0f}dp; width:{:.0f}dp; height:{:.0f}dp; "
         "image-color: rgba(255, 255, 0, 255);'/>",
         selX, selY, selW, selH);
     rml += buffer;
@@ -493,9 +490,8 @@ void onModuleLoad() {
                          nullptr);
 
   for (intptr_t i = 0; i < ABCUI_WEAPON_SLOT_COUNT; i++) {
-    char name[8];
-    std::snprintf(name, sizeof(name), "slot%d", static_cast<int>(i) + 1);
-    Api->commands->subscribeCommand(name, 0, &onSlotCommand,
+    const std::string name = std::format("slot{}", i + 1);
+    Api->commands->subscribeCommand(name.c_str(), 0, &onSlotCommand,
                                     reinterpret_cast<void *>(i));
   }
   Api->commands->subscribeCommand("invnext", 0, &onInvNext, nullptr);

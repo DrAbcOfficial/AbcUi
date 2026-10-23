@@ -19,6 +19,7 @@
 
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 
@@ -125,9 +126,7 @@ int cvarInt(AbcUiCvarHandle cvar, int fallback) {
 }
 
 std::string pixelValue(float value) {
-  char text[32];
-  std::snprintf(text, sizeof(text), "%gpx", static_cast<double>(value));
-  return text;
+  return std::format("{:g}px", value);
 }
 
 // Writes one crosshair part when its target state differs from the applied
@@ -248,16 +247,15 @@ void drawDefaultCrosshair() {
     return;
   }
 
-  char uri[256];
-  std::snprintf(uri, sizeof(uri), "spralpha://%s/%d,%d,%d,%d", source->atlas,
-                source->rect[0], source->rect[1], source->rect[2],
-                source->rect[3]);
+  const std::string uri =
+      std::format("spralpha://{}/{},{},{},{}", source->atlas, source->rect[0],
+                  source->rect[1], source->rect[2], source->rect[3]);
   const float w = static_cast<float>(source->rect[2] - source->rect[0]);
   const float h = static_cast<float>(source->rect[3] - source->rect[1]);
 
   if (SprUri != uri) {
     SprUri = uri;
-    Api->ui->elementSetAttribute(spr, "src", uri);
+    Api->ui->elementSetAttribute(spr, "src", uri.c_str());
   }
   const std::string left = pixelValue(CenterX - w / 2.0f);
   const std::string top = pixelValue(CenterY - h / 2.0f);

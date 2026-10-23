@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <string>
 
 namespace {
@@ -125,13 +126,11 @@ bool updateClientInfo(AbcUiElement *tile, int entindex) {
       setProperty(name, "color", color);
     }
   }
-  char width[32];
-  std::snprintf(width, sizeof(width), "%gdp",
-                static_cast<double>(kBarWidth * healthRatio));
-  setProperty(child(tile, "bar-health"), "width", width);
-  std::snprintf(width, sizeof(width), "%gdp",
-                static_cast<double>(kBarWidth * armorRatio));
-  setProperty(child(tile, "bar-armor"), "width", width);
+  const std::string healthWidth =
+      std::format("{:g}dp", kBarWidth * healthRatio);
+  setProperty(child(tile, "bar-health"), "width", healthWidth.c_str());
+  const std::string armorWidth = std::format("{:g}dp", kBarWidth * armorRatio);
+  setProperty(child(tile, "bar-armor"), "width", armorWidth.c_str());
 
   // Danger band icons: below hud_playerinfo_danger - dead -> skull, hurt ->
   // medkit; otherwise the crouch icon rides the hull height (old maxs.z -
@@ -256,13 +255,10 @@ void panelOnRedraw(void *, double) {
       continue;
     }
 
-    char left[32];
-    char top[32];
-    std::snprintf(left, sizeof(left), "%gpx",
-                  static_cast<double>(screen[0] - kTileHalfWidth));
-    std::snprintf(top, sizeof(top), "%gpx", static_cast<double>(screen[1]));
-    setProperty(tile, "left", left);
-    setProperty(tile, "top", top);
+    const std::string left = std::format("{:g}px", screen[0] - kTileHalfWidth);
+    const std::string top = std::format("{:g}px", screen[1]);
+    setProperty(tile, "left", left.c_str());
+    setProperty(tile, "top", top.c_str());
     setProperty(tile, "display",
                 updateClientInfo(tile, index) ? "block" : "none");
   }

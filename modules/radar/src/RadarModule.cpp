@@ -18,6 +18,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -68,9 +69,7 @@ void setProperty(AbcUiElement *element, const char *name, const char *value) {
 }
 
 std::string pixelValue(float value) {
-  char text[32];
-  std::snprintf(text, sizeof(text), "%gpx", static_cast<double>(value));
-  return text;
+  return std::format("{:g}px", value);
 }
 
 void setPlateSize(bool scaled) {
@@ -153,12 +152,11 @@ void panelOnData(void *, double) {
   // Map <img>: the external FBO texture through the registered URI; the
   // generation suffix re-resolves after frame-buffer regeneration.
   if (Api->radar->ready()) {
-    char uri[64];
-    std::snprintf(uri, sizeof(uri), "radarfbo://map?gen=%d",
-                  Api->radar->generation());
+    const std::string uri =
+        std::format("radarfbo://map?gen={}", Api->radar->generation());
     if (MapUri != uri) {
       MapUri = uri;
-      Api->ui->elementSetAttribute(map, "src", uri);
+      Api->ui->elementSetAttribute(map, "src", uri.c_str());
     }
     setProperty(map, "display", "block");
   } else {
@@ -249,10 +247,9 @@ void panelOnData(void *, double) {
 
     // Old SetPlayer(i+1, 32x32): the avatar texture resolves through the
     // framework avatar service with the cache-bust generation.
-    char uri[96];
-    std::snprintf(uri, sizeof(uri), "avatar://%llu?gen=%d",
-                  static_cast<unsigned long long>(info.steamId64),
-                  Api->players->avatarGeneration(info.steamId64));
+    const std::string uri =
+        std::format("avatar://{}?gen={}", info.steamId64,
+                    Api->players->avatarGeneration(info.steamId64));
     used.insert(index);
     AbcUiElement *&image = AvatarElements[index];
     if (!image) {
@@ -265,7 +262,7 @@ void panelOnData(void *, double) {
     std::string &appliedUri = AvatarUris[index];
     if (appliedUri != uri) {
       appliedUri = uri;
-      Api->ui->elementSetAttribute(image, "src", uri);
+      Api->ui->elementSetAttribute(image, "src", uri.c_str());
     }
     setProperty(image, "display", "block");
     const std::string left = pixelValue(screenX);
