@@ -251,12 +251,18 @@ void captureFirstFrameEvidence() {
       abc::ConsolePrint(
           "[AbcUi] first-frame: delayed capture counters paint gameui=%u/%u "
           "serverbrowser=%u/%u allowed-other=%u\n",
-          c.PaintBlocked[(int)services::PaintBucket::kGameUi],
-          c.PaintAttempts[(int)services::PaintBucket::kGameUi],
-          c.PaintBlocked[(int)services::PaintBucket::kServerBrowser],
-          c.PaintAttempts[(int)services::PaintBucket::kServerBrowser],
-          c.PaintAttempts[(int)services::PaintBucket::kOther] -
-              c.PaintBlocked[(int)services::PaintBucket::kOther]);
+          c.PaintBlocked[static_cast<std::size_t>(
+              services::PaintBucket::kGameUi)],
+          c.PaintAttempts[static_cast<std::size_t>(
+              services::PaintBucket::kGameUi)],
+          c.PaintBlocked[static_cast<std::size_t>(
+              services::PaintBucket::kServerBrowser)],
+          c.PaintAttempts[static_cast<std::size_t>(
+              services::PaintBucket::kServerBrowser)],
+          c.PaintAttempts[static_cast<std::size_t>(
+              services::PaintBucket::kOther)] -
+              c.PaintBlocked[static_cast<std::size_t>(
+                  services::PaintBucket::kOther)]);
       gEngfuncs.pfnClientCmd("screenshot\n");
       abc::ConsolePrint("[AbcUi] first-frame: screenshot issued (capture frame "
                         "after the first rendered menu frame)\n");
@@ -274,14 +280,19 @@ void captureFirstFrameEvidence() {
       "serverbrowser=%u/%u allowed-other=%u hittest-gameui=%u/%u\n",
       rmlui::paintGateInstalled() ? 1 : 0,
       services::nativeUiBridge().armed() ? 1 : 0,
-      c.PaintBlocked[(int)services::PaintBucket::kGameUi],
-      c.PaintAttempts[(int)services::PaintBucket::kGameUi],
-      c.PaintBlocked[(int)services::PaintBucket::kServerBrowser],
-      c.PaintAttempts[(int)services::PaintBucket::kServerBrowser],
-      c.PaintAttempts[(int)services::PaintBucket::kOther] -
-          c.PaintBlocked[(int)services::PaintBucket::kOther],
-      c.HitTestBlocked[(int)services::PaintBucket::kGameUi],
-      c.HitTestAttempts[(int)services::PaintBucket::kGameUi]);
+      c.PaintBlocked[static_cast<std::size_t>(services::PaintBucket::kGameUi)],
+      c.PaintAttempts[static_cast<std::size_t>(services::PaintBucket::kGameUi)],
+      c.PaintBlocked[static_cast<std::size_t>(
+          services::PaintBucket::kServerBrowser)],
+      c.PaintAttempts[static_cast<std::size_t>(
+          services::PaintBucket::kServerBrowser)],
+      c.PaintAttempts[static_cast<std::size_t>(services::PaintBucket::kOther)] -
+          c.PaintBlocked[static_cast<std::size_t>(
+              services::PaintBucket::kOther)],
+      c.HitTestBlocked[static_cast<std::size_t>(
+          services::PaintBucket::kGameUi)],
+      c.HitTestAttempts[static_cast<std::size_t>(
+          services::PaintBucket::kGameUi)]);
   // ~2s at the shipped frame rate: the startup window settles, the UI stays
   // as first presented (no input is injected between the two lines).
   FirstFrameScreenshotCountdown = 120;

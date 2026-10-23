@@ -185,7 +185,8 @@ void shutdown() {
 
 void setComposition(const char *utf8, int cursorBytes) {
   Composition = utf8 ? utf8 : "";
-  CompositionCursor = std::clamp(cursorBytes, 0, (int)Composition.size());
+  CompositionCursor =
+      std::clamp(cursorBytes, 0, static_cast<int>(Composition.size()));
   if (Composition.empty())
     Candidates.clear(); // a commit/cancel ends the page with it
   rebuild();

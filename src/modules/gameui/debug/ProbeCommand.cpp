@@ -720,7 +720,7 @@ void nativeCommand() {
                     bridge.menuUp() ? 1 : 0, bridge.pageShown() ? 1 : 0,
                     c.BaseUiKeyEvents, c.BaseUiToggles);
   const char *buckets[] = {"gameui", "serverbrowser", "other"};
-  for (int i = 0; i < (int)services::PaintBucket::kCount; i++) {
+  for (int i = 0; i < static_cast<int>(services::PaintBucket::kCount); i++) {
     abc::ConsolePrint(
         "[AbcUi] native paint %s attempts=%u blocked=%u allowed=%u\n",
         buckets[i], c.PaintAttempts[i], c.PaintBlocked[i],

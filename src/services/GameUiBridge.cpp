@@ -62,27 +62,27 @@ void NativeUiBridge::disarm() {
 
 bool NativeUiBridge::gatePaintAttempt(const char *module) {
   const PaintBucket bucket = bucketFor(module);
-  ++Counters.PaintAttempts[(int)bucket];
+  ++Counters.PaintAttempts[static_cast<std::size_t>(bucket)];
   // The module rule is the whole filter; while disarmed every attempt
   // passes (a half-installed gate must not half-suppress - T08 step 7's
   // atomic install).
   if (!armed() || !nativeUiModule(module))
     return false;
-  ++Counters.PaintBlocked[(int)bucket];
+  ++Counters.PaintBlocked[static_cast<std::size_t>(bucket)];
   return true;
 }
 
 bool NativeUiBridge::gateHitTestAttempt(const char *module) {
   const PaintBucket bucket = bucketFor(module);
-  ++Counters.HitTestAttempts[(int)bucket];
+  ++Counters.HitTestAttempts[static_cast<std::size_t>(bucket)];
   if (!armed() || !nativeUiModule(module))
     return false;
-  ++Counters.HitTestBlocked[(int)bucket];
+  ++Counters.HitTestBlocked[static_cast<std::size_t>(bucket)];
   return true;
 }
 
 bool NativeUiBridge::requestMenuUp(NativeUiOrigin origin) {
-  ++Counters.ActivateRequests[(int)origin];
+  ++Counters.ActivateRequests[static_cast<std::size_t>(origin)];
   if (MenuUp)
     return false;
   MenuUp = true;
@@ -96,7 +96,7 @@ bool NativeUiBridge::requestMenuUp(NativeUiOrigin origin) {
 }
 
 bool NativeUiBridge::requestMenuDown(NativeUiOrigin origin) {
-  ++Counters.HideRequests[(int)origin];
+  ++Counters.HideRequests[static_cast<std::size_t>(origin)];
   // T16: everything the menu carried goes with it - the console
   // presentation truth cannot survive its host (a later IsConsoleVisible
   // must not report a console whose overlay is gone).
