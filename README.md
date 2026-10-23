@@ -155,47 +155,6 @@ new registrations immediately, with rollback after the current callback
 returns. Use `ABCUI_API_HAS_MEMBER` before accessing it on an older host;
 `core->error` is diagnostic output only, not a failure report.
 
-### Module collaboration and recovery UI
-
-From AbcUi 0.8.5, modules collaborate through exact-version services and
-module-owned data channels; the framework keeps no cross-module state. Modules
-using these semantics must declare `"minAbcUi": "0.8.5"` (ABI remains 1).
-
-- `core->registerService(name, version, handler, userdata)` publishes a
-  byte-level request/response endpoint. Local names are `[a-z0-9_]+` (1..64)
-  and the version is mandatory; a provider registers from Main/onLoad/onInit
-  only. `core->serviceAvailable(provider, name, version)` and
-  `core->callService(...)` address it by manifest id and exact version. Self
-  calls are allowed; every other caller must list the provider in its manifest
-  `dependencies`, so authorization follows the declared load order. Requests
-  and responses are opaque byte buffers (at most 1 MiB each) whose layout is
-  owned by the service version: no pointers, C++ objects or ownership
-  transfers cross the boundary. Dispatch is synchronous, main-thread only and
-  bounded to 16 nested calls; negative results are the reserved host errors
-  (`ABCUI_SERVICE_UNAVAILABLE`, `_FORBIDDEN`, `_INVALID`, `_DEPTH`,
-  `_FAILED`). Registrations are process-scoped and revoked on failure/unload.
-- `events->publish(name, schemaVersion, payload, payloadSize)` publishes on
-  `module.<id>.<name>` (local name `[a-z0-9_]+`, 1..64). The payload is
-  borrowed for the dispatch only and travels as an immutable
-  `AbcUiModuleEvent` envelope (structSize, schemaVersion, payloadSize,
-  payload); consumers subscribe to that channel with `events->subscribe`.
-  Engine and veto channels cannot be published.
-- `documents->registerRecovery(desc)` names a module-owned recovery document
-  that the framework loads whenever a registered page fails; the framework
-  embeds no fallback page of its own. One provider per process (onLoad only)
-  and its path must point into its own package. `onReady`/`onClose` run with
-  the provider identity and a borrowed document handle;
-  `documents->requestRetry` defers a retry to the frame pump, so the recovery
-  document is never closed from inside its own event dispatch. The provider is
-  optional: without one a broken page simply stays unloaded
-  (`documents->degraded` still reports it), and it exits through
-  `menu->quitNow`, the confirmed exit that does not depend on the
-  quit-dialog resources.
-- A package may ship `lang/<language>.txt`; keys must be prefixed with
-  `<id>/` and are served through the same `ui->translate` lookup as the
-  shared table, so a module localizes its own RML without touching framework
-  assets. Retired packages stop being consulted immediately.
-
 ### Native fallback and explicit hooks
 
 From AbcUi 0.8.3, modules explicitly own native interception; an empty module
@@ -247,6 +206,47 @@ semantics must declare `"minAbcUi": "0.8.3"` (ABI remains 1).
 Hook subscriptions retain module ownership and follow the existing automatic
 rollback/unload cleanup. HUD shutdown does not drop process-scoped declarations;
 replacement-document checks let the native HUD render between context cycles.
+
+### Module collaboration and recovery UI
+
+From AbcUi 0.8.5, modules collaborate through exact-version services and
+module-owned data channels; the framework keeps no cross-module state. Modules
+using these semantics must declare `"minAbcUi": "0.8.5"` (ABI remains 1).
+
+- `core->registerService(name, version, handler, userdata)` publishes a
+  byte-level request/response endpoint. Local names are `[a-z0-9_]+` (1..64)
+  and the version is mandatory; a provider registers from Main/onLoad/onInit
+  only. `core->serviceAvailable(provider, name, version)` and
+  `core->callService(...)` address it by manifest id and exact version. Self
+  calls are allowed; every other caller must list the provider in its manifest
+  `dependencies`, so authorization follows the declared load order. Requests
+  and responses are opaque byte buffers (at most 1 MiB each) whose layout is
+  owned by the service version: no pointers, C++ objects or ownership
+  transfers cross the boundary. Dispatch is synchronous, main-thread only and
+  bounded to 16 nested calls; negative results are the reserved host errors
+  (`ABCUI_SERVICE_UNAVAILABLE`, `_FORBIDDEN`, `_INVALID`, `_DEPTH`,
+  `_FAILED`). Registrations are process-scoped and revoked on failure/unload.
+- `events->publish(name, schemaVersion, payload, payloadSize)` publishes on
+  `module.<id>.<name>` (local name `[a-z0-9_]+`, 1..64). The payload is
+  borrowed for the dispatch only and travels as an immutable
+  `AbcUiModuleEvent` envelope (structSize, schemaVersion, payloadSize,
+  payload); consumers subscribe to that channel with `events->subscribe`.
+  Engine and veto channels cannot be published.
+- `documents->registerRecovery(desc)` names a module-owned recovery document
+  that the framework loads whenever a registered page fails; the framework
+  embeds no fallback page of its own. One provider per process (onLoad only)
+  and its path must point into its own package. `onReady`/`onClose` run with
+  the provider identity and a borrowed document handle;
+  `documents->requestRetry` defers a retry to the frame pump, so the recovery
+  document is never closed from inside its own event dispatch. The provider is
+  optional: without one a broken page simply stays unloaded
+  (`documents->degraded` still reports it), and it exits through
+  `menu->quitNow`, the confirmed exit that does not depend on the
+  quit-dialog resources.
+- A package may ship `lang/<language>.txt`; keys must be prefixed with
+  `<id>/` and are served through the same `ui->translate` lookup as the
+  shared table, so a module localizes its own RML without touching framework
+  assets. Retired packages stop being consulted immediately.
 
 Module ids are lowercase alphanumeric segments separated by dots. Versions
 (`version` and `minAbcUi`) are non-empty dot-separated decimal segments, with
