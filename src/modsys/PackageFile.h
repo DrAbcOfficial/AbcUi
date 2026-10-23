@@ -29,7 +29,7 @@ namespace framework {
 struct PackageEntry {
   const void *data = nullptr;
   size_t size = 0;
-  std::unique_ptr<std::uint8_t[], void (*)(void *)> owned{nullptr, mz_free};
+  std::unique_ptr<std::byte[], void (*)(void *)> owned{nullptr, mz_free};
   // VFS views retain the backing mapping even if its provider is retired.
   std::shared_ptr<const void> mappingPin;
 };
@@ -57,7 +57,7 @@ private:
   // miniz's reader API takes a mutable archive handle even for read-side
   // queries, so the handle is mutable to keep the PackageFile surface const.
   mutable mz_zip_archive Archive;
-  const std::uint8_t *Base = nullptr;
+  const std::byte *Base = nullptr;
   size_t BaseSize = 0;
 };
 

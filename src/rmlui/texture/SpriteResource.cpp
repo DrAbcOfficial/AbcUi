@@ -2,6 +2,7 @@
 // from: ABCEnchance/src/core/resource/spriteresource.* (hud.txt half);
 // .spr pixel decoding per SPRView.Net Core/SprReader.cs + FrameDecoder.cs.
 #include <metahook.h>
+#include <cstddef>
 
 #include "SpriteResource.h"
 #include "SpriteUri.h"
@@ -57,7 +58,7 @@ int HudResolution = 0;
 // first and let the engine filesystem normalize, exactly like SPR_Load does.
 // Paths already carrying the "sprites/" prefix are used as-is.
 bool readSpriteFile(const std::string &atlasFile,
-                    std::vector<unsigned char> &bytes) {
+                    std::vector<std::byte> &bytes) {
   std::string normalized;
   if (atlasFile.starts_with("sprites/") || atlasFile.starts_with("sprites\\")) {
     if (!framework::ResourceFile::normalize(atlasFile, normalized))
@@ -116,7 +117,7 @@ void decodeFramePixels(const unsigned char *indexed, int pixelCount,
 }
 
 bool loadSpr(const std::string &atlasFile, DecodedAtlas &out) {
-  std::vector<unsigned char> file;
+  std::vector<std::byte> file;
   if (!readSpriteFile(atlasFile, file)) {
     abc::ConsoleWarn("[AbcUi] sprite atlas not found: sprites/%s\n",
                      atlasFile.c_str());
@@ -126,10 +127,13 @@ bool loadSpr(const std::string &atlasFile, DecodedAtlas &out) {
   const auto readInt = [&file](size_t offset, int &value) {
     if (!framework::ResourceLimits::span(offset, 4, file.size()))
       return false;
-    value = static_cast<int>(file[offset]) |
-            (static_cast<int>(file[offset + 1]) << 8) |
-            (static_cast<int>(file[offset + 2]) << 16) |
-            (static_cast<int>(file[offset + 3]) << 24);
+    value = static_cast<int>(std::to_integer<unsigned char>(file[offset])) |
+            (static_cast<int>(std::to_integer<unsigned char>(file[offset + 1]))
+             << 8) |
+            (static_cast<int>(std::to_integer<unsigned char>(file[offset + 2]))
+             << 16) |
+            (static_cast<int>(std::to_integer<unsigned char>(file[offset + 3]))
+             << 24);
     return true;
   };
 
@@ -153,8 +157,9 @@ bool loadSpr(const std::string &atlasFile, DecodedAtlas &out) {
   int paletteSize = 0;
   if (offset + 2 > file.size())
     return false;
-  paletteSize = static_cast<int>(file[offset]) |
-                (static_cast<int>(file[offset + 1]) << 8);
+  paletteSize =
+      static_cast<int>(std::to_integer<unsigned char>(file[offset])) |
+      (static_cast<int>(std::to_integer<unsigned char>(file[offset + 1])) << 8);
   offset += 2;
   if (paletteSize <= 0 || paletteSize > 256 ||
       offset + static_cast<size_t>(paletteSize) * 3 > file.size()) {
@@ -162,7 +167,8 @@ bool loadSpr(const std::string &atlasFile, DecodedAtlas &out) {
                      atlasFile.c_str());
     return false;
   }
-  const unsigned char *palette = file.data() + offset;
+  const unsigned char *palette =
+      reinterpret_cast<const unsigned char *>(file.data()) + offset;
   offset += static_cast<size_t>(paletteSize) * 3;
 
   // First readable frame; malformed tails end the table (SPRView rule -
@@ -189,7 +195,7 @@ bool loadSpr(const std::string &atlasFile, DecodedAtlas &out) {
     const size_t pixelCount = byteCount / 4;
     if (!framework::ResourceLimits::span(offset, pixelCount, file.size()))
       break;
-    pixels = file.data() + offset;
+    pixels = reinterpret_cast<const unsigned char *>(file.data()) + offset;
     offset += pixelCount;
   }
   if (!pixels) {
@@ -385,16 +391,18 @@ int textureForUri(const std::string &uri, int &width, int &height) {
 
 #ifndef NDEBUG
 namespace {
-int readProbeInt(const std::vector<unsigned char> &file, size_t offset,
-                 bool &ok) {
+int readProbeInt(const std::vector<std::byte> &file, size_t offset, bool &ok) {
   if (offset + 4 > file.size()) {
     ok = false;
     return 0;
   }
-  return static_cast<int>(file[offset]) |
-         (static_cast<int>(file[offset + 1]) << 8) |
-         (static_cast<int>(file[offset + 2]) << 16) |
-         (static_cast<int>(file[offset + 3]) << 24);
+  return static_cast<int>(std::to_integer<unsigned char>(file[offset])) |
+         (static_cast<int>(std::to_integer<unsigned char>(file[offset + 1]))
+          << 8) |
+         (static_cast<int>(std::to_integer<unsigned char>(file[offset + 2]))
+          << 16) |
+         (static_cast<int>(std::to_integer<unsigned char>(file[offset + 3]))
+          << 24);
 }
 } // namespace
 
@@ -402,7 +410,7 @@ void debugDumpAtlas(const std::string &atlasFile) {
   std::string normalized;
   const bool normalizedOk =
       framework::ResourceFile::normalize(atlasFile, normalized);
-  std::vector<unsigned char> bytes;
+  std::vector<std::byte> bytes;
   const bool readOk = readSpriteFile(atlasFile, bytes);
   abc::ConsolePrint("[AbcUi] sprdbg atlas='%s' norm='%s' normOk=%d read=%d "
                     "bytes=%u cached=%d\n",

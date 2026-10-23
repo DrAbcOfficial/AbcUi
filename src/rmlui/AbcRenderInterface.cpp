@@ -383,7 +383,7 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
     if (!File)
       return 0;
     const auto Size = abc::g_pFileSystem->Size(File);
-    std::vector<unsigned char> Bytes;
+    std::vector<std::byte> Bytes;
     if (Size > 0 && Size <= framework::ResourceLimits::MaxFileBytes) {
       Bytes.resize(Size);
       if (abc::g_pFileSystem->Read(Bytes.data(), Size, File) !=
@@ -512,7 +512,7 @@ AbcRenderInterface::loadModuleTexture(Rml::Vector2i &dimensions,
     return 0;
   framework::ImageLoader::DecodedImage image;
   if (!framework::ImageLoader::loadFromMemory(
-          {static_cast<const std::uint8_t *>(entry.data), entry.size}, image))
+          {static_cast<const std::byte *>(entry.data), entry.size}, image))
     return 0;
   const int textureId =
       uploadSurfaceTexture(image.Pixels.data(), image.Width, image.Height);

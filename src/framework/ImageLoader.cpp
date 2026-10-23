@@ -34,7 +34,7 @@ bool validDimensions(FIBITMAP *Bitmap) {
 // FreeImage reads through a FreeImageIO callback table; these adapters run
 // that interface over a plain memory span so buffers decode like files.
 struct MemoryStream {
-  const unsigned char *Data = nullptr;
+  const std::byte *Data = nullptr;
   std::size_t Size = 0;
   std::size_t Cursor = 0;
 };
@@ -219,7 +219,7 @@ bool loadFromFile(const char *path, DecodedImage &out) {
   out = DecodedImage();
   if (!path || !*path)
     return false;
-  std::vector<unsigned char> bytes;
+  std::vector<std::byte> bytes;
   if (!ResourceFile::read(path, bytes, ResourceLimits::MaxFileBytes))
     return false;
 
@@ -236,7 +236,7 @@ bool loadFromFile(const char *path, DecodedImage &out) {
   return loadStream(io, &stream, out, {}, FreeImage_GetFIFFromFilename(path));
 }
 
-bool loadFromMemory(std::span<const std::uint8_t> Data, DecodedImage &Output,
+bool loadFromMemory(std::span<const std::byte> Data, DecodedImage &Output,
                     const PaletteTransform &Transform) {
   Output = DecodedImage();
   if (Data.empty() || Data.size() > ResourceLimits::MaxFileBytes)

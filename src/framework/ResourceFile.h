@@ -27,8 +27,7 @@ namespace ResourceFile {
 // Reads the complete resource. Fails when the engine filesystem is not ready,
 // the path is invalid, or the file is larger than maxBytes. `bytes` is empty
 // on failure (and for a valid zero-byte resource).
-[[nodiscard]] bool read(std::string_view path,
-                        std::vector<unsigned char> &bytes,
+[[nodiscard]] bool read(std::string_view path, std::vector<std::byte> &bytes,
                         std::size_t maxBytes);
 
 } // namespace ResourceFile

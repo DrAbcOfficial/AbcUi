@@ -55,7 +55,7 @@ bool exists(std::string_view path) {
   return abc::g_pFileSystem->FileExists(normalized.c_str());
 }
 
-bool read(std::string_view path, std::vector<unsigned char> &bytes,
+bool read(std::string_view path, std::vector<std::byte> &bytes,
           std::size_t maxBytes) {
   bytes.clear();
   std::string normalized;

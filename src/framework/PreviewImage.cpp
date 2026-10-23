@@ -93,7 +93,7 @@ bool parsePreviewUri(const std::string &Uri, PreviewRequest &Output) {
 }
 
 bool decodePreview(const PreviewRequest &Request,
-                   const std::vector<unsigned char> &Bytes,
+                   std::span<const std::byte> Bytes,
                    ImageLoader::DecodedImage &Output) {
   // The 9 sprays the engine's multiplayer page offers, byte-exact from its
   // own table (GameUI.dll 0x100a5a98: "#Valve_<name>" + RGB), so a preview

@@ -2,6 +2,7 @@
 #include "ApiTable.h"
 
 #include <cstdarg>
+#include <cstddef>
 #include <cstdio>
 #include <cstring>
 #include <map>
@@ -366,7 +367,7 @@ int apiReadEngineFile(const char *path, void *out, uint32_t outSize,
                       uint32_t maxBytes) {
   if (!path || !*path)
     return -1;
-  std::vector<unsigned char> bytes;
+  std::vector<std::byte> bytes;
   if (!ResourceFile::read(path, bytes, maxBytes ? maxBytes : 65536u))
     return -1;
   if (out && outSize > 0) {
