@@ -42,6 +42,8 @@
 #include "VGUI2ExtensionImport.h"
 #include "../services/GameUiBridge.h"
 
+#include <format>
+
 namespace rmlui {
 
 namespace {
@@ -203,14 +205,13 @@ int LoadedFonts = 0;
 void loadFonts(const char *directory, int &loaded) {
   loaded = 0;
   for (const char *file : kFontFiles) {
-    char path[MAX_PATH];
-    _snprintf_s(path, sizeof(path), _TRUNCATE, "%s%s", directory, file);
-    if (GetFileAttributesA(path) == INVALID_FILE_ATTRIBUTES)
+    const std::string path = std::format("{}{}", directory, file);
+    if (GetFileAttributesA(path.c_str()) == INVALID_FILE_ATTRIBUTES)
       continue;
     if (Rml::LoadFontFace(path, true))
       loaded++;
     else
-      abc::ConsoleWarn("[AbcUi] font load failed: %s\n", path);
+      abc::ConsoleWarn("[AbcUi] font load failed: %s\n", path.c_str());
   }
 }
 

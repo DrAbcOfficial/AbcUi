@@ -16,6 +16,7 @@
 #include "../shared/PageShared.h"
 
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -112,9 +113,7 @@ void render() {
     markup += "\" data-serial=\"";
     markup += std::to_string(item.serial);
     markup += "\"><span class=\"inv-row-index\">";
-    char ordinal[8];
-    std::snprintf(ordinal, sizeof(ordinal), "%02d", index + 1);
-    markup += ordinal;
+    markup += std::format("{:02d}", index + 1);
     markup += "</span><span class=\"inv-row-name\">";
     markup += escapeText(
         item.name[0] ? item.name

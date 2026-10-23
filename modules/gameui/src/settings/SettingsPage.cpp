@@ -38,6 +38,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -156,9 +157,7 @@ void setProperty(AbcUiElement *element, const char *name, const char *value) {
 }
 
 std::string numberText(float value) {
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%g", static_cast<double>(value));
-  return buffer;
+  return std::format("{:g}", value);
 }
 
 bool isOn(float value) {

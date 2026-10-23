@@ -30,6 +30,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -594,15 +595,14 @@ void refreshSelectionOverlay(bool force) {
       const float y = textOriginY + line.y - layerOriginY;
       if (right <= x || y + lineHeight <= 0.0f || y >= layerHeight)
         continue;
-      char style[192];
-      std::snprintf(style, sizeof(style),
-                    "left:%.2fpx; top:%.2fpx; width:%.2fpx; height:%.2fpx;", x,
-                    y, right - x, lineHeight);
+      const std::string style = std::format(
+          "left:{:.2f}px; top:{:.2f}px; width:{:.2f}px; height:{:.2f}px;", x, y,
+          right - x, lineHeight);
       AbcUiElement *rectangle =
           Api->ui->elementAppendRml(layer, "", "console-selection-rect");
       if (!rectangle)
         continue;
-      Api->ui->elementSetAttribute(rectangle, "style", style);
+      Api->ui->elementSetAttribute(rectangle, "style", style.c_str());
     }
   }
 }
@@ -661,12 +661,10 @@ void openContextMenu(float pointX, float pointY) {
       pointX, 0.0f, std::max(0.0f, static_cast<float>(docWidth) - menuWidth));
   float y = std::clamp(
       pointY, 0.0f, std::max(0.0f, static_cast<float>(docHeight) - menuHeight));
-  char left[40];
-  char top[40];
-  std::snprintf(left, sizeof(left), "%.0fpx", x);
-  std::snprintf(top, sizeof(top), "%.0fpx", y);
-  Api->ui->elementSetProperty(menu, "left", left);
-  Api->ui->elementSetProperty(menu, "top", top);
+  const std::string left = std::format("{:.0f}px", x);
+  const std::string top = std::format("{:.0f}px", y);
+  Api->ui->elementSetProperty(menu, "left", left.c_str());
+  Api->ui->elementSetProperty(menu, "top", top.c_str());
   setDisplay("console-context-menu", true);
   ContextMenuOpen = true;
 }
@@ -772,16 +770,15 @@ void rebuildCompletion(const std::string &prefix, bool apply) {
     if (AbcUiElement *child = Api->ui->elementChild(list, i))
       Api->ui->elementRemove(child);
   }
-  char indexText[16];
   for (int i = 0; i < count; ++i) {
     AbcUiElement *row = Api->ui->elementAppendRml(
         list, escapeText(Suggestions[static_cast<size_t>(i)]).c_str(),
         "console-suggestion");
     if (!row)
       continue;
-    std::snprintf(indexText, sizeof(indexText), "%d", i);
+    const std::string indexText = std::format("{}", i);
     Api->ui->elementSetAttribute(row, "data-action", "console-suggestion");
-    Api->ui->elementSetAttribute(row, "data-index", indexText);
+    Api->ui->elementSetAttribute(row, "data-index", indexText.c_str());
   }
   if (more) {
     AbcUiElement *row =

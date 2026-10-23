@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -98,10 +99,7 @@ std::string tokenValue(const char *name, int value) {
 std::string playersCell(const AbcUiSbEntry &entry) {
   if (!entry.responded)
     return "?";
-  char buffer[24];
-  std::snprintf(buffer, sizeof(buffer), "%d/%d", entry.players,
-                entry.maxPlayers);
-  return buffer;
+  return std::format("{}/{}", entry.players, entry.maxPlayers);
 }
 
 std::string botsCell(const AbcUiSbEntry &entry) {
@@ -113,9 +111,7 @@ std::string botsCell(const AbcUiSbEntry &entry) {
 std::string pingCell(const AbcUiSbEntry &entry) {
   if (!entry.responded || entry.pingMs < 0)
     return "-";
-  char buffer[16];
-  std::snprintf(buffer, sizeof(buffer), "%d", entry.pingMs);
-  return buffer;
+  return std::format("{}", entry.pingMs);
 }
 
 std::string addressCell(const AbcUiSbEntry &entry) {
@@ -123,11 +119,9 @@ std::string addressCell(const AbcUiSbEntry &entry) {
     return "-";
   const int port =
       entry.connectionPort ? entry.connectionPort : entry.queryPort;
-  char text[48];
-  std::snprintf(text, sizeof(text), "%u.%u.%u.%u", entry.ip >> 24,
-                (entry.ip >> 16) & 0xff, (entry.ip >> 8) & 0xff,
-                entry.ip & 0xff);
-  std::string out = text;
+  std::string out =
+      std::format("{}.{}.{}.{}", entry.ip >> 24, (entry.ip >> 16) & 0xff,
+                  (entry.ip >> 8) & 0xff, entry.ip & 0xff);
   if (port)
     out += ":" + std::to_string(port);
   return out;
@@ -143,14 +137,10 @@ std::string detailLine(const char *labelToken, const std::string &value) {
 std::string playTime(int seconds) {
   if (seconds < 0)
     seconds = 0;
-  char buffer[24];
   if (seconds >= 3600)
-    std::snprintf(buffer, sizeof(buffer), "%d:%02d:%02d", seconds / 3600,
-                  (seconds / 60) % 60, seconds % 60);
-  else
-    std::snprintf(buffer, sizeof(buffer), "%d:%02d", seconds / 60,
-                  seconds % 60);
-  return buffer;
+    return std::format("{}:{:02d}:{:02d}", seconds / 3600, (seconds / 60) % 60,
+                       seconds % 60);
+  return std::format("{}:{:02d}", seconds / 60, seconds % 60);
 }
 
 // The blacklist's "blocked at" cell. A rule written before the timestamp
@@ -164,11 +154,9 @@ std::string blockedAtCell(uint64_t seconds) {
   std::tm parts{};
   if (localtime_s(&parts, &stamp) != 0)
     return "-";
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%04d-%02d-%02d %02d:%02d",
-                parts.tm_year + 1900, parts.tm_mon + 1, parts.tm_mday,
-                parts.tm_hour, parts.tm_min);
-  return buffer;
+  return std::format("{:04d}-{:02d}-{:02d} {:02d}:{:02d}", parts.tm_year + 1900,
+                     parts.tm_mon + 1, parts.tm_mday, parts.tm_hour,
+                     parts.tm_min);
 }
 
 const char *tabActionOf(int kind) {
@@ -327,10 +315,9 @@ void render() {
   setDisabled("sb-page-prev", Api->serverbrowser->page() <= 0);
   setDisabled("sb-page-next", Api->serverbrowser->page() >=
                                   Api->serverbrowser->pageCount() - 1);
-  char pageLabel[48];
-  std::snprintf(pageLabel, sizeof(pageLabel), "%d / %d",
-                Api->serverbrowser->page() + 1,
-                Api->serverbrowser->pageCount());
+  const std::string pageLabel =
+      std::format("{} / {}", Api->serverbrowser->page() + 1,
+                  Api->serverbrowser->pageCount());
   setInnerRml("sb-page-label", escapeText(pageLabel));
 
   // --- the detail window's content (the CURRENT single slot only) ---------
@@ -575,11 +562,10 @@ void openContextMenu(float pointX, float pointY) {
     left = 0;
   if (top < 0)
     top = 0;
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%dpx", left);
-  Api->ui->elementSetProperty(menu, "left", buffer);
-  std::snprintf(buffer, sizeof(buffer), "%dpx", top);
-  Api->ui->elementSetProperty(menu, "top", buffer);
+  const std::string leftText = std::format("{}px", left);
+  Api->ui->elementSetProperty(menu, "left", leftText.c_str());
+  const std::string topText = std::format("{}px", top);
+  Api->ui->elementSetProperty(menu, "top", topText.c_str());
   Api->ui->elementSetClass(menu, "sb-open", 1);
 }
 
@@ -647,10 +633,10 @@ void handleChange(AbcUiElement *target, const std::string &value) {
   bool masterPair = false;
   if (std::string_view(id) == "sb-filter-name") {
     changed = std::string_view(filter.name) != value;
-    std::snprintf(filter.name, sizeof(filter.name), "%s", value.c_str());
+    copyCString(filter.name, value);
   } else if (std::string_view(id) == "sb-filter-map") {
     changed = std::string_view(filter.map) != value;
-    std::snprintf(filter.map, sizeof(filter.map), "%s", value.c_str());
+    copyCString(filter.map, value);
   } else if (std::string_view(id) == "sb-filter-ping") {
     const auto parsed = parseInt(value);
     if (!parsed || *parsed < 0 || *parsed > 500)

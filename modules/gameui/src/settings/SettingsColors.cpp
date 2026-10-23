@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -46,10 +47,10 @@ bool parseHex(const char *text, unsigned char out[4]) {
 }
 
 std::string formatHex(const unsigned char color[4]) {
-  char buffer[10];
-  std::snprintf(buffer, sizeof(buffer), "#%02x%02x%02x%02x", color[0], color[1],
-                color[2], color[3]);
-  return buffer;
+  return std::format(
+      "#{:02x}{:02x}{:02x}{:02x}", static_cast<unsigned>(color[0]),
+      static_cast<unsigned>(color[1]), static_cast<unsigned>(color[2]),
+      static_cast<unsigned>(color[3]));
 }
 
 int channelValue(float value) {
@@ -111,9 +112,9 @@ void handleColorChange(const char *elementId, const char *value) {
     AbcUiSettingRow row{};
     if (!rowFound(cvars[channel], row) || (row.flags & ABCUI_SET_ROW_MISSING))
       return; // fail-closed: the element is disabled in this state
-    char text[8];
-    std::snprintf(text, sizeof(text), "%d", static_cast<int>(color[channel]));
-    Api->settings->setDraftText(cvars[channel], text);
+    const std::string text =
+        std::format("{}", static_cast<int>(color[channel]));
+    Api->settings->setDraftText(cvars[channel], text.c_str());
   }
 }
 

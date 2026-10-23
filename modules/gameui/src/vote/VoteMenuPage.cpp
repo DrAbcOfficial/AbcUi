@@ -11,6 +11,7 @@
 #include "../shared/PageShared.h"
 
 #include <cstdio>
+#include <format>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -122,10 +123,8 @@ void appendRow(std::string &markup, int kind, int index,
     markup += escapeText(row.name);
     markup += "</span>";
   } else {
-    char slot[8];
-    std::snprintf(slot, sizeof(slot), "%02d", row.slot);
     markup += "<span class=\"vm-slot\">";
-    markup += slot;
+    markup += std::format("{:02d}", row.slot);
     markup += "</span><span class=\"vm-name\">";
     markup += escapeText(row.name);
     markup += "</span><span class=\"vm-real\">";
@@ -188,9 +187,7 @@ void render() {
   }
   setInnerRml("vm-list", markup);
 
-  char countText[32];
-  std::snprintf(countText, sizeof(countText), "%d", count);
-  setInnerRml("vm-count", countText);
+  setInnerRml("vm-count", std::format("{}", count));
 
   std::string selectedName;
   AbcUiVoteCandidate selected;

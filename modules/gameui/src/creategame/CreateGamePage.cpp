@@ -14,6 +14,7 @@
 #include "../shared/PageShared.h"
 
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -101,9 +102,7 @@ bool validOptionName(const char *name) {
 }
 
 std::string number(float value) {
-  char text[48];
-  std::snprintf(text, sizeof(text), "%.9g", static_cast<double>(value));
-  return text;
+  return std::format("{:.9g}", value);
 }
 
 void showHint(const char *text);
@@ -150,11 +149,8 @@ void prepare() {
       rows += "</span></div>";
     }
     setInnerRml("cg-map-list", rows);
-    char text[48];
-    std::snprintf(text, sizeof(text), "%d / %d",
-                  static_cast<int>(catalog.size()),
-                  static_cast<int>(catalog.size()));
-    setInnerRml("cg-map-count", text);
+    setInnerRml("cg-map-count",
+                std::format("{} / {}", catalog.size(), catalog.size()));
   }
 
   Api->ui->elementSetValue(node("cg-players"), "8");
@@ -301,10 +297,7 @@ void filterMaps(const std::string &query) {
   Api->ui->elementSelectSetSelection(
       select, Api->ui->elementSelectCount(select) ? selected : -1);
   setInnerRml("cg-map-list", rows);
-  char text[48];
-  std::snprintf(text, sizeof(text), "%d / %d", matches,
-                static_cast<int>(count));
-  setInnerRml("cg-map-count", text);
+  setInnerRml("cg-map-count", std::format("{} / {}", matches, count));
   highlightSelectedMap();
   if (AbcUiElement *apply = node("cg-apply"))
     Api->ui->elementSetAttribute(
@@ -344,8 +337,8 @@ void apply() {
   const auto push = [&fields](const char *name, const std::string &value) {
     AbcUiCgField field{};
     field.structSize = sizeof(field);
-    std::snprintf(field.name, sizeof(field.name), "%s", name);
-    std::snprintf(field.value, sizeof(field.value), "%s", value.c_str());
+    copyCString(field.name, name);
+    copyCString(field.value, value);
     fields.push_back(field);
   };
   push("map", selectedMap());

@@ -19,6 +19,7 @@
 #include "../shared/PageShared.h"
 
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <string>
@@ -364,13 +365,11 @@ void openFriendMenu(const char *steamId, const char *address, int x, int y) {
     return;
   MenuFriendId = steamId ? steamId : "";
   MenuFriendAddress = address ? address : "";
-  char left[32];
-  char top[32];
   // Keep the menu inside the window: it is 116dp wide and 24dp tall.
-  std::snprintf(left, sizeof(left), "%dpx", x > 640 ? x - 116 : x);
-  std::snprintf(top, sizeof(top), "%dpx", y);
-  Api->ui->elementSetProperty(menu, "left", left);
-  Api->ui->elementSetProperty(menu, "top", top);
+  const std::string left = std::format("{}px", x > 640 ? x - 116 : x);
+  const std::string top = std::format("{}px", y);
+  Api->ui->elementSetProperty(menu, "left", left.c_str());
+  Api->ui->elementSetProperty(menu, "top", top.c_str());
   Api->ui->elementSetProperty(menu, "display", "block");
 }
 

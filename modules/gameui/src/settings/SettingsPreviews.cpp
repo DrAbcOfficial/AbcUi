@@ -5,6 +5,7 @@
 #include "SettingsInternal.h"
 
 #include <cstdio>
+#include <format>
 #include <string>
 
 namespace settingspage {
@@ -74,16 +75,11 @@ std::string rgbaText(int red, int green, int blue, int alpha) {
 }
 
 std::string translateRect(float x, float y) {
-  char buffer[64];
-  std::snprintf(buffer, sizeof(buffer), "translate(%gpx, %gpx)",
-                static_cast<double>(x), static_cast<double>(y));
-  return buffer;
+  return std::format("translate({:g}px, {:g}px)", x, y);
 }
 
 std::string sizeText(float value) {
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%gpx", static_cast<double>(value));
-  return buffer;
+  return std::format("{:g}px", value);
 }
 
 void applyPreviewPart(AbcUiElement *element, PreviewPart &applied,

@@ -2,6 +2,7 @@
 #include "modules/gameui/GameUiModule.h"
 
 #include <cstring>
+#include <format>
 
 #include "../../data/WeaponResource.h"
 #include "../../framework/ResourceLimits.h"
@@ -190,10 +191,7 @@ GameUiModule::GameUiModule()
     modelLabel = facts.ModelName;
   };
   shellAccess.buildNote = [](std::string &note) {
-    char build[64];
-    _snprintf_s(build, sizeof(build), _TRUNCATE, "Sven Co-op build %u",
-                abc::g_dwEngineBuildnum);
-    note = build;
+    note = std::format("Sven Co-op build {}", abc::g_dwEngineBuildnum);
   };
   services::uiconfig::setShellAccess(shellAccess);
   // The shell's friends board join intent: validated here (the address

@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <cstring>
 
 #include <Windows.h>
@@ -50,9 +51,7 @@ float LineHeight = 0.0f;
 bool AnchorValid = false;
 
 std::string dpValue(float value) {
-  char buffer[32] = {};
-  std::snprintf(buffer, sizeof(buffer), "%.2fdp", value);
-  return buffer;
+  return std::format("{:.2f}dp", value);
 }
 
 // UTF-8 code points, not bytes: a CJK row is three bytes per glyph and the

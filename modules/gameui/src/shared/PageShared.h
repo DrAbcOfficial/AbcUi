@@ -11,6 +11,8 @@
 
 #include <charconv>
 #include <cmath>
+#include <cstddef>
+#include <cstring>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -42,6 +44,15 @@ inline std::optional<float> parseFloat(std::string_view text) {
   if (result.ec != std::errc{} || result.ptr != end || !std::isfinite(value))
     return std::nullopt;
   return value;
+}
+
+// Bounded copy into an ABI struct's fixed char array: truncate with a
+// terminator instead of overrunning the caller's storage.
+template <std::size_t N>
+void copyCString(char (&dest)[N], std::string_view text) {
+  const std::size_t count = text.size() < N - 1 ? text.size() : N - 1;
+  std::memcpy(dest, text.data(), count);
+  dest[count] = '\0';
 }
 
 // ui->translate is not a measure-then-copy call (it takes the whole string

@@ -20,6 +20,7 @@
 #include "../shared/PageShared.h"
 
 #include <algorithm>
+#include <format>
 #include <cstring>
 #include <string>
 #include <string_view>
@@ -101,10 +102,7 @@ std::string resolveText(const std::string &raw) {
 }
 
 std::string percentText(float fraction) {
-  char buffer[16];
-  std::snprintf(buffer, sizeof(buffer), "%.0f%%",
-                std::clamp(fraction, 0.0f, 1.0f) * 100.0f);
-  return buffer;
+  return std::format("{:.0f}%", std::clamp(fraction, 0.0f, 1.0f) * 100.0f);
 }
 
 // --- the loading page --------------------------------------------------------

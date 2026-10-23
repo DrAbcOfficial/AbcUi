@@ -11,6 +11,7 @@
 #include <abc/Parse.h>
 
 #include <algorithm>
+#include <format>
 #include <cstring>
 #include <vector>
 
@@ -36,9 +37,7 @@ void attachForSeam(Rml::ElementDocument *document) {
 }
 
 void setPixel(Rml::Element *element, const char *property, float value) {
-  char text[32];
-  _snprintf_s(text, sizeof(text), _TRUNCATE, "%.1fpx", value);
-  element->SetProperty(property, text);
+  element->SetProperty(property, std::format("{:.1f}px", value).c_str());
 }
 
 } // namespace
@@ -166,9 +165,7 @@ bool ElementBackdrop::sync() {
   }
   if (AppliedDim != Dim) {
     AppliedDim = Dim;
-    char text[32];
-    _snprintf_s(text, sizeof(text), _TRUNCATE, "%.2f", Dim);
-    Dimmer->SetProperty("opacity", text);
+    Dimmer->SetProperty("opacity", std::format("{:.2f}", Dim).c_str());
   }
 
   const std::string &uri = menubackdrop::menuBackdrop().uri();

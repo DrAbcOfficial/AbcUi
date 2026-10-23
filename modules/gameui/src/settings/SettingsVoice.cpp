@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <string>
 
 namespace settingspage {
@@ -23,9 +24,8 @@ void renderVoiceSectionImpl() {
   const float level = available ? facts.speakingLevel : 0.0f;
   if (AbcUiElement *fill = node("voice-meter-fill")) {
     const float clamped = std::clamp(level, 0.0f, 1.0f);
-    char width[32];
-    std::snprintf(width, sizeof(width), "%g%%", clamped * 100.0f);
-    setProperty(fill, "width", width);
+    const std::string width = std::format("{:g}%", clamped * 100.0f);
+    setProperty(fill, "width", width.c_str());
     setProperty(fill, "background-color",
                 level > 0.85f  ? "#dd634f"
                 : level > 0.6f ? "#d4bd4c"
@@ -51,11 +51,10 @@ void renderVoiceSectionImpl() {
   // skipped like every text row (caret/IME survival).
   if (volumeInput && volumeInput != VoiceVolumeSkip) {
     const float shown = facts.micDirty ? facts.micVolumeDraft : facts.micVolume;
-    char buffer[32];
-    std::snprintf(buffer, sizeof(buffer), "%d",
-                  static_cast<int>(shown * 100.0f + 0.5f));
-    Api->ui->elementSetValue(volumeInput, buffer);
-    setInnerRml(node("voice-mic-value"), std::string(buffer) + "%");
+    const std::string buffer =
+        std::format("{}", static_cast<int>(shown * 100.0f + 0.5f));
+    Api->ui->elementSetValue(volumeInput, buffer.c_str());
+    setInnerRml(node("voice-mic-value"), buffer + "%");
   }
   if (boostToggle) {
     const bool on =

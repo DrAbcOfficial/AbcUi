@@ -15,6 +15,7 @@
 #include <abc/Paths.h>
 
 #include <algorithm>
+#include <format>
 #include <cmath>
 #include <cstring>
 #include <vector>
@@ -138,9 +139,7 @@ void ElementVideo::applyPlacement(Rml::Vector2i box, float width,
     if (Placement[i] == values[i])
       continue;
     Placement[i] = values[i];
-    char text[32];
-    _snprintf_s(text, sizeof(text), _TRUNCATE, "%.2fpx", values[i]);
-    Image->SetProperty(names[i], text);
+    Image->SetProperty(names[i], std::format("{:.2f}px", values[i]).c_str());
   }
 }
 

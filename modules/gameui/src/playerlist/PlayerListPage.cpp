@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <format>
 #include <string_view>
 
 namespace playerlistpage {
@@ -74,9 +75,7 @@ void appendRow(std::string &markup, const AbcUiPlayerRow &row) {
   markup += std::to_string(row.slot);
   markup += "\"";
   if (row.steamId64 != 0) {
-    char id[32];
-    std::snprintf(id, sizeof(id), "%llu",
-                  static_cast<unsigned long long>(row.steamId64));
+    const std::string id = std::format("{}", row.steamId64);
     markup += " data-steamid=\"";
     markup += id;
     markup += "\"";

@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <format>
 #include <string>
 
 namespace settingspage {
@@ -222,14 +223,11 @@ void openModelContextMenu(AbcUiElement *entry, float mouseX, float mouseY) {
   const float menuHeight = 31.0f * scale;
   const float maxX = width > 0 ? std::max(0.0f, width - menuWidth) : 0.0f;
   const float maxY = height > 0 ? std::max(0.0f, height - menuHeight) : 0.0f;
-  char left[32];
-  char top[32];
-  std::snprintf(left, sizeof(left), "%gpx",
-                static_cast<double>(std::clamp(mouseX, 0.0f, maxX)));
-  std::snprintf(top, sizeof(top), "%gpx",
-                static_cast<double>(std::clamp(mouseY, 0.0f, maxY)));
-  setProperty(menu, "left", left);
-  setProperty(menu, "top", top);
+  const std::string left =
+      std::format("{:g}px", std::clamp(mouseX, 0.0f, maxX));
+  const std::string top = std::format("{:g}px", std::clamp(mouseY, 0.0f, maxY));
+  setProperty(menu, "left", left.c_str());
+  setProperty(menu, "top", top.c_str());
   // The menu carries one fixed intent; its label flips with the target row's
   // current state.
   setInnerRml(node("model-picker-context-fav"),

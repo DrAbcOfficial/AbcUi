@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <format>
 #include <cstdlib>
 #include <cstring>
 #include <string_view>
@@ -164,9 +165,7 @@ SettingsModel::runtime(const char *cvar) const {
 std::string SettingsModel::formatValue(float value) {
   // %g keeps the table's values readable ("3", "0.7", "20") without
   // decimal trails; %.1f would invent precision the domain does not carry.
-  char buffer[32];
-  std::snprintf(buffer, sizeof(buffer), "%g", static_cast<double>(value));
-  return buffer;
+  return std::format("{:g}", value);
 }
 
 bool SettingsModel::parseValue(const char *text, float &out) {
