@@ -24,17 +24,20 @@
 
 #pragma pack(push, 8)
 
-// hud.native.draw - veto, queried immediately before the native HUD redraw.
-// Nonzero hides only this native element for this redraw. Modules must return
-// zero while their replacement document is unavailable. No claim = native.
-// These are whole client elements: AMMO includes its weapon-selection UI;
-// HEALTH includes damage indicators. TRAIN is intentionally not claimable.
+// hud.native.draw - veto, queried before the native HUD redraw and before the
+// native viewport overlays paint. Nonzero hides only this native element for
+// this redraw/frame. Modules must return zero while their replacement
+// document is unavailable. No claim = native. These are whole client
+// elements: AMMO includes its weapon-selection UI; HEALTH includes damage
+// indicators; SPECTATOR is the viewport's observer bottom bar (mode, target,
+// health and armor). TRAIN is intentionally not claimable.
 #define ABCUI_CHANNEL_HUD_NATIVE_DRAW "hud.native.draw"
 #define ABCUI_NATIVE_HUD_HEALTH 0
 #define ABCUI_NATIVE_HUD_BATTERY 1
 #define ABCUI_NATIVE_HUD_AMMO 2
 #define ABCUI_NATIVE_HUD_FLASHLIGHT 4
 #define ABCUI_NATIVE_HUD_CROSSHAIR 5
+#define ABCUI_NATIVE_HUD_SPECTATOR 6
 typedef struct AbcUiNativeHudEvent {
   int32_t element;
 } AbcUiNativeHudEvent;
