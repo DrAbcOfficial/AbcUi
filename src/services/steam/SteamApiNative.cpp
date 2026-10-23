@@ -26,6 +26,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 namespace steamapi {
 
@@ -87,8 +88,8 @@ SteamApiBackend *nativeBackend() {
       if (Friends->RequestUserInformation(CSteamID(id), true))
         return {};
       const char *name = Friends->GetFriendPersonaName(CSteamID(id));
-      if (name &&
-          (strcmp(name, "[unknown]") == 0 || strcmp(name, "unknown") == 0))
+      if (name && (std::string_view(name) == "[unknown]" ||
+                   std::string_view(name) == "unknown"))
         return {};
       return name ? std::string(name) : std::string();
     }

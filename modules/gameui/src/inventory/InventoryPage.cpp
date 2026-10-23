@@ -19,6 +19,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace inventorypage {
 namespace {
@@ -244,7 +245,7 @@ int32_t onKey(void *, const void *payload) {
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   // Walk up from the event target to the element carrying the intent; the
   // rows carry data-serial, buttons carry data-action.

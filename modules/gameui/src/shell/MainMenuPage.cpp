@@ -23,6 +23,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace menupage {
 namespace {
@@ -86,11 +87,11 @@ int32_t onFocusEvent(void *userdata, AbcUiElement *target,
 // "notsingle" split, verified against the shipped GameUI): the no-map home
 // always shows its rows, the pause page's multiplayer rows follow the fact.
 bool conditionAllows(const char *condition, bool multiplayer) {
-  if (!condition || !*condition || std::strcmp(condition, "always") == 0)
+  if (!condition || !*condition || std::string_view(condition) == "always")
     return true;
-  if (std::strcmp(condition, "multiplayer") == 0)
+  if (std::string_view(condition) == "multiplayer")
     return multiplayer;
-  if (std::strcmp(condition, "singleplayer") == 0)
+  if (std::string_view(condition) == "singleplayer")
     return !multiplayer;
   return true;
 }
@@ -401,7 +402,7 @@ int32_t onMousedown(void *, AbcUiElement *target,
                     const AbcUiElementEvent *event) {
   if (!event || !target)
     return 0;
-  if (std::strcmp(event->type, "mousedown") ||
+  if (std::string_view(event->type) != "mousedown" ||
       event->button != 1) // right button only
     return 0;
   handleContextMenu(target, event->mouseX, event->mouseY);
@@ -412,15 +413,15 @@ int32_t onFocusEvent(void *, AbcUiElement *target,
                      const AbcUiElementEvent *event) {
   if (!event || !target)
     return 0;
-  if (!std::strcmp(event->type, "focus"))
+  if (std::string_view(event->type) == "focus")
     updateFocusStatus(target);
-  else if (!std::strcmp(event->type, "blur"))
+  else if (std::string_view(event->type) == "blur")
     updateFocusStatus(nullptr);
   return 0;
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   // Any left click closes an open friend menu first: the menu itself is
   // the only click target that keeps it alive.
@@ -433,7 +434,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
   if (!insideMenu) {
     closeFriendMenu();
   } else if (const char *id = Api->ui->elementId(target);
-             id && !std::strcmp(id, "friend-menu-join")) {
+             id && std::string_view(id) == "friend-menu-join") {
     if (!MenuFriendId.empty())
       Api->social->join(std::strtoull(MenuFriendId.c_str(), nullptr, 10),
                         MenuFriendAddress.c_str());

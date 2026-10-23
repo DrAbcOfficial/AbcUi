@@ -12,6 +12,7 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+#include <string_view>
 
 namespace framework {
 
@@ -75,9 +76,9 @@ void Localization::load() {
   path += language;
   path += ".txt";
   parseTableFile("abc/abcui/lang/english.txt");
-  if (strcmp(language, "english") != 0)
+  if (std::string_view(language) != "english")
     parseTableFile(path);
-  if (Table.empty() && strcmp(language, "english") != 0) {
+  if (Table.empty() && std::string_view(language) != "english") {
     abc::ConsoleWarn(
         "[AbcUi] no localization for \"%s\", falling back to english\n",
         language);
@@ -85,7 +86,7 @@ void Localization::load() {
   }
   for (const auto &id : ModuleVfs::mountedIds()) {
     parseModuleTable(id, "english");
-    if (strcmp(language, "english") != 0)
+    if (std::string_view(language) != "english")
       parseModuleTable(id, language);
   }
 }

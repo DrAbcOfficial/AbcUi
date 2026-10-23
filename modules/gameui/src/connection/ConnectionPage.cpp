@@ -22,6 +22,7 @@
 #include <algorithm>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace connectionpage {
 namespace {
@@ -289,7 +290,7 @@ void hideDirect() {
 
 int32_t onLoadingClick(void *, AbcUiElement *target,
                        const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *entry = target;
   std::string action;
@@ -309,7 +310,7 @@ int32_t onLoadingClick(void *, AbcUiElement *target,
 
 int32_t onErrorClick(void *, AbcUiElement *target,
                      const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *entry = target;
   std::string action;
@@ -332,7 +333,7 @@ int32_t onErrorClick(void *, AbcUiElement *target,
 
 int32_t onPasswordClick(void *, AbcUiElement *target,
                         const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *entry = target;
   std::string action;
@@ -360,7 +361,7 @@ int32_t onPasswordClick(void *, AbcUiElement *target,
 
 int32_t onDirectClick(void *, AbcUiElement *target,
                       const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *entry = target;
   std::string action;

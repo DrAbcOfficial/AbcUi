@@ -18,6 +18,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace creategamepage {
 namespace {
@@ -373,7 +374,7 @@ void apply() {
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *entry = target;
   std::string action;
@@ -416,12 +417,12 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
 }
 
 int32_t onChange(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "change"))
+  if (!event || !target || std::string_view(event->type) != "change")
     return 0;
   const char *id = Api->ui->elementId(target);
   if (!id)
     return 0;
-  if (!std::strcmp(id, "cg-map-filter")) {
+  if (std::string_view(id) == "cg-map-filter") {
     filterMaps(inputValue("cg-map-filter"));
     return 0;
   }

@@ -10,6 +10,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <string_view>
 
 namespace services {
 namespace settings {
@@ -61,7 +62,7 @@ bool optionTokenValid(const char *text) {
     if (std::strchr("\"'`\\;/|<>*?[]:", *p))
       return false;
   }
-  if (!std::strcmp(text, ".") || !std::strcmp(text, ".."))
+  if (std::string_view(text) == "." || std::string_view(text) == "..")
     return false;
   return true;
 }
@@ -143,7 +144,7 @@ SettingsModel::RowRuntime *SettingsModel::runtime(const char *cvar) {
   if (!cvar)
     return nullptr;
   for (auto &entry : Rows_) {
-    if (std::strcmp(entry.row->Cvar, cvar) == 0)
+    if (std::string_view(entry.row->Cvar) == cvar)
       return &entry;
   }
   return nullptr;
@@ -154,7 +155,7 @@ SettingsModel::runtime(const char *cvar) const {
   if (!cvar)
     return nullptr;
   for (const auto &entry : Rows_) {
-    if (std::strcmp(entry.row->Cvar, cvar) == 0)
+    if (std::string_view(entry.row->Cvar) == cvar)
       return &entry;
   }
   return nullptr;
@@ -403,8 +404,8 @@ bool SettingsModel::validateString(const RowRuntime &entry,
     bool known = std::binary_search(entry.options.begin(), entry.options.end(),
                                     std::string(text));
     for (int i = 0; !known && i < entry.row->OptionCount; ++i)
-      known = std::strcmp(entry.row->Options[i].Label, text) ==
-              0; // fixed token table
+      known = std::string_view(entry.row->Options[i].Label) ==
+              text; // fixed token table
     if (!known)
       return false;
   }

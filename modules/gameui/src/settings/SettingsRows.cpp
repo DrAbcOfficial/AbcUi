@@ -8,6 +8,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace settingspage {
 
@@ -193,12 +194,12 @@ void buildRows() {
           }
         }
         const auto visibleRow = [&](const AbcUiSettingRow &row) {
-          if (declared.id[0] && std::strcmp(row.section, declared.id) != 0)
+          if (declared.id[0] && std::string_view(row.section) != declared.id)
             return false;
           if (std::find(cvars.begin(), cvars.end(), row.cvar) == cvars.end())
             return false;
           if (sectionHasComponent(page, section, "model-picker") &&
-              std::strcmp(row.cvar, "model") == 0)
+              std::string_view(row.cvar) == "model")
             return false;
           if (sectionHasComponent(page, section, kColorPickerComponent) &&
               ownsColorCvar(row.cvar))
@@ -213,7 +214,7 @@ void buildRows() {
         }
         if (count == 0 && !hasWidget)
           continue;
-        const bool twoUp = std::strcmp(declared.layout, "two-up") == 0;
+        const bool twoUp = std::string_view(declared.layout) == "two-up";
         const bool stacked = !twoUp && hasPreview && hasBlock;
         const std::string cardId = "settings-card-" +
                                    std::string(definition.id) + "-" +
@@ -389,7 +390,7 @@ void renderRow(AbcUiSettingRow &row, bool skipInput) {
       }
     } else {
       const auto stringLabel = [&row](const std::string &value) -> std::string {
-        if (std::strcmp(row.stateName, "logocolor") == 0)
+        if (std::string_view(row.stateName) == "logocolor")
           return resolve(("#Valve_" + logoColorName(value)).c_str());
         if (row.flags & ABCUI_SET_ROW_FILE_CHOICES)
           return fileStem(value);

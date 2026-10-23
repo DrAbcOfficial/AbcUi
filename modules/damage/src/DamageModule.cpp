@@ -18,6 +18,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace {
 
@@ -609,7 +610,7 @@ void onAddEntity(const AbcUiAddEntityEvent &event) {
   // old code never drew a marker. The sequence gate is dropped; model name /
   // studio type / messagenum / range gates stay.
   if (event.modelType != ABCUI_MODEL_STUDIO ||
-      std::strcmp(event.model, kGrenadeModelPath) != 0)
+      std::string_view(event.model) != kGrenadeModelPath)
     return;
   AbcUiPlayerState player{};
   localPlayer(player);

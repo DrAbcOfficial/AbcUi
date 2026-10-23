@@ -7,6 +7,7 @@
 #include <cstring>
 #include <cstdlib>
 #include <string>
+#include <string_view>
 
 namespace settingspage {
 
@@ -270,7 +271,7 @@ void onClick(AbcUiElement *target) {
 
 int32_t onRootClick(void *, AbcUiElement *target,
                     const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click") != 0)
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   onClick(target);
   return 0;
@@ -278,7 +279,7 @@ int32_t onRootClick(void *, AbcUiElement *target,
 
 int32_t onRootChange(void *, AbcUiElement *target,
                      const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "change") != 0)
+  if (!event || !target || std::string_view(event->type) != "change")
     return 0;
   onChange(target);
   return 0;
@@ -286,7 +287,7 @@ int32_t onRootChange(void *, AbcUiElement *target,
 
 int32_t onRootDblClick(void *, AbcUiElement *target,
                        const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "dblclick") != 0)
+  if (!event || !target || std::string_view(event->type) != "dblclick")
     return 0;
   handleModelDblClick(target);
   return 0;
@@ -294,7 +295,7 @@ int32_t onRootDblClick(void *, AbcUiElement *target,
 
 int32_t onRootMouseDown(void *, AbcUiElement *target,
                         const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "mousedown") != 0)
+  if (!event || !target || std::string_view(event->type) != "mousedown")
     return 0;
   if (event->button == 1)
     handleModelPointerDown(target, 1, event->mouseX, event->mouseY);

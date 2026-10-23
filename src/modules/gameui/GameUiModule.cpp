@@ -31,6 +31,8 @@
 #include "rmlui/RmlUiModule.h"
 #include <fstream>
 #include <sstream>
+#include <string_view>
+
 namespace gameui {
 using namespace engine;
 using namespace settings;
@@ -312,16 +314,16 @@ GameUiModule::GameUiModule()
   menuHost.dispatchCommand = [this](const char *name) -> int32_t {
     if (!Context || !services::nativeUiBridge().armed())
       return 0;
-    if (std::strcmp(name, "votemenu") == 0)
+    if (std::string_view(name) == "votemenu")
       Vote->open();
-    else if (std::strcmp(name, "+commandmenu") == 0)
+    else if (std::string_view(name) == "+commandmenu")
       Command->toggle();
-    else if (std::strcmp(name, "-commandmenu") == 0) {
+    else if (std::string_view(name) == "-commandmenu") {
       // The press owns the toggle; release must not reopen the native menu.
-    } else if (std::strcmp(name, "inventory") == 0 ||
-               std::strcmp(name, "+inventory") == 0)
+    } else if (std::string_view(name) == "inventory" ||
+               std::string_view(name) == "+inventory")
       Inventory->open();
-    else if (std::strcmp(name, "-inventory") == 0)
+    else if (std::string_view(name) == "-inventory")
       Inventory->close();
     else
       return 0;

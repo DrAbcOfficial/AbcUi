@@ -43,6 +43,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include <string_view>
 
 namespace settingspage {
 
@@ -215,13 +216,13 @@ std::string fileStem(const std::string &value) {
 }
 
 const char *safeFocusForLayer(const char *id) {
-  if (std::strcmp(id, kLayerReset) == 0)
+  if (std::string_view(id) == kLayerReset)
     return "reset-no";
-  if (std::strcmp(id, kLayerBindConflict) == 0)
+  if (std::string_view(id) == kLayerBindConflict)
     return "bind-conflict-no";
-  if (std::strcmp(id, kLayerBindReset) == 0)
+  if (std::string_view(id) == kLayerBindReset)
     return "bind-reset-no";
-  if (std::strcmp(id, kLayerSprayFile) == 0)
+  if (std::string_view(id) == kLayerSprayFile)
     return "spray-file-cancel";
   return "leave-stay";
 }
@@ -614,7 +615,7 @@ void render(const char *skipRow) {
       AbcUiSettingRow row{};
       if (!rowById(index, row))
         continue;
-      renderRow(row, skipRow && std::strcmp(row.cvar, skipRow) == 0);
+      renderRow(row, skipRow && std::string_view(row.cvar) == skipRow);
     }
     const int32_t bindCount = Api->settings->bindRowCount();
     for (int32_t index = 0; index < bindCount; ++index) {

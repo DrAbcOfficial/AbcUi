@@ -28,6 +28,7 @@
 #include <map>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace {
 
@@ -722,7 +723,7 @@ int32_t onBoxEvent(void *, AbcUiElement *target,
 
   bool overMenu = false;
   for (AbcUiElement *node = target; node; node = Api->ui->elementParent(node)) {
-    if (std::strcmp(Api->ui->elementId(node), "menu") == 0)
+    if (std::string_view(Api->ui->elementId(node)) == "menu")
       overMenu = true;
     const int action = Api->ui->elementAttributeInt(node, "data-action", -1);
     if (action >= 0 && type == "click" && event->button == 0) {

@@ -5,6 +5,7 @@
 #include "../shared/PageShared.h"
 
 #include <cstring>
+#include <string_view>
 
 namespace quitconfirmpage {
 namespace {
@@ -28,7 +29,7 @@ AbcUiElement *node(const char *id) {
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click") != 0)
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   std::string action;
   for (AbcUiElement *entry = target; entry;

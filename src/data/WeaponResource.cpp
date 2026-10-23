@@ -19,6 +19,7 @@
 #include <abc/CvarCmd.h>
 
 #include <abcui/events.h>
+#include <string_view>
 
 #include "modsys/EventBus.h"
 
@@ -151,7 +152,7 @@ const client_sprite_t *findSpriteEntry(const client_sprite_t *list, int count,
   if (!list)
     return nullptr;
   for (int i = 0; i < count; i++, list++) {
-    if (strcmp(name, list->szName) == 0 && list->iRes == res)
+    if (std::string_view(name) == list->szName && list->iRes == res)
       return list;
   }
   return nullptr;

@@ -13,6 +13,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace votepage {
 namespace {
@@ -208,7 +209,8 @@ void render() {
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || !event->type || std::strcmp(event->type, "click"))
+  if (!event || !target || !event->type ||
+      std::string_view(event->type) != "click")
     return 0;
   // Delegated row/tab lookup: the click lands on inner text as often as on
   // the element carrying the action.

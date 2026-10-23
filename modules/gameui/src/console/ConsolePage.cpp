@@ -34,6 +34,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <string_view>
 
 namespace consolepage {
 namespace {
@@ -957,7 +958,7 @@ void executeConfirmed() {
 // -------------------------------------------------------------
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *entry = target;
   std::string action;
@@ -1005,7 +1006,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
 
 int32_t onMousedown(void *, AbcUiElement *target,
                     const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "mousedown"))
+  if (!event || !target || std::string_view(event->type) != "mousedown")
     return 0;
   AbcUiElement *history = node("console-history");
   if (event->button == 1) {
@@ -1045,7 +1046,7 @@ int32_t onMousedown(void *, AbcUiElement *target,
 }
 
 int32_t onDrag(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || std::strcmp(event->type, "drag"))
+  if (!event || std::string_view(event->type) != "drag")
     return 0;
   if (!Selection.hasAnchor())
     return 0;
@@ -1063,7 +1064,7 @@ int32_t onDrag(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
 
 int32_t onKeydown(void *, AbcUiElement *target,
                   const AbcUiElementEvent *event) {
-  if (!event || std::strcmp(event->type, "keydown"))
+  if (!event || std::string_view(event->type) != "keydown")
     return 0;
   const int key = event->keynum;
   const bool ctrl = (event->modifiers & ABCUI_MOD_CTRL) != 0;
@@ -1170,7 +1171,7 @@ int32_t onKeydown(void *, AbcUiElement *target,
 }
 
 int32_t onKeyup(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || std::strcmp(event->type, "keyup"))
+  if (!event || std::string_view(event->type) != "keyup")
     return 0;
   // Live suggestions: navigation keys keep the list they already own, the
   // modal pane owns the keyboard, and an empty editor hides it.
@@ -1192,7 +1193,7 @@ int32_t onKeyup(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
 }
 
 int32_t onBlur(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || std::strcmp(event->type, "blur"))
+  if (!event || std::string_view(event->type) != "blur")
     return 0;
   endCompletionSession();
   return 0;

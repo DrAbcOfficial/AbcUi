@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <string_view>
 
 #include <Windows.h>
 
@@ -351,7 +352,7 @@ void *MemoryDll::getExport(const char *name) const {
       reinterpret_cast<const DWORD *>(image + exports->AddressOfNames);
   for (DWORD i = 0; i < exports->NumberOfNames; ++i) {
     const char *candidate = reinterpret_cast<const char *>(image + names[i]);
-    if (std::strcmp(candidate, name) != 0)
+    if (std::string_view(candidate) != name)
       continue;
     const auto *ordinals =
         reinterpret_cast<const WORD *>(image + exports->AddressOfNameOrdinals);

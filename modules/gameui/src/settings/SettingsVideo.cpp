@@ -8,6 +8,7 @@
 #include <cstring>
 #include <string>
 #include <utility>
+#include <string_view>
 
 namespace settingspage {
 
@@ -228,7 +229,7 @@ void onConfirmClick(AbcUiElement *target) {
 
 int32_t onConfirmClickEvent(void *, AbcUiElement *target,
                             const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click") != 0)
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   onConfirmClick(target);
   return 0;

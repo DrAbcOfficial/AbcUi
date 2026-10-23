@@ -21,6 +21,7 @@
 #include <cstring>
 #include <ctime>
 #include <string>
+#include <string_view>
 
 namespace serverbrowserpage {
 namespace {
@@ -644,30 +645,30 @@ void handleChange(AbcUiElement *target, const std::string &value) {
   Api->serverbrowser->filter(&filter);
   bool changed = false;
   bool masterPair = false;
-  if (!std::strcmp(id, "sb-filter-name")) {
-    changed = std::strcmp(filter.name, value.c_str()) != 0;
+  if (std::string_view(id) == "sb-filter-name") {
+    changed = std::string_view(filter.name) != value;
     std::snprintf(filter.name, sizeof(filter.name), "%s", value.c_str());
-  } else if (!std::strcmp(id, "sb-filter-map")) {
-    changed = std::strcmp(filter.map, value.c_str()) != 0;
+  } else if (std::string_view(id) == "sb-filter-map") {
+    changed = std::string_view(filter.map) != value;
     std::snprintf(filter.map, sizeof(filter.map), "%s", value.c_str());
-  } else if (!std::strcmp(id, "sb-filter-ping")) {
+  } else if (std::string_view(id) == "sb-filter-ping") {
     const auto parsed = parseInt(value);
     if (!parsed || *parsed < 0 || *parsed > 500)
       return;
     changed = filter.maxPing != *parsed;
     filter.maxPing = *parsed;
-  } else if (!std::strcmp(id, "sb-filter-password")) {
+  } else if (std::string_view(id) == "sb-filter-password") {
     const bool on = value == "1";
     changed = filter.noPassword != on;
     filter.noPassword = on;
-  } else if (!std::strcmp(id, "sb-filter-empty") ||
-             !std::strcmp(id, "sb-filter-full") ||
-             !std::strcmp(id, "sb-filter-secure")) {
+  } else if (std::string_view(id) == "sb-filter-empty" ||
+             std::string_view(id) == "sb-filter-full" ||
+             std::string_view(id) == "sb-filter-secure") {
     const bool on = value == "1";
-    if (!std::strcmp(id, "sb-filter-empty")) {
+    if (std::string_view(id) == "sb-filter-empty") {
       changed = filter.hideEmpty != on;
       filter.hideEmpty = on;
-    } else if (!std::strcmp(id, "sb-filter-full")) {
+    } else if (std::string_view(id) == "sb-filter-full") {
       changed = filter.hideFull != on;
       filter.hideFull = on;
     } else {
@@ -704,7 +705,7 @@ void closeSubpage() {
 
 int32_t onKeydown(void *, AbcUiElement *target,
                   const AbcUiElementEvent *event) {
-  if (!event || std::strcmp(event->type, "keydown"))
+  if (!event || std::string_view(event->type) != "keydown")
     return 0;
   if (event->keynum != ABCUI_KEY_ESCAPE)
     return 0;
@@ -719,7 +720,7 @@ int32_t onKeydown(void *, AbcUiElement *target,
 
 int32_t onMousedown(void *, AbcUiElement *target,
                     const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "mousedown"))
+  if (!event || !target || std::string_view(event->type) != "mousedown")
     return 0;
   if (event->button != 1)
     return 0;
@@ -738,14 +739,14 @@ int32_t onMousedown(void *, AbcUiElement *target,
 }
 
 int32_t onChange(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || std::strcmp(event->type, "change"))
+  if (!event || std::string_view(event->type) != "change")
     return 0;
   handleChange(target, inputValue(Api->ui->elementId(target)));
   return 0;
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || std::strcmp(event->type, "click"))
+  if (!event || !target || std::string_view(event->type) != "click")
     return 0;
   AbcUiElement *menu = node("sb-context-menu");
   const bool insideMenu = menu && insideNode(target, menu);

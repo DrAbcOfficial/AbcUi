@@ -9,6 +9,7 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace settingspage {
 
@@ -61,7 +62,7 @@ const ColorBinding *bindingFor(const char *elementId) {
   if (!elementId)
     return nullptr;
   for (int i = 0; i < kColorBindingCount; ++i)
-    if (std::strcmp(elementId, kColorBindings[i].Element) == 0)
+    if (std::string_view(elementId) == kColorBindings[i].Element)
       return &kColorBindings[i];
   return nullptr;
 }

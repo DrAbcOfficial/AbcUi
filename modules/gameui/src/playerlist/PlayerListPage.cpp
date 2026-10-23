@@ -15,6 +15,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 namespace playerlistpage {
 namespace {
@@ -193,7 +194,8 @@ void refocusDefault() {
 }
 
 int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
-  if (!event || !target || !event->type || std::strcmp(event->type, "click"))
+  if (!event || !target || !event->type ||
+      std::string_view(event->type) != "click")
     return 0;
   // Delegated row lookup: the click lands on inner text as often as on the
   // element carrying the action.
