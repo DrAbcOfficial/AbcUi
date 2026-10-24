@@ -175,20 +175,6 @@ void init();
 // table (detected through a client-image handler on a Ui-exclusive message).
 // A normal map cycle leaves the table untouched and this is a no-op.
 void refreshAfterClientLoad();
-// Promotes the framework's SayText hook to the head of the engine chain and
-// remembers the displaced head as its upstream link. The outermost hook
-// publishes once and forwards to that link only while no module consumes the
-// line; a displaced older hook forwards straight to the chain tail. Returns 1
-// when the hook is at the head, 0 on refusal (missing engine seam, no
-// usermsg entry, or while the hook is dispatching). Main thread only.
-int32_t ensureSayTextFirst();
-// Same arbitration for the TextMsg chain: the server console's own `say`
-// reaches the client as TextMsg/HUD_PRINTTALK (the wire CaptionMod draws into
-// its log), so a chat owner must sit at the head of that chain too. The
-// head frame publishes the chat veto for HUD_PRINTTALK once and forwards to
-// the displaced link while no module consumes the line. Contract matches
-// ensureSayTextFirst; main thread only.
-int32_t ensureTextMsgFirst();
 // The vote module hands its hud_vote cvar here at HUD_Init (console api) -
 // the VoteMenu consumer passes messages through while the gate is off (old
 // IsVoteEnable).
