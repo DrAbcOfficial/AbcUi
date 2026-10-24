@@ -499,11 +499,11 @@ add_custom_target(dist
     COMMAND "${CMAKE_COMMAND}" -E rm -rf "${ABC_UI_STAGE_DIR}"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins"
-        "${ABC_UI_STAGE_DIR}/svencoop/abc"
+        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/render_backend"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:AbcUi>"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:abcui_render_renderer>"
-        "${ABCUI_STAGE_DIR}/svencoop/abc/abcui/render_backend/"
+        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/render_backend/"
     COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
