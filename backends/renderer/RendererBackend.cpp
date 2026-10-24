@@ -158,6 +158,11 @@ void ABCUI_CALL cbDrawTextured(void *, const AbcUiRenderDraw *draw) {
     Renderer->DrawTexturedRect(draw->texture, vertices, draw->vertexCount,
                                draw->indices, draw->indexCount, program,
                                draw->label);
+    // DrawTexturedRect unbinds with raw GL, leaving the engine's cached
+    // currenttexture stale. A rebuilt atlas can reuse that deleted id:
+    // the surface's GL_Bind then skips binding and uploads into texture 0.
+    // Synchronize both bindings through Renderer before surface work resumes.
+    Renderer->BindTextureUnit(0, GL_TEXTURE_2D, 0);
   }
 }
 
