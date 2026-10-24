@@ -14,6 +14,7 @@
 #include "modsys/FrameworkVersion.h"
 #include "modsys/ModuleManager.h"
 #include "render/BackendHost.h"
+#include "render/StandaloneView.h"
 #include "rmlui/RmlUiModule.h"
 #include "services/steam/SteamAPI.h"
 #include "rmlui/VGUI2ExtensionImport.h"
@@ -111,6 +112,11 @@ protected:
     // RmlUiModule.h): the VGUI surface texture channel the font engine
     // needs is not usable this early (Phase 3 trace finding).
     abc::render::boot();
+    // In-house extra-view route (issue #24 comment): engine hooks install
+    // once per process, portal hooks per client instance; both degrade
+    // softly (model preview disabled) on unknown builds.
+    framework::standaloneview::installEngineHooks();
+    framework::standaloneview::installClientHooks();
     vgui2ext::init();
     steamapi::init();
     hooks::locateVanillaHudList();

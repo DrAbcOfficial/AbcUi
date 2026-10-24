@@ -189,6 +189,7 @@ add_library(AbcUi MODULE
     src/modsys/ModuleServices.cpp
     src/render/BackendHost.cpp
     src/render/RadarRender.cpp
+    src/render/StandaloneView.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp

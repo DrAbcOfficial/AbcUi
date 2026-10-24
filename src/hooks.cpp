@@ -29,6 +29,7 @@
 #include "modsys/ModuleManager.h"
 #include "modules/Module.h"
 #include "render/BackendHost.h"
+#include "render/StandaloneView.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 #include "services/steam/SteamAPI.h"
@@ -301,12 +302,20 @@ H_HUD_GetStudioModelInterface(int version,
   // Old exportfuncs: mirror the engine studio API once (player info reads
   // in data::playerres; AbcEssential holds its own copy - D-01 no sharing).
   EngineStudioApi = pstudio;
-  return gExportfuncs.HUD_GetStudioModelInterface(version, ppinterface,
-                                                  pstudio);
+  const int result =
+      gExportfuncs.HUD_GetStudioModelInterface(version, ppinterface, pstudio);
+  // The standalone-view route draws preview entities through the interface
+  // the engine ended up with (the client's, or the engine's own default
+  // when the client provided none).
+  framework::standaloneview::captureStudioInterfaces(ppinterface, pstudio);
+  return result;
 }
 
 static void H_HUD_Shutdown() {
   VanillaHudPanelCount = 0;
+  // The standalone-view portal hooks live in the client image, which dies
+  // with this cycle (the engine hooks stay: the engine never reloads).
+  framework::standaloneview::uninstallClientHooks();
   services::voice::status().shutdown();
   rmlui::onHudShutdown();
   gExportfuncs.HUD_Shutdown();
@@ -354,6 +363,27 @@ static void H_CL_CreateMove(float time, usercmd_s *cmd, int active) {
   }
 }
 
+// Standalone-view routing (issue #24 comment): while a preview view is
+// current, the calc-refdef / triangle exports belong to it (onlyClientDraw
+// pass); otherwise they chain into the client originals as always.
+static void H_V_CalcRefdef(struct ref_params_s *pparams) {
+  if (framework::standaloneview::hookCalcRefdef(pparams))
+    return;
+  gExportfuncs.V_CalcRefdef(pparams);
+}
+
+static void H_HUD_DrawNormalTriangles() {
+  if (framework::standaloneview::hookDrawNormalTriangles())
+    return;
+  gExportfuncs.HUD_DrawNormalTriangles();
+}
+
+static void H_HUD_DrawTransparentTriangles() {
+  if (framework::standaloneview::hookDrawTransparentTriangles())
+    return;
+  gExportfuncs.HUD_DrawTransparentTriangles();
+}
+
 void attachExports(cl_exportfuncs_t *pExportFuncs) {
   pExportFuncs->IN_ActivateMouse = rmlui::activateGameMouse;
   pExportFuncs->IN_Accumulate = H_IN_Accumulate;
@@ -365,6 +395,11 @@ void attachExports(cl_exportfuncs_t *pExportFuncs) {
   pExportFuncs->HUD_Frame = H_HUD_Frame;
   pExportFuncs->HUD_Key_Event = H_HUD_Key_Event;
   pExportFuncs->HUD_GetStudioModelInterface = H_HUD_GetStudioModelInterface;
+  if (framework::standaloneview::available()) {
+    pExportFuncs->V_CalcRefdef = H_V_CalcRefdef;
+    pExportFuncs->HUD_DrawNormalTriangles = H_HUD_DrawNormalTriangles;
+    pExportFuncs->HUD_DrawTransparentTriangles = H_HUD_DrawTransparentTriangles;
+  }
   pExportFuncs->HUD_UpdateClientData = H_HUD_UpdateClientData;
   pExportFuncs->HUD_TxferPredictionData = H_HUD_TxferPredictionData;
   pExportFuncs->HUD_TxferLocalOverrides = H_HUD_TxferLocalOverrides;
