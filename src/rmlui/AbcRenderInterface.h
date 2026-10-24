@@ -137,9 +137,8 @@ private:
   // module VFS entry view.
   Rml::TextureHandle loadModuleTexture(Rml::Vector2i &dimensions,
                                        const Rml::String &uri, bool additive);
-  // Uploads pixels through the VGUI2 surface texture channel, ending any
-  // active 2D pass first (surface uploads are not re-entrant with the
-  // backend's batched pass - see the .cpp note). 0 = upload unavailable.
+  // Uploads pixels through the shared VGUI2 surface texture channel, which
+  // ends any active 2D pass before mutation. 0 = upload unavailable.
   int uploadSurfaceTexture(const unsigned char *rgba, int width, int height);
 
   // External live textures (see registerExternalTexture) plus the handles
