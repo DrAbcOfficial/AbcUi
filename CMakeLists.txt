@@ -433,6 +433,16 @@ add_custom_target(check-rendercommon-sync
 add_subdirectory(backends/renderer)
 add_dependencies(abcui_render_renderer check-rendercommon-sync)
 
+# UI-owned layouts and standalone-view symbols are a separate, offline
+# catalog. Validate the Windows records before building or packaging.
+add_custom_target(check-modelpreview-gamedata
+    COMMAND "${CMAKE_COMMAND}"
+        "-DABCUI_REPO_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
+        -P "${CMAKE_CURRENT_LIST_DIR}/cmake/CheckModelPreviewGameData.cmake"
+    COMMENT "Checking Win32 model preview gamedata"
+    VERBATIM)
+add_dependencies(AbcUi check-modelpreview-gamedata)
+
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
 # bare name (<VGUI.h>, <Color.h>, <mathlib/vector2d.h>).
@@ -459,6 +469,8 @@ if(ABC_GAME_DIR)
     install(TARGETS abcui_render_renderer
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend")
+    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout/"
+        DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/gamedata/abc/abcui-layout")
     # Module packages produced by tools/pack.py (build a Release pack first).
     install(DIRECTORY "${ABCUI_MODULE_PACK_DIR}/"
         DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
@@ -482,6 +494,7 @@ endif()
 #   svencoop/metahook/plugins/AbcUi.dll
 #   svencoop/abc/abcui/render_backend/abcui_render_renderer.dll
 #   svencoop/abc/abcui/modules/*.zip (all UI resources)
+#   svencoop/metahook/gamedata/abc/abcui-layout/ (UI-owned engine layouts)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
 # configuration that thirdparty/FreeImage pulls in.
@@ -509,6 +522,9 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory "${ABCUI_MODULE_PACK_DIR}"
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory
+        "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
+        "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui-layout"
     COMMAND "${CMAKE_COMMAND}" -E chdir "${ABC_UI_STAGE_DIR}"
         "${CMAKE_COMMAND}" -E tar cfv
         "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"

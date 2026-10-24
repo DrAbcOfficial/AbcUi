@@ -31,6 +31,10 @@ cmake --build --preset win32-release --target deploy
 - All UI resources ship inside module ZIPs. There is no loose framework asset tree, embedded page, default image or global language table. Remove obsolete loose assets from previous installations; they are not consulted.
 - `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`.
 - The render backend `abcui_render_renderer.dll` goes to `<game>/svencoop/abc/abcui/render_backend/` (loaded by the `abc_ui_render_backend` cvar; a missing or unusable selected backend is fatal at startup - there is no built-in fallback).
+- The UI-owned layout and model-preview catalog goes to
+  `<game>/svencoop/metahook/gamedata/abc/abcui-layout/`. Deploy the complete
+  catalog together with the plugin; its Windows engine/client records are
+  required for model preview at the main menu as well as in a level.
 - UI module packages go to `<game>/svencoop/abc/abcui/modules/*.zip` (built by the `pack_modules` target; `deploy` installs them too when `ABC_GAME_DIR` is set).
 - `FreeImage.dll` and `Mile.FFmpeg.dll` are provided by MetaHookSV/Renderer; AbcUi does not install or package a second copy.
 
@@ -41,13 +45,16 @@ cmake --build --preset win32-release --target dist
 ```
 
 Produces `AbcUi-<version>.zip` under `build/<preset>/dist/` (plugin DLL,
-the packed UI modules under `abc/abcui/modules/`, README).
+the packed UI modules under `abc/abcui/modules/`, the UI-owned
+`metahook/gamedata/abc/abcui-layout/` catalog, README).
 The module archives themselves are produced by `--target pack_modules`
 (`build/<preset>/dist/modules/<id>-<version>.zip`) from the manifests and the
 built module DLLs. `AbcCore.dll` and the shared gamedata catalog are
 provided by the aggregate `ABCEnchance-<tag>.zip` / `AbcCore-<version>.zip`,
 not by this module package. The archive contains `svencoop/` at its root: extract it directly into
 the Sven Co-op root, with no extra version folder to copy.
+The build validates the UI-owned catalog's snapshot hashes and required
+Windows view symbols offline; Linux records do not satisfy that check.
 
 ## Data-driven menu
 
