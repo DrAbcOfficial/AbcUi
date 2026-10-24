@@ -36,6 +36,11 @@ struct Entry {
   std::string name;
   std::string channel;
   xcommand_t original = nullptr;
+  // abc_ui_mediaplayer diagnostics: how often the bridge ran and what it
+  // did with the command.
+  unsigned dispatches = 0;
+  unsigned consumed = 0;
+  int last = -1; // 1 consumed, 0 chained to the original, -1 never ran
 };
 
 struct Registry {
@@ -69,9 +74,14 @@ void commandThunk() {
   // Process-owned entries stay valid when a module callback hooks another
   // command. Snapshot the original before invoking any module code.
   const xcommand_t original = entry.original;
+  entry.dispatches++;
   if (framework::eventBus().publishVetoAggregateRaw(entry.channel.c_str(),
-                                                    nullptr))
+                                                    nullptr)) {
+    entry.consumed++;
+    entry.last = 1;
     return;
+  }
+  entry.last = 0;
   if (original)
     original();
 }
@@ -125,6 +135,29 @@ AbcUiSubscription subscribe(const char *name, int priority, AbcUiEventVeto sink,
   }
   return framework::eventBus().subscribeVetoAggregate(
       it->second.channel.c_str(), priority, sink, userdata);
+}
+
+bool debugBridge(const char *name, unsigned &dispatches, unsigned &consumed,
+                 int &last, bool &engineHeadOurs) {
+  dispatches = 0;
+  consumed = 0;
+  last = -1;
+  engineHeadOurs = false;
+  if (!g_pMetaHookAPI || !g_pMetaHookAPI->FindCmd)
+    return false;
+  const auto key = commandKey(name);
+  if (key.empty())
+    return false;
+  const auto it = registry().entries.find(key);
+  if (it == registry().entries.end())
+    return false;
+  const Entry &entry = it->second;
+  dispatches = entry.dispatches;
+  consumed = entry.consumed;
+  last = entry.last;
+  if (const auto *command = g_pMetaHookAPI->FindCmd(entry.name.c_str()))
+    engineHeadOurs = command->function == &commandThunk;
+  return true;
 }
 
 namespace {

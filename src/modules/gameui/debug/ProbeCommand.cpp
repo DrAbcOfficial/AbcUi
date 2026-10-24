@@ -16,7 +16,9 @@
 #include <abc/Math.h>
 
 #include "../../../data/HudState.h"
+#include "../../../framework/Commands.h"
 #include "../../../framework/PanelManager.h"
+#include "../../../modsys/ModuleVfs.h"
 #include "../../../framework/HudPanel.h"
 #include "../../../framework/ScoreSeat.h"
 #include "../../../render/RadarRender.h"
@@ -934,6 +936,58 @@ void boardRowCommand() {
   }
 }
 
+// MediaPlayer acceptance (issue 11): did typing the chained command open the
+// module window? The bridge counters say whether the hook installed, ran and
+// consumed; the document lines say whether the replacement page is loaded
+// and visible. Decision tree: bridge=0 -> subscribe found no engine command;
+// head=0 -> the engine entry no longer points at the bridge; dispatches=0 ->
+// the command never reached the bridge; last=0 -> a sink declined (usually
+// the document is not loaded); last=1 with doc visible=0 -> the module's
+// show path.
+void mediaPlayerCommand() {
+  unsigned dispatches = 0, consumed = 0;
+  int last = -1;
+  bool headOurs = false;
+  const bool bridge =
+      commands::debugBridge("MediaPlayer", dispatches, consumed, last,
+                            headOurs);
+  abc::ConsolePrint(
+      "[AbcUi] mediaplayer bridge=%d engine-head-ours=%d dispatches=%u "
+      "consumed=%u last=%d\n",
+      bridge ? 1 : 0, headOurs ? 1 : 0, dispatches, consumed, last);
+  // A mounted package is a module that passed validation and entry; an
+  // absent id means the module never loaded (boot warnings name the reason).
+  const auto mounted = framework::ModuleVfs::mountedIds();
+  bool moduleMounted = false;
+  std::string ids;
+  for (const auto &id : mounted) {
+    if (id == "abcui.mediaplayer")
+      moduleMounted = true;
+    if (!ids.empty())
+      ids += " ";
+    ids += id;
+  }
+  abc::ConsolePrint("[AbcUi] mediaplayer module-mounted=%d\n",
+                    moduleMounted ? 1 : 0);
+  abc::ConsolePrint("[AbcUi] mediaplayer mounted=%zu:%s\n", ids.size(),
+                    ids.c_str());
+  Rml::Context *context = rmlui::context();
+  int found = 0;
+  for (int i = 0; context && i < context->GetNumDocuments(); ++i) {
+    Rml::ElementDocument *doc = context->GetDocument(i);
+    if (!doc || doc->GetSourceURL().find("mediaplayer") == Rml::String::npos)
+      continue;
+    ++found;
+    abc::ConsolePrint(
+        "[AbcUi] mediaplayer doc[%d] visible=%d display='%s' src='%.80s'\n",
+        i, doc->IsVisible() ? 1 : 0,
+        doc->GetProperty("display")->ToString().c_str(),
+        doc->GetSourceURL().c_str());
+  }
+  if (!found)
+    abc::ConsoleWarn("[AbcUi] mediaplayer: no mediaplayer document loaded\n");
+}
+
 // Chat log ground truth: document visibility/opacity, the log element's row
 // count and the last rows' RML.
 void chatStateCommand() {
@@ -1007,6 +1061,7 @@ void registerProbeCommand() {
   abc::ADD_COMMAND("abc_ui_board", boardCommand);
   abc::ADD_COMMAND("abc_ui_board_row", boardRowCommand);
   abc::ADD_COMMAND("abc_ui_chat_state", chatStateCommand);
+  abc::ADD_COMMAND("abc_ui_mediaplayer", mediaPlayerCommand);
   abc::ADD_COMMAND("abc_ui_perf", perfCommand);
   abc::ADD_COMMAND("abc_ui_pointer_on", pointerOnCommand);
   abc::ADD_COMMAND("abc_ui_pointer_off", pointerOffCommand);

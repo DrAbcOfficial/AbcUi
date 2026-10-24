@@ -341,6 +341,17 @@ target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
     abcui_miniz imm32 abc_ui_config)
 
 # First-party UI modules (each its own DLL + package; see modules/<id>/).
+# Module images are mapped by the loader's manual PE mapper, which refuses
+# static TLS. Two MSVC debug-conditional mechanisms compile to per-thread
+# static TLS: the thread-safe guards for function-local dynamic statics
+# (/Zc:threadSafeInit) and Just My Code instrumentation (/JMC). Both are
+# disabled for every module target - the media player's duration cache once
+# shipped a TLS directory through the first and its module was skipped at
+# boot with every feature of it silently missing (namespace-scope statics
+# initialize at image load and need no guard; JMC only steps into "user"
+# code, which these modules do not need while debugging).
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/Zc:threadSafeInit-> /JMC-)
+
 add_subdirectory(modules/demo)
 add_subdirectory(modules/recovery)
 add_subdirectory(modules/flashlight)

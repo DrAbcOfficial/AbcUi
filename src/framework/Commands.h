@@ -15,6 +15,12 @@ namespace commands {
 AbcUiSubscription subscribe(const char *name, int priority, AbcUiEventVeto sink,
                             void *userdata);
 
+// abc_ui_mediaplayer diagnostics for one bridge: whether it exists, whether
+// the engine table entry still points at it, and its dispatch counters
+// (last: 1 consumed, 0 chained to the original, -1 never ran).
+bool debugBridge(const char *name, unsigned &dispatches, unsigned &consumed,
+                 int &last, bool &engineHeadOurs);
+
 } // namespace commands
 
 namespace commands {
