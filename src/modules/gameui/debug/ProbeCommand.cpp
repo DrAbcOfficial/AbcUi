@@ -21,6 +21,7 @@
 #include "../../../framework/ScoreSeat.h"
 #include "../../../render/RadarRender.h"
 #include "../../../rmlui/texture/Avatars.h"
+#include "../../../rmlui/animated/ElementAnimatedImage.h"
 #include "../../../data/NetworkMessages.h"
 #include "../../../data/PlayerResource.h"
 #include "../../../rmlui/texture/SpriteResource.h"
@@ -249,10 +250,12 @@ void probeCommand() {
     }
   }
   abc::ConsolePrint(
-      "[AbcUi] probe: hudstate suit=%d hideFlash=%d tokens=%d spectate=%d\n",
+      "[AbcUi] probe: hudstate suit=%d hideFlash=%d tokens=%d spectate=%d "
+      "mode=%d target=%d\n",
       hudstate::hasSuit() ? 1 : 0,
       hudstate::isHudHidden(hudstate::kHideFlashlight) ? 1 : 0,
-      hudstate::debugHideTokens(), hudstate::isSpectate() ? 1 : 0);
+      hudstate::debugHideTokens(), hudstate::isSpectate() ? 1 : 0,
+      hudstate::spectateMode(), hudstate::spectateTarget());
   // Steam/avatar chain ground truth (P6 avatar round): which backend won,
   // the id it serves, and a live fetch on the LOCAL id - that avatar is
   // always resident, so a failure here pins the broken link (connect /
@@ -283,7 +286,7 @@ void probeCommand() {
        {"health", "flashlight", "ammobar", "ammostack", "itemstack",
         "weaponstack", "deadmsg", "notice", "notice-center", "sidetext",
         "textmenu", "crosshair", "indicator", "gindicator", "dmgtiles",
-        "effect", "popnum"}) {
+        "effect", "popnum", "spectator"}) {
     if (Rml::ElementDocument *doc = context->GetDocument(name))
       abc::ConsolePrint("[AbcUi] probe: doc %-14s visible=%d display='%s'\n",
                         name, doc->IsVisible() ? 1 : 0,
@@ -836,6 +839,119 @@ void inputRegressionCommand() {
 
 } // namespace
 
+// Scoreboard row ground truth for the acceptance drive: each row's class list
+// plus the name cell's inner RML, computed colour and font.
+void boardRowCommand() {
+  Rml::Context *ctx = rmlui::context();
+  if (!ctx)
+    return;
+  Rml::ElementDocument *doc = ctx->GetDocument("scoreboard");
+  if (!doc) {
+    abc::ConsoleWarn("[AbcUi] board-row: scoreboard document not found\n");
+    return;
+  }
+  Rml::Element *table = doc->GetElementById("table");
+  if (!table) {
+    abc::ConsoleWarn("[AbcUi] board-row: #table not found\n");
+    return;
+  }
+  int printed = 0;
+  for (int i = 0; i < table->GetNumChildren() && printed < 5; ++i) {
+    Rml::Element *row = table->GetChild(i);
+    if (!row)
+      continue;
+    abc::ConsolePrint("[AbcUi] board-row[%d] tag='%s' class='%s'\n", i,
+                      row->GetTagName().c_str(),
+                      row->GetClassNames().c_str());
+    Rml::Element *name = nullptr;
+    for (int c = 0; c < row->GetNumChildren() && !name; ++c) {
+      Rml::Element *cell = row->GetChild(c);
+      if (cell && cell->GetClassNames().find("c-name") != std::string::npos)
+        name = cell;
+    }
+    if (name) {
+      const Rml::Property *color = name->GetProperty("color");
+      const Rml::Property *font = name->GetProperty("font-family");
+      abc::ConsolePrint(
+          "[AbcUi] board-row name rml='%.200s' color='%s' font='%s'\n",
+          name->GetInnerRML().c_str(),
+          color ? color->ToString().c_str() : "<none>",
+          font ? font->ToString().c_str() : "<none>");
+    }
+    for (int c = 0; c < row->GetNumChildren(); ++c) {
+      Rml::Element *cell = row->GetChild(c);
+      if (!cell ||
+          cell->GetClassNames().find("c-avatar") == std::string::npos)
+        continue;
+      // cell > avatar-frame > (animimg|img)
+      Rml::Element *image = cell->GetFirstChild();
+      image = image ? image->GetFirstChild() : nullptr;
+      if (!image)
+        continue;
+      if (auto *animated = rmlui_dynamic_cast<
+              rmlui::animated::ElementAnimatedImage *>(image)) {
+        abc::ConsolePrint(
+            "[AbcUi] board-row avatar animimg src='%.160s' frames=%d "
+            "visible=%d\n",
+            image->GetAttribute<Rml::String>("src", "").c_str(),
+            animated->frameCount(), image->IsVisible() ? 1 : 0);
+      } else {
+        abc::ConsolePrint("[AbcUi] board-row avatar img src='%.160s'\n",
+                          image->GetAttribute<Rml::String>("src", "").c_str());
+      }
+    }
+    ++printed;
+  }
+}
+
+// Chat log ground truth: document visibility/opacity, the log element's row
+// count and the last rows' RML.
+void chatStateCommand() {
+  Rml::Context *ctx = rmlui::context();
+  if (!ctx)
+    return;
+  Rml::ElementDocument *doc = ctx->GetDocument("chat");
+  if (!doc) {
+    abc::ConsoleWarn("[AbcUi] chat-state: chat document not found\n");
+    return;
+  }
+  for (int i = 0; i < ctx->GetNumDocuments(); ++i) {
+    Rml::ElementDocument *scan = ctx->GetDocument(i);
+    if (scan && scan->GetId() == "chat")
+      abc::ConsolePrint("[AbcUi] chat-state doc[%d] '%s' visible=%d "
+                        "opacity='%s' addr=%p src='%.80s'\n",
+                        i, scan->GetId().c_str(),
+                        scan->IsVisible() ? 1 : 0,
+                        scan->GetProperty("opacity")->ToString().c_str(),
+                        reinterpret_cast<void *>(scan),
+                        scan->GetSourceURL().c_str());
+  }
+  abc::ConsolePrint(
+      "[AbcUi] chat-state doc visible=%d opacity='%s' display='%s' "
+      "src='%.80s'\n",
+      doc->IsVisible() ? 1 : 0,
+      doc->GetProperty("opacity")->ToString().c_str(),
+      doc->GetProperty("display")->ToString().c_str(),
+      doc->GetSourceURL().c_str());
+  Rml::Element *log = doc->GetElementById("chat-log");
+  if (!log) {
+    abc::ConsoleWarn("[AbcUi] chat-state: #chat-log not found\n");
+    return;
+  }
+  abc::ConsolePrint("[AbcUi] chat-state log children=%d visible=%d "
+                    "opacity='%s' display='%s'\n",
+                    log->GetNumChildren(), log->IsVisible() ? 1 : 0,
+                    log->GetProperty("opacity")->ToString().c_str(),
+                    log->GetProperty("display")->ToString().c_str());
+  const int count = log->GetNumChildren();
+  for (int i = count > 2 ? count - 2 : 0; i < count; ++i) {
+    Rml::Element *row = log->GetChild(i);
+    abc::ConsolePrint("[AbcUi] chat-state row[%d] visible=%d rml='%.200s'\n",
+                      i, row->IsVisible() ? 1 : 0,
+                      row->GetInnerRML().c_str());
+  }
+}
+
 void closeProbeDocument() {
 #ifndef NDEBUG
   if (ProbeDoc) {
@@ -859,6 +975,8 @@ void registerProbeCommand() {
   abc::ADD_COMMAND("abc_ui_menu", menuCommand);
   abc::ADD_COMMAND("abc_ui_feedback", feedbackCommand);
   abc::ADD_COMMAND("abc_ui_board", boardCommand);
+  abc::ADD_COMMAND("abc_ui_board_row", boardRowCommand);
+  abc::ADD_COMMAND("abc_ui_chat_state", chatStateCommand);
   abc::ADD_COMMAND("abc_ui_perf", perfCommand);
   abc::ADD_COMMAND("abc_ui_pointer_on", pointerOnCommand);
   abc::ADD_COMMAND("abc_ui_pointer_off", pointerOffCommand);
