@@ -212,9 +212,13 @@ Unavailable backends return errors without an implicit disk fallback.
 The gameui module owns `abc_ui_menu_music`, `abc_ui_menu_video` and
 `abc_ui_menu_backdrop_blur`. Defaults are package URIs under
 `mod://abcui.gameui/gameui/scence/`. Music plays only for the no-level menu,
-pauses while hidden/in-game/map-loading, and follows `mp3volume`. Changing the
-music source replaces the channel. Previously archived loose-media paths are
-not compatible: reset those cvars or select a packaged track/movie.
+pauses while hidden/in-game/map-loading, and follows `mp3volume`. The engine's
+own menu track (`media/gamestartup*.mp3`, played on the engine mp3 stream) is
+stopped once per no-level menu presentation, so it does not keep sounding
+underneath the module's channel (the legacy engine-track music used to replace
+it simply by sharing the stream). Changing the music source replaces the
+channel. Previously archived loose-media paths are not compatible: reset those
+cvars or select a packaged track/movie.
 
 ### Media player
 
