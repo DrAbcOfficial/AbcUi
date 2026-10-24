@@ -20,8 +20,10 @@ add_subdirectory("${ABC_CORE_DIR}" AbcCore-build)
 set_target_properties(abc_core PROPERTIES
     MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
 
-# Renderer public interfaces are a direct AbcUi dependency. AbcCore deliberately
-# stays renderer-free so non-UI consumers do not inherit the Renderer checkout.
+# Renderer public interfaces feed the Renderer-backed render backend DLL
+# (backends/renderer, issue #24); the AbcUi framework target itself stays
+# renderer-free. AbcCore deliberately stays renderer-free so non-UI
+# consumers do not inherit the Renderer checkout.
 set(ABCUI_RENDERER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Renderer")
 set(ABCUI_RENDERER_INCLUDE_DIR "${ABCUI_RENDERER_DIR}/include")
 if(NOT EXISTS "${ABCUI_RENDERER_INCLUDE_DIR}/Interface/IMetaRenderer.h")
@@ -185,7 +187,7 @@ add_library(AbcUi MODULE
     src/modsys/ApiSettings.cpp
     src/modsys/ModuleDocuments.cpp
     src/modsys/ModuleServices.cpp
-    src/render/Render.cpp
+    src/render/BackendHost.cpp
     src/render/RadarRender.cpp
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
@@ -420,9 +422,15 @@ add_custom_target(check-rendercommon-sync
     COMMAND "${CMAKE_COMMAND}"
         "-DABCUI_REPO_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
         -P "${CMAKE_CURRENT_LIST_DIR}/cmake/CheckRenderCommonSync.cmake"
-    COMMENT "Checking src/render/RenderCommon.h sync against thirdparty/Renderer"
+    COMMENT "Checking backends/renderer/RenderCommon.h sync against thirdparty/Renderer"
     VERBATIM)
-add_dependencies(AbcUi check-rendercommon-sync)
+
+# --- Render backends (issue #24) ---------------------------------------------
+# DI-loaded DLLs behind sdk/abcui/render_backend.h; the framework AbcUi.dll
+# target never sees a Renderer include directory (that is the mechanical
+# proof the coupling is gone).
+add_subdirectory(backends/renderer)
+add_dependencies(abcui_render_renderer check-rendercommon-sync)
 
 # Include layout mirrors Renderer's renderer_settings interface set: the
 # VGUI2Extension interface headers include MetaHook VGUI/SourceSDK headers by
@@ -436,8 +444,6 @@ target_include_directories(AbcUi PRIVATE
     "${VGUI2EXTENSION_INCLUDE_DIR}"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface"
     "${VGUI2EXTENSION_INCLUDE_DIR}/Interface/VGUI"
-    "${ABCUI_RENDERER_INCLUDE_DIR}"
-    "${ABCUI_RENDERER_INCLUDE_DIR}/Interface"
     "${METAHOOK_INCLUDE_DIR}/Interface"
     "${METAHOOK_INCLUDE_DIR}/Interface/VGUI"
     "${METAHOOK_INCLUDE_DIR}/VGUI"
@@ -448,6 +454,10 @@ if(ABC_GAME_DIR)
     install(TARGETS AbcUi
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins")
+    # Render backend DLLs load from abc/abcui/render_backend (issue #24).
+    install(TARGETS abcui_render_renderer
+        RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend"
+        LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend")
     # Module packages produced by tools/pack.py (build a Release pack first).
     install(DIRECTORY "${ABCUI_MODULE_PACK_DIR}/"
         DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
@@ -469,6 +479,7 @@ endif()
 # AbcUi-<version>.zip with the game root at the archive root, so it can be
 # extracted directly into the Sven Co-op directory:
 #   svencoop/metahook/plugins/AbcUi.dll
+#   svencoop/abc/abcui/render_backend/abcui_render_renderer.dll
 #   svencoop/abc/abcui/modules/*.zip (all UI resources)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
@@ -490,6 +501,8 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/abc"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:AbcUi>"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:abcui_render_renderer>"
+        "${ABCUI_STAGE_DIR}/svencoop/abc/abcui/render_backend/"
     COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
@@ -500,5 +513,5 @@ add_custom_target(dist
         "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"
         --format=zip -- svencoop README.md
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
-    DEPENDS AbcUi pack_modules
+    DEPENDS AbcUi abcui_render_renderer pack_modules
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")

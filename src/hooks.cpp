@@ -28,6 +28,7 @@
 #include "modsys/EventBus.h"
 #include "modsys/ModuleManager.h"
 #include "modules/Module.h"
+#include "render/BackendHost.h"
 #include "rmlui/InputBridge.h"
 #include "rmlui/RmlUiModule.h"
 #include "services/steam/SteamAPI.h"
@@ -143,6 +144,9 @@ static void H_HUD_Init() {
     playerres::init();
     textfeed::init();
     rmlui::registerCommands();
+    // The render-backend cvar registers here (not at LoadClient): the boot
+    // id is already resolved, and an engine-created archived value keeps it.
+    abc::render::registerCommands();
     modules::registry().initAll();
   }
 }
@@ -188,6 +192,9 @@ static int H_HUD_Redraw(float time, int intermission) {
   // +/-showscores commands stay dead while it lasts.
   framework::scoreseat::setIntermission(intermission != 0);
   rmlui::onRedraw(delta);
+  // RedrawBeat render backends (the GL backend) render their frame sink
+  // here; callback-driven backends (Renderer) ignore the pump.
+  abc::render::pumpRedraw(delta);
   const NativeHudDrawScope nativeDraw;
   return gExportfuncs.HUD_Redraw(time, intermission);
 }

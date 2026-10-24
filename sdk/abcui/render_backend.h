@@ -47,6 +47,9 @@ extern "C" {
 #define ABCUI_RENDER_BACKEND_EXPORT __declspec(dllexport)
 #endif
 
+// Same cdecl rule as ABCUI_CALL (abi.h), named for this boundary.
+#define ABCUI_RENDER_BACKEND_CALL ABCUI_CALL
+
 // Capability bits (AbcUiRenderBackendDesc::capabilities).
 #define ABCUI_RB_CAP_RENDER_CALLBACKS 0x1u   // backend drives the frame beat
 #define ABCUI_RB_CAP_REDRAW_BEAT 0x2u        // framework pumps HUD_Redraw
