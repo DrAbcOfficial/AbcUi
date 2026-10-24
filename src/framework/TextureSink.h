@@ -11,10 +11,6 @@
 namespace framework::texture {
 
 bool available();
-// Closes any batched 2D pass before allocating: a VGUI surface upload issued
-// between queued renderer draws leaves the fresh texture sampling as opaque
-// black, and a texture can be created from a layout pass that runs inside the
-// render phase (onRedraw requests an update while the frame is being drawn).
 int create();
 void upload(int id, const unsigned char *rgba, int width, int height);
 void release(int id);

@@ -534,11 +534,6 @@ void onFrame(double frameTime) {
   // Queued <colorpicker> change events fire here, outside the drag/event
   // stack: a page handler may destroy the picker (see pumpChanges).
   colorpicker::ElementColorPicker::pumpChanges();
-  // Sprite textures whose first resolution failed retry here, before the
-  // layout pass that consumes them (RmlUi latched the source; see
-  // AbcRenderInterface::pumpSpriteTextures).
-  if (Callbacks.RenderInterface)
-    Callbacks.RenderInterface->pumpSpriteTextures();
 #ifndef NDEBUG
   PerfTimer updateTimer;
 #endif

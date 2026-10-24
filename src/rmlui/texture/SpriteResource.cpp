@@ -50,18 +50,12 @@ struct DecodedAtlas {
 
 std::unordered_map<std::string, HudEntry> HudEntries;
 std::unordered_map<std::string, DecodedAtlas> Atlases;
-// Transient read/decode failures are retried a bounded number of times: a
-// map load or a video-mode restart can make a mounted atlas unreadable for a
-// frame, and caching that as permanent would leave the icon blank for the
-// whole HUD cycle.
-constexpr int kAtlasRetryAttempts = 3;
-std::unordered_map<std::string, int> &atlasFailures() {
+std::unordered_map<std::string, int> &atlasErrors() {
   static std::unordered_map<std::string, int> instance;
   return instance;
 }
 std::unordered_map<std::string, int> CropTextures;
 bool ChannelWarned = false;
-bool UploadWarned = false;
 int HudResolution = 0;
 
 // Native sprite paths use the engine's sprite root; module-owned fallback
@@ -234,14 +228,8 @@ int createTexture(const DecodedAtlas &atlas) {
     return 0;
   }
   const int id = framework::texture::create();
-  if (!id) {
-    if (!UploadWarned) {
-      UploadWarned = true;
-      abc::ConsoleWarn("[AbcUi] sprite texture creation refused by the VGUI2 "
-                       "surface; icons retry on later frames\n");
-    }
+  if (!id)
     return 0;
-  }
   framework::texture::upload(id, atlas.rgba.data(), atlas.width, atlas.height);
   return id;
 }
@@ -251,16 +239,13 @@ DecodedAtlas *ensureAtlas(const std::string &atlasFile) {
   auto itor = Atlases.find(key);
   if (itor != Atlases.end())
     return &itor->second;
-  const auto failure = atlasFailures().find(key);
-  if (failure != atlasFailures().end() &&
-      failure->second >= kAtlasRetryAttempts)
+  if (atlasErrors().count(key))
     return nullptr;
   DecodedAtlas atlas;
   if (!loadSpr(key, atlas)) {
-    ++atlasFailures()[key];
+    atlasErrors()[key] = ABCUI_ERROR_DECODE;
     return nullptr;
   }
-  atlasFailures().erase(key);
   return &Atlases.emplace(key, std::move(atlas)).first->second;
 }
 
@@ -302,7 +287,7 @@ void shutdown() {
       framework::texture::release(id);
   CropTextures.clear();
   Atlases.clear();
-  atlasFailures().clear();
+  atlasErrors().clear();
   HudEntries.clear();
   HudResolution = 0;
 }

@@ -81,8 +81,6 @@ AbcRenderInterface::~AbcRenderInterface() {
   for (const auto &[handle, record] : Textures)
     if (record.Owned)
       vgui2ext::deleteTextureById(record.Id);
-  if (SpritePlaceholder)
-    vgui2ext::deleteTextureById(SpritePlaceholder);
 }
 
 void AbcRenderInterface::beginFrame() {
@@ -418,24 +416,8 @@ Rml::TextureHandle AbcRenderInterface::LoadTexture(Rml::Vector2i &dimensions,
   // directory).
   if (source.rfind("spr://", 0) == 0 || source.rfind("spricon://", 0) == 0) {
     int width = 0, height = 0;
-    const int id = sprites::textureForUri(source, width, height);
-    if (!id) {
-      // RmlUi caches a failed source permanently, so never fail here: hand
-      // out the transparent placeholder and let pumpSpriteTextures() resolve
-      // the crop on a later frame (see the header note).
-      const int placeholder = placeholderTexture();
-      if (!placeholder)
-        return 0;
-      const Rml::TextureHandle handle = retainTexture(placeholder, false);
-      if (!handle)
-        return 0;
-      dimensions.x = 1;
-      dimensions.y = 1;
-      AdditiveTextures.insert(handle);
-      PendingSprites.push_back({source, handle, 0});
-      return handle;
-    }
-    const Rml::TextureHandle handle = retainTexture(id, false);
+    const Rml::TextureHandle handle =
+        retainTexture(sprites::textureForUri(source, width, height), false);
     if (handle) {
       dimensions.x = width;
       dimensions.y = height;
@@ -609,43 +591,6 @@ void AbcRenderInterface::ReleaseTexture(Rml::TextureHandle texture) {
 
 void AbcRenderInterface::clearAdditiveTextures() {
   AdditiveTextures.clear();
-}
-
-int AbcRenderInterface::placeholderTexture() {
-  if (SpritePlaceholder)
-    return SpritePlaceholder;
-  static const unsigned char kTransparent[4] = {0, 0, 0, 0};
-  SpritePlaceholder = uploadSurfaceTexture(kTransparent, 1, 1);
-  return SpritePlaceholder;
-}
-
-void AbcRenderInterface::pumpSpriteTextures() {
-  if (PendingSprites.empty())
-    return;
-  // Roughly two seconds at the shipped frame rate: long enough for a map
-  // load / video-mode restart window to pass, short enough that a genuinely
-  // missing atlas stops costing a read per frame.
-  constexpr int kRetryAttempts = 120;
-  for (auto it = PendingSprites.begin(); it != PendingSprites.end();) {
-    const auto record = Textures.find(it->Handle);
-    if (record == Textures.end()) { // RmlUi released the placeholder handle
-      it = PendingSprites.erase(it);
-      continue;
-    }
-    int width = 0, height = 0;
-    const int id = sprites::textureForUri(it->Source, width, height);
-    if (id) {
-      // The draw reads the record id every call, so the retry becomes
-      // visible on the next geometry pass.
-      record->second.Id = id;
-      it = PendingSprites.erase(it);
-      continue;
-    }
-    if (++it->Attempts >= kRetryAttempts)
-      it = PendingSprites.erase(it);
-    else
-      ++it;
-  }
 }
 
 void AbcRenderInterface::EnableScissorRegion(bool enable) {

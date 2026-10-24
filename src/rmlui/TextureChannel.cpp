@@ -1,25 +1,15 @@
 // framework::texture implementation - see framework/TextureSink.h.
 #include "framework/TextureSink.h"
 
-#include "AbcRenderInterface.h"
 #include "VGUI2ExtensionImport.h"
-#include "RmlUiModule.h"
 
 namespace framework::texture {
-
-namespace {
-void closeBatchedPass() {
-  if (rmlui::AbcRenderInterface *renderer = rmlui::renderInterface())
-    renderer->endFrame();
-}
-} // namespace
 
 bool available() {
   return vgui2ext::available();
 }
 
 int create() {
-  closeBatchedPass();
   return vgui2ext::createTexture();
 }
 
