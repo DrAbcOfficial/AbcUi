@@ -442,6 +442,13 @@ if(ABC_GAME_DIR)
         DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
     add_custom_target(deploy
         DEPENDS AbcUi pack_modules
+        # Drop previous-version packages first: the loader resolves a
+        # duplicated id by manifest version, but a stale zip on disk is still
+        # dead weight and can shadow a downgrade.
+        COMMAND "${CMAKE_COMMAND}"
+            "-DSOURCE_PACK_DIR=${ABCUI_MODULE_PACK_DIR}"
+            "-DDEST_DIR=${ABC_GAME_DIR}/svencoop/abc/abcui/modules"
+            -P "${CMAKE_CURRENT_LIST_DIR}/cmake/PruneModulePackages.cmake"
         COMMAND "${CMAKE_COMMAND}" --install "${CMAKE_BINARY_DIR}" --config "$<CONFIG>"
         COMMENT "Deploying AbcUi.dll and assets to ${ABC_GAME_DIR}")
 endif()
