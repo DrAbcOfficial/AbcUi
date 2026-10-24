@@ -96,8 +96,8 @@
 	height: 396dp;
 }
 
-/* The live Studio preview; the Renderer draws it into its own FBO and the
-   element presents it, so the box here is exactly what the camera frames. */
+/* The engine draws the standalone Studio view; the backend captures it for
+   the element. This box is exactly what the preview camera frames. */
 #player-model {
 	display: block;
 	width: 100%;

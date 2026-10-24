@@ -69,12 +69,14 @@ void unregisterView(View *view);
 // portal hooks resolved). Consumers degrade when false.
 bool available();
 
-// OnLoadClient: engine hooks (once per process) + client portal hooks (per
-// client instance). Soft-degrading - see the header note.
+// OnLoadClient: engine hooks once per process. Portal hooks also re-arm on
+// HUD_Init after each HUD_Shutdown. Repeated installs are idempotent.
+// Soft-degrading - see the header note.
 void installEngineHooks();
 void installClientHooks();
-// HUD_Shutdown: the portal hooks die with the client instance (the engine
-// hooks stay for the process lifetime; the engine never reloads).
+// HUD_Shutdown: remove portal hooks before a possible client unload, but
+// retain the studio slot across ordinary HUD cycles. A real LoadClient
+// clears that slot with captureStudioInterfaces(nullptr, nullptr).
 void uninstallClientHooks();
 
 // hooks.cpp export routing: consumed returns true when a view's pass owns
@@ -85,7 +87,8 @@ bool hookDrawTransparentTriangles();
 
 // hooks.cpp H_HUD_GetStudioModelInterface: capture the studio interface the
 // engine received (the client's, or the engine's own when the client
-// provides none) and the engine studio API.
+// provides none) and the engine studio API. The engine-owned slot is read
+// at draw time because the engine may fill its fallback after this export.
 void captureStudioInterfaces(r_studio_interface_s **ppinterface,
                              engine_studio_api_s *pstudio);
 

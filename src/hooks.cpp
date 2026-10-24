@@ -118,6 +118,7 @@ private:
 
 static void H_HUD_Init() {
   gExportfuncs.HUD_Init();
+  framework::standaloneview::installClientHooks();
   // HUD_Init/HUD_Shutdown can repeat within one engine process (the client
   // is reloaded on some map-change/reconnect paths). Everything that
   // HUD_Shutdown tears down must be re-armed here.
@@ -313,8 +314,8 @@ H_HUD_GetStudioModelInterface(int version,
 
 static void H_HUD_Shutdown() {
   VanillaHudPanelCount = 0;
-  // The standalone-view portal hooks live in the client image, which dies
-  // with this cycle (the engine hooks stay: the engine never reloads).
+  // Remove hooks before a possible client unload. Ordinary HUD cycles keep
+  // the studio slot and re-arm portal hooks from H_HUD_Init.
   framework::standaloneview::uninstallClientHooks();
   services::voice::status().shutdown();
   rmlui::onHudShutdown();
@@ -385,6 +386,9 @@ static void H_HUD_DrawTransparentTriangles() {
 }
 
 void attachExports(cl_exportfuncs_t *pExportFuncs) {
+  // LoadClient, unlike HUD_Init, identifies a new client-export lifetime.
+  EngineStudioApi = nullptr;
+  framework::standaloneview::captureStudioInterfaces(nullptr, nullptr);
   pExportFuncs->IN_ActivateMouse = rmlui::activateGameMouse;
   pExportFuncs->IN_Accumulate = H_IN_Accumulate;
   pExportFuncs->IN_MouseEvent = H_IN_MouseEvent;
@@ -395,11 +399,12 @@ void attachExports(cl_exportfuncs_t *pExportFuncs) {
   pExportFuncs->HUD_Frame = H_HUD_Frame;
   pExportFuncs->HUD_Key_Event = H_HUD_Key_Event;
   pExportFuncs->HUD_GetStudioModelInterface = H_HUD_GetStudioModelInterface;
-  if (framework::standaloneview::available()) {
-    pExportFuncs->V_CalcRefdef = H_V_CalcRefdef;
-    pExportFuncs->HUD_DrawNormalTriangles = H_HUD_DrawNormalTriangles;
-    pExportFuncs->HUD_DrawTransparentTriangles = H_HUD_DrawTransparentTriangles;
-  }
+  // These wrappers pass through while no standalone view owns the call.
+  // Install even when startup resolution failed, so a HUD_Init retry can
+  // recover without replacing the engine's export chain mid-process.
+  pExportFuncs->V_CalcRefdef = H_V_CalcRefdef;
+  pExportFuncs->HUD_DrawNormalTriangles = H_HUD_DrawNormalTriangles;
+  pExportFuncs->HUD_DrawTransparentTriangles = H_HUD_DrawTransparentTriangles;
   pExportFuncs->HUD_UpdateClientData = H_HUD_UpdateClientData;
   pExportFuncs->HUD_TxferPredictionData = H_HUD_TxferPredictionData;
   pExportFuncs->HUD_TxferLocalOverrides = H_HUD_TxferLocalOverrides;

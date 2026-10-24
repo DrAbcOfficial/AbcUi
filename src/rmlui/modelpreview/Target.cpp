@@ -214,10 +214,15 @@ bool Target::render(const Options &Config, int Width, int Height) {
   // Model loading through the engine studio API (mounted search paths
   // included); the old Renderer LoadStudioModel scope is gone.
   if (!state.Attempted) {
+    // A delayed studio export is not a missing model. Retry next frame
+    // instead of latching ModelMissing for this source until a context reset.
+    if (!hooks::EngineStudioApi || !hooks::EngineStudioApi->Mod_ForName) {
+      state.Active = false;
+      return false;
+    }
     state.Attempted = true;
-    model_s *model = nullptr;
-    if (hooks::EngineStudioApi && hooks::EngineStudioApi->Mod_ForName)
-      model = hooks::EngineStudioApi->Mod_ForName(Config.Source.c_str(), 0);
+    model_s *model =
+        hooks::EngineStudioApi->Mod_ForName(Config.Source.c_str(), 0);
     state.Entity.model = model;
     state.ModelMissing = !model;
     if (!model) {
@@ -349,10 +354,8 @@ bool Target::render(const Options &Config, int Width, int Height) {
         engineFov = std::clamp(fov->value, 30.0f, 170.0f);
       const float aspect =
           Height > 0 ? static_cast<float>(Width) / Height : 1.0f;
-      const float halfRadians =
-          2.0f *
-          std::atan(std::tan(engineFov * 0.5f * 3.14159265358979f / 180.0f) /
-                    aspect);
+      const float halfRadians = std::atan(
+          std::tan(engineFov * 0.5f * 3.14159265358979f / 180.0f) / aspect);
       const float modelHeight = (top - bottom) * Config.FrameMargin;
       const float center = (top + bottom) * 0.5f;
       const float distance =

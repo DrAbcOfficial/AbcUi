@@ -52,10 +52,11 @@ struct EngineBridge {
 EngineBridge Engine;
 bool EngineHooksInstalled = false;
 bool Available = false;
+bool ClientHooksReady = false;
 
 // The engine's r_studio_interface_t and engine studio API, captured from
 // HUD_GetStudioModelInterface (hooks.cpp forwards them).
-r_studio_interface_t *StudioInterface = nullptr;
+r_studio_interface_t **StudioInterface = nullptr;
 engine_studio_api_t *EngineStudio = nullptr;
 
 hook_t *RenderViewHook = nullptr;
@@ -183,7 +184,8 @@ bool shouldRenderViews() {
   // also callable by other plugins to refresh the refdef) and never during
   // demo playback (the recorded view overwrites the refdef afterwards) or
   // re-entrantly.
-  if (PaintBackgroundDepth <= 0 || RenderingViews || views().empty())
+  if (!available() || !StudioInterface || !*StudioInterface ||
+      PaintBackgroundDepth <= 0 || RenderingViews || views().empty())
     return false;
   if (gEngfuncs.pDemoAPI && gEngfuncs.pDemoAPI->IsPlayingback())
     return false;
@@ -242,7 +244,12 @@ bool resolve(void *module, const char *name, mh_gamesymbol_kind_t kind,
     return false;
   const auto status =
       g_pMetaHookAPI->ResolveGameSymbol(module, name, kind, address);
-  return status == MH_GAMESYMBOL_OK && *address != nullptr;
+  if (status == MH_GAMESYMBOL_OK && *address != nullptr)
+    return true;
+  abc::ConsoleWarn("[AbcUi] standalone view symbol unavailable: %s "
+                   "(status %d)\n",
+                   name, static_cast<int>(status));
+  return false;
 }
 
 bool isSvenCoopClient() {
@@ -335,14 +342,14 @@ private:
 };
 
 void StudioDrawfuncs::drawStudioModel(cl_entity_s *ent) {
-  if (!StudioInterface)
+  if (!StudioInterface || !*StudioInterface)
     return;
   EntityDrawScope scope(ent);
   if (!scope.visible())
     return;
   // STUDIO_RENDER without STUDIO_EVENTS: a preview must not fire sounds,
   // muzzle flashes or attachment writes.
-  StudioInterface->StudioDrawModel(STUDIO_RENDER);
+  (*StudioInterface)->StudioDrawModel(STUDIO_RENDER);
 }
 
 } // namespace
@@ -371,7 +378,7 @@ void unregisterView(View *view) {
 }
 
 bool available() {
-  return Available;
+  return Available && ClientHooksReady;
 }
 
 void installEngineHooks() {
@@ -439,21 +446,23 @@ void installEngineHooks() {
 }
 
 void installClientHooks() {
-  if (!Available)
+  if (!Available || ClientHooksReady)
     return;
   // The portal hooks are required on a Sven client (see installPortalHooks)
   // and the whole route degrades without them.
   if (isSvenCoopClient() && !installPortalHooks()) {
-    Available = false;
     abc::ConsoleWarn("[AbcUi] standalone view route unavailable (client "
                      "portal gamedata symbols unresolved); model preview "
                      "disabled\n");
+    return;
   }
+  ClientHooksReady = true;
 }
 
 void uninstallClientHooks() {
-  StudioInterface = nullptr;
-  EngineStudio = nullptr;
+  // HUD_Shutdown also runs without unloading the client. Keep its studio
+  // slot/API until the next real LoadClient; HUD_Init re-arms portal hooks.
+  ClientHooksReady = false;
   uninstallPortalHooks();
 }
 
@@ -488,8 +497,9 @@ bool hookDrawTransparentTriangles() {
 
 void captureStudioInterfaces(r_studio_interface_s **ppinterface,
                              engine_studio_api_s *pstudio) {
-  if (ppinterface)
-    StudioInterface = *ppinterface;
+  // Keep the engine-owned slot, not its current value: when the client
+  // declines the interface, the engine installs its fallback after return.
+  StudioInterface = ppinterface;
   EngineStudio = pstudio;
 }
 

@@ -316,6 +316,12 @@ gameui. `demo` is the opt-in SDK example, not part of the default distribution.
   The shared surface channel ends active UI 2D state before uploads or
   deletion, including module textures and animated media, not just fonts.
 - Model preview (`<model>`): rendered through the engine's own `V_RenderView` (the StandaloneView route, in-house - no Renderer `IEntityViewRenderer` involved), captured into a backend offscreen target. The route needs engine/client gamedata symbols (`V_RenderView`, `VGui_ViewportPaintBackground`, `cls.state`, `cls.signon`, `cl_worldmodel`, `r_worldentity`, `CL_FxBlend`, `currententity`, `r_blend`, plus the Sven client's portal manager pair); on an unknown build the symbols do not resolve and the preview quietly degrades to its disabled branch instead of failing startup. Lighting follows the engine's entity lighting (fullbright over the empty menu world), and auto-framing reads the engine's `scr_fov_value` because the engine owns the pass projection.
+  Auto-framing fits the model height using the vertical **half** field of
+  view, including portrait-shaped menu cards. Portal hooks re-arm on each
+  HUD cycle, while the engine-owned Studio interface slot survives ordinary
+  map changes and is cleared only for a new client DLL. A delayed Studio API
+  retries next frame instead of permanently marking the model missing;
+  unresolved view symbols are named in the console diagnosis.
 - Retained cvars: `hud_danger_health`, `hud_danger_armor`, `hud_deathnotice(+_time/_count)`, `hud_sideinfo`, `abc_ui_chat` (0 = off, any other value = on, forcing CaptionMod's `cap_newchat` off while on); in-game diagnostics: `abc_ui_debugger` (RmlUi debugger) and `abc_ui_probe` (font/panel/element state dump).
 - Avatars and real names come from the dynamically bound game steam_api.dll (Bridge/Native backend abstraction, no steam_api.lib import dependency); fonts are loaded from the system font directory through `Rml::LoadFontFace` (Verdana/Tahoma, Microsoft YaHei for CJK, Consolas, and Segoe UI Emoji/Symbol as the colour-emoji and symbol fallbacks, in that order so colour glyphs win over the monochrome symbols).
 
