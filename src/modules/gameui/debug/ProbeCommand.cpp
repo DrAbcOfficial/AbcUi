@@ -20,6 +20,7 @@
 #include "../../../framework/HudPanel.h"
 #include "../../../framework/ScoreSeat.h"
 #include "../../../render/RadarRender.h"
+#include "../../../rmlui/ImeOverlay.h"
 #include "../../../rmlui/texture/Avatars.h"
 #include "../../../rmlui/animated/ElementAnimatedImage.h"
 #include "../../../data/NetworkMessages.h"
@@ -675,6 +676,35 @@ void inputEventsCommand() {
       "wndproc-total=%u char=%u key=%u feed-commit=%u drop=%u composing=%d\n",
       appProcTotal, textInput, textEditing, candidates, wndProcTotal, wndChar,
       wndKey, commits, drops, rmlui::textComposing() ? 1 : 0);
+  unsigned imeFeeds = 0, imeBytes = 0, imeEventFeeds = 0;
+  int imeEventCount = -1, imeCount = 0, imeSelected = -1, imeComposition = 0;
+  bool imeAnchor = false;
+  rmlui::ime::imeDebug(imeFeeds, imeBytes, imeEventFeeds, imeEventCount,
+                       imeCount, imeSelected, imeAnchor, imeComposition);
+  abc::ConsolePrint(
+      "[AbcUi] input-events ime feeds=%u last-bytes=%u event-feeds=%u "
+      "event-count=%d count=%d selected=%d anchor=%d comp-bytes=%d (a "
+      "TSF IME keeps last-bytes 0; the page then rides the event payload)\n",
+      imeFeeds, imeBytes, imeEventFeeds, imeEventCount, imeCount, imeSelected,
+      imeAnchor ? 1 : 0, imeComposition);
+  unsigned payloadSeen = 0;
+  unsigned payloadWords[8] = {};
+  rmlui::ime::imePayloadDebug(payloadSeen, payloadWords);
+  abc::ConsolePrint(
+      "[AbcUi] input-events ime-payload seen=%u w3=0x%08x w4=0x%08x "
+      "w5=0x%08x w6=0x%08x w7=0x%08x\n",
+      payloadSeen, payloadWords[3], payloadWords[4], payloadWords[5],
+      payloadWords[6], payloadWords[7]);
+  if (Rml::Context *context = rmlui::context()) {
+    Rml::Element *focus = context->GetFocusElement();
+    Rml::ElementDocument *document =
+        focus ? focus->GetOwnerDocument() : nullptr;
+    abc::ConsolePrint(
+        "[AbcUi] input-events ime-gate focus=%s doc=%s visible=%d\n",
+        focus ? focus->GetAddress().c_str() : "(none)",
+        document ? document->GetSourceURL().c_str() : "(none)",
+        document && document->IsVisible() ? 1 : 0);
+  }
   unsigned wndTypes[256] = {}, appTypes[256] = {};
   rmlui::messageHistogram(wndTypes, appTypes);
   for (int i = 0; i < 256; ++i) {
