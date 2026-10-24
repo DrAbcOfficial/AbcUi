@@ -96,6 +96,15 @@ public:
   // textures that later reuse them).
   void clearAdditiveTextures();
 
+  // Retries sprite textures whose first resolution failed. RmlUi latches a
+  // failed texture source for the lifetime of the context, so returning 0 on
+  // a transient failure (a surface/upload refusal while the render pass was
+  // busy) would leave the icon a solid colour square until the context was
+  // rebuilt. LoadTexture therefore hands out a transparent placeholder and
+  // this pump swaps the real texture id into the live record once the crop
+  // resolves (RenderGeometry reads the record id every draw).
+  void pumpSpriteTextures();
+
   // Externally-owned live texture (radar FBO, module uploads and media).
   // Requests whose source starts with `uriPrefix` resolve to `texture` (never
   // deleted by ReleaseTexture; the owner frees it), carry the given pixel
@@ -191,6 +200,17 @@ private:
   Rml::Rectanglei AppliedScissorRect = Rml::Rectanglei::MakeInvalid();
   // Sprite textures draw additive (see header note).
   std::unordered_set<Rml::TextureHandle> AdditiveTextures;
+
+  // Deferred sprite loads (see pumpSpriteTextures). The placeholder is one
+  // 1x1 transparent texture shared by every pending record.
+  struct PendingSpriteTexture {
+    Rml::String Source;
+    Rml::TextureHandle Handle = 0;
+    int Attempts = 0;
+  };
+  std::vector<PendingSpriteTexture> PendingSprites;
+  int SpritePlaceholder = 0;
+  int placeholderTexture();
   // Current element transform (null = identity); RmlUi only calls
   // SetTransform when the value actually changes (RenderManager).
   Rml::Matrix4f Transform = Rml::Matrix4f::Identity();
