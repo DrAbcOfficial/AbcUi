@@ -345,6 +345,13 @@ typedef struct AbcUiDataApi {
   // displaced hook forwards straight to the chain tail. Returns 1 when the
   // hook is at the head, 0 on refusal. Main thread only.
   int32_t(ABCUI_CALL *ensureSayTextFirst)(void);
+  // AbcUi >= 0.9.2: same arbitration for the TextMsg chain. The server
+  // console's own `say` reaches the client as TextMsg/HUD_PRINTTALK (client
+  // byte 0), which the owning chat log must draw exactly once; the head
+  // frame publishes the textfeed.saytext veto for that destination and
+  // forwards to the displaced link while no sink consumes. Contract matches
+  // ensureSayTextFirst. Main thread only.
+  int32_t(ABCUI_CALL *ensureTextMsgFirst)(void);
 } AbcUiDataApi;
 
 // ------------------------------------------------------------------- ui ----

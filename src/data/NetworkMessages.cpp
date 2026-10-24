@@ -88,6 +88,11 @@ pfnUserMsgHook original_SayText = nullptr;
 // ensureSayTextFirst(); only the outermost link forwards to it.
 pfnUserMsgHook upstream_SayText = nullptr;
 int sayTextDepth = 0;
+// Same arbitration for TextMsg: the server console's own `say` reaches the
+// client as TextMsg/HUD_PRINTTALK (CaptionMod draws that wire), so a chat
+// owner must sit at the head of this chain too.
+pfnUserMsgHook upstream_TextMsg = nullptr;
+int textMsgDepth = 0;
 pfnUserMsgHook original_Damage = nullptr;
 pfnUserMsgHook original_MetaHook = nullptr;
 // hud_vote gate for the VoteMenu consumer (set by the vote module through
@@ -332,6 +337,19 @@ int __MsgFunc_Flashlight(const char *pszName, int iSize, void *pbuf) {
 }
 
 int __MsgFunc_TextMsg(const char *pszName, int iSize, void *pbuf) {
+  // A bridge promoted by ensureTextMsgFirst() leaves its old link in the
+  // chain below. Only the outermost link parses and publishes; the nested
+  // link forwards to the chain tail so a chained plugin cannot draw twice.
+  if (textMsgDepth > 0)
+    return upstream_TextMsg ? upstream_TextMsg(pszName, iSize, pbuf)
+                            : (original_TextMsg ? original_TextMsg(pszName,
+                                                                 iSize, pbuf)
+                                                : 0);
+  ++textMsgDepth;
+  struct DepthGuard {
+    int &depth;
+    ~DepthGuard() { --depth; }
+  } guard{textMsgDepth};
   abc::MsgReader msg(pbuf, iSize);
   int target = msg.readByte();
   std::string info = msg.readString();
@@ -350,6 +368,19 @@ int __MsgFunc_TextMsg(const char *pszName, int iSize, void *pbuf) {
         chain &= callback(target, info.c_str(), param1.c_str(), param2.c_str(),
                           param3.c_str(), param4.c_str());
       });
+  // HUD_PRINTTALK is the server console's own chat wire (`say` typed into the
+  // dedicated-server console; CaptionMod draws this wire into its log). The
+  // client byte is 0 - no player sender - and the run parser handles the
+  // text the same way as SayText, so the owning chat log draws it once.
+  if (target == 3) {
+    const AbcUiSayTextEvent chatEvent{
+        0,
+        info.c_str(),
+        {param1.c_str(), param2.c_str(), param3.c_str(), param4.c_str()}};
+    if (framework::eventBus().publishVeto(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT,
+                                          chatEvent))
+      return 1;
+  }
   return chain ? original_TextMsg(pszName, iSize, pbuf) : 1;
 }
 
@@ -664,6 +695,7 @@ void registerUserMsgHooks() {
   // A rebuilt client table invalidates the head displaced for SayText; the
   // next ownership decision re-captures the current head.
   upstream_SayText = nullptr;
+  upstream_TextMsg = nullptr;
   installHook("AmmoX", __MsgFunc_AmmoX, original_AmmoX);
   installHook("WeaponList", __MsgFunc_WeaponList, original_WeaponList);
   installHook("InitHUD", __MsgFunc_InitHUD, original_InitHUD);
@@ -733,6 +765,26 @@ int32_t ensureSayTextFirst() {
   if (!previous || previous == &__MsgFunc_SayText)
     return 0;
   upstream_SayText = previous;
+  return 1;
+}
+
+int32_t ensureTextMsgFirst() {
+  if (!g_pMetaHookAPI || !g_pMetaHookAPI->FindUserMsgHook ||
+      !g_pMetaHookAPI->HookUserMsg)
+    return 0;
+  // Never move a frame that is currently dispatching.
+  if (textMsgDepth > 0)
+    return 0;
+  usermsg_t *head = g_pMetaHookAPI->FindUserMsgHook("TextMsg");
+  if (!head || !head->function)
+    return 0;
+  if (head->function == &__MsgFunc_TextMsg)
+    return 1;
+  const pfnUserMsgHook previous =
+      g_pMetaHookAPI->HookUserMsg("TextMsg", __MsgFunc_TextMsg);
+  if (!previous || previous == &__MsgFunc_TextMsg)
+    return 0;
+  upstream_TextMsg = previous;
   return 1;
 }
 

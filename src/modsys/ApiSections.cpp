@@ -1028,11 +1028,15 @@ int32_t apiEnsureSayTextFirst() {
   return netmsg::ensureSayTextFirst();
 }
 
+int32_t apiEnsureTextMsgFirst() {
+  return netmsg::ensureTextMsgFirst();
+}
+
 const AbcUiDataApi kDataApi = {
     sizeof(AbcUiDataApi), apiHudState,    apiLevelName,
     apiPlayerState,       apiThirdPerson, apiTraceEndPos,
     apiModelIndex,        apiViewHeight,  apiServerInfo,
-    apiEnsureSayTextFirst,
+    apiEnsureSayTextFirst, apiEnsureTextMsgFirst,
 };
 
 } // namespace

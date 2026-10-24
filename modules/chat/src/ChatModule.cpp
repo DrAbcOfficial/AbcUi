@@ -170,6 +170,10 @@ void ensureOwnershipHooks() {
   }
   if (ABCUI_API_HAS_MEMBER(AbcUiDataApi, Api->data, ensureSayTextFirst))
     Api->data->ensureSayTextFirst();
+  // The server console's own `say` rides TextMsg/HUD_PRINTTALK (CaptionMod
+  // draws that wire), so the TextMsg chain needs the same promotion.
+  if (ABCUI_API_HAS_MEMBER(AbcUiDataApi, Api->data, ensureTextMsgFirst))
+    Api->data->ensureTextMsgFirst();
 }
 
 void maintainChatOwnership() {
@@ -572,7 +576,11 @@ int32_t onSayText(void *, const void *payload) {
 
   AbcUiPlayerInfo sender{};
   sender.structSize = sizeof(sender);
-  const bool known = Api->players->get(event->client, &sender) && sender.valid;
+  // A non-positive client byte is the server console's own line (`say` typed
+  // into the dedicated-server console arrives as SayText client 0 or
+  // TextMsg/HUD_PRINTTALK): no sender row, no player tint.
+  const bool known = event->client >= 1 && event->client <= 32 &&
+                     Api->players->get(event->client, &sender) && sender.valid;
   const std::string senderName = known ? sender.name : std::string();
   const std::vector<chatsaytext::Run> runs = chatsaytext::buildRuns(
       event->text ? event->text : "", event->params, senderName);
