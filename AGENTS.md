@@ -26,6 +26,17 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
   MIT): gamedata-symbol misses degrade the preview, never fatal.
 - AbcCore must stay renderer-free. AbcUi owns `thirdparty/Renderer` and the renderer-facing bridge in `src/render/`; do not move either back into AbcCore.
 
+## README
+
+- The README is the single public document and is written for end users.
+- Keep it short: features, installation and user-facing commands or settings
+  only. Do not document architecture, module layout, ABI or interface
+  contracts, design conventions or internal implementation, and never add
+  parenthesised technical remarks.
+- Do not describe changelogs, TODOs or FIXMEs.
+- The only technical content is how to build the dist package, including its
+  prerequisites.
+
 ## Known structural exceptions
 
 These are deliberate, audited exceptions rather than unfinished cleanups:
