@@ -406,7 +406,20 @@ gameui. `demo` is the opt-in SDK example, not part of the default distribution.
   bypassed only during the preview pass; the normal view and camera settings
   are unchanged.
 - Retained cvars: `hud_danger_health`, `hud_danger_armor`, `hud_deathnotice(+_time/_count)`, `hud_sideinfo`, `abc_ui_chat` (0 = off, any other value = on, forcing CaptionMod's `cap_newchat` off while on); in-game diagnostics: `abc_ui_debugger` (RmlUi debugger) and `abc_ui_probe` (font/panel/element state dump).
-- Avatars and real names come from the dynamically bound game steam_api.dll (Bridge/Native backend abstraction, no steam_api.lib import dependency); fonts are loaded from the system font directory through `Rml::LoadFontFace` (Verdana/Tahoma, Microsoft YaHei for CJK, Consolas, and Segoe UI Emoji/Symbol as the colour-emoji and symbol fallbacks, in that order so colour glyphs win over the monochrome symbols).
+- Steam server lists (Internet/LAN/favorites/history/spectator/friends),
+  server pings and player details bind directly to the game's loaded
+  `steam_api.dll` through `ISteamMatchmakingServers`; favorites/history use
+  `ISteamMatchmaking` as their authoritative store. Identity, real names,
+  friends and avatars use that same direct runtime access path. There is no
+  `serverbrowser.dll` dependency, `SteamAPIBridge.dll` probe or alternate
+  Steam provider, and no `steam_api.lib` import dependency. The engine owns
+  Steam initialization, shutdown and callback pumping; unavailable Steam
+  interfaces disable their features without loading another DLL.
+- Server-browser tabs query the selected Steam list. The action-bar and
+  right-click **Add/Remove Favorite** actions update the selected server's
+  Steam favorite record without connecting; **Connect** is a separate action.
+  Browser models and intents remain wired across HUD/context recreation.
+- Fonts are loaded from the system font directory through `Rml::LoadFontFace` (Verdana/Tahoma, Microsoft YaHei for CJK, Consolas, and Segoe UI Emoji/Symbol as the colour-emoji and symbol fallbacks, in that order so colour glyphs win over the monochrome symbols).
 
 ## Runtime requirements
 

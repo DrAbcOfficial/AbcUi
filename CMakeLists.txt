@@ -38,8 +38,8 @@ abcui_prepare_mile_ffmpeg(ABCUI_MILE_FFMPEG_SDK)
 
 set(METAHOOK_INCLUDE_DIR "${ABC_CORE_DIR}/thirdparty/MetaHook/include")
 set(VGUI2EXTENSION_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/VGUI2Extension/include")
-# Steamworks SDK (headers only - steamapi/ binds exports at runtime, no
-# steam_api.lib import; see rmlui/SteamApiNative.cpp).
+# Steamworks SDK (headers only - services/steam binds exports at runtime,
+# no steam_api.lib import).
 set(STEAMSDK_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/SteamSDK")
 
 # --- FreeType (R-3) ---------------------------------------------------------
@@ -226,8 +226,6 @@ add_library(AbcUi MODULE
     src/rmlui/LanguageChannel.cpp
     src/rmlui/SourceSpewStub.cpp
     src/services/steam/SteamAPI.cpp
-    src/services/steam/SteamApiBridge.cpp
-    src/services/steam/SteamApiNative.cpp
     src/rmlui/VGUI2ExtensionImport.cpp
     src/framework/ResourceFile.cpp
     src/framework/ShellActions.cpp

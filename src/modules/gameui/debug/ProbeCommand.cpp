@@ -259,18 +259,17 @@ void probeCommand() {
       hudstate::isHudHidden(hudstate::kHideFlashlight) ? 1 : 0,
       hudstate::debugHideTokens(), hudstate::isSpectate() ? 1 : 0,
       hudstate::spectateMode(), hudstate::spectateTarget());
-  // Steam/avatar chain ground truth (P6 avatar round): which backend won,
+  // Steam/avatar diagnostics: direct runtime availability,
   // the id it serves, and a live fetch on the LOCAL id - that avatar is
   // always resident, so a failure here pins the broken link (connect /
   // handle / image decode) with no second client needed.
   {
-    const steamapi::Backend steamBackend = steamapi::backend();
     const steamapi::SteamId64 local = steamapi::localSteamId();
     steamapi::AvatarRgba av;
     const bool fetched = steamapi::avatar(local, av);
     abc::ConsolePrint(
-        "[AbcUi] probe: steam backend=%d local=%llu fetch=%d %dx%d gen=%d\n",
-        static_cast<int>(steamBackend), static_cast<unsigned long long>(local),
+        "[AbcUi] probe: steam available=%d local=%llu fetch=%d %dx%d gen=%d\n",
+        steamapi::available() ? 1 : 0, static_cast<unsigned long long>(local),
         fetched ? 1 : 0, av.width, av.height, avatars::generation(local));
   }
   // Keydown follows the context focus; print who owns it so a stuck input
@@ -893,8 +892,7 @@ void boardRowCommand() {
     if (!row)
       continue;
     abc::ConsolePrint("[AbcUi] board-row[%d] tag='%s' class='%s'\n", i,
-                      row->GetTagName().c_str(),
-                      row->GetClassNames().c_str());
+                      row->GetTagName().c_str(), row->GetClassNames().c_str());
     Rml::Element *name = nullptr;
     for (int c = 0; c < row->GetNumChildren() && !name; ++c) {
       Rml::Element *cell = row->GetChild(c);
@@ -912,16 +910,16 @@ void boardRowCommand() {
     }
     for (int c = 0; c < row->GetNumChildren(); ++c) {
       Rml::Element *cell = row->GetChild(c);
-      if (!cell ||
-          cell->GetClassNames().find("c-avatar") == std::string::npos)
+      if (!cell || cell->GetClassNames().find("c-avatar") == std::string::npos)
         continue;
       // cell > avatar-frame > (animimg|img)
       Rml::Element *image = cell->GetFirstChild();
       image = image ? image->GetFirstChild() : nullptr;
       if (!image)
         continue;
-      if (auto *animated = rmlui_dynamic_cast<
-              rmlui::animated::ElementAnimatedImage *>(image)) {
+      if (auto *animated =
+              rmlui_dynamic_cast<rmlui::animated::ElementAnimatedImage *>(
+                  image)) {
         abc::ConsolePrint(
             "[AbcUi] board-row avatar animimg src='%.160s' frames=%d "
             "visible=%d\n",
@@ -948,9 +946,8 @@ void mediaPlayerCommand() {
   unsigned dispatches = 0, consumed = 0;
   int last = -1;
   bool headOurs = false;
-  const bool bridge =
-      commands::debugBridge("MediaPlayer", dispatches, consumed, last,
-                            headOurs);
+  const bool bridge = commands::debugBridge("MediaPlayer", dispatches, consumed,
+                                            last, headOurs);
   abc::ConsolePrint(
       "[AbcUi] mediaplayer bridge=%d engine-head-ours=%d dispatches=%u "
       "consumed=%u last=%d\n",
@@ -979,8 +976,8 @@ void mediaPlayerCommand() {
       continue;
     ++found;
     abc::ConsolePrint(
-        "[AbcUi] mediaplayer doc[%d] visible=%d display='%s' src='%.80s'\n",
-        i, doc->IsVisible() ? 1 : 0,
+        "[AbcUi] mediaplayer doc[%d] visible=%d display='%s' src='%.80s'\n", i,
+        doc->IsVisible() ? 1 : 0,
         doc->GetProperty("display")->ToString().c_str(),
         doc->GetSourceURL().c_str());
   }
@@ -1004,8 +1001,7 @@ void chatStateCommand() {
     if (scan && scan->GetId() == "chat")
       abc::ConsolePrint("[AbcUi] chat-state doc[%d] '%s' visible=%d "
                         "opacity='%s' addr=%p src='%.80s'\n",
-                        i, scan->GetId().c_str(),
-                        scan->IsVisible() ? 1 : 0,
+                        i, scan->GetId().c_str(), scan->IsVisible() ? 1 : 0,
                         scan->GetProperty("opacity")->ToString().c_str(),
                         reinterpret_cast<void *>(scan),
                         scan->GetSourceURL().c_str());
@@ -1013,8 +1009,7 @@ void chatStateCommand() {
   abc::ConsolePrint(
       "[AbcUi] chat-state doc visible=%d opacity='%s' display='%s' "
       "src='%.80s'\n",
-      doc->IsVisible() ? 1 : 0,
-      doc->GetProperty("opacity")->ToString().c_str(),
+      doc->IsVisible() ? 1 : 0, doc->GetProperty("opacity")->ToString().c_str(),
       doc->GetProperty("display")->ToString().c_str(),
       doc->GetSourceURL().c_str());
   Rml::Element *log = doc->GetElementById("chat-log");
@@ -1030,9 +1025,8 @@ void chatStateCommand() {
   const int count = log->GetNumChildren();
   for (int i = count > 2 ? count - 2 : 0; i < count; ++i) {
     Rml::Element *row = log->GetChild(i);
-    abc::ConsolePrint("[AbcUi] chat-state row[%d] visible=%d rml='%.200s'\n",
-                      i, row->IsVisible() ? 1 : 0,
-                      row->GetInnerRML().c_str());
+    abc::ConsolePrint("[AbcUi] chat-state row[%d] visible=%d rml='%.200s'\n", i,
+                      row->IsVisible() ? 1 : 0, row->GetInnerRML().c_str());
   }
 }
 

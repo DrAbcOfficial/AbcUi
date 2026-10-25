@@ -226,6 +226,38 @@ GameUiModule::GameUiModule()
       module->Inventory->close();
   };
   services::inventory::setAccess(inventoryAccess);
+  // The server-browser SDK needs both its models and flow intents. Keep
+  // this wiring process-scoped, like the other page services; context
+  // recreation resets the session contents, not the session's address.
+  services::serverbrowser::Access serverBrowserAccess;
+  serverBrowserAccess.session = &ServerBrowser;
+  serverBrowserAccess.blacklist = &Blacklist;
+  serverBrowserAccess.setTab = [](int kind) {
+    if (GameUiModule *module = currentModule())
+      module->Server->beginQuery(
+          static_cast<services::serverbrowser::QueryKind>(kind));
+  };
+  serverBrowserAccess.refresh = [] {
+    if (GameUiModule *module = currentModule())
+      module->Server->refreshOrStop();
+  };
+  serverBrowserAccess.stop = [] {
+    if (GameUiModule *module = currentModule())
+      module->Server->stop();
+  };
+  serverBrowserAccess.connect = [] {
+    if (GameUiModule *module = currentModule())
+      module->Server->connectSelected();
+  };
+  serverBrowserAccess.toggleFavorite = [] {
+    if (GameUiModule *module = currentModule())
+      module->Server->toggleSelectedFavorite();
+  };
+  serverBrowserAccess.applyFilters = [] {
+    if (GameUiModule *module = currentModule())
+      module->Server->applyFiltersQuery();
+  };
+  services::serverbrowser::setAccess(serverBrowserAccess);
   // The console page module's close button lowers both truths (the bridge
   // request path and the engine-side console flag) - the seams resolve the
   // module through the registry (the launcher-thunk shape).
