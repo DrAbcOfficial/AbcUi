@@ -200,7 +200,9 @@ typedef struct AbcUiRenderBackendDesc {
   // in-house model preview): the pass renders into the backend's current
   // framebuffer, clears its viewport region and copies the completed view
   // region out. The backend may capture the pre-composite scene to retain
-  // alpha instead of the opaque final framebuffer.
+  // alpha instead of the opaque final framebuffer, and it normalizes that
+  // capture to straight-alpha RGBA8 so the framework can draw it with the
+  // ordinary alpha blend.
   uint32_t(ABCUI_CALL *targetCreate)(void *userdata, int32_t width,
                                      int32_t height); // handle, 0 = fail
   void(ABCUI_CALL *targetFree)(void *userdata, uint32_t target);

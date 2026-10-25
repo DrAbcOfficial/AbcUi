@@ -162,9 +162,11 @@ struct Target::State : framework::standaloneview::View {
     ++Frames;
     if (auto *renderInterface = rmlui::renderInterface();
         renderInterface && !TargetRegistered) {
+      // The backend normalizes the captured scene to straight alpha; the
+      // Renderer program-state table has no premultiplied 2D blend.
       renderInterface->registerExternalTexture(
           Uri, CaptureTexture, CaptureWidth, CaptureHeight, nullptr,
-          rmlui::TextureBlend::PremultipliedAlpha);
+          rmlui::TextureBlend::StraightAlpha);
       TargetRegistered = true;
     }
   }

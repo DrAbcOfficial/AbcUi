@@ -326,8 +326,10 @@ gameui. `demo` is the opt-in SDK example, not part of the default distribution.
   camera/scene/light buffers with neutral preview constants and restores the
   previous bindings after capture. It captures the completed scene before
   composition onto the opaque final buffer, preserving transparent model
-  backgrounds. Sven's first-person local-player routing is bypassed only during
-  the preview pass; the normal view and camera settings are unchanged.
+  backgrounds, and normalizes that capture to straight alpha so the ordinary
+  2D alpha blend composites it. Sven's first-person local-player routing is
+  bypassed only during the preview pass; the normal view and camera settings
+  are unchanged.
 - Retained cvars: `hud_danger_health`, `hud_danger_armor`, `hud_deathnotice(+_time/_count)`, `hud_sideinfo`, `abc_ui_chat` (0 = off, any other value = on, forcing CaptionMod's `cap_newchat` off while on); in-game diagnostics: `abc_ui_debugger` (RmlUi debugger) and `abc_ui_probe` (font/panel/element state dump).
 - Avatars and real names come from the dynamically bound game steam_api.dll (Bridge/Native backend abstraction, no steam_api.lib import dependency); fonts are loaded from the system font directory through `Rml::LoadFontFace` (Verdana/Tahoma, Microsoft YaHei for CJK, Consolas, and Segoe UI Emoji/Symbol as the colour-emoji and symbol fallbacks, in that order so colour glyphs win over the monochrome symbols).
 
@@ -352,7 +354,7 @@ symbols.
 
 | Path | Upstream | Pin |
 |---|---|---|
-| `thirdparty/Renderer` | https://github.com/MetaHookSv/Renderer | `ee7c1bd601f3cecd03fa0496db2cf0c4a919a452` (public interfaces and `gl_common.h` sync) |
+| `thirdparty/Renderer` | https://github.com/MetaHookSv/Renderer | `7225f589548fcc664c4d0e540eb91ccff22c3650` (public interfaces and `gl_common.h` sync) |
 | `thirdparty/RmlUi` | https://github.com/mikke89/RmlUi | tag `6.3` (`ba95ffe8bfb6370efb2cdcca927eaad4710c5413`) |
 | `thirdparty/freetype` | https://github.com/freetype/freetype | tag `VER-2-13-3` (`42608f77f20749dd6ddc9e0536788eaad70ea4b5`) |
 | `thirdparty/FreeImage` | https://github.com/hzqst/FreeImage_clone | `bf9dedd558d9891bc12d37feb3021fac857df4cc` |

@@ -32,10 +32,12 @@
 
 #include "RenderCommon.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdio>
 #include <cstdarg>
 #include <unordered_map>
+#include <vector>
 
 // GL/gl.h is the 1.1 header; the 1.2 clamp constant is used for capture
 // textures (no GLEW dependency wanted here).
@@ -91,10 +93,12 @@ uint64_t ABCUI_CALL programStateFor(int blend, uint64_t base) {
                ? DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED
                : DRAW_FILLED_RECT_ADDITIVE_BLEND_ENABLED;
   case ABCUI_RB_BLEND_PREMULTIPLIED_ALPHA:
-    // Keep alpha blending explicit even on API-002 runtimes predating the
-    // premultiplied flag. Newer runtimes prefer ONE over SRC_ALPHA.
-    return DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED |
-           DRAW_TEXTURED_RECT_PREMULTIPLIED_ALPHA_ENABLED;
+    // Renderer's public program-state table (API-002) has no premultiplied
+    // bit: it composites with SRC_ALPHA only. The capture path below
+    // normalizes offscreen targets to straight alpha, so straight alpha is
+    // the correct program here; a future backend that can express ONE,
+    // ONE_MINUS_SRC_ALPHA maps this mode itself.
+    return DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED;
   default:
     return base;
   }
@@ -528,6 +532,8 @@ struct CaptureTarget {
 };
 std::unordered_map<unsigned int, CaptureTarget> Targets;
 unsigned int NextTargetHandle = 0;
+// Reused readback buffer for the straight-alpha capture normalization.
+std::vector<float> CapturePixels;
 
 CaptureTarget *findTarget(unsigned int handle) {
   const auto it = Targets.find(handle);
@@ -597,6 +603,34 @@ void ABCUI_CALL cbClearViewportRegion(void *, int32_t x, int32_t y,
   previewBuffers().begin();
 }
 
+// The engine's Studio pass blends with glBlendFunc(SRC_ALPHA,
+// ONE_MINUS_SRC_ALPHA), so the colour written into the pre-composite scene
+// is premultiplied while the alpha channel accumulates coverage squared.
+// Recover the straight-alpha image the 2D channel expects: coverage is the
+// square root of that accumulated alpha, and the stored colour is already
+// multiplied by that coverage. One layer over a transparent clear is exact;
+// nested surfaces approximate because only the aggregate alpha survives.
+void normalizeCapture(std::vector<float> &pixels, std::size_t pixelCount) {
+  for (std::size_t i = 0; i < pixelCount; ++i) {
+    float *pixel = pixels.data() + i * 4;
+    float alpha = pixel[3];
+    if (!(alpha > 0.0f)) {
+      pixel[0] = pixel[1] = pixel[2] = pixel[3] = 0.0f;
+      continue;
+    }
+    if (alpha >= 1.0f) {
+      pixel[3] = 1.0f;
+      continue;
+    }
+    const float coverage = std::sqrt(alpha);
+    const float inverse = 1.0f / coverage;
+    pixel[0] *= inverse;
+    pixel[1] *= inverse;
+    pixel[2] *= inverse;
+    pixel[3] = coverage;
+  }
+}
+
 void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
                                        int32_t y, int32_t width,
                                        int32_t height) {
@@ -615,13 +649,22 @@ void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  // Read the float scene and normalize it before the 8-bit upload: the
+  // premultiplied-to-straight step needs the extra alpha precision.
+  const std::size_t pixelCount =
+      static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+  CapturePixels.resize(pixelCount * 4);
+  glReadPixels(x, y, width, height, GL_RGBA, GL_FLOAT, CapturePixels.data());
+  normalizeCapture(CapturePixels, pixelCount);
   if (!target->hasImage || target->width != width || target->height != height) {
-    glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, x, y, width, height, 0);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA,
+                 GL_FLOAT, CapturePixels.data());
     target->hasImage = true;
     target->width = width;
     target->height = height;
   } else {
-    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, width, height);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_FLOAT,
+                    CapturePixels.data());
   }
   glBindTexture(GL_TEXTURE_2D, previousTexture);
   Renderer->PopFrameBuffer();

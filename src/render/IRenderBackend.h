@@ -117,8 +117,9 @@ public:
 // framework-side model preview pass: the pass renders into the backend's
 // currently bound framebuffer, clears its viewport region and copies the
 // completed view region out. A backend may retain the pre-composite scene
-// as the capture source to preserve alpha. Handles are backend-defined;
-// 0 is never valid.
+// as the capture source to preserve alpha; the copied image is straight-
+// alpha RGBA8, ready for the ordinary alpha blend. Handles are
+// backend-defined; 0 is never valid.
 class IOffscreenTargets {
 public:
   virtual ~IOffscreenTargets() = default;
