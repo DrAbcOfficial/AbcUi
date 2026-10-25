@@ -46,6 +46,8 @@
 namespace {
 void freeWorldTarget();
 void freeBlurTargets();
+void endPreviewBuffers();
+void freePreviewBuffers();
 } // namespace
 
 // The ABI vertex POD must stay byte-identical to Renderer's vertex types -
@@ -89,7 +91,10 @@ uint64_t ABCUI_CALL programStateFor(int blend, uint64_t base) {
                ? DRAW_TEXTURED_RECT_ALPHA_BASED_ADDITIVE_ENABLED
                : DRAW_FILLED_RECT_ADDITIVE_BLEND_ENABLED;
   case ABCUI_RB_BLEND_PREMULTIPLIED_ALPHA:
-    return DRAW_TEXTURED_RECT_PREMULTIPLIED_ALPHA_ENABLED;
+    // Keep alpha blending explicit even on API-002 runtimes predating the
+    // premultiplied flag. Newer runtimes prefer ONE over SRC_ALPHA.
+    return DRAW_TEXTURED_RECT_ALPHA_BLEND_ENABLED |
+           DRAW_TEXTURED_RECT_PREMULTIPLIED_ALPHA_ENABLED;
   default:
     return base;
   }
@@ -190,6 +195,7 @@ public:
     // drops the framework-side registrations.
     freeWorldTarget();
     freeBlurTargets();
+    freePreviewBuffers();
     if (Sink.invalidateTargets)
       Sink.invalidateTargets(Sink.userdata);
   }
@@ -202,6 +208,7 @@ public:
   void OnPostRenderView() override {}
   void OnPostRenderViewPost() override {}
   void OnRenderEndFrame() override {
+    endPreviewBuffers();
     if (Sink.renderFrame)
       Sink.renderFrame(Sink.userdata);
   }
@@ -401,6 +408,118 @@ void ABCUI_CALL cbBlurInvalidate(void *) {
 
 // ------------------------------------------------------ offscreen targets --
 
+// Renderer creates its scene UBOs on map load, not at GL initialization.
+// An engine-onlyClientDraw pass can run before that: its matrices are valid,
+// but uploading to the absent UBOs leaves studio shaders without a camera and
+// the final gamma pass without scene constants. Supply only missing indexed
+// bindings, after engine setup and until the viewport has been copied out.
+class PreviewBuffers {
+public:
+  void begin() {
+    end();
+    if (!getIndexed) {
+      getIndexed =
+          reinterpret_cast<GetIndexedFn>(wglGetProcAddress("glGetIntegeri_v"));
+      bindBase =
+          reinterpret_cast<BindBaseFn>(wglGetProcAddress("glBindBufferBase"));
+    }
+    if (!getIndexed || !bindBase || !Renderer)
+      return;
+
+    GLint generic = 0;
+    glGetIntegerv(kUniformBufferBinding, &generic);
+    for (unsigned int i = 0; i < 3; ++i) {
+      GLint bound = 0;
+      getIndexed(kUniformBufferBinding, i, &bound);
+      if (bound)
+        continue;
+      if (!buffers[i])
+        buffers[i] = Renderer->GenBuffer();
+      if (!buffers[i])
+        continue;
+      if (i == BINDING_POINT_SCENE_UBO) {
+        scene_ubo_t scene{};
+        scene.r_g = scene.v_lightgamma = scene.v_lambert = 1.0f;
+        scene.v_gamma = scene.v_texgamma = scene.r_lightscale = 1.0f;
+        scene.r_lightmap_scale = scene.r_lightmap_pow = 1.0f;
+        scene.r_g3 = 0.125f;
+        scene.r_alphamin = 0.01f;
+        Renderer->UploadDataToUBODynamicDraw(buffers[i], sizeof(scene), &scene);
+      } else if (i == BINDING_POINT_CAMERA_UBO) {
+        camera_ubo_t camera{};
+        Renderer->SetupCameraView(&camera.views[0]);
+        camera.numViews = 1;
+        Renderer->UploadDataToUBODynamicDraw(buffers[i], sizeof(camera),
+                                             &camera);
+      } else {
+        const dlight_ubo_t lights{};
+        Renderer->UploadDataToUBODynamicDraw(buffers[i], sizeof(lights),
+                                             &lights);
+      }
+      bindBase(kUniformBuffer, i, buffers[i]);
+      replaced[i] = true;
+    }
+    // BindBufferBase also changes the generic binding. Restore it without
+    // disturbing any indexed binding (including ranges owned by other passes).
+    bindGeneric(static_cast<GLuint>(generic));
+  }
+
+  void end() {
+    if (!bindBase || !(replaced[0] || replaced[1] || replaced[2]))
+      return;
+    GLint generic = 0;
+    glGetIntegerv(kUniformBufferBinding, &generic);
+    for (unsigned int i = 0; i < 3; ++i) {
+      if (replaced[i])
+        bindBase(kUniformBuffer, i, 0);
+      replaced[i] = false;
+    }
+    bindGeneric(static_cast<GLuint>(generic));
+  }
+
+  void free() {
+    end();
+    for (auto &buffer : buffers) {
+      if (buffer && Renderer)
+        Renderer->DeleteBuffer(buffer);
+      buffer = 0;
+    }
+  }
+
+private:
+  using GetIndexedFn = void(APIENTRY *)(GLenum, GLuint, GLint *);
+  using BindBaseFn = void(APIENTRY *)(GLenum, GLuint, GLuint);
+  using BindFn = void(APIENTRY *)(GLenum, GLuint);
+  static constexpr GLenum kUniformBuffer = 0x8A11;
+  static constexpr GLenum kUniformBufferBinding = 0x8A28;
+
+  void bindGeneric(GLuint buffer) {
+    if (!bind)
+      bind = reinterpret_cast<BindFn>(wglGetProcAddress("glBindBuffer"));
+    if (bind)
+      bind(kUniformBuffer, buffer);
+  }
+
+  GetIndexedFn getIndexed = nullptr;
+  BindBaseFn bindBase = nullptr;
+  BindFn bind = nullptr;
+  GLuint buffers[3] = {};
+  bool replaced[3] = {};
+};
+
+PreviewBuffers &previewBuffers() {
+  static PreviewBuffers instance;
+  return instance;
+}
+
+void endPreviewBuffers() {
+  previewBuffers().end();
+}
+
+void freePreviewBuffers() {
+  previewBuffers().free();
+}
+
 struct CaptureTarget {
   GLuint texture = 0;
   int width = 0;
@@ -451,17 +570,31 @@ void ABCUI_CALL cbClearViewportRegion(void *, int32_t x, int32_t y,
   // saved and restored so Renderer's cached GL state stays valid.
   GLint scissorBox[4] = {};
   GLboolean scissorTest = glIsEnabled(GL_SCISSOR_TEST);
+  GLboolean colorMask[4] = {};
+  GLboolean depthMask = GL_FALSE;
   GLfloat clearColor[4] = {};
+  GLdouble clearDepth = 1;
   glGetIntegerv(GL_SCISSOR_BOX, scissorBox);
+  glGetBooleanv(GL_COLOR_WRITEMASK, colorMask);
+  glGetBooleanv(GL_DEPTH_WRITEMASK, &depthMask);
   glGetFloatv(GL_COLOR_CLEAR_VALUE, clearColor);
+  glGetDoublev(GL_DEPTH_CLEAR_VALUE, &clearDepth);
   glEnable(GL_SCISSOR_TEST);
   glScissor(x, y, width, height);
+  glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+  glDepthMask(GL_TRUE);
   glClearColor(rgba[0], rgba[1], rgba[2], rgba[3]);
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+  glClearDepth(1);
+  // Do not clear stencil: the renderer owns the pass's stencil classification.
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(clearColor[0], clearColor[1], clearColor[2], clearColor[3]);
+  glClearDepth(clearDepth);
+  glColorMask(colorMask[0], colorMask[1], colorMask[2], colorMask[3]);
+  glDepthMask(depthMask);
   glScissor(scissorBox[0], scissorBox[1], scissorBox[2], scissorBox[3]);
   if (scissorTest == GL_FALSE)
     glDisable(GL_SCISSOR_TEST);
+  previewBuffers().begin();
 }
 
 void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
@@ -470,6 +603,11 @@ void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
   CaptureTarget *target = findTarget(handle);
   if (!target || width <= 0 || height <= 0)
     return;
+  // V_RenderView has already composited the scene onto the opaque final
+  // buffer. Capture its gamma-corrected scene instead: the final buffer has
+  // lost the transparent background a model element needs.
+  Renderer->PushFrameBuffer();
+  Renderer->BindFrameBuffer(Renderer->GetBackBufferFBO());
   GLint previousTexture = 0;
   glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
   glBindTexture(GL_TEXTURE_2D, target->texture);
@@ -486,6 +624,8 @@ void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
     glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, width, height);
   }
   glBindTexture(GL_TEXTURE_2D, previousTexture);
+  Renderer->PopFrameBuffer();
+  endPreviewBuffers();
 }
 
 // ------------------------------------------------------------- lifecycle ---
@@ -523,6 +663,7 @@ void ABCUI_CALL cbShutdown(void *) {
   cbRemoveFrameSink(nullptr);
   freeWorldTarget();
   freeBlurTargets();
+  freePreviewBuffers();
   for (auto &entry : Targets)
     glDeleteTextures(1, &entry.second.texture);
   Targets.clear();

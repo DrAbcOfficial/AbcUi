@@ -49,6 +49,18 @@ abc::render::IOffscreenTargets *captureTargets() {
   return abc::render::targets();
 }
 
+// The engine's R_SetupGL places ref_params.viewport at
+// vid.height - (y + height) in GL's bottom-left coordinates (Quake's viewport
+// formula). The preview asks for (0, 0, w, h), so the pass lands at the TOP
+// of the screen: the scissor clear and the copy-out must use that same row,
+// otherwise they hit the empty bottom-left corner and capture a black box.
+int captureRowY(int height) {
+  abc::render::IRenderBackend *backend = abc::render::backend();
+  const int surface = backend ? backend->surfaceHeight() : 0;
+  const int row = surface - height;
+  return row > 0 ? row : 0;
+}
+
 bool routeAvailable() {
   if (framework::standaloneview::available() && captureTargets())
     return true;
@@ -118,8 +130,8 @@ struct Target::State : framework::standaloneview::View {
     // color just with gl_clear), so the region is cleared here before the
     // model draws, exactly over this view's viewport.
     if (abc::render::IOffscreenTargets *targets = captureTargets())
-      targets->clearViewportRegion(0, 0, CaptureWidth, CaptureHeight,
-                                   Background);
+      targets->clearViewportRegion(0, captureRowY(CaptureHeight), CaptureWidth,
+                                   CaptureHeight, Background);
     drawfuncs->drawStudioModel(&Entity);
   }
 
@@ -140,8 +152,8 @@ struct Target::State : framework::standaloneview::View {
     abc::render::IOffscreenTargets *targets = captureTargets();
     if (!targets || !CaptureHandle)
       return;
-    targets->copyViewportToTarget(CaptureHandle, 0, 0, CaptureWidth,
-                                  CaptureHeight);
+    targets->copyViewportToTarget(CaptureHandle, 0, captureRowY(CaptureHeight),
+                                  CaptureWidth, CaptureHeight);
     const unsigned int texture = targets->texture(CaptureHandle);
     if (!texture)
       return;

@@ -198,7 +198,9 @@ typedef struct AbcUiRenderBackendDesc {
   // --- OFFSCREEN_TARGETS ------------------------------------------------
   // Viewport-capture textures for framework-side render passes (the
   // in-house model preview): the pass renders into the backend's current
-  // framebuffer, clears its viewport region and copies the region out.
+  // framebuffer, clears its viewport region and copies the completed view
+  // region out. The backend may capture the pre-composite scene to retain
+  // alpha instead of the opaque final framebuffer.
   uint32_t(ABCUI_CALL *targetCreate)(void *userdata, int32_t width,
                                      int32_t height); // handle, 0 = fail
   void(ABCUI_CALL *targetFree)(void *userdata, uint32_t target);

@@ -16,6 +16,7 @@
 #include <studio.h>
 
 #include <abc/Console.h>
+#include <abc/CvarCmd.h>
 #include <abc/Plugin.h>
 
 #include <algorithm>
@@ -63,6 +64,7 @@ hook_t *RenderViewHook = nullptr;
 hook_t *PaintBackgroundHook = nullptr;
 hook_t *RenderPortalsHook = nullptr;
 hook_t *ResetAllHook = nullptr;
+hook_t *ThirdPersonHook = nullptr;
 void (*OriginalRenderView)() = nullptr; // read per call, NOT cached in a
                                         // bridge: MetaHook writes the
                                         // trampoline only after every
@@ -74,6 +76,7 @@ using RenderPortalsFn = void(__fastcall *)(void *pthis, int dummy,
 RenderPortalsFn OriginalRenderPortals = nullptr;
 using ResetAllFn = int(__fastcall *)(void *pthis, int dummy);
 ResetAllFn OriginalResetAll = nullptr;
+int (*OriginalThirdPerson)() = nullptr;
 
 // --------------------------------------------------------------- views ----
 
@@ -159,8 +162,22 @@ public:
     *worldModelSlot = emptyWorldModel();
     worldEntity->model = *worldModelSlot;
     installed = true;
+    // The empty world carries no BSP visibility data, so the engine's leaf/PVS
+    // test culls the preview entity and the pass draws nothing (the client's
+    // StudioDrawModel never reaches the model renderer). r_novis takes the
+    // no-visibility path for the duration of the pass; the value rides the
+    // world swap, so the main view sees the player's own setting again.
+    if (cvar_t *noVis = abc::CVAR_GET_POINTER("r_novis")) {
+      noVisCvar = noVis;
+      savedNoVis = noVis->value;
+      noVis->value = 1.0f;
+    }
   }
   ~EmptyWorldScope() {
+    if (noVisCvar) {
+      noVisCvar->value = savedNoVis;
+      noVisCvar = nullptr;
+    }
     if (!installed)
       return;
     *worldModelSlot = savedWorldModel;
@@ -174,6 +191,8 @@ private:
   cl_entity_s *worldEntity = nullptr;
   model_s *savedWorldModel = nullptr;
   model_s *savedEntityModel = nullptr;
+  cvar_t *noVisCvar = nullptr;
+  float savedNoVis = 0.0f;
   bool installed = false;
 };
 
@@ -258,6 +277,10 @@ bool isSvenCoopClient() {
 }
 
 void uninstallPortalHooks() {
+  if (ThirdPersonHook) {
+    g_pMetaHookAPI->UnHook(ThirdPersonHook);
+    ThirdPersonHook = nullptr;
+  }
   if (ResetAllHook) {
     g_pMetaHookAPI->UnHook(ResetAllHook);
     ResetAllHook = nullptr;
@@ -267,6 +290,7 @@ void uninstallPortalHooks() {
     RenderPortalsHook = nullptr;
   }
   OriginalResetAll = nullptr;
+  OriginalThirdPerson = nullptr;
   OriginalRenderPortals = nullptr;
 }
 
@@ -292,6 +316,15 @@ int __fastcall portalResetAllHook(void *pthis, int) {
   return 0;
 }
 
+int __cdecl thirdPersonHook() {
+  // This is an external view, never the client's first-person body pass.
+  // Otherwise Sven consumes its pending local-player draw here: there is no
+  // local player at the menu, and in a level it belongs to the real view.
+  if (CurrentView)
+    return 1;
+  return OriginalThirdPerson ? OriginalThirdPerson() : 0;
+}
+
 bool installPortalHooks() {
   void *renderPortals = nullptr;
   void *resetAll = nullptr;
@@ -300,13 +333,21 @@ bool installPortalHooks() {
       !resolve(abc::g_dwClientBase, "ClientPortalManager_ResetAll",
                MH_GAMESYMBOL_KIND_FUNCTION, &resetAll))
     return false;
+  const auto thirdPerson = GetProcAddress(
+      static_cast<HMODULE>(abc::g_dwClientBase), "CL_IsThirdPerson");
+  if (!thirdPerson)
+    return false;
   RenderPortalsHook = g_pMetaHookAPI->InlineHook(
       renderPortals, reinterpret_cast<void *>(&portalRenderPortalsHook),
       reinterpret_cast<void **>(&OriginalRenderPortals));
   ResetAllHook = g_pMetaHookAPI->InlineHook(
       resetAll, reinterpret_cast<void *>(&portalResetAllHook),
       reinterpret_cast<void **>(&OriginalResetAll));
-  if (!RenderPortalsHook || !ResetAllHook) {
+  ThirdPersonHook = g_pMetaHookAPI->InlineHook(
+      reinterpret_cast<void *>(thirdPerson),
+      reinterpret_cast<void *>(&thirdPersonHook),
+      reinterpret_cast<void **>(&OriginalThirdPerson));
+  if (!RenderPortalsHook || !ResetAllHook || !ThirdPersonHook) {
     uninstallPortalHooks();
     return false;
   }

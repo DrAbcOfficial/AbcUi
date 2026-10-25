@@ -47,7 +47,7 @@ public:
   // False skips the view this frame.
   virtual bool isActive() const = 0;
   // Fill vieworg, viewangles and viewport (x, y, width, height in window
-  // pixels, bottom-left origin); leave the cl_* fields alone (the engine
+  // pixels, top-left origin); leave the cl_* fields alone (the engine
   // writes them back). onlyClientDraw/nextView are forced after the call.
   virtual void calcRefdef(struct ref_params_s *pparams) = 0;
   virtual void onBeforeRenderView() = 0;
