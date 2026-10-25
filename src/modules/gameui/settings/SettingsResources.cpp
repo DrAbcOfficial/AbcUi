@@ -72,7 +72,7 @@ std::vector<std::string> scanMounted(const char *Directory, bool Directories) {
   }
   std::sort(Names.begin(), Names.end());
   Names.erase(std::unique(Names.begin(), Names.end()), Names.end());
-  if (Names.size() > 512)
+  if (!Directories && Names.size() > 512)
     Names.resize(512);
   return Names;
 }

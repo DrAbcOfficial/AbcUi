@@ -62,7 +62,11 @@ Windows view symbols offline; Linux records do not satisfy that check.
 
 The main menu and settings categories are driven by JSON in `modules/gameui/assets/gameui/config/` (inside the `abcui.gameui` package): adding a file under `settings/` extends the pages and ordinary settings, loaded automatically at startup; labels may be literal text or `#abcui.gameui/token` lookups in that module's `lang/*.txt`. Limits: 1 MiB per page, 64 JSON files, 512 items per page.
 
-Settings sections may declare widget components alongside their rows; a card with no rows and no widget is not drawn at all. The multiplayer page's player section uses `model-preview` (the live model render) and `model-picker`: a list of every directory under `models/player` with a case-insensitive text filter, a favorites-only toggle and a per-row favorite star; double-clicking a row or picking it in the row's right-click menu also toggles the favorite. Clicking a row writes the `model` cvar immediately and the preview follows; the current engine value stays selected even across restarts. Favorites persist in `<mod>/abc/abcui/model_favorites.json` (`{"favorites": [...]}`, atomic writes); the picker never reads legacy files, and a damaged store loads read-only instead of being overwritten.
+Settings sections may declare widget components alongside their rows; a card with no rows and no widget is not drawn at all. The multiplayer page's player section uses `model-preview` (the live model render) and `model-picker`: a list of every directory under `models/player` with a case-insensitive text filter, a favorites-only toggle and a per-row favorite star; double-clicking a row or picking it in the row's right-click menu also toggles the favorite. Clicking a row writes the `model` cvar immediately and the preview follows; the current engine value stays selected even across restarts. Favorites persist in `<mod>/abc/abcui/model_favorites.json` (`{"favorites": [...]}`, atomic writes); the picker never reads legacy files, and a damaged store loads read-only instead of being overwritten. Neither the model list nor the favorites has a fixed entry-count limit; favorites still use the shared 4 MiB JSON read limit.
+
+The video-mode confirmation temporarily hides the main/pause menu. Keeping
+the new mode restores that menu on the next presentation beat, even when
+the menu page stack has not changed; it does not leave a blank screen.
 
 The **Menu** settings page includes an action-model dropdown
 (`abc_ui_menu_action_model`, source `menu-action-models`) scanning loose `.mdl`
