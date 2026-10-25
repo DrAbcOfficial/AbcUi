@@ -20,6 +20,7 @@
 #include <abc/Plugin.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -92,7 +93,9 @@ int PaintBackgroundDepth = 0;
 
 class StudioDrawfuncs final : public Drawfuncs {
 public:
-  void drawStudioModel(cl_entity_s *ent) override;
+  bool setupStudioPose(cl_entity_s *ent, cl_entity_s *boneSource) override;
+  void drawStudioModel(cl_entity_s *ent, cl_entity_s *boneSource,
+                       const StudioLighting *lighting) override;
 };
 
 StudioDrawfuncs DrawfuncsInstance;
@@ -356,6 +359,86 @@ bool installPortalHooks() {
 
 // ------------------------------------------------------------ drawfuncs ---
 
+struct StudioLightBridge {
+  hook_t *Hook = nullptr;
+  void (*Target)(alight_t *) = nullptr;
+  void (*Original)(alight_t *) = nullptr;
+  const StudioLighting *Active = nullptr;
+};
+
+StudioLightBridge &studioLightBridge() {
+  static StudioLightBridge bridge;
+  return bridge;
+}
+
+void studioSetupLighting(alight_t *light) {
+  auto &bridge = studioLightBridge();
+  if (!bridge.Original)
+    return;
+  if (!bridge.Active || !light) {
+    bridge.Original(light);
+    return;
+  }
+  const auto &config = *bridge.Active;
+  float direction[3];
+  const float length = std::sqrt(config.Direction[0] * config.Direction[0] +
+                                 config.Direction[1] * config.Direction[1] +
+                                 config.Direction[2] * config.Direction[2]);
+  for (int i = 0; i < 3; ++i)
+    direction[i] =
+        length > 0 ? config.Direction[i] / length : (i == 0 ? -1.0f : 0.0f);
+  alight_t preview = *light;
+  preview.ambientlight = config.Enabled ? config.Ambient : 255;
+  preview.shadelight = config.Enabled ? config.Shade : 0;
+  for (int i = 0; i < 3; ++i)
+    preview.color[i] = config.Enabled ? config.Color[i] : 1.0f;
+  preview.plightvec = direction;
+  // Override at the final lighting seam, after dynamic/entity lighting has
+  // run. StudioSetupLighting consumes these values synchronously.
+  bridge.Original(&preview);
+}
+
+void installStudioLighting(engine_studio_api_s *api) {
+  auto &bridge = studioLightBridge();
+  bridge.Active = nullptr;
+  // This API function belongs to the engine, not the reloadable client DLL.
+  // Retain its hook across HUD cycles and client interface recaptures.
+  if (!api || !api->StudioSetupLighting ||
+      bridge.Target == api->StudioSetupLighting)
+    return;
+  if (bridge.Hook)
+    g_pMetaHookAPI->UnHook(bridge.Hook);
+  bridge = {};
+  bridge.Target = api->StudioSetupLighting;
+  // The client caches a COPY of the Studio API table. Hook the API function
+  // itself rather than rewriting a table entry that the client no longer reads.
+  bridge.Hook =
+      g_pMetaHookAPI->InlineHook(reinterpret_cast<void *>(bridge.Target),
+                                 reinterpret_cast<void *>(&studioSetupLighting),
+                                 reinterpret_cast<void **>(&bridge.Original));
+  if (!bridge.Hook) {
+    bridge.Target = nullptr;
+    abc::ConsoleWarn("[AbcUi model] custom Studio lighting unavailable; "
+                     "using engine lighting\n");
+  }
+}
+
+class StudioLightingScope {
+public:
+  explicit StudioLightingScope(const StudioLighting *lighting)
+      : Saved(studioLightBridge().Active) {
+    studioLightBridge().Active = lighting;
+  }
+  ~StudioLightingScope() {
+    studioLightBridge().Active = Saved;
+  }
+  StudioLightingScope(const StudioLightingScope &) = delete;
+  StudioLightingScope &operator=(const StudioLightingScope &) = delete;
+
+private:
+  const StudioLighting *Saved;
+};
+
 // Sets currententity and r_blend the way the engine's entity lists do.
 class EntityDrawScope {
 public:
@@ -382,15 +465,38 @@ private:
   float savedBlend;
 };
 
-void StudioDrawfuncs::drawStudioModel(cl_entity_s *ent) {
-  if (!StudioInterface || !*StudioInterface)
-    return;
+bool studioModelPass(cl_entity_s *ent, cl_entity_s *boneSource,
+                     const StudioLighting *lighting, int flags) {
+  if (!ent || !ent->model || !StudioInterface || !*StudioInterface ||
+      !(*StudioInterface)->StudioDrawModel)
+    return false;
+  if (boneSource) {
+    if (!boneSource->model)
+      return false;
+    EntityDrawScope sourceScope(boneSource);
+    // StudioMergeBones consumes the LAST StudioSaveBones result, not aiment.
+    // Re-prime it for each follower: drawing one follower replaces that cache.
+    // flags=0 also bypasses bbox culling for animation-only source models.
+    if (!(*StudioInterface)->StudioDrawModel(0))
+      return false;
+  }
   EntityDrawScope scope(ent);
-  if (!scope.visible())
-    return;
-  // STUDIO_RENDER without STUDIO_EVENTS: a preview must not fire sounds,
-  // muzzle flashes or attachment writes.
-  (*StudioInterface)->StudioDrawModel(STUDIO_RENDER);
+  if ((flags & STUDIO_RENDER) && !scope.visible())
+    return false;
+  StudioLightingScope lightingScope(lighting);
+  // Only STUDIO_RENDER or 0, never STUDIO_EVENTS: a preview must not fire
+  // sounds, muzzle flashes or attachment writes.
+  return (*StudioInterface)->StudioDrawModel(flags) != 0;
+}
+
+bool StudioDrawfuncs::setupStudioPose(cl_entity_s *ent,
+                                      cl_entity_s *boneSource) {
+  return studioModelPass(ent, boneSource, nullptr, 0);
+}
+
+void StudioDrawfuncs::drawStudioModel(cl_entity_s *ent, cl_entity_s *boneSource,
+                                      const StudioLighting *lighting) {
+  studioModelPass(ent, boneSource, lighting, STUDIO_RENDER);
 }
 
 } // namespace
@@ -542,6 +648,7 @@ void captureStudioInterfaces(r_studio_interface_s **ppinterface,
   // declines the interface, the engine installs its fallback after return.
   StudioInterface = ppinterface;
   EngineStudio = pstudio;
+  installStudioLighting(pstudio);
 }
 
 } // namespace standaloneview

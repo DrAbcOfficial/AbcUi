@@ -28,7 +28,7 @@ Set the `ABC_GAME_DIR` environment variable to the game root before configuring 
 cmake --build --preset win32-release --target deploy
 ```
 
-- All UI resources ship inside module ZIPs. There is no loose framework asset tree, embedded page, default image or global language table. Remove obsolete loose assets from previous installations; they are not consulted.
+- All UI resources ship inside module ZIPs. There is no loose framework UI asset tree, embedded page, default image or global language table. Remove obsolete loose assets from previous installations; they are not consulted. The only loose tree is native Studio content: the main menu's action-group models go to `<game>/svencoop/abc/abcui/models/menu_action/` because an engine Studio load needs a real file in the game search path (it cannot read a module ZIP).
 - `AbcUi.dll` goes to `<game>/svencoop/metahook/plugins/`.
 - The render backend `abcui_render_renderer.dll` goes to `<game>/svencoop/abc/abcui/render_backend/` (loaded by the `abc_ui_render_backend` cvar; a missing or unusable selected backend is fatal at startup - there is no built-in fallback).
 - The UI-owned layout and model-preview catalog goes to
@@ -36,6 +36,7 @@ cmake --build --preset win32-release --target deploy
   catalog together with the plugin; its Windows engine/client records are
   required for model preview at the main menu as well as in a level.
 - UI module packages go to `<game>/svencoop/abc/abcui/modules/*.zip` (built by the `pack_modules` target; `deploy` installs them too when `ABC_GAME_DIR` is set).
+- The main menu's native Studio content goes to `<game>/svencoop/abc/abcui/models/menu_action/` (`display_male.mdl` and `display_female.mdl` ship there; add further action groups, or point `abc_ui_menu_action_model` at any `.mdl` the engine can load).
 - `FreeImage.dll` and `Mile.FFmpeg.dll` are provided by MetaHookSV/Renderer; AbcUi does not install or package a second copy.
 
 ## Packaging
@@ -45,7 +46,8 @@ cmake --build --preset win32-release --target dist
 ```
 
 Produces `AbcUi-<version>.zip` under `build/<preset>/dist/` (plugin DLL,
-the packed UI modules under `abc/abcui/modules/`, the UI-owned
+the packed UI modules under `abc/abcui/modules/`, the loose Studio action
+groups under `abc/abcui/models/`, the UI-owned
 `metahook/gamedata/abc/abcui-layout/` catalog, README).
 The module archives themselves are produced by `--target pack_modules`
 (`build/<preset>/dist/modules/<id>-<version>.zip`) from the manifests and the
@@ -61,6 +63,28 @@ Windows view symbols offline; Linux records do not satisfy that check.
 The main menu and settings categories are driven by JSON in `modules/gameui/assets/gameui/config/` (inside the `abcui.gameui` package): adding a file under `settings/` extends the pages and ordinary settings, loaded automatically at startup; labels may be literal text or `#abcui.gameui/token` lookups in that module's `lang/*.txt`. Limits: 1 MiB per page, 64 JSON files, 512 items per page.
 
 Settings sections may declare widget components alongside their rows; a card with no rows and no widget is not drawn at all. The multiplayer page's player section uses `model-preview` (the live model render) and `model-picker`: a list of every directory under `models/player` with a case-insensitive text filter, a favorites-only toggle and a per-row favorite star; double-clicking a row or picking it in the row's right-click menu also toggles the favorite. Clicking a row writes the `model` cvar immediately and the preview follows; the current engine value stays selected even across restarts. Favorites persist in `<mod>/abc/abcui/model_favorites.json` (`{"favorites": [...]}`, atomic writes); the picker never reads legacy files, and a damaged store loads read-only instead of being overwritten.
+
+The **Menu** settings page includes an action-model dropdown
+(`abc_ui_menu_action_model`, source `menu-action-models`) scanning loose `.mdl`
+files in `abc/abcui/models/menu_action/`, an action-sequence dropdown
+(`abc_ui_menu_model_sequence`, source `menu-action-sequences`) showing each
+sequence's index and actual MDL label, and a weapon-path text field
+(`abc_ui_menu_weapon_model`). Changing the action-model draft immediately
+rebuilds the sequence choices, including labels even when the indices are
+unchanged. A valid selected index is retained; an index absent from the new
+model falls back to its first sequence. These changes remain drafts until
+**Apply**; **Cancel** restores the engine model and its sequence choices.
+The weapon field accepts only one complete path relative to the game content
+directory, including the directory and `.mdl` extension, for example
+`models/p_m16.mdl`. The path is used exactly as entered: no directory/extension
+is added and no alternative path is tried. Bare names (`p_m16`, `p_m16.mdl`),
+absolute machine paths and parent traversal are rejected by the settings
+validator. The same rules apply to the `<model weapon>` attribute. The default
+is `models/p_m16.mdl`, and empty hides the weapon.
+Existing saved values are preserved; resetting the Menu settings defaults
+selects the M16 again. The weapon and player override fields
+accept empty text (`"allowEmpty": true` on a `text` row; other text rows keep
+their non-empty validation), with the existing 63-byte text-field limit.
 
 The ABC page's crosshair section uses `crosshair-preview` for the live shape and `crosshair-color` for two RGBA pickers: each picker edits one colour's red, green, blue and alpha channels (hue strip, saturation/value square and alpha strip) and commits the four drafts, replacing the eight per-channel sliders while the eight cvar rows stay declared as the apply/reset backbone. The section declares `"layout": "two-up"`: the preview and the pickers share a widget band above the rows, and the rows themselves are paired two per line, so the card stays compact and the preview is a fixed 220dp window instead of a full-height column. The options page is grouped into section cards; the advanced page's items are the game's own `user.scr` entries (the shipped `MultiplayerAdvancedDialog.res` only hosts the list), so a live script supplies the domains and defaults while the JSON keeps the card grouping and labels.
 
@@ -315,13 +339,64 @@ gameui. `demo` is the opt-in SDK example, not part of the default distribution.
   no font-family, font-size or layout workaround is required.
   The shared surface channel ends active UI 2D state before uploads or
   deletion, including module textures and animated media, not just fonts.
-- Model preview (`<model>`): rendered through the engine's own `V_RenderView` (the StandaloneView route, in-house - no Renderer `IEntityViewRenderer` involved), captured into a backend offscreen target. The route needs engine/client gamedata symbols (`V_RenderView`, `VGui_ViewportPaintBackground`, `cls.state`, `cls.signon`, `cl_worldmodel`, `r_worldentity`, `CL_FxBlend`, `currententity`, `r_blend`, plus the Sven client's portal manager pair); on an unknown build the symbols do not resolve and the preview quietly degrades to its disabled branch instead of failing startup. Lighting follows the engine's entity lighting (fullbright over the empty menu world), and auto-framing reads the engine's `scr_fov_value` because the engine owns the pass projection.
-  Auto-framing fits the model height using the vertical **half** field of
-  view, including portrait-shaped menu cards. Portal hooks re-arm on each
-  HUD cycle, while the engine-owned Studio interface slot survives ordinary
-  map changes and is cleared only for a new client DLL. A delayed Studio API
-  retries next frame instead of permanently marking the model missing;
-  unresolved view symbols are named in the console diagnosis.
+- Model preview (`<model>`): rendered through the engine's own `V_RenderView` (the StandaloneView route, in-house - no Renderer `IEntityViewRenderer` involved), captured into a backend offscreen target. The route needs engine/client gamedata symbols (`V_RenderView`, `VGui_ViewportPaintBackground`, `cls.state`, `cls.signon`, `cl_worldmodel`, `r_worldentity`, `CL_FxBlend`, `currententity`, `r_blend`, plus the Sven client's portal manager pair); on an unknown build the symbols do not resolve and the preview quietly degrades to its disabled branch instead of failing startup. Preview lighting uses a draw-scoped override at the engine's `StudioSetupLighting` API, and auto-framing reads the engine's `scr_fov_value` because the engine owns the pass projection.
+  The main menu card is a three-entity chain: an action-group entity
+  (`abc_ui_menu_action_model`, default `display_male`, resolved to
+  `abc/abcui/models/menu_action/<name>.mdl`; a `.mdl` path is used verbatim)
+  owns sequence/frame/controllers and is never drawn, while the displayed
+  player model (`src`, from the player's `model` or
+  `abc_ui_menu_model_path`) and the weapon model
+  (`abc_ui_menu_weapon_model`, default `models/p_m16.mdl`, empty = no weapon;
+  only a complete game-relative `.mdl` directory path is accepted, verbatim)
+  are private
+  `MOVETYPE_FOLLOW` entities. Immediately before **each** follower draw, the
+  preview evaluates the action model through `StudioDrawModel(0)` (bones
+  only, no mesh or events), then draws the follower with `STUDIO_RENDER`.
+  Studio bone merging consumes that saved pose; it does not resolve private
+  entities through `aiment`, and no fake engine entity ids are allocated.
+  Matching bone names share the action pose; model-specific extra bones retain
+  the displayed model's own animation, so compatible skeletons are required.
+  `abc_ui_menu_model_sequence` picks the group's sequence (the bundled
+  models have pistol, rifle, heavy and grenade idles at indices 0..3;
+  `display_female` additionally has `idle1`, `idle2` and `idle3` at 4..6).
+  A missing action model falls back to the player's own animation; a missing
+  weapon is omitted with a console warning instead of drawing an ERROR model.
+  A separate `R_StudioLoadExternalFile ... studio_bone` warning comes from
+  Renderer external model settings referencing a bone absent from that model;
+  it is not the preview's missing-weapon-path diagnosis.
+  Auto-framing first evaluates the Studio pose without meshes/events or bbox
+  culling, then reads the selected bodygroups' mesh vertices through the
+  engine's bone matrices. The player and **bone-merged** held weapon are fitted
+  together; the invisible action group, unmerged weapon bounds and loose
+  sequence boxes never enlarge the final frame. The completed pose feeds the
+  next frame; a model/pose/placement change discards the old sample. Before
+  the first pose, or if the bone API/data is unavailable, only the displayed
+  player's bounding box bootstraps the camera.
+  The perspective fit preserves `camera-angles`, centres the actual projected
+  silhouette and moves the camera as close as possible while fitting both
+  viewport axes and respecting the near plane. This avoids padding introduced
+  by a world-space bounding box, especially around a diagonal held weapon.
+  The main-menu preview uses a wide stage (44% screen width, 424dp high,
+  starting at 20dp on the height-scaled 480dp layout), with its feet above the
+  footer and a tight 1.02 framing margin so the character nearly fills the
+  viewport. It uses a camera elevated for a 15-degree downward view, and
+  turns the character only 15 degrees horizontally. The settings preview's
+  layout and viewing angles are unchanged.
+  The friends board remains above the transparent preview stage.
+  The main-menu key light is directly in front of the character (the
+  world-space light-ray direction is `-0.965926 0.258819 0`, opposite its
+  -15-degree yaw), with the existing warm tint and ambient fill. Each
+  `<model>` now passes its `ambient`, `shade`, `light-color` and normalized
+  `light-direction` attributes to Studio lighting; `lighting="false"` selects
+  unshaded white illumination. The override is scoped to the individual
+  preview draw, shared by its player and weapon, and never changes world
+  lighting. If the lighting hook cannot be installed, engine lighting remains
+  in use and the console reports the degradation.
+  Portal hooks re-arm on each HUD
+  cycle, while the engine-owned Studio interface slot
+  survives ordinary map changes and is cleared only for a new client DLL. A
+  delayed Studio API retries next frame instead of permanently marking the
+  model missing; unresolved view symbols are named in the console diagnosis.
   Before the first map loads, the Renderer backend supplies the missing
   camera/scene/light buffers with neutral preview constants and restores the
   previous bindings after capture. It captures the completed scene before

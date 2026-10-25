@@ -180,11 +180,15 @@ GameUiModule::GameUiModule()
     return engine::menuBackend().maxClientsFact() > 1;
   };
   shellAccess.playerCard = [](std::string &playerName, std::string &modelPath,
-                              std::string &modelLabel) {
+                              std::string &modelLabel, std::string &actionModel,
+                              std::string &weaponModel, int &sequence) {
     const engine::PlayerCardFacts facts = engine::playerCardFacts();
     playerName = facts.PlayerName;
     modelPath = facts.ModelPath;
     modelLabel = facts.ModelName;
+    actionModel = facts.ActionModel;
+    weaponModel = facts.WeaponModel;
+    sequence = facts.Sequence;
   };
   shellAccess.buildNote = [](std::string &note) {
     note = std::format("Sven Co-op build {}", abc::g_dwEngineBuildnum);
@@ -553,6 +557,17 @@ void GameUiModule::onInit() {
   // The character card's model source override; empty follows the player's
   // own `model` cvar (gameui::engine::playerCardFacts).
   abc::CREATE_CVAR("abc_ui_menu_model_path", "", abc::FCVAR_VALUE, nullptr);
+  // The card's action group (the stance model that poses the displayed model
+  // and the weapon), its sequence, and the weapon model merged onto it. A
+  // bare action spelling lives in abc/abcui/models/menu_action/. A weapon
+  // requires its complete game-relative .mdl path, used verbatim; empty
+  // means no weapon.
+  abc::CREATE_CVAR("abc_ui_menu_action_model", "display_male", abc::FCVAR_VALUE,
+                   nullptr);
+  abc::CREATE_CVAR("abc_ui_menu_model_sequence", "0", abc::FCVAR_VALUE,
+                   nullptr);
+  abc::CREATE_CVAR("abc_ui_menu_weapon_model", "models/p_m16.mdl",
+                   abc::FCVAR_VALUE, nullptr);
   std::string ServerScript = readModFile("settings.scr");
   if (ServerScript.empty())
     framework::ModuleVfs::readText(
@@ -631,6 +646,7 @@ void GameUiModule::onInit() {
       SettingsModel.setStringChoices(Row.Cvar, std::move(choices));
     }
   }
+  configureMenuActionChoices(SettingsModel);
 
   // T11 bind sources live in the mod dir (engine-owned data, not abcui
   // assets): the action list, the factory defaults and the label table.

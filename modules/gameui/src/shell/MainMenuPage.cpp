@@ -227,8 +227,17 @@ void projectFacts() {
     setInnerRml("player-model-name", escapeText(card.modelLabel).c_str());
     if (AbcUiElement *preview = node("player-model")) {
       const std::string path = card.modelPath;
-      if (attributeOf(preview, "src") != path)
-        Api->ui->elementSetAttribute(preview, "src", path.c_str());
+      // The card is one follow chain: the action group poses the displayed
+      // model and the weapon (empty attributes drop that entity).
+      const auto setAttribute = [preview](const char *name,
+                                          const std::string &value) {
+        if (attributeOf(preview, name) != value)
+          Api->ui->elementSetAttribute(preview, name, value.c_str());
+      };
+      setAttribute("src", path);
+      setAttribute("action-src", card.actionModel);
+      setAttribute("weapon", card.weaponModel);
+      setAttribute("sequence", std::to_string(card.sequence));
       Api->ui->elementSetProperty(preview, "display",
                                   path.empty() ? "none" : "block");
     }

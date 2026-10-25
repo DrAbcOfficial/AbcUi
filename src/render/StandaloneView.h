@@ -22,8 +22,20 @@ struct cl_entity_s;
 struct r_studio_interface_s;
 struct engine_studio_api_s;
 
+#include <array>
+
 namespace framework {
 namespace standaloneview {
+
+// Studio light-ray direction in world coordinates (opposite the direction
+// from the model towards the light). Applied only during the requested draw.
+struct StudioLighting {
+  int Ambient = 96;
+  int Shade = 96;
+  std::array<float, 3> Color{1, 1, 1};
+  std::array<float, 3> Direction{-1, 0, 0};
+  bool Enabled = true;
+};
 
 // Entity draws handed to a view's triangle callbacks; valid only inside
 // them. Only the studio draw exists (the preview's sole need); brush and
@@ -31,10 +43,19 @@ namespace standaloneview {
 class Drawfuncs {
 public:
   virtual ~Drawfuncs() = default;
+  // Evaluate/save the merged pose without culling, meshes or events. The
+  // engine Studio bone transforms remain readable until the next Studio call.
+  virtual bool setupStudioPose(cl_entity_s *ent,
+                               cl_entity_s *boneSource = nullptr) = 0;
   // StudioDrawModel/StudioDrawPlayer with STUDIO_RENDER and no STUDIO_EVENTS
   // (a preview must not fire model events), currententity and r_blend set
-  // and restored the way the engine's entity lists do.
-  virtual void drawStudioModel(cl_entity_s *ent) = 0;
+  // and restored the way the engine's entity lists do. For a private
+  // MOVETYPE_FOLLOW entity, pass its bone source explicitly: these entities
+  // are not registered in the engine's entity array. The source is evaluated
+  // with flags=0 immediately before the draw (bones only, no mesh/events).
+  virtual void drawStudioModel(cl_entity_s *ent,
+                               cl_entity_s *boneSource = nullptr,
+                               const StudioLighting *lighting = nullptr) = 0;
 };
 
 // A view rendered before the engine's main view, once per frame. Every

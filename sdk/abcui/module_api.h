@@ -771,8 +771,7 @@ typedef struct AbcUiPlayersApi {
   // the profile/download is in flight (keep the static avatar), NOT_FOUND when
   // the user has none (or the runtime cannot serve one), UNAVAILABLE without
   // Steam, LIMIT at the cache bound. Appended; use ABCUI_API_HAS_MEMBER.
-  int32_t(ABCUI_CALL *avatarAnimated)(uint64_t steamId64,
-                                      int32_t *generation);
+  int32_t(ABCUI_CALL *avatarAnimated)(uint64_t steamId64, int32_t *generation);
 } AbcUiPlayersApi;
 
 // ---------------------------------------------------------------- radar ----
@@ -1276,6 +1275,13 @@ typedef struct AbcUiPlayerCard {
   char playerName[ABCUI_MENU_LABEL_MAX];
   char modelPath[ABCUI_MENU_LABEL_MAX];
   char modelLabel[ABCUI_MENU_LABEL_MAX];
+  // The action group that drives the displayed model's pose (empty: the model
+  // animates on its own), the weapon model merged onto that group (empty: no
+  // weapon) and the group sequence index. Appended after the original fields;
+  // writers honor the caller's structSize.
+  char actionModel[ABCUI_MENU_LABEL_MAX];
+  char weaponModel[ABCUI_MENU_LABEL_MAX];
+  int32_t sequence;
 } AbcUiPlayerCard;
 
 typedef struct AbcUiMenuConfigEntry {
