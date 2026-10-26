@@ -59,8 +59,8 @@ keep or revert the change.
 
 AbcUi stores its backend selection, model favorites, muted players, blocked
 servers and pending video confirmation together in
-`svencoop/abc/abcui/config.json`. When this file does not exist, AbcUi imports
-the old separate files automatically and leaves the originals untouched.
+`svencoop/abc/abcui/config.json`. When this file does not exist, AbcUi creates
+it with the default settings. Older separate configuration files are not read.
 Unreadable files are not overwritten. Other game settings remain in the
 game's own configuration.
 

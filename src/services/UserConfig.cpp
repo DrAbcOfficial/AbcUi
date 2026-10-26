@@ -7,7 +7,6 @@
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
 
-#include <array>
 #include <cstring>
 #include <set>
 #include <string>
@@ -16,23 +15,10 @@ namespace services::userconfig {
 namespace {
 
 constexpr const char *kPath = "abc/abcui/config.json";
-struct LegacySection {
-  const char *name;
-  const char *path;
-};
-constexpr std::array<LegacySection, 4> kLegacy{{
-    {"model_favorites", "abc/abcui/model_favorites.json"},
-    {"voice_bans", "abc/abcui/voice_ban.dt"},
-    {"server_blacklist", "abc/abcui/server_blacklist.json"},
-    {"video_pending", "abc/abcui/video_pending.json"},
-}};
-
 struct State {
   rapidjson::Document document;
   bool initialized = false;
   bool readable = false;
-  bool migrationValid = true;
-  std::set<std::string> unreadableSections;
 };
 
 State &state() {
@@ -90,8 +76,6 @@ bool refresh() {
     }
     s.document.Swap(document);
     s.initialized = s.readable = true;
-    s.migrationValid = true;
-    s.unreadableSections.clear();
     return true;
   }
   if (status != abc::JsonLoadStatus::Missing) {
@@ -106,26 +90,7 @@ bool refresh() {
   s.document.SetObject();
   auto &allocator = s.document.GetAllocator();
   s.document.AddMember("render_backend", "renderer", allocator);
-  // Only migrate when the unified file is missing. Original files are kept
-  // intact, but are never consulted once config.json exists.
-  for (const auto &legacy : kLegacy) {
-    const auto legacyStatus = abc::ReadJsonFileStatus(legacy.path, text);
-    if (legacyStatus == abc::JsonLoadStatus::Missing)
-      continue;
-    rapidjson::Document section;
-    if (legacyStatus != abc::JsonLoadStatus::Success || !parse(text, section)) {
-      abc::ConsoleWarn("[AbcUi] cannot migrate %s; config saves disabled\n",
-                       legacy.path);
-      s.migrationValid = false;
-      s.unreadableSections.emplace(legacy.name);
-      continue;
-    }
-    rapidjson::Value key(legacy.name, allocator);
-    rapidjson::Value value(section, allocator);
-    s.document.AddMember(key, value, allocator);
-  }
-  if (s.migrationValid)
-    persist(s.document);
+  persist(s.document);
   return true;
 }
 
@@ -135,8 +100,6 @@ LoadStatus readSection(const char *name, std::string &json) {
   if (!name || !*name || !refresh())
     return LoadStatus::Unreadable;
   const auto &s = state();
-  if (s.unreadableSections.contains(name))
-    return LoadStatus::Unreadable;
   const auto member = s.document.FindMember(name);
   if (member == s.document.MemberEnd())
     return LoadStatus::Missing;
@@ -149,8 +112,6 @@ bool writeSection(const char *name, const std::string &json) {
   if (!name || !*name || std::strcmp(name, "render_backend") == 0 || !refresh())
     return false;
   auto &s = state();
-  if (!s.migrationValid)
-    return false;
   rapidjson::Document section;
   if (!parse(json, section))
     return false;
