@@ -20,12 +20,12 @@
 #include <abcui/module_api.h>
 
 #include "Mp3Duration.h"
+#include "../../common/Parse.h"
 
 #include <algorithm>
 #include <cctype>
 #include <cmath>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <format>
 #include <string>
@@ -778,10 +778,10 @@ int32_t ABCUI_CALL onClick(void *, AbcUiElement *target,
   } else if (action == "mp-stop") {
     stopPlayback();
   } else if (action == "mp-play") {
-    const int row = std::atoi(index.c_str());
-    if (row >= 0 && row < static_cast<int>(Tracks.size())) {
-      Selected = row;
-      startTrack(row, true);
+    const auto row = moduleui::parseNumber<int>(index);
+    if (row && *row >= 0 && *row < static_cast<int>(Tracks.size())) {
+      Selected = *row;
+      startTrack(*row, true);
       renderPlaylist();
     }
   } else if (action == "mp-remove") {
@@ -812,8 +812,10 @@ int32_t ABCUI_CALL onChange(void *, AbcUiElement *target,
     return 0;
   char value[16] = {};
   if (Api->ui->elementValue(target, value, sizeof(value)) > 0) {
-    setVolumePercent(std::atoi(value));
-    updateVolumeRow();
+    if (const auto volume = moduleui::parseNumber<int>(value)) {
+      setVolumePercent(*volume);
+      updateVolumeRow();
+    }
   }
   return 1;
 }
