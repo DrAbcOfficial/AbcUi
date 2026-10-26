@@ -14,9 +14,9 @@
 //                         AbcUiRenderBackendDesc *outDesc);
 //
 // Backends live as loose DLLs in <mod>/abc/abcui/render_backend/ and are
-// selected with the abc_ui_render_backend cvar (full restart to apply). A
-// missing or unusable selected backend is fatal at startup - there is no
-// built-in fallback. A backend DLL:
+// selected with render_backend in abc/abcui/config.json (full restart to
+// apply). The host falls back from renderer to gl when Renderer or its
+// backend DLL is absent. Initialization failures remain fatal. A backend DLL:
 //   - must not include framework headers or link the framework's static
 //     libraries; everything arrives through the host table and the
 //     descriptor it fills;
@@ -155,7 +155,7 @@ typedef struct AbcUiRenderBackendHost {
 // matching ABCUI_RB_CAP_* bit is clear; the loader validates exactly that.
 typedef struct AbcUiRenderBackendDesc {
   uint32_t structSize;
-  const char *id;          // cvar value, e.g. "renderer"; [a-z0-9_]+
+  const char *id;          // config value, e.g. "renderer"; [a-z0-9_]+
   const char *displayName; // human-readable, ASCII
   uint32_t capabilities;   // ABCUI_RB_CAP_* bits
   void *userdata;          // passed to every callback below

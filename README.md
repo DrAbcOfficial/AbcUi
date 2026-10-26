@@ -34,14 +34,14 @@ AbcCore.dll is required and must be installed under `svencoop/metahook/dlls/AbcC
 Without a compatible StandaloneView installation, character previews are disabled;
 the rest of the interface remains available.
 
-The default drawing backend is `renderer` and requires Renderer.dll.
-To run without Renderer, set `abc_ui_render_backend "gl"` in
-`svencoop/config.cfg`, remove Renderer.dll from `plugins.lst`, and fully restart
-the game. The `gl` backend requires OpenGL 3.3 or newer and cannot run while
-Renderer.dll is loaded. It supports menu blur, background movies and character
-previews. The radar shows player markers without a map image.
-If the selected backend cannot start, the startup error explains why; AbcUi
-does not switch to another backend automatically.
+The default drawing backend is `renderer`. If Renderer.dll or its drawing
+backend is missing, AbcUi automatically uses `gl`. If neither backend is
+available, startup reports the missing backend.
+
+The `gl` backend requires OpenGL 3.3 or newer and cannot run while Renderer.dll
+is loaded. It supports menu blur, background movies and character previews.
+The radar shows player markers without a map image. Other startup failures
+report their cause rather than switching backends.
 
 Renderer-free installations still need FreeImage.dll in the MetaHook DLL search
 path. Install Mile.FFmpeg.dll there as well for background movies and video.
@@ -57,11 +57,29 @@ model updates its animation choices without refreshing unrelated settings.
 Applying a new resolution or display mode restarts the game and then asks you to
 keep or revert the change.
 
-Useful console variables:
+AbcUi stores its backend selection, model favorites, muted players, blocked
+servers and pending video confirmation together in
+`svencoop/abc/abcui/config.json`. When this file does not exist, AbcUi imports
+the old separate files automatically and leaves the originals untouched.
+Unreadable files are not overwritten. Other game settings remain in the
+game's own configuration.
+
+Set `render_backend` to `renderer` or `gl` in this file, then fully restart the
+game to apply it:
+
+```json
+{
+  "render_backend": "renderer"
+}
+```
+
+Edit only that field in an existing file to retain your other settings.
+The old `abc_ui_render_backend` console variable is no longer used.
+
+Useful console commands and variables:
 
 | Name | Description |
 |---|---|
-| `abc_ui_render_backend` | `renderer` by default, or `gl` without Renderer. A full game restart is required. |
 | `abc_ui_render_backend_list` | List installed backends, their drawing features and the active selection. |
 | `abc_ui_chat` | `0` restores the native chat. |
 | `abc_ui_spectator` | `0` restores the native spectator bar. |

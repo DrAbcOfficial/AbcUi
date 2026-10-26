@@ -157,13 +157,14 @@ add_library(abc_ui_config STATIC
     src/services/commandmenu/CommandMenuModel.cpp
     src/services/commandmenu/CommandMenuService.cpp
     src/services/serverbrowser/ServerBlacklist.cpp
-    src/services/serverbrowser/BlacklistFileStore.cpp)
+    src/services/serverbrowser/BlacklistJson.cpp)
 target_include_directories(abc_ui_config PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src"
     PRIVATE "${ABC_CORE_DIR}/thirdparty/MetaHook/thirdparty/rapidjson/include")
 target_compile_features(abc_ui_config PUBLIC cxx_std_20)
 
 add_library(AbcUi MODULE
     src/plugins.cpp
+    src/services/UserConfig.cpp
     src/CoreGlobals.cpp
     src/hooks.cpp
     src/modsys/EventBus.cpp

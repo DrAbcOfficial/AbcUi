@@ -7,6 +7,11 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
 - Nothing committed (code, comments, docs, commit messages, tags) may contain local machine paths, personal directories, session logs or any credentials; the deployment destination is provided through the `ABC_GAME_DIR` environment variable (optional; unset means no deploy).
 - Do not commit test scaffolding, acceptance scripts, evidence screenshots, plans or progress logs; those are session artifacts that do not belong in the release.
 - The README is the single public document; UI, config-format or cvar behaviour changes must update it in the same commit.
+- AbcUi user preferences belong in `abc/abcui/config.json` through
+  `services::userconfig`. Section updates preserve other settings and unknown
+  fields; do not restore independent preference-file writers or the render
+  backend selection cvar. Renderer availability falls back to `gl` without
+  rewriting the configured preference.
 - AbcCore is managed by the aggregate `ABCEnchance` repository and consumed
   through `ABC_CORE_DIR`; do not add a `thirdparty/AbcCore` submodule back. The
   plugin-facing contract is the versioned C ABI `AbcCore_CreateInterface`

@@ -25,6 +25,7 @@
 
 #include "../framework/FatalExit.h"
 #include "../framework/NativeHandles.h"
+#include "../services/UserConfig.h"
 
 namespace abc::render {
 
@@ -42,6 +43,7 @@ struct BackendEntry {
 struct HostState {
   bool booted = false;
   std::string bootId = "renderer";
+  std::string configuredId = "renderer";
   std::string initializationError;
   std::vector<BackendEntry> entries;
   std::unique_ptr<struct TableBackend> active;
@@ -51,9 +53,6 @@ HostState &state() {
   static HostState instance;
   return instance;
 }
-
-constexpr const char *kCvarName = "abc_ui_render_backend";
-constexpr const char *kDefaultId = "renderer";
 
 // --------------------------------------------------------------- host API --
 
@@ -493,13 +492,13 @@ void boot() {
     return;
   hostState.booted = true;
 
-  // 1. Selection: read-only lookup - an archived value loaded from
-  // config.cfg is visible this early; registering happens at HUD_Init.
-  std::string selected = kDefaultId;
-  if (cvar_t *cvar = CVAR_GET_POINTER(kCvarName))
-    if (cvar->string && *cvar->string)
-      selected = cvar->string;
-  hostState.bootId = selected;
+  std::string selected;
+  if (!services::userconfig::renderBackend(selected)) {
+    fatal("cannot read render_backend from abc/abcui/config.json; "
+          "expected a backend id such as \"renderer\" or \"gl\"");
+    return;
+  }
+  hostState.configuredId = selected;
 
   // 2. Scan the backend directory (deterministic: sorted by file name).
   std::error_code pathError;
@@ -577,14 +576,26 @@ void boot() {
     hostState.entries.push_back(std::move(backend));
   }
 
-  // 7. Match the selected id and initialize it.
-  BackendEntry *chosen = nullptr;
-  for (auto &entry : hostState.entries)
-    if (std::string(entry.desc.id) == selected)
-      chosen = &entry;
+  // Missing Renderer is an availability fallback, not a reason to change
+  // the user's saved preference. Installed-but-broken backends still report
+  // their initialization failure rather than silently hiding it.
+  const auto find = [&](const std::string &id) -> BackendEntry * {
+    for (auto &entry : hostState.entries)
+      if (id == entry.desc.id)
+        return &entry;
+    return nullptr;
+  };
+  BackendEntry *chosen = find(selected);
+  if (selected == "renderer" && (!hostPluginModule("Renderer") || !chosen)) {
+    ConsoleWarn("[AbcUi] renderer unavailable; falling back to gl\n");
+    selected = "gl";
+    chosen = find(selected);
+  }
   if (!chosen) {
     fatal("render backend \"" + selected +
-          "\" is not available (installed: " + installedList() + ")");
+          "\" is not available "
+          "(configured: " +
+          hostState.configuredId + ", installed: " + installedList() + ")");
     return;
   }
   hostState.initializationError.clear();
@@ -599,6 +610,7 @@ void boot() {
     return;
   }
   chosen->initialized = true;
+  hostState.bootId = selected;
   hostState.active = std::make_unique<TableBackend>(chosen->desc);
   ConsolePrint("[AbcUi] render backend \"%s\" (%s) active\n", chosen->desc.id,
                chosen->desc.displayName ? chosen->desc.displayName
@@ -641,42 +653,14 @@ void pumpRedraw(double seconds) {
     active->pumpRedraw(seconds);
 }
 
-// ------------------------------------------------------------ cvar face ----
+// --------------------------------------------------------- console command --
 
 namespace {
 
-bool knownId(const std::string &id) {
-  for (const auto &entry : state().entries)
-    if (id == entry.desc.id)
-      return true;
-  return false;
-}
-
-void backendCvarChanged(cvar_t *cvar) {
-  const HostState &hostState = state();
-  const std::string value = cvar->string ? cvar->string : "";
-  if (value == hostState.bootId) {
-    ConsolePrint("[AbcUi] render backend \"%s\" is already active\n",
-                 value.c_str());
-    return;
-  }
-  if (!knownId(value)) {
-    ConsoleWarn("[AbcUi] render backend \"%s\" is not available (installed: "
-                "%s)\n",
-                value.c_str(), installedList().c_str());
-    // Roll back so a typo cannot lock out the next launch.
-    CVAR_SET_STRING(kCvarName, hostState.bootId.c_str());
-    return;
-  }
-  ConsolePrint("[AbcUi] render backend \"%s\" applies after a full game "
-               "restart (not _restart)\n",
-               value.c_str());
-}
-
 void listBackendsCommand() {
   const HostState &hostState = state();
-  ConsolePrint("[AbcUi] render backends (active: %s):\n",
-               hostState.bootId.c_str());
+  ConsolePrint("[AbcUi] render backends (configured: %s, active: %s):\n",
+               hostState.configuredId.c_str(), hostState.bootId.c_str());
   for (const auto &entry : hostState.entries) {
     const uint32_t caps = entry.desc.capabilities;
     ConsolePrint("  %-10s %s [%s%s%s%s%s]\n", entry.desc.id,
@@ -696,11 +680,6 @@ void registerCommands() {
   if (registered)
     return;
   registered = true;
-  // Default = the id this process booted with: when the engine already
-  // created the cvar from config.cfg its value is preserved, and the
-  // callback covers manual changes.
-  CREATE_CVAR(kCvarName, state().bootId.c_str(), FCVAR_VALUE,
-              backendCvarChanged);
   ADD_COMMAND("abc_ui_render_backend_list", listBackendsCommand);
 }
 
