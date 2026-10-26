@@ -36,7 +36,10 @@ the rest of the interface remains available.
 
 ## Settings
 
-All options are available in the in-game Settings menu. Useful console variables:
+All options are available in the in-game Settings menu. Changing the menu action
+model updates its animation choices without refreshing unrelated settings.
+
+Useful console variables:
 
 | Name | Description |
 |---|---|
