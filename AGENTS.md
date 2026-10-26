@@ -21,10 +21,12 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
   copy-out); any further GL (a future `gl` backend) is allowed only inside a
   backend DLL. VGUI2 `ISurface2` stays confined to the texture upload channel
   (`DrawSetTextureRGBA`), cursor handling and engine UI seams, never to draw a
-  panel. Model preview renders through the in-house engine `V_RenderView`
-  route (`src/render/StandaloneView.*` as host glue over the pinned
-  `thirdparty/StandaloneView` submodule, MIT): gamedata-symbol misses
-  degrade the preview, never fatal.
+  panel. Model previews use the independent `StandaloneView.dll` plugin through
+  API_003. `thirdparty/StandaloneView` supplies public headers only; do not
+  compile its manager or engine hooks into AbcUi or duplicate its studio,
+  lighting or empty-world logic. A missing plugin or API_003 disables previews,
+  never the rest of the UI. List StandaloneView first so its callbacks are
+  outermost and its manager outlives the consumers.
 - AbcCore must stay renderer-free. AbcUi owns `thirdparty/Renderer` and the renderer-facing bridge in `src/render/`; do not move either back into AbcCore.
 
 ## README

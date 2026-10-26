@@ -1,8 +1,7 @@
 #pragma once
 
 // One capture target and fake entity per element. The pass runs through
-// the in-house engine V_RenderView route (the thirdparty/StandaloneView
-// module's IStandaloneView, issue #24 comment); no GL or engine model
+// the independent StandaloneView plugin's API_003; no GL or engine model
 // ownership leaks through this seam.
 #include "Options.h"
 #include <memory>

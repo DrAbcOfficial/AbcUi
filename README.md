@@ -17,9 +17,12 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
 
 Extract the archive into the Sven Co-op folder. It contains `svencoop` at its root, so there is no extra folder to copy.
 
-Add `AbcUi.dll` to `svencoop/metahook/configs/plugins.lst` after Renderer and AbcEssential:
+Character previews require the current [StandaloneView](https://github.com/DrAbcOfficial/StandaloneView).
+Install its DLL and gamedata, then list it first in
+`svencoop/metahook/configs/plugins.lst`. Add `AbcUi.dll` after Renderer and AbcEssential:
 
 ```text
+StandaloneView.dll
 VGUI2Extension.dll
 Renderer.dll
 AbcEssential.dll
@@ -27,6 +30,9 @@ AbcUi.dll
 ```
 
 AbcCore.dll is required and must be installed under `svencoop/metahook/dlls/AbcCore/`. It is not listed in `plugins.lst`.
+
+Without a compatible StandaloneView installation, character previews are disabled;
+the rest of the interface remains available.
 
 ## Settings
 

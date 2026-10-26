@@ -30,13 +30,16 @@ if(NOT EXISTS "${ABCUI_RENDERER_INCLUDE_DIR}/Interface/IMetaRenderer.h")
     message(FATAL_ERROR "AbcUi requires thirdparty/Renderer; initialize the submodule with git submodule update --init --recursive")
 endif()
 
-# StandaloneView (the model preview's engine view route): the manager core
-# and the empty brush world compile from the pinned submodule into AbcUi;
-# src/render/StandaloneView.cpp is the host glue (soft gamedata degradation,
-# the studio-only draw bridge, hooks.cpp export routing).
+# StandaloneView is an independent MetaHook plugin. Only its public API_003
+# header is consumed here; no engine hooks or manager implementation are linked.
 set(ABCUI_STANDALONEVIEW_DIR "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/StandaloneView")
-if(NOT EXISTS "${ABCUI_STANDALONEVIEW_DIR}/src/StandaloneViewManager.cpp")
+if(NOT EXISTS "${ABCUI_STANDALONEVIEW_DIR}/include/Interface/IStandaloneView.h")
     message(FATAL_ERROR "AbcUi requires thirdparty/StandaloneView; initialize the submodule with git submodule update --init")
+endif()
+file(STRINGS "${ABCUI_STANDALONEVIEW_DIR}/include/Interface/IStandaloneView.h"
+    ABCUI_STANDALONEVIEW_API003 REGEX "define STANDALONEVIEW_MANAGER_INTERFACE_VERSION_V003 ")
+if(NOT ABCUI_STANDALONEVIEW_API003)
+    message(FATAL_ERROR "StandaloneView API_003 headers required; update thirdparty/StandaloneView")
 endif()
 
 # Mile.FFmpeg binary SDK (video decode). Headers only in the build: the
@@ -199,11 +202,6 @@ add_library(AbcUi MODULE
     src/render/BackendHost.cpp
     src/render/RadarRender.cpp
     src/render/StandaloneView.cpp
-    # StandaloneView manager core (pinned submodule, see the check above):
-    # the view list, the forced client state, the empty brush world and the
-    # render loop; src/render/StandaloneView.cpp feeds them.
-    "${ABCUI_STANDALONEVIEW_DIR}/src/StandaloneViewManager.cpp"
-    "${ABCUI_STANDALONEVIEW_DIR}/src/EmptyWorld.cpp"
     src/render/ScreenMetrics.cpp
     src/rmlui/AbcRenderInterface.cpp
     src/rmlui/model/ElementModel.cpp
@@ -445,8 +443,8 @@ add_custom_target(check-rendercommon-sync
 add_subdirectory(backends/renderer)
 add_dependencies(abcui_render_renderer check-rendercommon-sync)
 
-# UI-owned layouts and standalone-view symbols are a separate, offline
-# catalog. Validate the Windows records before building or packaging.
+# UI-owned layouts are a separate, offline catalog. StandaloneView owns its
+# own engine-view symbols; validate only the UI records here.
 add_custom_target(check-modelpreview-gamedata
     COMMAND "${CMAKE_COMMAND}"
         "-DABCUI_REPO_DIR=${CMAKE_CURRENT_SOURCE_DIR}"
@@ -471,11 +469,9 @@ target_include_directories(AbcUi PRIVATE
     "${METAHOOK_INCLUDE_DIR}/Interface/VGUI"
     "${METAHOOK_INCLUDE_DIR}/VGUI"
     "${METAHOOK_INCLUDE_DIR}/SourceSDK"
-    # The StandaloneView vendor interface (<IStandaloneView.h>) and manager
-    # (<StandaloneViewManager.h>); <interface.h> resolves through Abc::Core's
-    # MetaHook HLSDK/common include directory.
+    # Public StandaloneView interface only. Its implementation belongs to
+    # StandaloneView.dll, not this framework.
     "${ABCUI_STANDALONEVIEW_DIR}/include/Interface"
-    "${ABCUI_STANDALONEVIEW_DIR}/src"
     "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 if(ABC_GAME_DIR)

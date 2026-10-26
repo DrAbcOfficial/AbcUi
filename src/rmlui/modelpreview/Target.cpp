@@ -1,21 +1,17 @@
 // modelpreview::Target - see Target.h.
 //
-// Since issue #24 the preview renders through the in-house engine
-// V_RenderView route (the pinned thirdparty/StandaloneView module) instead
-// of Renderer's IEntityViewRenderer: the view implements the module's
+// The preview renders through the independent StandaloneView plugin's
+// API_003 instead of Renderer's IEntityViewRenderer: the view implements
 // IStandaloneView and the pass draws the model in its triangle callbacks,
 // the engine owns the 3D matrices, and the result is captured from the
 // viewport region into a backend offscreen target (clear + copy-out). The
-// studio draw bridge (framework/standaloneview) supplies what the module's
-// IStandaloneViewDrawfuncs cannot express: the preview's directional light
-// at the engine's StudioSetupLighting seam, scoped to the private entity
-// draw rather than the game's world lighting, and a private MOVETYPE_FOLLOW
-// bone source.
+// API_003 drawfuncs own pose evaluation, private MOVETYPE_FOLLOW sources and
+// per-draw lighting; AbcUi does not hook the engine's studio renderer.
 //
 // The main page preview is a three-entity chain (aiment normalization): the
 // action group entity owns sequence/frame/controllers and is the animation
 // source, while the displayed player model and the optional weapon model are
-// MOVETYPE_FOLLOW entities. The bridge explicitly evaluates the action
+// MOVETYPE_FOLLOW entities. StandaloneView evaluates the action
 // group's bones before each follower; private entities have no engine-array
 // slot for an aiment lookup. The action group's mesh is never drawn.
 #include <metahook.h>
@@ -27,7 +23,7 @@
 #include <r_studioint.h>
 #include <studio.h>
 
-#include <StandaloneViewManager.h>
+#include <IStandaloneView.h>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
@@ -43,7 +39,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <optional>
 #include <span>
 #include <vector>
 
@@ -76,12 +71,12 @@ int captureRowY(int height) {
 }
 
 bool routeAvailable() {
-  if (framework::standaloneview::available() && captureTargets())
+  if (framework::standaloneview::manager() && captureTargets())
     return true;
   if (!RouteWarned) {
     RouteWarned = true;
-    abc::ConsoleWarn("[AbcUi model] preview disabled (no engine view route "
-                     "on this build, or the backend lacks offscreen "
+    abc::ConsoleWarn("[AbcUi model] preview disabled (StandaloneView API_003 "
+                     "unavailable, or the backend lacks offscreen "
                      "targets)\n");
   }
   return false;
@@ -285,7 +280,7 @@ void placeEntity(cl_entity_t &Entity, const Options &Config) {
 // The view participant: options are synced once per framework frame by
 // render() (the beat AFTER the engine's view pass), the pass itself runs
 // inside V_RenderView before the main view. Implements the module's
-// IStandaloneView directly and registers through its manager singleton.
+// IStandaloneView directly and registers through the API_003 manager.
 struct Target::State : IStandaloneView {
   cl_entity_t Entity{}; // displayed player model
   cl_entity_t Action{}; // action group: animation source, never drawn
@@ -320,16 +315,13 @@ struct Target::State : IStandaloneView {
   float ViewOrigin[3] = {0, 0, 0};
   float ViewAngles[3] = {0, 0, 0};
   float Background[4] = {0, 0, 0, 0};
-  framework::standaloneview::StudioLighting Lighting;
+  IStandaloneViewManager *Manager = nullptr;
+  standaloneview::StudioLighting Lighting;
   Options FramingOptions;
   std::vector<FramePoint> PoseVertices;
   std::vector<FramePoint> PoseScratch;
   bool UsePoseFraming = false;
   bool TransparentPass = false;
-  // Armed while the pass renders: the manager's empty world carries no BSP
-  // visibility data, so the client's StudioDrawModel would cull the
-  // preview entity (framework/standaloneview's NoVisScope).
-  std::optional<framework::standaloneview::NoVisScope> NoVis;
 
   bool IsActive() const override {
     return Active && !ModelMissing && CaptureHandle != 0 &&
@@ -350,11 +342,9 @@ struct Target::State : IStandaloneView {
     pparams->viewport[3] = CaptureHeight;
   }
 
-  void OnBeforeRenderView() override {
-    NoVis.emplace();
-  }
+  void OnBeforeRenderView() override {}
 
-  void drawPass() {
+  void drawPass(IStandaloneViewDrawfuncsV003 &studio) {
     // The background clear must land inside the pass, on the framebuffer the
     // engine bound for this view - R_RenderView clears only depth (and color
     // just with gl_clear), so the region is cleared here, exactly over this
@@ -367,14 +357,12 @@ struct Target::State : IStandaloneView {
     clearViewport();
     if (UsePoseFraming) {
       PoseScratch.clear();
-      bool Complete = framework::standaloneview::setupStudioPose(
-                          &Entity, HasAction ? &Action : nullptr) &&
-                      appendStudioVertices(Entity, PoseScratch) &&
-                      !PoseScratch.empty();
+      bool Complete =
+          studio.SetupStudioPose(&Entity, HasAction ? &Action : nullptr) &&
+          appendStudioVertices(Entity, PoseScratch) && !PoseScratch.empty();
       if (Complete && HasWeapon)
-        Complete =
-            framework::standaloneview::setupStudioPose(&Weapon, &Action) &&
-            appendStudioVertices(Weapon, PoseScratch);
+        Complete = studio.SetupStudioPose(&Weapon, &Action) &&
+                   appendStudioVertices(Weapon, PoseScratch);
       if (Complete)
         PoseVertices.swap(PoseScratch);
       else
@@ -382,26 +370,22 @@ struct Target::State : IStandaloneView {
     }
     // Each follower consumes a fresh source pose, never a previous preview's
     // saved bones (or the saved bones of the displayed player's extra bones).
-    framework::standaloneview::drawStudioModel(
-        &Entity, HasAction ? &Action : nullptr, &Lighting);
+    studio.DrawStudioModelEx(&Entity, HasAction ? &Action : nullptr, &Lighting);
     if (HasWeapon)
-      framework::standaloneview::drawStudioModel(&Weapon, &Action, &Lighting);
+      studio.DrawStudioModelEx(&Weapon, &Action, &Lighting);
   }
 
-  // The module's IStandaloneViewDrawfuncs is not used: the preview's studio
-  // draws go through the framework/standaloneview bridge above, which
-  // carries the bone source and the per-draw light the interface lacks.
-  void DrawNormalTriangles(IStandaloneViewDrawfuncs *) override {
+  // Registration only happens after an API_003 factory query succeeds.
+  void DrawNormalTriangles(IStandaloneViewDrawfuncs *drawfuncs) override {
     if (!TransparentPass)
-      drawPass();
+      drawPass(*static_cast<IStandaloneViewDrawfuncsV003 *>(drawfuncs));
   }
-  void DrawTransparentTriangles(IStandaloneViewDrawfuncs *) override {
+  void DrawTransparentTriangles(IStandaloneViewDrawfuncs *drawfuncs) override {
     if (TransparentPass)
-      drawPass();
+      drawPass(*static_cast<IStandaloneViewDrawfuncsV003 *>(drawfuncs));
   }
 
   void OnAfterRenderView() override {
-    NoVis.reset();
     // Copy the viewport region out of the currently bound framebuffer into
     // the capture texture (StandaloneView's documented capture contract).
     abc::render::IOffscreenTargets *targets = captureTargets();
@@ -443,24 +427,16 @@ Target::Target() : Data(std::make_unique<State>()) {
   static unsigned long long NextId = 0;
   Data->Uri = "modelfbo://" + std::to_string(++NextId) + "/";
   targets().push_back(this);
-  // The manager accepts registration any time; a view registered before the
-  // route's hooks installed simply never renders until they are.
-  ::StandaloneViewManager().RegisterStandaloneView(Data.get());
+  Data->Manager = framework::standaloneview::manager();
+  if (Data->Manager)
+    Data->Manager->RegisterStandaloneView(Data.get());
 }
 
 Target::~Target() {
-  // The module contract forbids unregistering from an IStandaloneView
-  // callback. The manager refuses (and warns through the glue's misuse
-  // bridge) mid-pass; destroying the state then would leave its registered
-  // pointer dangling, so leak it deliberately - the route has always
-  // treated this violation as warn-and-keep.
-  if (::StandaloneViewManager().IsRenderingStandaloneViews()) {
-    abc::ConsoleWarn("[AbcUi] standalone view unregistered from inside its "
-                     "own callback; ignored\n");
-    (void)Data.release();
-  } else {
-    ::StandaloneViewManager().UnregisterStandaloneView(Data.get());
-  }
+  // UI teardown runs outside the view callbacks. Unregister before releasing
+  // the capture and entity storage still referenced by StandaloneView.
+  if (Data->Manager)
+    Data->Manager->UnregisterStandaloneView(Data.get());
   invalidate();
   std::erase(targets(), this);
 }
@@ -694,11 +670,11 @@ bool Target::render(const Options &Config, int Width, int Height) {
   }
 
   state.TransparentPass = Config.RenderMode != kRenderNormal;
-  state.Lighting.Ambient = Config.View.Ambient;
-  state.Lighting.Shade = Config.View.Shade;
-  state.Lighting.Color = Config.View.LightColor;
-  state.Lighting.Direction = Config.View.LightDirection;
-  state.Lighting.Enabled = Config.View.Lighting;
+  state.Lighting.ambientlight = Config.View.Ambient;
+  state.Lighting.shadelight = Config.View.Shade;
+  std::ranges::copy(Config.View.LightColor, state.Lighting.color);
+  std::ranges::copy(Config.View.LightDirection, state.Lighting.direction);
+  state.Lighting.enabled = Config.View.Lighting;
 
   // Pose sampling happens in the engine pass; use the last completed pose on
   // this frame's sync. Discard it when the caller changes the pose/placement.
@@ -755,7 +731,7 @@ unsigned int Target::frames() const {
   return Data->Frames;
 }
 bool hasWorld() {
-  return framework::standaloneview::available() && gEngfuncs.pfnGetLevelName &&
+  return framework::standaloneview::manager() && gEngfuncs.pfnGetLevelName &&
          gEngfuncs.pfnGetLevelName()[0] != '\0';
 }
 void invalidateAll() {
