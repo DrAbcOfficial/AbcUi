@@ -7,6 +7,7 @@
 // placeholders substitute per frame and the result is written as additive
 // glyph ink (plain text is the fallback when a character has no glyph).
 #include "../../common/Text.h"
+#include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Glyphs.h"
@@ -42,14 +43,7 @@ AbcUiDocument *panelDocument() {
 }
 
 std::string elementInnerRml(AbcUiElement *element) {
-  const int needed = Api->ui->elementInnerRML(element, nullptr, 0);
-  if (needed <= 0)
-    return std::string();
-  std::string out(static_cast<size_t>(needed) + 1, '\0');
-  Api->ui->elementInnerRML(element, out.data(),
-                           static_cast<uint32_t>(out.size()));
-  out.resize(static_cast<size_t>(needed));
-  return out;
+  return moduleui::readString(Api->ui->elementInnerRML, element);
 }
 
 void setVisible(bool visible) {

@@ -16,6 +16,7 @@
 // (Mp3Duration). Progress is therefore a display estimate; it is what
 // drives the automatic next-track hand-off, mirroring the native player's
 // end-of-stream advance.
+#include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -106,37 +107,15 @@ std::string translated(const char *token, const char *fallback) {
 }
 
 std::string escapeText(std::string_view text) {
-  const char *source = text.empty() ? "" : text.data();
-  const int needed = Api->ui->escapeRml(source, nullptr, 0);
-  if (needed <= 0)
-    return {};
-  std::string out(static_cast<std::size_t>(needed) + 1, '\0');
-  Api->ui->escapeRml(source, out.data(), static_cast<uint32_t>(out.size()));
-  out.resize(static_cast<std::size_t>(needed));
-  return out;
+  return moduleui::escapeText(Api, text);
 }
 
 std::string escapeAttribute(std::string_view text) {
-  const char *source = text.empty() ? "" : text.data();
-  const int needed = Api->ui->escapeRmlAttribute(source, nullptr, 0);
-  if (needed <= 0)
-    return {};
-  std::string out(static_cast<std::size_t>(needed) + 1, '\0');
-  Api->ui->escapeRmlAttribute(source, out.data(),
-                              static_cast<uint32_t>(out.size()));
-  out.resize(static_cast<std::size_t>(needed));
-  return out;
+  return moduleui::escapeAttribute(Api, text);
 }
 
 std::string attributeOf(AbcUiElement *element, const char *name) {
-  const int needed = Api->ui->elementAttribute(element, name, nullptr, 0);
-  if (needed <= 0)
-    return {};
-  std::string out(static_cast<std::size_t>(needed) + 1, '\0');
-  Api->ui->elementAttribute(element, name, out.data(),
-                            static_cast<uint32_t>(out.size()));
-  out.resize(static_cast<std::size_t>(needed));
-  return out;
+  return moduleui::readString(Api->ui->elementAttribute, element, name);
 }
 
 AbcUiElement *node(const char *id) {

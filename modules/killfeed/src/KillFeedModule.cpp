@@ -9,6 +9,7 @@
 // the format slot); the port prints the localized "DeathMsg_ConsolePrint"
 // template with a positional substitution, never a printf format.
 #include "../../common/Text.h"
+#include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -69,15 +70,7 @@ void setVisible(bool visible) {
 
 // Measure-then-copy over the bounded C API (server text is untrusted).
 std::string escapeText(const char *text) {
-  if (!text || !*text)
-    return std::string();
-  const int needed = Api->ui->escapeRml(text, nullptr, 0);
-  if (needed <= 0)
-    return std::string();
-  std::string out(static_cast<size_t>(needed) + 1, '\0');
-  Api->ui->escapeRml(text, out.data(), static_cast<uint32_t>(out.size()));
-  out.resize(static_cast<size_t>(needed));
-  return out;
+  return moduleui::escapeText(Api, text);
 }
 
 std::string translate(const char *token, const char *fallback) {

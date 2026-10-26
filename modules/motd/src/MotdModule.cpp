@@ -13,6 +13,7 @@
 // hole). The old character-count pagination rode vgui font metrics - one
 // scrollable page with the same keep_time/fade rhythm replaces it.
 #include "../../common/Text.h"
+#include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -134,15 +135,7 @@ std::string htmlToText(std::string html) {
 
 // Measure-then-copy over the bounded C API (server text is untrusted).
 std::string escapeText(const char *text) {
-  if (!text || !*text)
-    return std::string();
-  const int needed = Api->ui->escapeRml(text, nullptr, 0);
-  if (needed <= 0)
-    return std::string();
-  std::string out(static_cast<size_t>(needed) + 1, '\0');
-  Api->ui->escapeRml(text, out.data(), static_cast<uint32_t>(out.size()));
-  out.resize(static_cast<size_t>(needed));
-  return out;
+  return moduleui::escapeText(Api, text);
 }
 
 void append(const char *message) {
