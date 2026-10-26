@@ -22,8 +22,9 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
   backend DLL. VGUI2 `ISurface2` stays confined to the texture upload channel
   (`DrawSetTextureRGBA`), cursor handling and engine UI seams, never to draw a
   panel. Model preview renders through the in-house engine `V_RenderView`
-  route (`src/render/StandaloneView.*`, copied from MetaHookSv/StandaloneView,
-  MIT): gamedata-symbol misses degrade the preview, never fatal.
+  route (`src/render/StandaloneView.*` as host glue over the pinned
+  `thirdparty/StandaloneView` submodule, MIT): gamedata-symbol misses
+  degrade the preview, never fatal.
 - AbcCore must stay renderer-free. AbcUi owns `thirdparty/Renderer` and the renderer-facing bridge in `src/render/`; do not move either back into AbcCore.
 
 ## README

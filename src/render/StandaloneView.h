@@ -5,11 +5,13 @@
 // ENGINE's own V_RenderView, with or without Renderer, instead of
 // Renderer's IEntityViewRenderer isolated scope.
 //
-// The route is copied from MetaHookSv/StandaloneView (MIT, (c) 2021 hzqst):
-// hook V_RenderView + VGui_ViewportPaintBackground, force cls.state /
-// cls.signon active for the pass, install an empty brush worldmodel when no
-// map is loaded, route V_CalcRefdef and the triangle callbacks to the
-// current view with onlyClientDraw, and skip the Sven client's portal
+// The route's manager core is the pinned thirdparty/StandaloneView module
+// (MIT, (c) 2021 hzqst), compiled into AbcUi (StandaloneViewManager.cpp +
+// EmptyWorld.cpp); StandaloneView.cpp is the host glue. It hooks
+// V_RenderView + VGui_ViewportPaintBackground, forces cls.state /
+// cls.signon active for the pass, installs an empty brush worldmodel when
+// no map is loaded, routes V_CalcRefdef and the triangle callbacks to the
+// current view with onlyClientDraw, and skips the Sven client's portal
 // manager during the pass. Views render BEFORE the engine's main view.
 //
 // Degradation (this repo's rule, softer than StandaloneView's SysError):
