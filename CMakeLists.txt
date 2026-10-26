@@ -441,6 +441,7 @@ add_custom_target(check-rendercommon-sync
 # target never sees a Renderer include directory (that is the mechanical
 # proof the coupling is gone).
 add_subdirectory(backends/renderer)
+add_subdirectory(backends/gl)
 add_dependencies(abcui_render_renderer check-rendercommon-sync)
 
 # UI-owned layouts are a separate, offline catalog. StandaloneView owns its
@@ -479,7 +480,7 @@ if(ABC_GAME_DIR)
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/plugins")
     # Render backend DLLs load from abc/abcui/render_backend (issue #24).
-    install(TARGETS abcui_render_renderer
+    install(TARGETS abcui_render_renderer abcui_render_gl
         RUNTIME DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend"
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend")
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout/"
@@ -493,7 +494,7 @@ if(ABC_GAME_DIR)
     install(DIRECTORY "${ABCUI_MODULE_PACK_DIR}/"
         DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
     add_custom_target(deploy
-        DEPENDS AbcUi pack_modules
+        DEPENDS AbcUi abcui_render_renderer abcui_render_gl pack_modules
         # Drop previous-version packages first: the loader resolves a
         # duplicated id by manifest version, but a stale zip on disk is still
         # dead weight and can shadow a downgrade.
@@ -536,6 +537,8 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/plugins/"
     COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:abcui_render_renderer>"
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/render_backend/"
+    COMMAND "${CMAKE_COMMAND}" -E copy "$<TARGET_FILE:abcui_render_gl>"
+        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/render_backend/"
     COMMAND "${CMAKE_COMMAND}" -E copy "${CMAKE_CURRENT_SOURCE_DIR}/README.md" "${ABC_UI_STAGE_DIR}/"
     COMMAND "${CMAKE_COMMAND}" -E make_directory
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
@@ -554,5 +557,5 @@ add_custom_target(dist
         "${CMAKE_BINARY_DIR}/dist/AbcUi-${ABC_UI_VERSION}.zip"
         --format=zip -- svencoop README.md
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
-    DEPENDS AbcUi abcui_render_renderer pack_modules
+    DEPENDS AbcUi abcui_render_renderer abcui_render_gl pack_modules
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")

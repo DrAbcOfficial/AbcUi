@@ -1,6 +1,6 @@
 # AbcUi
 
-HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from the HUD to the main menu and settings, in a single consistent style. It requires [AbcCore](https://github.com/DrAbcOfficial/AbcCore), MetaHookSV and Renderer.
+HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from the HUD to the main menu and settings, in a single consistent style. It requires [AbcCore](https://github.com/DrAbcOfficial/AbcCore), MetaHookSV and VGUI2Extension.
 
 ## Features
 
@@ -34,6 +34,17 @@ AbcCore.dll is required and must be installed under `svencoop/metahook/dlls/AbcC
 Without a compatible StandaloneView installation, character previews are disabled;
 the rest of the interface remains available.
 
+The default drawing backend is `renderer` and requires Renderer.dll.
+To run without Renderer, set `abc_ui_render_backend "gl"` in
+`svencoop/config.cfg`, remove Renderer.dll from `plugins.lst`, and fully restart
+the game. The `gl` backend requires OpenGL 3.3 or newer and cannot run while
+Renderer.dll is loaded. It supports menu blur, background movies and character
+previews. The radar shows player markers without a map image.
+
+Renderer-free installations still need FreeImage.dll in the MetaHook DLL search
+path. Install Mile.FFmpeg.dll there as well for background movies and video.
+These DLLs are not included in the AbcUi archive.
+
 Character previews follow your selected installed player model after leaving or
 rejoining a game, including models from downloaded and addon content.
 
@@ -48,7 +59,7 @@ Useful console variables:
 
 | Name | Description |
 |---|---|
-| `abc_ui_render_backend` | Select the drawing backend. A full game restart is required. |
+| `abc_ui_render_backend` | `renderer` by default, or `gl` without Renderer. A full game restart is required. |
 | `abc_ui_render_backend_list` | List installed backends, their drawing features and the active selection. |
 | `abc_ui_chat` | `0` restores the native chat. |
 | `abc_ui_spectator` | `0` restores the native spectator bar. |

@@ -18,8 +18,9 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
   `backends/renderer/` (the `renderer` backend DLL behind
   `sdk/abcui/render_backend.h`), which also owns the two fixed-pipeline GL
   capture niches with no IMetaRenderer equivalent (scissor viewport clear +
-  copy-out); any further GL (a future `gl` backend) is allowed only inside a
-  backend DLL. VGUI2 `ISurface2` stays confined to the texture upload channel
+  copy-out). The independent `backends/gl/` backend uses OpenGL without
+  Renderer headers, include directories or interfaces. All GL stays inside
+  backend DLLs. VGUI2 `ISurface2` stays confined to the texture upload channel
   (`DrawSetTextureRGBA`), cursor handling and engine UI seams, never to draw a
   panel. Model previews use the independent `StandaloneView.dll` plugin through
   API_003. `thirdparty/StandaloneView` supplies public headers only; do not
