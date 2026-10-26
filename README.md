@@ -34,6 +34,9 @@ AbcCore.dll is required and must be installed under `svencoop/metahook/dlls/AbcC
 Without a compatible StandaloneView installation, character previews are disabled;
 the rest of the interface remains available.
 
+Character previews follow your selected installed player model after leaving or
+rejoining a game, including models from downloaded and addon content.
+
 ## Settings
 
 All options are available in the in-game Settings menu. Changing the menu action
