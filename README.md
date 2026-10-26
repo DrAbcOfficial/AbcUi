@@ -41,6 +41,8 @@ rejoining a game, including models from downloaded and addon content.
 
 All options are available in the in-game Settings menu. Changing the menu action
 model updates its animation choices without refreshing unrelated settings.
+Applying a new resolution or display mode restarts the game and then asks you to
+keep or revert the change.
 
 Useful console variables:
 

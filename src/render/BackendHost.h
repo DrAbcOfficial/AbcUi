@@ -27,9 +27,8 @@ class IOffscreenTargets;
 // issue's matrix; never returns with backend() == null.
 void boot();
 // Plugin teardown (OnShutdown): drops the frame sink and calls the
-// descriptor's shutdown. The backend DLL stays loaded for the process
-// lifetime - late teardown calls must stay safe, matching the old
-// MetaRendererShutdown contract.
+// descriptor's shutdown, then releases backend DLLs. All UI consumers must
+// already be stopped; later backend() lookups return null.
 void shutdown();
 
 // The injected backend (null only before boot / after shutdown).

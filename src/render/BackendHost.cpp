@@ -16,6 +16,7 @@
 #include <filesystem>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "BackendHost.h"
@@ -33,7 +34,7 @@ namespace {
 
 struct BackendEntry {
   std::string fileName; // inside the backend directory
-  HMODULE module = nullptr;
+  framework::NativeLibrary module;
   AbcUiRenderBackendDesc desc{};
   bool initialized = false;
 };
@@ -551,7 +552,6 @@ void boot() {
     }
     BackendEntry backend;
     backend.fileName = file;
-    backend.module = module;
     backend.desc.structSize = sizeof(backend.desc);
     const int32_t accepted =
         entry(ABCUI_RENDER_BACKEND_ABI_VERSION, &host, &backend.desc);
@@ -570,9 +570,8 @@ void boot() {
         return;
       }
     }
+    backend.module = std::move(library);
     hostState.entries.push_back(std::move(backend));
-    // Accepted backends intentionally stay resident for the process lifetime.
-    static_cast<void>(library.release());
   }
 
   // 7. Match the selected id and initialize it.
@@ -601,14 +600,17 @@ void shutdown() {
   HostState &hostState = state();
   if (hostState.active) {
     hostState.active->removeFrameSink();
-    for (auto &entry : hostState.entries)
-      if (entry.initialized && entry.desc.shutdown)
-        entry.desc.shutdown(entry.desc.userdata);
-    // The DLLs stay loaded: teardown paths may still call backend() after
-    // this (the old MetaRendererShutdown contract), and the process owns
-    // their lifetime anyway.
-    hostState.active.reset();
   }
+  for (auto &entry : hostState.entries) {
+    if (entry.initialized && entry.desc.shutdown)
+      entry.desc.shutdown(entry.desc.userdata);
+    entry.initialized = false;
+  }
+  // Plugin teardown is the final backend consumer. Release wrappers before
+  // their function tables and discard host callbacks before a later reload.
+  hostState.active.reset();
+  hostState.entries.clear();
+  hostState.booted = false;
 }
 
 IRenderBackend *backend() {

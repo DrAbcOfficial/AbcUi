@@ -456,6 +456,10 @@ void shutdown() {
   // Text/IME state next (T07): the handler's cached TextInputContext
   // pointers die with the DOM below; drop them while it is alive.
   textInputShutdown();
+  // The shared backdrop is not owned by a document. Join its decode worker
+  // while Rml, textures and the backend are alive; a CRT thread retains the
+  // plugin DLL, so waiting for the singleton destructor prevents unloading.
+  menubackdrop::menuBackdrop().shutdown();
   if (!Initialised) {
     // HUD_Init can arm modules before the first HUD_Frame creates a context.
     if (Sink.shutdown)
