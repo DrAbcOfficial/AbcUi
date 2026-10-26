@@ -5,19 +5,12 @@
 // thirdparty/StandaloneView submodule (MIT, (c) 2021 hzqst), compiled into
 // this DLL (StandaloneViewManager.cpp + EmptyWorld.cpp). This file plays the
 // role upstream's plugins.cpp/privatehook.cpp play for the standalone
-// plugin, with the AbcUi adaptations:
-// - soft gamedata degradation instead of SysError: an unresolvable symbol
-//   set on an unknown build disables the route, the preview falls into its
-//   "preview disabled" branch instead of failing startup;
-// - the client-export routing goes through hooks.cpp's chain (gExportfuncs)
-//   rather than replacing the client's export table;
-// - the draw bridge is studio-only and extended by the preview's needs the
-//   upstream interface does not model: a private MOVETYPE_FOLLOW bone
-//   source and a per-draw StudioLighting override hooked at the engine's
-//   StudioSetupLighting seam;
-// - the empty-world pass rides r_novis: the empty world carries no BSP
-//   visibility data, so the client's StudioDrawModel PVS test would cull
-//   the preview entity and the pass would draw nothing.
+// plugin, with the AbcUi adaptations: soft gamedata degradation instead of
+// SysError, the client-export routing through hooks.cpp's chain
+// (gExportfuncs) rather than a replaced export table, the studio draw
+// bridge the module's IStandaloneViewDrawfuncs cannot express (private
+// MOVETYPE_FOLLOW bone source, per-draw StudioLighting at the engine's
+// StudioSetupLighting seam) and the empty-world r_novis scope.
 #include <metahook.h>
 
 #include <com_model.h>
@@ -35,29 +28,16 @@
 #include <IStandaloneView.h>
 #include <StandaloneViewManager.h>
 
-#include <algorithm>
 #include <cmath>
 #include <cstdarg>
 #include <cstdio>
-#include <memory>
-#include <optional>
-#include <vector>
 
 #include "StandaloneView.h"
 
 namespace framework {
 namespace standaloneview {
 
-// The submodule's namespace (::standaloneview, next to this facade's
-// framework::standaloneview).
-namespace sv = ::standaloneview;
-
 namespace {
-
-// The manager singleton is declared at global scope in the submodule header.
-::CStandaloneViewManager &manager() {
-  return ::StandaloneViewManager();
-}
 
 // Engine functions and globals resolved from gamedata: the state slots the
 // manager renders against plus the entity-draw globals the studio bridge
@@ -132,12 +112,11 @@ void misuseReport(const char *fmt, ...) {
 }
 
 // The brush and sprite entity draws stay unresolved on purpose: the
-// preview's only consumer draws through the studio bridge below (the
-// facade's Drawfuncs is studio-only by contract), and every skipped symbol
-// widens the set of builds the route degrades gracefully on. The manager
-// null-checks both entries.
-sv::EngineBridge makeManagerBridge() {
-  return sv::EngineBridge{
+// preview's only consumer draws through the studio bridge below, and every
+// skipped symbol widens the set of builds the route degrades gracefully on.
+// The manager null-checks both entries.
+::standaloneview::EngineBridge makeManagerBridge() {
+  return ::standaloneview::EngineBridge{
       .V_RenderView = callOriginalRenderView,
       .IsDemoPlayback = isDemoPlayback,
       .clientState = Engine.clientState,
@@ -153,11 +132,11 @@ sv::EngineBridge makeManagerBridge() {
 void __cdecl RenderViewHookFn() {
   // The manager bridge is always set when this runs: the inline hooks are
   // installed only after the resolve and the SetEngine feed succeeded.
-  manager().RenderView();
+  ::StandaloneViewManager().RenderView();
 }
 
 void __cdecl PaintBackgroundHookFn(int *extents) {
-  manager().PaintBackground(paintBackgroundTrampoline, extents);
+  ::StandaloneViewManager().PaintBackground(paintBackgroundTrampoline, extents);
 }
 
 // ------------------------------------------------------------------ hooks -
@@ -209,14 +188,14 @@ void uninstallPortalHooks() {
 // The portal hook bodies (thiscall via __fastcall + dummy).
 void __fastcall portalRenderPortalsHook(void *pthis, int,
                                         ref_params_s *pparams) {
-  if (manager().GetCurrentView())
+  if (::StandaloneViewManager().GetCurrentView())
     return;
   if (OriginalRenderPortals)
     OriginalRenderPortals(pthis, 0, pparams);
 }
 
 int __fastcall portalResetAllHook(void *pthis, int) {
-  if (manager().GetCurrentView())
+  if (::StandaloneViewManager().GetCurrentView())
     return 0;
   if (OriginalResetAll)
     return OriginalResetAll(pthis, 0);
@@ -227,7 +206,7 @@ int __cdecl thirdPersonHook() {
   // This is an external view, never the client's first-person body pass.
   // Otherwise Sven consumes its pending local-player draw here: there is no
   // local player at the menu, and in a level it belongs to the real view.
-  if (manager().GetCurrentView())
+  if (::StandaloneViewManager().GetCurrentView())
     return 1;
   return OriginalThirdPerson ? OriginalThirdPerson() : 0;
 }
@@ -261,7 +240,7 @@ bool installPortalHooks() {
   return true;
 }
 
-// ------------------------------------------------------------ drawfuncs ---
+// ------------------------------------------------------------ draw bridge --
 
 struct StudioLightBridge {
   hook_t *Hook = nullptr;
@@ -393,143 +372,38 @@ bool studioModelPass(cl_entity_s *ent, cl_entity_s *boneSource,
   return (*StudioInterface)->StudioDrawModel(flags) != 0;
 }
 
-class StudioDrawfuncs final : public Drawfuncs {
-public:
-  bool setupStudioPose(cl_entity_s *ent, cl_entity_s *boneSource) override;
-  void drawStudioModel(cl_entity_s *ent, cl_entity_s *boneSource,
-                       const StudioLighting *lighting) override;
-};
-
-StudioDrawfuncs DrawfuncsInstance;
-
-bool StudioDrawfuncs::setupStudioPose(cl_entity_s *ent,
-                                      cl_entity_s *boneSource) {
-  return studioModelPass(ent, boneSource, nullptr, 0);
-}
-
-void StudioDrawfuncs::drawStudioModel(cl_entity_s *ent, cl_entity_s *boneSource,
-                                      const StudioLighting *lighting) {
-  studioModelPass(ent, boneSource, lighting, STUDIO_RENDER);
-}
-
-// ------------------------------------------------------------- novis ------
-
-// The manager's empty world carries no BSP visibility data, so with the
-// default vis path the client's StudioDrawModel culls the preview entity
-// and the pass draws nothing. Ride the engine's no-visibility path for the
-// duration of a view's pass; the scope arms only while the manager's empty
-// world is actually installed, so on a real map the main view sees the
-// player's own r_novis.
-class NoVisScope {
-public:
-  NoVisScope()
-      : Cvar(emptyWorldInstalled() ? abc::CVAR_GET_POINTER("r_novis")
-                                   : nullptr) {
-    if (!Cvar)
-      return;
-    Saved = Cvar->value;
-    Cvar->value = 1.0f;
-  }
-  ~NoVisScope() {
-    if (Cvar)
-      Cvar->value = Saved;
-  }
-  NoVisScope(const NoVisScope &) = delete;
-  NoVisScope &operator=(const NoVisScope &) = delete;
-
-private:
-  static bool emptyWorldInstalled() {
-    return Engine.worldModel && *Engine.worldModel == sv::GetEmptyWorldModel();
-  }
-
-  cvar_t *Cvar = nullptr;
-  float Saved = 0.0f;
-};
-
-// -------------------------------------------------------------- views -----
-
-// One facade view registered with the manager. The wrapper adapts the
-// facade surface to IStandaloneView and swaps the manager's
-// IStandaloneViewDrawfuncs for the studio bridge above: the preview draws
-// entities that need a private bone source and a lighting override, which
-// the upstream interface does not model.
-class ViewWrapper final : public IStandaloneView {
-public:
-  explicit ViewWrapper(View *facade) : Facade(facade) {}
-
-  bool IsActive() const override {
-    // The pass draws through the studio bridge; without the interface the
-    // manager would run a pass that only captures a cleared viewport (the
-    // per-frame gate the route always rendered under).
-    return StudioInterface && *StudioInterface && Facade->isActive();
-  }
-  void CalcRefdef(ref_params_s *pparams) override {
-    Facade->calcRefdef(pparams);
-  }
-  void OnBeforeRenderView() override {
-    Facade->onBeforeRenderView();
-    NoVis.emplace();
-  }
-  void OnAfterRenderView() override {
-    NoVis.reset();
-    Facade->onAfterRenderView();
-  }
-  // The manager's drawfuncs pointer is ignored (unnamed on purpose): the
-  // facade views draw through DrawfuncsInstance only.
-  void DrawNormalTriangles(IStandaloneViewDrawfuncs *) override {
-    Facade->drawNormalTriangles(&DrawfuncsInstance);
-  }
-  void DrawTransparentTriangles(IStandaloneViewDrawfuncs *) override {
-    Facade->drawTransparentTriangles(&DrawfuncsInstance);
-  }
-
-  View *facade() const {
-    return Facade;
-  }
-
-private:
-  View *Facade;
-  std::optional<NoVisScope> NoVis;
-};
-
-std::vector<std::unique_ptr<ViewWrapper>> &wrappers() {
-  static std::vector<std::unique_ptr<ViewWrapper>> instance;
-  return instance;
-}
-
-auto findWrapper(View *view) {
-  return std::ranges::find_if(wrappers(), [view](const auto &wrapper) {
-    return wrapper->facade() == view;
-  });
+bool emptyWorldInstalled() {
+  return Engine.worldModel &&
+         *Engine.worldModel == ::standaloneview::GetEmptyWorldModel();
 }
 
 } // namespace
 
+// ------------------------------------------------- exported draw bridge ----
+
+bool setupStudioPose(cl_entity_s *ent, cl_entity_s *boneSource) {
+  return studioModelPass(ent, boneSource, nullptr, 0);
+}
+
+void drawStudioModel(cl_entity_s *ent, cl_entity_s *boneSource,
+                     const StudioLighting *lighting) {
+  studioModelPass(ent, boneSource, lighting, STUDIO_RENDER);
+}
+
+NoVisScope::NoVisScope()
+    : Cvar(emptyWorldInstalled() ? abc::CVAR_GET_POINTER("r_novis") : nullptr) {
+  if (!Cvar)
+    return;
+  Saved = Cvar->value;
+  Cvar->value = 1.0f;
+}
+
+NoVisScope::~NoVisScope() {
+  if (Cvar)
+    Cvar->value = Saved;
+}
+
 // ---------------------------------------------------------------- public --
-
-void registerView(View *view) {
-  if (!view || findWrapper(view) != wrappers().end())
-    return;
-  wrappers().push_back(std::make_unique<ViewWrapper>(view));
-  manager().RegisterStandaloneView(wrappers().back().get());
-}
-
-void unregisterView(View *view) {
-  const auto it = findWrapper(view);
-  if (it == wrappers().end())
-    return;
-  // The list is in use until the views have rendered; unregistering from a
-  // callback is a contract violation - the manager refuses and this keeps
-  // the wrapper alive (the view is destroyed only outside callbacks, per
-  // the interface contract).
-  if (manager().IsRenderingStandaloneViews()) {
-    abc::ConsoleWarn("[AbcUi] standalone view unregistered from inside its "
-                     "own callback; ignored\n");
-    return;
-  }
-  manager().UnregisterStandaloneView(it->get());
-  wrappers().erase(it);
-}
 
 bool available() {
   return Available && ClientHooksReady;
@@ -596,7 +470,7 @@ void installEngineHooks() {
   }
 
   Engine = engine;
-  manager().SetEngine(makeManagerBridge());
+  ::StandaloneViewManager().SetEngine(makeManagerBridge());
   Available = true;
 }
 
@@ -622,26 +496,26 @@ void uninstallClientHooks() {
 }
 
 bool hookCalcRefdef(ref_params_s *pparams) {
-  if (!manager().GetCurrentView())
+  if (!::StandaloneViewManager().GetCurrentView())
     return false;
   // The manager runs the current view's CalcRefdef and forces onlyClientDraw
   // / nextView; the client's V_CalcRefdef is skipped - its bob, punch and
   // pitch drift state advances per call and belongs to the main view only.
-  manager().CalcRefdef(pparams);
+  ::StandaloneViewManager().CalcRefdef(pparams);
   return true;
 }
 
 bool hookDrawNormalTriangles() {
-  if (!manager().GetCurrentView())
+  if (!::StandaloneViewManager().GetCurrentView())
     return false;
-  manager().DrawNormalTriangles();
+  ::StandaloneViewManager().DrawNormalTriangles();
   return true;
 }
 
 bool hookDrawTransparentTriangles() {
-  if (!manager().GetCurrentView())
+  if (!::StandaloneViewManager().GetCurrentView())
     return false;
-  manager().DrawTransparentTriangles();
+  ::StandaloneViewManager().DrawTransparentTriangles();
   return true;
 }
 

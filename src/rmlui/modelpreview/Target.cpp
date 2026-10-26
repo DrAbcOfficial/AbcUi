@@ -1,18 +1,21 @@
 // modelpreview::Target - see Target.h.
 //
 // Since issue #24 the preview renders through the in-house engine
-// V_RenderView route (framework/standaloneview, copied from
-// MetaHookSv/StandaloneView) instead of Renderer's IEntityViewRenderer: the
-// pass draws the model in the view's triangle callback, the engine owns the
-// 3D matrices, and the result is captured from the viewport region into a
-// backend offscreen target (clear + copy-out). The draw bridge supplies the
-// preview's directional light at the engine's StudioSetupLighting seam,
-// scoped to the private entity draw rather than the game's world lighting.
+// V_RenderView route (the pinned thirdparty/StandaloneView module) instead
+// of Renderer's IEntityViewRenderer: the view implements the module's
+// IStandaloneView and the pass draws the model in its triangle callbacks,
+// the engine owns the 3D matrices, and the result is captured from the
+// viewport region into a backend offscreen target (clear + copy-out). The
+// studio draw bridge (framework/standaloneview) supplies what the module's
+// IStandaloneViewDrawfuncs cannot express: the preview's directional light
+// at the engine's StudioSetupLighting seam, scoped to the private entity
+// draw rather than the game's world lighting, and a private MOVETYPE_FOLLOW
+// bone source.
 //
 // The main page preview is a three-entity chain (aiment normalization): the
 // action group entity owns sequence/frame/controllers and is the animation
 // source, while the displayed player model and the optional weapon model are
-// MOVETYPE_FOLLOW entities. The draw bridge explicitly evaluates the action
+// MOVETYPE_FOLLOW entities. The bridge explicitly evaluates the action
 // group's bones before each follower; private entities have no engine-array
 // slot for an aiment lookup. The action group's mesh is never drawn.
 #include <metahook.h>
@@ -23,6 +26,8 @@
 #include <const.h>
 #include <r_studioint.h>
 #include <studio.h>
+
+#include <StandaloneViewManager.h>
 
 #include <abc/Console.h>
 #include <abc/CvarCmd.h>
@@ -38,6 +43,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -278,8 +284,9 @@ void placeEntity(cl_entity_t &Entity, const Options &Config) {
 
 // The view participant: options are synced once per framework frame by
 // render() (the beat AFTER the engine's view pass), the pass itself runs
-// inside V_RenderView before the main view.
-struct Target::State : framework::standaloneview::View {
+// inside V_RenderView before the main view. Implements the module's
+// IStandaloneView directly and registers through its manager singleton.
+struct Target::State : IStandaloneView {
   cl_entity_t Entity{}; // displayed player model
   cl_entity_t Action{}; // action group: animation source, never drawn
   cl_entity_t Weapon{}; // weapon model merged onto the action group
@@ -319,13 +326,17 @@ struct Target::State : framework::standaloneview::View {
   std::vector<FramePoint> PoseScratch;
   bool UsePoseFraming = false;
   bool TransparentPass = false;
+  // Armed while the pass renders: the manager's empty world carries no BSP
+  // visibility data, so the client's StudioDrawModel would cull the
+  // preview entity (framework/standaloneview's NoVisScope).
+  std::optional<framework::standaloneview::NoVisScope> NoVis;
 
-  bool isActive() const override {
+  bool IsActive() const override {
     return Active && !ModelMissing && CaptureHandle != 0 &&
            gEngfuncs.GetAbsoluteTime() - LastRenderCall < 1.0;
   }
 
-  void calcRefdef(struct ref_params_s *pparams) override {
+  void CalcRefdef(struct ref_params_s *pparams) override {
     // Only vieworg / viewangles / viewport: the cl_* fields belong to the
     // main view (the engine writes them back). The engine keeps its own
     // projection fov (ref_params has no fov field on this engine
@@ -339,9 +350,11 @@ struct Target::State : framework::standaloneview::View {
     pparams->viewport[3] = CaptureHeight;
   }
 
-  void onBeforeRenderView() override {}
+  void OnBeforeRenderView() override {
+    NoVis.emplace();
+  }
 
-  void drawPass(framework::standaloneview::Drawfuncs *drawfuncs) {
+  void drawPass() {
     // The background clear must land inside the pass, on the framebuffer the
     // engine bound for this view - R_RenderView clears only depth (and color
     // just with gl_clear), so the region is cleared here, exactly over this
@@ -354,12 +367,14 @@ struct Target::State : framework::standaloneview::View {
     clearViewport();
     if (UsePoseFraming) {
       PoseScratch.clear();
-      bool Complete =
-          drawfuncs->setupStudioPose(&Entity, HasAction ? &Action : nullptr) &&
-          appendStudioVertices(Entity, PoseScratch) && !PoseScratch.empty();
+      bool Complete = framework::standaloneview::setupStudioPose(
+                          &Entity, HasAction ? &Action : nullptr) &&
+                      appendStudioVertices(Entity, PoseScratch) &&
+                      !PoseScratch.empty();
       if (Complete && HasWeapon)
-        Complete = drawfuncs->setupStudioPose(&Weapon, &Action) &&
-                   appendStudioVertices(Weapon, PoseScratch);
+        Complete =
+            framework::standaloneview::setupStudioPose(&Weapon, &Action) &&
+            appendStudioVertices(Weapon, PoseScratch);
       if (Complete)
         PoseVertices.swap(PoseScratch);
       else
@@ -367,24 +382,26 @@ struct Target::State : framework::standaloneview::View {
     }
     // Each follower consumes a fresh source pose, never a previous preview's
     // saved bones (or the saved bones of the displayed player's extra bones).
-    drawfuncs->drawStudioModel(&Entity, HasAction ? &Action : nullptr,
-                               &Lighting);
+    framework::standaloneview::drawStudioModel(
+        &Entity, HasAction ? &Action : nullptr, &Lighting);
     if (HasWeapon)
-      drawfuncs->drawStudioModel(&Weapon, &Action, &Lighting);
+      framework::standaloneview::drawStudioModel(&Weapon, &Action, &Lighting);
   }
 
-  void drawNormalTriangles(
-      framework::standaloneview::Drawfuncs *drawfuncs) override {
+  // The module's IStandaloneViewDrawfuncs is not used: the preview's studio
+  // draws go through the framework/standaloneview bridge above, which
+  // carries the bone source and the per-draw light the interface lacks.
+  void DrawNormalTriangles(IStandaloneViewDrawfuncs *) override {
     if (!TransparentPass)
-      drawPass(drawfuncs);
+      drawPass();
   }
-  void drawTransparentTriangles(
-      framework::standaloneview::Drawfuncs *drawfuncs) override {
+  void DrawTransparentTriangles(IStandaloneViewDrawfuncs *) override {
     if (TransparentPass)
-      drawPass(drawfuncs);
+      drawPass();
   }
 
-  void onAfterRenderView() override {
+  void OnAfterRenderView() override {
+    NoVis.reset();
     // Copy the viewport region out of the currently bound framebuffer into
     // the capture texture (StandaloneView's documented capture contract).
     abc::render::IOffscreenTargets *targets = captureTargets();
@@ -426,11 +443,24 @@ Target::Target() : Data(std::make_unique<State>()) {
   static unsigned long long NextId = 0;
   Data->Uri = "modelfbo://" + std::to_string(++NextId) + "/";
   targets().push_back(this);
-  framework::standaloneview::registerView(Data.get());
+  // The manager accepts registration any time; a view registered before the
+  // route's hooks installed simply never renders until they are.
+  ::StandaloneViewManager().RegisterStandaloneView(Data.get());
 }
 
 Target::~Target() {
-  framework::standaloneview::unregisterView(Data.get());
+  // The module contract forbids unregistering from an IStandaloneView
+  // callback. The manager refuses (and warns through the glue's misuse
+  // bridge) mid-pass; destroying the state then would leave its registered
+  // pointer dangling, so leak it deliberately - the route has always
+  // treated this violation as warn-and-keep.
+  if (::StandaloneViewManager().IsRenderingStandaloneViews()) {
+    abc::ConsoleWarn("[AbcUi] standalone view unregistered from inside its "
+                     "own callback; ignored\n");
+    (void)Data.release();
+  } else {
+    ::StandaloneViewManager().UnregisterStandaloneView(Data.get());
+  }
   invalidate();
   std::erase(targets(), this);
 }

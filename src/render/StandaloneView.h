@@ -1,26 +1,29 @@
 #pragma once
 
-// framework::standaloneview - the in-house "extra view" route (issue #24
-// comment): render isolated 3D views (the model preview) through the
-// ENGINE's own V_RenderView, with or without Renderer, instead of
-// Renderer's IEntityViewRenderer isolated scope.
+// framework::standaloneview - host glue for the pinned
+// thirdparty/StandaloneView module (issue #24 comment): render isolated 3D
+// views (the model preview) through the ENGINE's own V_RenderView, with or
+// without Renderer, instead of Renderer's IEntityViewRenderer isolated
+// scope.
 //
-// The route's manager core is the pinned thirdparty/StandaloneView module
-// (MIT, (c) 2021 hzqst), compiled into AbcUi (StandaloneViewManager.cpp +
-// EmptyWorld.cpp); StandaloneView.cpp is the host glue. It hooks
-// V_RenderView + VGui_ViewportPaintBackground, forces cls.state /
-// cls.signon active for the pass, installs an empty brush worldmodel when
-// no map is loaded, routes V_CalcRefdef and the triangle callbacks to the
-// current view with onlyClientDraw, and skips the Sven client's portal
-// manager during the pass. Views render BEFORE the engine's main view.
-//
-// Degradation (this repo's rule, softer than StandaloneView's SysError):
-// the engine/client symbols come from gamedata, and an unresolvable set on
-// an unknown build disables the whole route - consumers fall into their
-// existing "preview disabled" branches - instead of failing startup.
+// Consumers implement the module's IStandaloneView directly and register
+// through its StandaloneViewManager() singleton. This layer only carries
+// what the module cannot do for this plugin:
+// - the hook glue: soft gamedata degradation instead of the module's
+//   SysError, and client-export routing through hooks.cpp's chain
+//   (gExportfuncs) rather than a replaced export table;
+// - the studio draw bridge: the module's IStandaloneViewDrawfuncs cannot
+//   express a private MOVETYPE_FOLLOW bone source or a per-draw directional
+//   light, so setupStudioPose / drawStudioModel are concrete functions for
+//   the view's triangle callbacks, with StudioLighting as their per-draw
+//   light configuration, hooked in at the engine's StudioSetupLighting seam;
+// - NoVisScope: the module's empty world carries no BSP visibility data, so
+//   the client's StudioDrawModel culls the preview entity while it is
+//   installed; arm the scope for the duration of a view's pass.
 
 struct ref_params_s;
 struct cl_entity_s;
+struct cvar_s;
 struct r_studio_interface_s;
 struct engine_studio_api_s;
 
@@ -39,54 +42,33 @@ struct StudioLighting {
   bool Enabled = true;
 };
 
-// Entity draws handed to a view's triangle callbacks; valid only inside
-// them. Only the studio draw exists (the preview's sole need); brush and
-// sprite draws stay unported.
-class Drawfuncs {
-public:
-  virtual ~Drawfuncs() = default;
-  // Evaluate/save the merged pose without culling, meshes or events. The
-  // engine Studio bone transforms remain readable until the next Studio call.
-  virtual bool setupStudioPose(cl_entity_s *ent,
-                               cl_entity_s *boneSource = nullptr) = 0;
-  // StudioDrawModel/StudioDrawPlayer with STUDIO_RENDER and no STUDIO_EVENTS
-  // (a preview must not fire model events), currententity and r_blend set
-  // and restored the way the engine's entity lists do. For a private
-  // MOVETYPE_FOLLOW entity, pass its bone source explicitly: these entities
-  // are not registered in the engine's entity array. The source is evaluated
-  // with flags=0 immediately before the draw (bones only, no mesh/events).
-  virtual void drawStudioModel(cl_entity_s *ent,
-                               cl_entity_s *boneSource = nullptr,
-                               const StudioLighting *lighting = nullptr) = 0;
-};
+// Evaluate/save the merged pose without culling, meshes or events. The
+// engine Studio bone transforms remain readable until the next Studio call.
+bool setupStudioPose(cl_entity_s *ent, cl_entity_s *boneSource = nullptr);
 
-// A view rendered before the engine's main view, once per frame. Every
-// callback runs on the main thread inside V_RenderView while cls.state /
-// cls.signon are forced active; until a map is fully loaded the worldmodel
-// is an empty brush model owned by this module.
-class View {
-public:
-  virtual ~View() = default;
-  // False skips the view this frame.
-  virtual bool isActive() const = 0;
-  // Fill vieworg, viewangles and viewport (x, y, width, height in window
-  // pixels, top-left origin); leave the cl_* fields alone (the engine
-  // writes them back). onlyClientDraw/nextView are forced after the call.
-  virtual void calcRefdef(struct ref_params_s *pparams) = 0;
-  virtual void onBeforeRenderView() = 0;
-  // The view has been drawn into its viewport of the currently bound
-  // framebuffer; copy the result out here.
-  virtual void onAfterRenderView() = 0;
-  // Replaces the client's triangle exports while this view renders; the
-  // engine's 3D matrices are already set up.
-  virtual void drawNormalTriangles(Drawfuncs *drawfuncs) = 0;
-  virtual void drawTransparentTriangles(Drawfuncs *drawfuncs) = 0;
-};
+// StudioDrawModel with STUDIO_RENDER and no STUDIO_EVENTS (a preview must
+// not fire model events), currententity and r_blend set and restored the
+// way the engine's entity lists do. For a private MOVETYPE_FOLLOW entity,
+// pass its bone source explicitly: these entities are not registered in the
+// engine's entity array. The source is evaluated with flags=0 immediately
+// before the draw (bones only, no mesh/events).
+void drawStudioModel(cl_entity_s *ent, cl_entity_s *boneSource = nullptr,
+                     const StudioLighting *lighting = nullptr);
 
-// Registers the view (ignored twice); a view registered from a callback
-// starts rendering next frame. Must NOT be called from a view callback.
-void registerView(View *view);
-void unregisterView(View *view);
+// Rides the engine's no-visibility path while armed. The scope arms only
+// while the manager's empty world is actually installed, so on a real map
+// the main view sees the player's own r_novis.
+class NoVisScope {
+public:
+  NoVisScope();
+  ~NoVisScope();
+  NoVisScope(const NoVisScope &) = delete;
+  NoVisScope &operator=(const NoVisScope &) = delete;
+
+private:
+  cvar_s *Cvar = nullptr;
+  float Saved = 0.0f;
+};
 
 // True when the route installed (engine hooks resolved +, on a Sven client,
 // portal hooks resolved). Consumers degrade when false.
