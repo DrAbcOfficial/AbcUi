@@ -184,6 +184,7 @@ public:
 #endif
     RenderInterface->endFrame();
     backend->endFrame();
+    vgui2ext::resetTextureBinding();
   }
 
   void invalidateTargets() override {

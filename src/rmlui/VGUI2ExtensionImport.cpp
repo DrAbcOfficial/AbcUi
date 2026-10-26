@@ -569,6 +569,12 @@ bool getCursorPos(int &x, int &y) {
   return true;
 }
 
+void resetTextureBinding() {
+  if (Surface2) {
+    Surface2->DrawSetTexture(0);
+  }
+}
+
 bool isCursorVisible() {
   if (!Surface2)
     return false;

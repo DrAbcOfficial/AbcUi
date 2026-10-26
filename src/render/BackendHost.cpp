@@ -515,7 +515,8 @@ void boot() {
   scanDirectory(directory, files);
   if (files.empty()) {
     fatal("render backend \"" + selected + "\" is not installed: " + directory +
-          " is empty. Install abcui_render_renderer.dll into "
+          " is empty. Install abcui_render_renderer.dll or "
+          "abcui_render_gl.dll into "
           "abc/abcui/render_backend/");
     return;
   }
@@ -670,12 +671,13 @@ void listBackendsCommand() {
                hostState.bootId.c_str());
   for (const auto &entry : hostState.entries) {
     const uint32_t caps = entry.desc.capabilities;
-    ConsolePrint("  %-10s %s [%s%s%s%s]\n", entry.desc.id,
+    ConsolePrint("  %-10s %s [%s%s%s%s%s]\n", entry.desc.id,
                  entry.desc.displayName ? entry.desc.displayName : "",
                  caps & ABCUI_RB_CAP_RENDER_CALLBACKS ? "callbacks " : "",
                  caps & ABCUI_RB_CAP_REDRAW_BEAT ? "redraw " : "",
                  caps & ABCUI_RB_CAP_WORLD_PASS ? "world " : "",
-                 caps & ABCUI_RB_CAP_BLUR_PASS ? "blur" : "");
+                 caps & ABCUI_RB_CAP_BLUR_PASS ? "blur " : "",
+                 caps & ABCUI_RB_CAP_OFFSCREEN_TARGETS ? "targets" : "");
   }
 }
 

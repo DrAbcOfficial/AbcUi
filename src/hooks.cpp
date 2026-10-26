@@ -192,11 +192,15 @@ static int H_HUD_Redraw(float time, int intermission) {
   // +/-showscores commands stay dead while it lasts.
   framework::scoreseat::setIntermission(intermission != 0);
   rmlui::onRedraw(delta);
-  // RedrawBeat render backends (the GL backend) render their frame sink
-  // here; callback-driven backends (Renderer) ignore the pump.
+  int result = 0;
+  {
+    const NativeHudDrawScope nativeDraw;
+    result = gExportfuncs.HUD_Redraw(time, intermission);
+  }
+  // Draw over the chained client's HUD, not underneath it.
+  // Callback-driven backends (Renderer) ignore this pump.
   abc::render::pumpRedraw(delta);
-  const NativeHudDrawScope nativeDraw;
-  return gExportfuncs.HUD_Redraw(time, intermission);
+  return result;
 }
 
 static int H_HUD_UpdateClientData(struct client_data_s *cdata, float time) {

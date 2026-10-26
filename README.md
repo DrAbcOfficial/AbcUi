@@ -49,7 +49,7 @@ Useful console variables:
 | Name | Description |
 |---|---|
 | `abc_ui_render_backend` | Select the drawing backend. A full game restart is required. |
-| `abc_ui_render_backend_list` | List the installed backends. |
+| `abc_ui_render_backend_list` | List installed backends, their drawing features and the active selection. |
 | `abc_ui_chat` | `0` restores the native chat. |
 | `abc_ui_spectator` | `0` restores the native spectator bar. |
 | `abc_ui_menu_music` | Menu music track. |
