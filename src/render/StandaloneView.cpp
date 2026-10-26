@@ -54,6 +54,11 @@ namespace sv = ::standaloneview;
 
 namespace {
 
+// The manager singleton is declared at global scope in the submodule header.
+::CStandaloneViewManager &manager() {
+  return ::StandaloneViewManager();
+}
+
 // Engine functions and globals resolved from gamedata: the state slots the
 // manager renders against plus the entity-draw globals the studio bridge
 // reads.
@@ -148,12 +153,11 @@ sv::EngineBridge makeManagerBridge() {
 void __cdecl RenderViewHookFn() {
   // The manager bridge is always set when this runs: the inline hooks are
   // installed only after the resolve and the SetEngine feed succeeded.
-  sv::StandaloneViewManager().RenderView();
+  manager().RenderView();
 }
 
 void __cdecl PaintBackgroundHookFn(int *extents) {
-  sv::StandaloneViewManager().PaintBackground(paintBackgroundTrampoline,
-                                              extents);
+  manager().PaintBackground(paintBackgroundTrampoline, extents);
 }
 
 // ------------------------------------------------------------------ hooks -
@@ -205,14 +209,14 @@ void uninstallPortalHooks() {
 // The portal hook bodies (thiscall via __fastcall + dummy).
 void __fastcall portalRenderPortalsHook(void *pthis, int,
                                         ref_params_s *pparams) {
-  if (sv::StandaloneViewManager().GetCurrentView())
+  if (manager().GetCurrentView())
     return;
   if (OriginalRenderPortals)
     OriginalRenderPortals(pthis, 0, pparams);
 }
 
 int __fastcall portalResetAllHook(void *pthis, int) {
-  if (sv::StandaloneViewManager().GetCurrentView())
+  if (manager().GetCurrentView())
     return 0;
   if (OriginalResetAll)
     return OriginalResetAll(pthis, 0);
@@ -223,7 +227,7 @@ int __cdecl thirdPersonHook() {
   // This is an external view, never the client's first-person body pass.
   // Otherwise Sven consumes its pending local-player draw here: there is no
   // local player at the menu, and in a level it belongs to the real view.
-  if (sv::StandaloneViewManager().GetCurrentView())
+  if (manager().GetCurrentView())
     return 1;
   return OriginalThirdPerson ? OriginalThirdPerson() : 0;
 }
@@ -507,7 +511,7 @@ void registerView(View *view) {
   if (!view || findWrapper(view) != wrappers().end())
     return;
   wrappers().push_back(std::make_unique<ViewWrapper>(view));
-  sv::StandaloneViewManager().RegisterStandaloneView(wrappers().back().get());
+  manager().RegisterStandaloneView(wrappers().back().get());
 }
 
 void unregisterView(View *view) {
@@ -518,12 +522,12 @@ void unregisterView(View *view) {
   // callback is a contract violation - the manager refuses and this keeps
   // the wrapper alive (the view is destroyed only outside callbacks, per
   // the interface contract).
-  if (sv::StandaloneViewManager().IsRenderingStandaloneViews()) {
+  if (manager().IsRenderingStandaloneViews()) {
     abc::ConsoleWarn("[AbcUi] standalone view unregistered from inside its "
                      "own callback; ignored\n");
     return;
   }
-  sv::StandaloneViewManager().UnregisterStandaloneView(it->get());
+  manager().UnregisterStandaloneView(it->get());
   wrappers().erase(it);
 }
 
@@ -592,7 +596,7 @@ void installEngineHooks() {
   }
 
   Engine = engine;
-  sv::StandaloneViewManager().SetEngine(makeManagerBridge());
+  manager().SetEngine(makeManagerBridge());
   Available = true;
 }
 
@@ -618,26 +622,26 @@ void uninstallClientHooks() {
 }
 
 bool hookCalcRefdef(ref_params_s *pparams) {
-  if (!sv::StandaloneViewManager().GetCurrentView())
+  if (!manager().GetCurrentView())
     return false;
   // The manager runs the current view's CalcRefdef and forces onlyClientDraw
   // / nextView; the client's V_CalcRefdef is skipped - its bob, punch and
   // pitch drift state advances per call and belongs to the main view only.
-  sv::StandaloneViewManager().CalcRefdef(pparams);
+  manager().CalcRefdef(pparams);
   return true;
 }
 
 bool hookDrawNormalTriangles() {
-  if (!sv::StandaloneViewManager().GetCurrentView())
+  if (!manager().GetCurrentView())
     return false;
-  sv::StandaloneViewManager().DrawNormalTriangles();
+  manager().DrawNormalTriangles();
   return true;
 }
 
 bool hookDrawTransparentTriangles() {
-  if (!sv::StandaloneViewManager().GetCurrentView())
+  if (!manager().GetCurrentView())
     return false;
-  sv::StandaloneViewManager().DrawTransparentTriangles();
+  manager().DrawTransparentTriangles();
   return true;
 }
 
