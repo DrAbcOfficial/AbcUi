@@ -12,6 +12,7 @@
 // auto-opening server URLs in the OS browser would be an untrusted-content
 // hole). The old character-count pagination rode vgui font metrics - one
 // scrollable page with the same keep_time/fade rhythm replaces it.
+#include "../../common/Text.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -123,20 +124,11 @@ std::string htmlToText(std::string html) {
     }
     out += html[i];
   }
-  const auto replaceAll = [](std::string text, const char *from,
-                             const char *to) {
-    size_t at = 0;
-    while ((at = text.find(from, at)) != std::string::npos) {
-      text.replace(at, strlen(from), to);
-      at += strlen(to);
-    }
-    return text;
-  };
-  out = replaceAll(out, "&nbsp;", " ");
-  out = replaceAll(out, "&amp;", "&");
-  out = replaceAll(out, "&lt;", "<");
-  out = replaceAll(out, "&gt;", ">");
-  out = replaceAll(out, "&quot;", "\"");
+  moduleui::replaceAll(out, "&nbsp;", " ");
+  moduleui::replaceAll(out, "&amp;", "&");
+  moduleui::replaceAll(out, "&lt;", "<");
+  moduleui::replaceAll(out, "&gt;", ">");
+  moduleui::replaceAll(out, "&quot;", "\"");
   return out;
 }
 

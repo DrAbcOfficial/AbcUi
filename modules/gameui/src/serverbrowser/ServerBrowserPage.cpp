@@ -801,7 +801,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
     Projected = false;
     return 1;
   }
-  if (action.rfind("sb-tab-", 0) == 0) {
+  if (action.starts_with("sb-tab-")) {
     RuleStatus.clear();
     Api->serverbrowser->setBlockedOnly(0);
     // fall through to the intent dispatch below

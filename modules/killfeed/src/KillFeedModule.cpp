@@ -8,6 +8,7 @@
 // its printf with transposed Q_snprintf arguments (the victim name landed in
 // the format slot); the port prints the localized "DeathMsg_ConsolePrint"
 // template with a positional substitution, never a printf format.
+#include "../../common/Text.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -93,11 +94,7 @@ std::string substitute(const std::string &text, const char *a, const char *b,
   for (int i = 0; i < 3; i++) {
     const std::string key = "{" + std::to_string(i) + "}";
     const std::string value = values[i] ? values[i] : "";
-    size_t at = 0;
-    while ((at = out.find(key, at)) != std::string::npos) {
-      out.replace(at, key.size(), value);
-      at += value.size();
-    }
+    moduleui::replaceAll(out, key, value);
   }
   return out;
 }

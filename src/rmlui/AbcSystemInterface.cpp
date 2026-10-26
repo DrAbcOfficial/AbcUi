@@ -15,12 +15,14 @@
 #include "modsys/ModuleVfs.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstdio>
 #include <cstring>
 #include <limits>
 #include <memory>
 #include <new>
 #include <string>
+#include <type_traits>
 
 #include <IFileSystem.h>
 #include <Windows.h>
@@ -84,16 +86,9 @@ void AbcSystemInterface::JoinPath(Rml::String &out, const Rml::String &base,
 }
 
 double AbcSystemInterface::GetElapsedTime() {
-  static LARGE_INTEGER frequency = {};
-  static bool initialized = false;
-  if (!initialized) {
-    QueryPerformanceFrequency(&frequency);
-    initialized = true;
-  }
-  LARGE_INTEGER counter{};
-  QueryPerformanceCounter(&counter);
-  return static_cast<double>(counter.QuadPart) /
-         static_cast<double>(frequency.QuadPart);
+  return std::chrono::duration<double>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
 }
 
 int AbcSystemInterface::TranslateString(Rml::String &translated,
@@ -127,6 +122,40 @@ bool AbcSystemInterface::LogMessage(Rml::Log::Type type,
   return true;
 }
 
+namespace {
+class ClipboardScope {
+public:
+  ClipboardScope() : opened_(OpenClipboard(nullptr) != FALSE) {}
+  ~ClipboardScope() {
+    if (opened_)
+      CloseClipboard();
+  }
+  ClipboardScope(const ClipboardScope &) = delete;
+  ClipboardScope &operator=(const ClipboardScope &) = delete;
+  explicit operator bool() const {
+    return opened_;
+  }
+
+private:
+  bool opened_;
+};
+
+struct GlobalMemoryCloser {
+  void operator()(HGLOBAL handle) const noexcept {
+    GlobalFree(handle);
+  }
+};
+struct GlobalMemoryUnlocker {
+  HGLOBAL handle;
+  void operator()(void *) const noexcept {
+    GlobalUnlock(handle);
+  }
+};
+using GlobalMemory =
+    std::unique_ptr<std::remove_pointer_t<HGLOBAL>, GlobalMemoryCloser>;
+using LockedGlobalMemory = std::unique_ptr<void, GlobalMemoryUnlocker>;
+} // namespace
+
 void AbcSystemInterface::SetClipboardText(const Rml::String &text) {
   const int wideLength = MultiByteToWideChar(
       CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
@@ -136,30 +165,32 @@ void AbcSystemInterface::SetClipboardText(const Rml::String &text) {
   MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()),
                       wide.data(), wideLength);
 
-  if (!OpenClipboard(nullptr))
+  const ClipboardScope clipboard;
+  if (!clipboard)
     return;
   EmptyClipboard();
   const size_t bytes = (wide.size() + 1) * sizeof(wchar_t);
-  if (HGLOBAL handle = GlobalAlloc(GMEM_MOVEABLE, bytes)) {
-    if (void *data = GlobalLock(handle)) {
-      memcpy(data, wide.c_str(), bytes);
-      GlobalUnlock(handle);
-      if (!SetClipboardData(CF_UNICODETEXT, handle))
-        GlobalFree(handle);
-    } else {
-      GlobalFree(handle);
-    }
+  GlobalMemory handle(GlobalAlloc(GMEM_MOVEABLE, bytes));
+  if (!handle)
+    return;
+  {
+    LockedGlobalMemory data(GlobalLock(handle.get()), {handle.get()});
+    if (!data)
+      return;
+    std::memcpy(data.get(), wide.c_str(), bytes);
   }
-  CloseClipboard();
+  if (SetClipboardData(CF_UNICODETEXT, handle.get()))
+    static_cast<void>(handle.release()); // The clipboard owns it on success.
 }
 
 void AbcSystemInterface::GetClipboardText(Rml::String &text) {
   text.clear();
-  if (!OpenClipboard(nullptr))
+  const ClipboardScope clipboard;
+  if (!clipboard)
     return;
   if (const HANDLE handle = GetClipboardData(CF_UNICODETEXT)) {
-    if (const wchar_t *wide =
-            static_cast<const wchar_t *>(GlobalLock(handle))) {
+    LockedGlobalMemory data(GlobalLock(handle), {handle});
+    if (const auto *wide = static_cast<const wchar_t *>(data.get())) {
       const int bytes = WideCharToMultiByte(CP_UTF8, 0, wide, -1, nullptr, 0,
                                             nullptr, nullptr);
       if (bytes > 0) {
@@ -170,10 +201,8 @@ void AbcSystemInterface::GetClipboardText(Rml::String &text) {
                             nullptr);
         text.resize(static_cast<size_t>(bytes - 1));
       }
-      GlobalUnlock(handle);
     }
   }
-  CloseClipboard();
 }
 
 // IME placement delegates to TextInput (the HWND resolution and the imm32
@@ -212,7 +241,7 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
   // Explicit native game content is separate from package UI resources.
   const bool engineSource = path.starts_with("engine://");
   Rml::String resolved = path;
-  if (resolved.rfind("engine://", 0) == 0)
+  if (resolved.starts_with("engine://"))
     resolved = resolved.substr(9);
 
   // Module packages: "mod://<module-id>/<path>" resolves through the module
