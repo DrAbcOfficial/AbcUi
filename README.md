@@ -40,6 +40,8 @@ To run without Renderer, set `abc_ui_render_backend "gl"` in
 the game. The `gl` backend requires OpenGL 3.3 or newer and cannot run while
 Renderer.dll is loaded. It supports menu blur, background movies and character
 previews. The radar shows player markers without a map image.
+If the selected backend cannot start, the startup error explains why; AbcUi
+does not switch to another backend automatically.
 
 Renderer-free installations still need FreeImage.dll in the MetaHook DLL search
 path. Install Mile.FFmpeg.dll there as well for background movies and video.

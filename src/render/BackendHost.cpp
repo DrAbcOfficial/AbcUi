@@ -42,6 +42,7 @@ struct BackendEntry {
 struct HostState {
   bool booted = false;
   std::string bootId = "renderer";
+  std::string initializationError;
   std::vector<BackendEntry> entries;
   std::unique_ptr<struct TableBackend> active;
 };
@@ -80,6 +81,7 @@ void ABCUI_CALL hostError(const char *format, ...) {
   va_start(args, format);
   vsnprintf(text, sizeof(text), format, args);
   va_end(args);
+  state().initializationError = text;
   ConsoleError("[AbcUi][render-backend] %s\n", text);
 }
 
@@ -585,9 +587,15 @@ void boot() {
           "\" is not available (installed: " + installedList() + ")");
     return;
   }
+  hostState.initializationError.clear();
   if (!chosen->desc.initialize(chosen->desc.userdata, &host)) {
-    // The backend printed its own reason through the host error channel.
-    fatal("render backend \"" + selected + "\" failed to initialize");
+    // Keep the backend's actionable reason visible in SysError too: the
+    // console is not necessarily usable when startup fails.
+    std::string reason =
+        "render backend \"" + selected + "\" failed to initialize";
+    if (!hostState.initializationError.empty())
+      reason += ": " + hostState.initializationError;
+    fatal(reason);
     return;
   }
   chosen->initialized = true;

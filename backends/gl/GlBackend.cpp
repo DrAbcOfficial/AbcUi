@@ -212,8 +212,10 @@ void main() {
 GLuint compile(GLenum type, const char *text) {
   auto &b = backend();
   const GLuint shader = b.api.CreateShader(type);
-  if (!shader)
+  if (!shader) {
+    b.host.error("backend \"gl\": could not allocate shader");
     return 0;
+  }
   b.api.ShaderSource(shader, 1, &text, nullptr);
   b.api.CompileShader(shader);
   GLint ok = 0;
@@ -350,18 +352,21 @@ bool createResources() {
   State saved(b.api);
   const GLuint vs = compile(gl::kVertexShader, kVertexShader);
   const GLuint fs = compile(gl::kFragmentShader, kFragmentShader);
-  if (vs && fs) {
-    b.program = b.api.CreateProgram();
-    if (b.program) {
-      b.api.AttachShader(b.program, vs);
-      b.api.AttachShader(b.program, fs);
-      b.api.LinkProgram(b.program);
-    }
+  if (!vs || !fs) {
+    if (vs)
+      b.api.DeleteShader(vs);
+    if (fs)
+      b.api.DeleteShader(fs);
+    return false;
   }
-  if (vs)
-    b.api.DeleteShader(vs);
-  if (fs)
-    b.api.DeleteShader(fs);
+  b.program = b.api.CreateProgram();
+  if (b.program) {
+    b.api.AttachShader(b.program, vs);
+    b.api.AttachShader(b.program, fs);
+    b.api.LinkProgram(b.program);
+  }
+  b.api.DeleteShader(vs);
+  b.api.DeleteShader(fs);
   GLint ok = 0;
   if (b.program)
     b.api.GetProgramiv(b.program, gl::kLinkStatus, &ok);
