@@ -9,6 +9,7 @@
 
 #include "TextInput.h"
 #include "framework/ResourceFile.h"
+#include "framework/FileSystemHandles.h"
 #include "framework/DocumentLoadGuard.h"
 #include "framework/Localization.h"
 #include "modsys/ModuleVfs.h"
@@ -190,8 +191,9 @@ void AbcSystemInterface::DeactivateKeyboard() {}
 namespace {
 
 struct ResourceHandle {
-  FileHandle_t EngineFile = nullptr;
-  FILE *LocalFile = nullptr;
+  framework::EngineFile EngineFile;
+  std::unique_ptr<FILE, decltype(&std::fclose)> LocalFile{nullptr,
+                                                          &std::fclose};
   // mod:// entries: a view into the mounted package. ModuleEntry keeps the
   // (possibly extracted) bytes alive for the handle's lifetime.
   const unsigned char *ModuleData = nullptr;
@@ -239,15 +241,14 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
                         (!resolved.empty() &&
                          (resolved.front() == '/' || resolved.front() == '\\'));
   if (absolute) {
+    std::unique_ptr<ResourceHandle> resource(new (std::nothrow)
+                                                 ResourceHandle{});
+    if (!resource)
+      return 0;
     FILE *local = nullptr;
     if (fopen_s(&local, resolved.c_str(), "rb") != 0 || !local)
       return 0;
-    std::unique_ptr<ResourceHandle> resource(
-        new (std::nothrow) ResourceHandle{nullptr, local});
-    if (!resource) {
-      fclose(local);
-      return 0;
-    }
+    resource->LocalFile.reset(local);
     return reinterpret_cast<Rml::FileHandle>(resource.release());
   }
 
@@ -258,26 +259,19 @@ Rml::FileHandle AbcFileInterface::Open(const Rml::String &path) {
       !framework::ResourceFile::normalize(resolved, normalized) ||
       normalized.starts_with("abc/abcui/"))
     return 0;
-  FileHandle_t file = abc::g_pFileSystem->Open(normalized.c_str(), "rb");
+  auto file =
+      framework::openEngineFile(*abc::g_pFileSystem, normalized.c_str(), "rb");
   if (!file)
     return 0;
-  std::unique_ptr<ResourceHandle> resource(new (std::nothrow)
-                                               ResourceHandle{file, nullptr});
-  if (!resource) {
-    abc::g_pFileSystem->Close(file);
+  std::unique_ptr<ResourceHandle> resource(new (std::nothrow) ResourceHandle{});
+  if (!resource)
     return 0;
-  }
+  resource->EngineFile = std::move(file);
   return reinterpret_cast<Rml::FileHandle>(resource.release());
 }
 
 void AbcFileInterface::Close(Rml::FileHandle file) {
   std::unique_ptr<ResourceHandle> resource(handleFor(file));
-  if (!resource)
-    return;
-  if (resource->LocalFile)
-    fclose(resource->LocalFile);
-  else if (abc::g_pFileSystem && resource->EngineFile)
-    abc::g_pFileSystem->Close(resource->EngineFile);
 }
 
 size_t AbcFileInterface::Read(void *buffer, size_t size, Rml::FileHandle file) {
@@ -294,7 +288,7 @@ size_t AbcFileInterface::Read(void *buffer, size_t size, Rml::FileHandle file) {
     return count;
   }
   if (resource->LocalFile)
-    return fread(buffer, 1, size, resource->LocalFile);
+    return fread(buffer, 1, size, resource->LocalFile.get());
   if (!abc::g_pFileSystem || !resource->EngineFile)
     return 0;
   size_t total = 0;
@@ -305,7 +299,7 @@ size_t AbcFileInterface::Read(void *buffer, size_t size, Rml::FileHandle file) {
                    static_cast<size_t>((std::numeric_limits<int>::max)())));
     const int got =
         abc::g_pFileSystem->Read(static_cast<unsigned char *>(buffer) + total,
-                                 chunk, resource->EngineFile);
+                                 chunk, resource->EngineFile.get());
     if (got <= 0)
       break;
     total += static_cast<size_t>(got);
@@ -339,7 +333,7 @@ bool AbcFileInterface::Seek(Rml::FileHandle file, long offset, int origin) {
     return true;
   }
   if (resource->LocalFile)
-    return _fseeki64(resource->LocalFile, offset, origin) == 0;
+    return _fseeki64(resource->LocalFile.get(), offset, origin) == 0;
   if (!abc::g_pFileSystem || !resource->EngineFile)
     return false;
   if (offset < (std::numeric_limits<int>::min)() ||
@@ -359,7 +353,7 @@ bool AbcFileInterface::Seek(Rml::FileHandle file, long offset, int origin) {
   default:
     return false;
   }
-  abc::g_pFileSystem->Seek(resource->EngineFile, static_cast<int>(offset),
+  abc::g_pFileSystem->Seek(resource->EngineFile.get(), static_cast<int>(offset),
                            seek);
   return true;
 }
@@ -371,10 +365,10 @@ size_t AbcFileInterface::Tell(Rml::FileHandle file) {
   if (resource->ModuleData)
     return resource->ModulePos;
   if (resource->LocalFile)
-    return static_cast<size_t>(_ftelli64(resource->LocalFile));
+    return static_cast<size_t>(_ftelli64(resource->LocalFile.get()));
   if (!abc::g_pFileSystem || !resource->EngineFile)
     return 0;
-  return abc::g_pFileSystem->Tell(resource->EngineFile);
+  return abc::g_pFileSystem->Tell(resource->EngineFile.get());
 }
 
 } // namespace rmlui
