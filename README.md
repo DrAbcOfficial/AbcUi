@@ -40,6 +40,7 @@ available, startup reports the missing backend.
 
 The `gl` backend requires OpenGL 3.3 or newer and cannot run while Renderer.dll
 is loaded. It supports menu blur, background movies and character previews.
+Menus also render when no map is loaded and during loading screens.
 The radar shows player markers without a map image. Other startup failures
 report their cause rather than switching backends.
 

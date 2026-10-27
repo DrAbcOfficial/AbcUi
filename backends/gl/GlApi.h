@@ -42,6 +42,7 @@ constexpr GLenum kFramebufferSrgb = 0x8DB9;
 constexpr GLenum kRasterizerDiscard = 0x8C89;
 constexpr GLenum kPixelUnpackBuffer = 0x88EC;
 constexpr GLenum kPixelUnpackBufferBinding = 0x88EF;
+constexpr GLenum kDepthComponent24 = 0x81A6;
 
 #define ABCUI_GL_FUNCTIONS(X)                                                  \
   X(void, ActiveTexture, (GLenum))                                             \

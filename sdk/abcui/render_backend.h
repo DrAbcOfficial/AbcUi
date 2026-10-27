@@ -51,10 +51,10 @@ extern "C" {
 #define ABCUI_RENDER_BACKEND_CALL ABCUI_CALL
 
 // Capability bits (AbcUiRenderBackendDesc::capabilities).
-#define ABCUI_RB_CAP_RENDER_CALLBACKS 0x1u   // backend drives the frame beat
-#define ABCUI_RB_CAP_REDRAW_BEAT 0x2u        // framework pumps HUD_Redraw
-#define ABCUI_RB_CAP_WORLD_PASS 0x4u         // top-down world render (radar)
-#define ABCUI_RB_CAP_BLUR_PASS 0x8u          // menu backdrop blur
+#define ABCUI_RB_CAP_RENDER_CALLBACKS 0x1u // backend drives the frame beat
+#define ABCUI_RB_CAP_REDRAW_BEAT 0x2u      // framework pumps after BaseUI paint
+#define ABCUI_RB_CAP_WORLD_PASS 0x4u       // top-down world render (radar)
+#define ABCUI_RB_CAP_BLUR_PASS 0x8u        // menu backdrop blur
 #define ABCUI_RB_CAP_OFFSCREEN_TARGETS 0x10u // viewport capture textures
 
 // AbcUiRenderDraw::blend - semantic blend modes replace Renderer-private
@@ -124,7 +124,7 @@ typedef struct AbcUiBlurPassRequest {
 } AbcUiBlurPassRequest;
 
 // Host -> backend frame beats. The backend calls these from its own frame
-// source (Renderer callbacks, HUD_Redraw pump, ...). All entries except
+// source (Renderer callbacks, BaseUI post-paint pump, ...). All entries except
 // structSize/userdata may be null; the backend then skips that beat.
 typedef struct AbcUiRenderFrameSink {
   uint32_t structSize;

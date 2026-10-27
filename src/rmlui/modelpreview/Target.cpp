@@ -33,6 +33,7 @@
 #include "../../render/IRenderBackend.h"
 #include "../../hooks.h"
 #include "../../render/StandaloneView.h"
+#include "../../services/GameUiBridge.h"
 #include "../AbcRenderInterface.h"
 #include "../RmlUiModule.h"
 
@@ -324,6 +325,13 @@ struct Target::State : IStandaloneView {
   bool TransparentPass = false;
 
   bool IsActive() const override {
+    // A named level without the engine's load-complete notification is
+    // still replacing model resources. Do not submit cached preview entities
+    // during that interval; map-free menus remain supported.
+    const char *level =
+        gEngfuncs.pfnGetLevelName ? gEngfuncs.pfnGetLevelName() : nullptr;
+    if (level && *level && !services::nativeUiBridge().hasLevel())
+      return false;
     return Active && !ModelMissing && CaptureHandle != 0 &&
            gEngfuncs.GetAbsoluteTime() - LastRenderCall < 1.0;
   }
@@ -481,6 +489,10 @@ bool Target::render(const Options &Config, int Width, int Height) {
     return false;
   }
   state.Active = true;
+  // Private API_003 entities must not alias the native viewmodel's index 0.
+  state.Entity.index = -1;
+  state.Action.index = -1;
+  state.Weapon.index = -1;
   state.LastRenderCall = gEngfuncs.GetAbsoluteTime();
   Width = std::clamp(Width, 1, 2048);
   Height = std::clamp(Height, 1, 2048);

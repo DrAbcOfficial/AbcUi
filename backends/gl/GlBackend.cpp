@@ -43,6 +43,7 @@ struct Backend {
   uint32_t nextTarget = 0;
   std::array<Image, 3> blur{};
   Image capture;
+  Image captureDepth;
   Image source;
   bool ready = false;
 };
@@ -201,6 +202,11 @@ void main() {
   } else if (mode == 5) {
     vec4 c = texture(image, p);
     result = vec4(mix(vec3(1.0), c.rgb, c.a), 1.0);
+  } else if (mode == 6) {
+    // RGB window framebuffers have no stored coverage. The native model
+    // renderer still writes depth for opaque and alpha-tested surfaces.
+    float coverage = texture(maskImage, p).r < 1.0 ? 1.0 : 0.0;
+    result = vec4(texture(image, p).rgb, coverage);
   } else {
     result = texture(image, p) * tint;
     if (mode == 2)
@@ -321,6 +327,7 @@ void freeResources(bool destroy) {
     for (auto &image : b.blur)
       freeImage(image);
     freeImage(b.capture);
+    freeImage(b.captureDepth);
     freeImage(b.source);
     if (b.sampler)
       b.api.DeleteSamplers(1, &b.sampler);
@@ -336,6 +343,7 @@ void freeResources(bool destroy) {
   b.targets.clear();
   b.blur = {};
   b.capture = {};
+  b.captureDepth = {};
   b.source = {};
   b.program = b.vao = b.vbo = b.ebo = b.sampler = 0;
   b.ready = false;
@@ -611,7 +619,9 @@ uint32_t ABCUI_CALL blurRender(void *, const AbcUiBlurPassRequest *request) {
                           GL_COLOR_BUFFER_BIT, GL_NEAREST);
     source = b.source.texture;
   }
-  fullscreen(b.blur[0], source, 5);
+  // The shared backdrop uploads movies in bottom-up FBO order. Live
+  // captures were already flipped when copying the backbuffer above.
+  fullscreen(b.blur[0], source, 5, request->sourceTexture != 0);
   Image *from = &b.blur[0];
   for (int round = 0; round < std::clamp(request->rounds, 0, 16); ++round) {
     fullscreen(b.blur[1], from->texture, 3, false, 1.0f / request->width, 0);
@@ -687,6 +697,12 @@ void ABCUI_CALL copyViewport(void *, uint32_t handle, int32_t x, int32_t y,
   if (!current() || it == b.targets.end() || width <= 0 || height <= 0)
     return;
   State saved(b.api);
+  GLint alphaBits = 0;
+  GLint depthBits = 0;
+  glGetIntegerv(GL_ALPHA_BITS, &alphaBits);
+  glGetIntegerv(GL_DEPTH_BITS, &depthBits);
+  if (!alphaBits && !depthBits)
+    return;
   if (!ensureImage(b.capture, width, height) ||
       !ensureImage(it->second, width, height))
     return;
@@ -697,7 +713,28 @@ void ABCUI_CALL copyViewport(void *, uint32_t handle, int32_t x, int32_t y,
   b.api.BindFramebuffer(gl::kDrawFramebuffer, b.capture.framebuffer);
   b.api.BlitFramebuffer(x, y, x + width, y + height, 0, 0, width, height,
                         GL_COLOR_BUFFER_BIT, GL_NEAREST);
-  fullscreen(it->second, b.capture.texture, 4, true);
+  if (!alphaBits) {
+    // Never redirect the native client's model pass into a private FBO:
+    // it interprets that as a portal render and may access a missing player
+    // during a map-free startup. Copy depth only AFTER StandaloneView draws.
+    b.api.ActiveTexture(gl::kTexture0 + 1);
+    auto &depth = b.captureDepth;
+    if (!depth.texture)
+      glGenTextures(1, &depth.texture);
+    if (!depth.texture)
+      return;
+    glBindTexture(GL_TEXTURE_2D, depth.texture);
+    if (depth.width != width || depth.height != height) {
+      b.api.BindBuffer(gl::kPixelUnpackBuffer, 0);
+      glTexImage2D(GL_TEXTURE_2D, 0, gl::kDepthComponent24, width, height, 0,
+                   GL_DEPTH_COMPONENT, GL_FLOAT, nullptr);
+      depth.width = width;
+      depth.height = height;
+    }
+    glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, x, y, width, height);
+  }
+  // Model elements already flip their bottom-left-origin capture once.
+  fullscreen(it->second, b.capture.texture, alphaBits ? 4 : 6);
 }
 
 } // namespace

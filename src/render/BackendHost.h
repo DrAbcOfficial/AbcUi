@@ -36,7 +36,7 @@ IOffscreenTargets *targets();
 // HUD_Init one-shot block: registers abc_ui_render_backend_list.
 void registerCommands();
 
-// HUD_Redraw pump for RedrawBeat backends; no-op otherwise.
+// BaseUI post-paint pump for RedrawBeat backends; no-op otherwise.
 void pumpRedraw(double seconds);
 
 } // namespace abc::render

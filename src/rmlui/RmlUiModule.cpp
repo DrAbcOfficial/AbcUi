@@ -550,6 +550,9 @@ void onFrame(double frameTime) {
 
 void onDisconnected() {
   framework::PanelManager::setSessionActive(false);
+  // The native engine releases mounted model data on disconnect. Never
+  // carry a preview's cached studio pointers into the next menu frame.
+  modelpreview::invalidateAll();
   // Match the map-init data reset without destroying the menu context or
   // resetting the entire input router (the menu may already own it).
   hudstate::reset();

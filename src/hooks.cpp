@@ -144,8 +144,7 @@ static void H_HUD_Init() {
     playerres::init();
     textfeed::init();
     rmlui::registerCommands();
-    // The render-backend cvar registers here (not at LoadClient): the boot
-    // id is already resolved, and an engine-created archived value keeps it.
+    // Backend diagnostics are process-scoped, like the module commands.
     abc::render::registerCommands();
     modules::registry().initAll();
   }
@@ -197,9 +196,8 @@ static int H_HUD_Redraw(float time, int intermission) {
     const NativeHudDrawScope nativeDraw;
     result = gExportfuncs.HUD_Redraw(time, intermission);
   }
-  // Draw over the chained client's HUD, not underneath it.
-  // Callback-driven backends (Renderer) ignore this pump.
-  abc::render::pumpRedraw(delta);
+  // The redraw-driven render beat belongs to BaseUI::Paint's post callback,
+  // after native VGUI painting and including frames with no loaded map.
   return result;
 }
 
