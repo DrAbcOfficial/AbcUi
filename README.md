@@ -50,6 +50,8 @@ These DLLs are not included in the AbcUi archive.
 
 Character previews follow your selected installed player model after leaving or
 rejoining a game, including models from downloaded and addon content.
+The two menu animation models ship inside the gameui module package and are
+automatically extracted when it loads. No separate model installation is needed.
 
 ## Settings
 

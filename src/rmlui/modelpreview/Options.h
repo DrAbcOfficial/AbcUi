@@ -13,9 +13,8 @@ namespace modelpreview {
 // the stock `models/player.mdl` the card's document also defaults to).
 constexpr const char *kGenericModelPath = "models/player.mdl";
 
-// Action groups (the menu stance models) live loose under the plugin's own
-// game-content folder: module ZIPs are UI resources only, an engine Studio
-// load needs a real file in the game search path.
+// Packaged menu stance models are materialized here at module load because
+// the engine's Studio loader needs a file in the game search path.
 constexpr const char *kActionModelDir = "abc/abcui/models/menu_action/";
 constexpr const char *kActionModelDefault = "display_male";
 

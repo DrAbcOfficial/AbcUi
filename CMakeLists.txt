@@ -217,6 +217,7 @@ add_library(AbcUi MODULE
     src/services/friends/FriendsModel.cpp
     src/services/friends/FriendsSteam.cpp
     src/rmlui/modelpreview/Options.cpp
+    src/rmlui/modelpreview/ActionModels.cpp
     src/rmlui/modelpreview/Target.cpp
     src/services/video/Decoder.cpp
     src/services/video/AsyncDecoder.cpp
@@ -486,11 +487,6 @@ if(ABC_GAME_DIR)
         LIBRARY DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/render_backend")
     install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout/"
         DESTINATION "${ABC_GAME_DIR}/svencoop/metahook/gamedata/abc/abcui-layout")
-    # Native Studio content (the main page action groups): an engine Studio
-    # load needs a loose file in the game search path, so this tree is
-    # installed as is instead of riding a module ZIP.
-    install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui/models/"
-        DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/models")
     # Module packages produced by tools/pack.py (build a Release pack first).
     install(DIRECTORY "${ABCUI_MODULE_PACK_DIR}/"
         DESTINATION "${ABC_GAME_DIR}/svencoop/abc/abcui/modules")
@@ -514,7 +510,6 @@ endif()
 #   svencoop/metahook/plugins/AbcUi.dll
 #   svencoop/abc/abcui/render_backend/abcui_render_renderer.dll
 #   svencoop/abc/abcui/modules/*.zip (all UI resources)
-#   svencoop/abc/abcui/models/ (loose Studio action groups; see README)
 #   svencoop/metahook/gamedata/abc/abcui-layout/ (UI-owned engine layouts)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
@@ -545,11 +540,6 @@ add_custom_target(dist
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory "${ABCUI_MODULE_PACK_DIR}"
         "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/modules"
-    COMMAND "${CMAKE_COMMAND}" -E make_directory
-        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/models"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory
-        "${CMAKE_CURRENT_SOURCE_DIR}/assets/abc/abcui/models"
-        "${ABC_UI_STAGE_DIR}/svencoop/abc/abcui/models"
     COMMAND "${CMAKE_COMMAND}" -E copy_directory
         "${CMAKE_CURRENT_SOURCE_DIR}/assets/gamedata/abcui-layout"
         "${ABC_UI_STAGE_DIR}/svencoop/metahook/gamedata/abc/abcui-layout"

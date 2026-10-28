@@ -11,6 +11,7 @@
 
 #include "../services/uiconfig/MenuShellService.h"
 #include "../services/uiconfig/UiDefinitions.h"
+#include "../rmlui/modelpreview/ActionModels.h"
 
 namespace framework {
 namespace MenuConfigApi {
@@ -121,6 +122,11 @@ int32_t apiSetResourceRoot(const char *uri) {
   static module_resources::Registration lifetime;
   if (lifetime.tracked())
     return ABCUI_ERROR_FORBIDDEN;
+  std::string models;
+  if (ModuleVfs::resolve(root + "/_", "../../models/menu_action/_", models)) {
+    models.pop_back();
+    modelpreview::prepareActionModels(models.c_str());
+  }
   lifetime = module_resources::Registration{};
   services::uiconfig::setResourceRoot(std::move(root));
   lifetime.track([] { services::uiconfig::setResourceRoot({}); });
