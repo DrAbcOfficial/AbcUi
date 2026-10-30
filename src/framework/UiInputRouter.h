@@ -12,7 +12,7 @@
 //
 // Keyboard contract (the physical key stream enters ONCE, see
 // rmlui::routeKey for the injection point):
-// - No owner: observe-first passthrough (today's play behavior - every edge
+// - No owner: unclaimed presses use observe-first passthrough (every edge
 //   reaches the engine/binding chain and is mirrored into the UI).
 // - Exclusive: keys the top owner claims are swallowed from the bindings and
 //   fed to the UI; keys the engine already held when the first token landed
@@ -27,6 +27,8 @@
 // - onClaimedKeyDown fires exactly once per physical press (auto-repeat
 //   downs keep feeding the UI - native caret/scroll repeat - but never
 //   re-fire the action; ESC executes its state action once).
+// - Claimed presses stay consumed through physical keyup even if their owner
+//   closes. Duplicate seams and auto-repeat cannot reach gameplay bindings.
 
 #include <cstddef>
 #include <cstdint>
@@ -137,6 +139,8 @@ public:
   // marks the wheel-pulse keynums (down-only, no pairing) - the caller
   // knows them from keydefs.h; the router stays engine-header-free.
   Route onKey(int down, int keynum, bool isWheel);
+  // Also true after the claiming owner closes, until the physical keyup.
+  bool keyClaimed(int keynum) const;
 
   // Wheel pulses scroll the UI only when the top owner claims them.
   bool wheelClaimed() const;
@@ -200,10 +204,11 @@ private:
   Entry Stack[kMaxOwners] = {};
   size_t Count = 0;
   uint32_t NextGeneration = 1;
-  bool Teardown_ = false;               // reset() drain in progress
-  bool EngineDown[kMaxKeynum + 1] = {}; // keys the binding chain holds
-  bool UiHeld[kMaxKeynum + 1] = {};     // edges fed to the UI, up pending
-  bool PreHeld[kMaxKeynum + 1] = {};    // EngineDown snapshot at first acquire
+  bool Teardown_ = false;                // reset() drain in progress
+  bool EngineDown[kMaxKeynum + 1] = {};  // keys the binding chain holds
+  bool UiHeld[kMaxKeynum + 1] = {};      // edges fed to the UI, up pending
+  bool PreHeld[kMaxKeynum + 1] = {};     // EngineDown snapshot at first acquire
+  bool ClaimedDown[kMaxKeynum + 1] = {}; // consumed until physical release
 };
 
 } // namespace uiinput

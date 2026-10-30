@@ -6,6 +6,7 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
 
 - **HUD** — health, armor, ammo, flashlight, notices, damage numbers, kill feed, side text, text menus, player board, scoreboard, vote, MOTD, radar, crosshair and item highlight.
 - **Chat** — new chat input and message log with full input method support.
+  Enter sends or closes chat without activating its gameplay binding.
 - **Menu** — main menu, settings, server browser, create game, player list, vote creation, console, MOTD, inventory window, command menu, connect and loading screens, and quit confirmation.
 - **Settings** — video, audio, voice, captions, mouse, input, multiplayer, advanced, renderer and menu pages, all applied from inside the game.
 - **Character preview** — live player model facing the screen at a slight angle on the main menu, plus a model picker with favorites in the settings.

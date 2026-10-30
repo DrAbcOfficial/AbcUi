@@ -152,14 +152,19 @@ public:
     // release. rmlui::routeKey de-duplicates the two seams that can deliver
     // one physical edge, so the editor never sees a doubled keystroke.
     services::nativeUiBridge().noteBaseUiKeyEvent();
-    if (CallbackContext->IsPost)
+    if (CallbackContext->IsPost || !CallbackContext->pPluginReturnValue)
       return;
-    if (!rmlui::uiRouter().blocksGameplay())
+    // Enter can release the chat token in the other key seam. Its remaining
+    // callbacks and repeats still belong to that UI press, not its binding.
+    if (!rmlui::uiRouter().blocksGameplay() &&
+        !rmlui::uiRouter().keyClaimed(keynum))
       return;
     if (!rmlui::routeKey(down != 0, keynum, false))
       return;
-    CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE;
-    CallbackContext->pPluginReturnValue = reinterpret_cast<void *>(1);
+    // The proxy owns an int return slot, not a pointer-valued return. Stop
+    // dispatch here so its post phase cannot reset the consumed result.
+    *static_cast<int *>(CallbackContext->pPluginReturnValue) = 1;
+    CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE_SKIP_PLUGINS;
   }
   // T07 text seam: the engine forwards raw SDL_Event structs here (the
   // SDL2-based IBaseUI shape - CallEngineSurfaceAppHandler). Text events

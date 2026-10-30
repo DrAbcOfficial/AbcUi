@@ -139,8 +139,26 @@ Route Router::onKey(int down, int keynum, bool isWheel) {
   const bool range = inRange(keynum);
   const bool wheel = range && isWheel;
 
+  if (range && !wheel && ClaimedDown[keynum]) {
+    route.consumeEngine = true;
+    if (!down) {
+      ClaimedDown[keynum] = false;
+      if (UiHeld[keynum]) {
+        UiHeld[keynum] = false;
+        Sink_->uiKeyUp(keynum);
+        route.uiKey = true;
+      }
+    } else if (UiHeld[keynum]) {
+      // A live editor keeps caret repeat. Once its token releases, its
+      // synthetic UI keyup ends that feed, but the engine remains blocked.
+      Sink_->uiKeyDown(keynum);
+      route.uiKey = true;
+    }
+    return route;
+  }
+
   if (Count != 0) {
-    const Entry &top = Stack[topIndex()];
+    const Entry top = Stack[topIndex()];
     // Pre-held keys keep their engine edges (down repeats and the final
     // up) so the bindings pair exactly as if no menu had opened; they
     // are not re-fed to the UI (its state was cleaned at acquire).
@@ -157,12 +175,18 @@ Route Router::onKey(int down, int keynum, bool isWheel) {
         // repeat) but the claimed-key action fires exactly once per
         // physical press; the owner may release its own token inside
         // (ESC), which pairs the key just fed.
+        ClaimedDown[keynum] = true;
+        UiHeld[keynum] = true;
         Sink_->uiKeyDown(keynum);
         route.uiKey = true;
-        const bool first = !UiHeld[keynum];
-        UiHeld[keynum] = true;
-        if (first)
-          top.owner->onClaimedKeyDown(keynum);
+        // The UI dispatch may itself release and destroy the owner.
+        for (size_t i = 0; i < Count; ++i) {
+          if (Stack[i].generation == top.generation &&
+              Stack[i].owner == top.owner) {
+            top.owner->onClaimedKeyDown(keynum);
+            break;
+          }
+        }
       } else if (range && !down && UiHeld[keynum]) {
         Sink_->uiKeyUp(keynum);
         UiHeld[keynum] = false;
@@ -195,6 +219,10 @@ Route Router::onKey(int down, int keynum, bool isWheel) {
     }
   }
   return route;
+}
+
+bool Router::keyClaimed(int keynum) const {
+  return inRange(keynum) && ClaimedDown[keynum];
 }
 
 bool Router::wheelClaimed() const {
@@ -240,6 +268,7 @@ void Router::resetKeyState() {
   for (int k = 0; k <= kMaxKeynum; k++) {
     EngineDown[k] = false;
     PreHeld[k] = false;
+    ClaimedDown[k] = false;
   }
 }
 
