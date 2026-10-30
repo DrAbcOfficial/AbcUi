@@ -5,7 +5,7 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
 ## Hard rules
 
 - Nothing committed (code, comments, docs, commit messages, tags) may contain local machine paths, personal directories, session logs or any credentials; the deployment destination is provided through the `ABC_GAME_DIR` environment variable (optional; unset means no deploy).
-- Do not commit test scaffolding, acceptance scripts, evidence screenshots, plans or progress logs; those are session artifacts that do not belong in the release.
+- The committed tests are the hermetic offline suite under `tests/` (see Build). Do not commit ad-hoc acceptance scripts, evidence screenshots, plans or progress logs; those are session artifacts that do not belong in the release.
 - The README is the single public document; UI, config-format or cvar behaviour changes must update it in the same commit.
 - AbcUi user preferences belong in `abc/abcui/config.json` through
   `services::userconfig`. Section updates preserve other settings and unknown
@@ -68,8 +68,11 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
 - `src/render/RenderCommon.h` is vendor-synced and excluded from the
   clang-format check; `src/rmlui/TextInput.h` deliberately `#undef Assert`
   after `windows.h` to keep RmlUi's `Rml::Assert` declaration visible.
-- `tests/` is session scaffolding per the hard rule above; the release has no
-  committed test target. Unit-test additions require a separate policy change.
+- `tests/` is the committed offline CTest suite: production translation
+  units linked against recording seams, no game installation, network, local
+  path or environment variable. Keep every test on the shared
+  `tests/framework/` harness and the `abcui_add_test` CMake helper; the suite
+  is opt-in (`ABCUI_BUILD_TESTS=ON`) and never part of the dist package.
 - Process-lifetime services (`consoleBuffer`, `menuBackend`, `steamFavorites`,
   `friendsModel`, `nativeUiBridge`, `loadingFeed`) are function-local statics:
   the engine calls back through bare C function pointers and the DLL lifetime
@@ -205,6 +208,11 @@ and assets are built but not deployed.
 ```bash
 cmake --preset win32-debug
 cmake --build --preset win32-debug    # Release: win32-release
+
+# Offline tests (Debug): configure, build and run the CTest suite.
+cmake --preset win32-debug-tests
+cmake --build --preset win32-debug-tests
+ctest --preset win32-debug-tests
 ```
 
 ## Conventions

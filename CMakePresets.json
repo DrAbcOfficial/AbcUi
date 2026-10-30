@@ -19,6 +19,13 @@
     {
       "name": "win32-release",
       "inherits": "win32-debug"
+    },
+    {
+      "name": "win32-debug-tests",
+      "inherits": "win32-debug",
+      "cacheVariables": {
+        "ABCUI_BUILD_TESTS": "ON"
+      }
     }
   ],
   "buildPresets": [
@@ -31,6 +38,14 @@
       "name": "win32-release",
       "configurePreset": "win32-release",
       "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "win32-debug-tests",
+      "configurePreset": "win32-debug-tests",
+      "configuration": "Debug",
+      "output": { "outputOnFailure": true }
     }
   ]
 }

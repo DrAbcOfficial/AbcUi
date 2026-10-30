@@ -550,3 +550,13 @@ add_custom_target(dist
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/dist"
     DEPENDS AbcUi abcui_render_renderer abcui_render_gl pack_modules
     COMMENT "Packaging AbcUi-${ABC_UI_VERSION}.zip")
+
+# --- Offline tests -----------------------------------------------------------
+# Opt-in: the shipped build and the dist package never contain tests. The
+# suite is hermetic (no game install, network, local path or environment
+# variable) and runs entirely from the repository assets.
+option(ABCUI_BUILD_TESTS "Build the offline CTest suite" OFF)
+if(ABCUI_BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(tests)
+endif()

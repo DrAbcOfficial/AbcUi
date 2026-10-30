@@ -17,6 +17,8 @@ jobs:
     name: ${{ matrix.config }}
     runs-on: windows-latest
     timeout-minutes: 180
+    env:
+      CONFIG: ${{ matrix.config }}
     strategy:
       fail-fast: false
       matrix:
@@ -94,10 +96,17 @@ jobs:
             }
           }
           Write-Host "Generating with '$generator'"
-          cmake -S . -B build/ci -G $generator -A Win32 -DABC_CORE_DIR="$env:GITHUB_WORKSPACE/.abc/AbcCore"
+          $tests = if ($env:CONFIG -eq 'Debug') { 'ON' } else { 'OFF' }
+          cmake -S . -B build/ci -G $generator -A Win32 -DABC_CORE_DIR="$env:GITHUB_WORKSPACE/.abc/AbcCore" -DABCUI_BUILD_TESTS=$tests
 
       - name: Build (${{ matrix.config }})
         run: cmake --build build/ci --config ${{ matrix.config }} --parallel
+
+      # The offline suite needs no game installation and runs from the
+      # repository assets; Debug is the CI test configuration.
+      - name: Test (Debug)
+        if: matrix.config == 'Debug'
+        run: ctest --test-dir build/ci -C Debug --output-on-failure
 
       # The module packages are zipped by tools/pack.py (Python3 required at
       # configure time). Fail loudly instead of shipping a bundle without
