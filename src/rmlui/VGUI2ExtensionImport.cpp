@@ -90,6 +90,21 @@ void notePhysicalEscUpFromEvent(const void *event) {
   services::nativeUiBridge().noteEscPhysicalUp();
 }
 
+bool routeHudEscapeFromEvent(const void *event) {
+  const auto *key = static_cast<const SdlKeyEvent *>(event);
+  if ((key->Type != kSdlEventKeyDown && key->Type != kSdlEventKeyUp) ||
+      key->Key != kSdlKeycodeEscape)
+    return false;
+  // The surface handles ESC before the ordinary key seams. Give a focused
+  // HUD editor first refusal, then swallow this press through its release
+  // even if closing the editor has already released its input token.
+  const auto &router = rmlui::uiRouter();
+  if (!router.keyClaimed(K_ESCAPE) &&
+      (services::nativeUiBridge().menuUp() || !router.blocksGameplay()))
+    return false;
+  return rmlui::routeKey(key->Type == kSdlEventKeyDown, K_ESCAPE, false);
+}
+
 // T16 close route for the no-map console: with no level loaded the engine's
 // window handler turns ESC into ActivateGameUI (a no-op once the menu is
 // up), so the single routed close that serves the in-game case never
@@ -170,16 +185,20 @@ public:
   // SDL2-based IBaseUI shape - CallEngineSurfaceAppHandler). Text events
   // are consumed at PRE-dispatch only: the proxy repeats every event
   // post-dispatch (07 doc item 7) and a second feed would insert the
-  // committed text twice. Observation-only otherwise - the Result is never
-  // written, the original surface keeps its own copy of every event.
+  // committed text twice. HUD-owned ESC is consumed before the surface can
+  // open the pause menu; other events keep their original surface dispatch.
   void CallEngineSurfaceAppProc(
       void *&pevent, [[maybe_unused]] void *&userData,
       VGUI2Extension_CallbackContext *CallbackContext) override {
     if (!CallbackContext->IsPost) {
-      // Physical ESC release tracking (one close route per press);
-      // T16: the ESC-down path closes the no-map console (see the
-      // helper) - both observation-only, Result untouched.
+      // Track physical ESC release before the HUD's first-refusal route.
+      // Unclaimed ESC keeps the menu and no-map console paths below.
       notePhysicalEscUpFromEvent(pevent);
+      if (routeHudEscapeFromEvent(pevent)) {
+        CallbackContext->Result =
+            VGUI2Extension_Result::SUPERCEDE_SKIP_PLUGINS;
+        return;
+      }
       notePhysicalEscDownFromEvent(pevent);
       rmlui::onSurfaceAppEvent(pevent);
       // T09: the menu-owned keyboard stream - with the takeover active
