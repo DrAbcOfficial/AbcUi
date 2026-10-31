@@ -1,0 +1,39 @@
+<rml>
+<head>
+	<link type="text/rcss" href="mod://abcui.base/rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/division.rcss"/>
+</head>
+<body id="division">
+	<!-- One row moved as a unit by DivisionModule: health + armor, then the
+	     active weapon's ammo, then the flashlight battery. Slots keep their
+	     box when hidden (visibility, never display) so the row width never
+	     changes and the anchor cannot drift. The row is positioned in px by
+	     the module; every other box is dp-laid by division.rcss. -->
+	<div id="cluster">
+		<div id="vitals">
+			<div class="readout" id="health">
+				<div class="tick"></div>
+				<div class="value" id="health-value">0</div>
+				<div class="meter"><div class="fill" id="health-fill"></div></div>
+			</div>
+			<div class="readout" id="armor">
+				<div class="tick"></div>
+				<div class="value" id="armor-value">0</div>
+				<div class="meter"><div class="fill" id="armor-fill"></div></div>
+			</div>
+		</div>
+		<div class="rule" id="rule-vitals"></div>
+		<div class="readout" id="ammo">
+			<img class="icon" id="ammo-icon"/>
+			<div class="value" id="ammo-clip">0</div>
+			<div class="reserve" id="ammo-reserve"></div>
+		</div>
+		<div class="rule" id="rule-ammo"></div>
+		<div class="readout" id="flash">
+			<div class="lamp"></div>
+			<div class="value" id="flash-value">100%</div>
+			<div class="meter"><div class="fill" id="flash-fill"></div></div>
+		</div>
+	</div>
+</body>
+</rml>

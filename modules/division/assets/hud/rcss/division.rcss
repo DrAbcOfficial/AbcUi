@@ -1,0 +1,174 @@
+/* division.rcss - the Division-style third-person group layout.
+
+   One row, four readouts: health + armor, the active weapon's ammo, and the
+   flashlight battery. The module moves #cluster in px every frame from the
+   projected head position; every box here is dp so the row scales with the
+   HUD density the framework applies. Slot boxes are fixed and hidden slots
+   keep their box (visibility, not display), so the measured row width never
+   changes and the anchor cannot drift while a readout comes and goes.
+
+   Art direction: thin amber ticks, large amber numerals and flat meters
+   drawn entirely by these rules - no image or font asset ships with the
+   group, so nothing outside the repository's own palette is used. */
+
+#division {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#cluster {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 400dp;
+	height: 34dp;
+}
+
+#vitals {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 174dp;
+	height: 34dp;
+}
+
+.readout {
+	position: absolute;
+	top: 0;
+	width: 84dp;
+	height: 34dp;
+}
+
+#health { left: 0; }
+#armor { left: 90dp; }
+
+/* The 2dp amber tick that marks each readout's left edge. */
+.readout .tick {
+	position: absolute;
+	left: 0;
+	top: 4dp;
+	width: 2dp;
+	height: 22dp;
+	background-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-value-opacity);
+}
+
+.readout .value {
+	position: absolute;
+	left: 8dp;
+	top: 0;
+	width: 76dp;
+	height: 24dp;
+	font-family: Verdana;
+	font-weight: bold;
+	font-size: 20dp;
+	line-height: 24dp;
+	letter-spacing: 0.3dp;
+	color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-value-opacity);
+}
+
+/* Meter well: the shared black track, with the fill as its own rounded bar
+   (the same shape the classic vitals use). */
+.readout .meter {
+	position: absolute;
+	left: 8dp;
+	top: 26dp;
+	width: 76dp;
+	height: 3dp;
+	background-color: var(--abc-hud-track);
+	border-radius: 1.5dp;
+}
+
+.readout .fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 0;
+	height: 3dp;
+	background-color: var(--abc-hud-accent);
+	border-radius: 1.5dp;
+	opacity: var(--abc-hud-meter-opacity);
+	transition: width 0.12s linear-in;
+}
+
+.rule {
+	position: absolute;
+	top: 6dp;
+	width: 1dp;
+	height: 22dp;
+	background-color: var(--abc-hud-accent-faint);
+}
+#rule-vitals { left: 182dp; }
+#rule-ammo { left: 306dp; }
+
+#ammo {
+	left: 190dp;
+	width: 108dp;
+}
+
+#ammo .icon {
+	position: absolute;
+	left: 0;
+	top: 8dp;
+	width: 18dp;
+	height: 18dp;
+	/* The game's own ammo sprite (hud.txt), tinted like the classic bar. */
+	image-color: var(--abc-hud-accent);
+	opacity: var(--abc-hud-icon-opacity);
+}
+
+#ammo .value {
+	left: 22dp;
+	width: 44dp;
+}
+
+#ammo .reserve {
+	position: absolute;
+	left: 66dp;
+	top: 6dp;
+	width: 42dp;
+	height: 18dp;
+	font-family: Verdana;
+	font-weight: normal;
+	font-size: 13dp;
+	line-height: 18dp;
+	color: var(--abc-hud-accent-reserve);
+	opacity: var(--abc-hud-value-opacity);
+}
+
+#flash {
+	left: 314dp;
+}
+
+/* The lamp mark: dim while the flashlight is off, amber while it is on. */
+#flash .lamp {
+	position: absolute;
+	left: 0;
+	top: 10dp;
+	width: 10dp;
+	height: 14dp;
+	border-radius: 2dp;
+	background-color: var(--abc-hud-accent-faint);
+}
+#flash.lit .lamp {
+	background-color: var(--abc-hud-accent);
+}
+
+#flash .value {
+	left: 14dp;
+	width: 50dp;
+	height: 18dp;
+	top: 4dp;
+	font-size: 15dp;
+	line-height: 18dp;
+	letter-spacing: 0.2dp;
+}
+
+#flash .meter {
+	left: 14dp;
+	width: 60dp;
+}

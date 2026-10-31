@@ -1,0 +1,14 @@
+{
+  "id": "abcui.division",
+  "name": "Division third-person HUD",
+  "description": "Health, armor, ammo and flashlight readouts that follow the local player model in third person, with a fixed row in first person.",
+  "author": "DrAbc",
+  "version": "1.0.0",
+  "abi": 2,
+  "minAbcUi": "0.9.2",
+  "entry": "entry/abcui_division.dll",
+  "dependencies": [
+    "abcui.base"
+  ],
+  "conflicts": []
+}
