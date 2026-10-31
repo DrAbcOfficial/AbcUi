@@ -6,7 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 
-// Only the OpenGL 3.3 entry points used by this backend. No SDK or loader
+// Only the OpenGL 3.3 entry points used by the backends. No SDK or loader
 // shared with another plugin; all pointers belong to the current WGL context.
 namespace gl {
 

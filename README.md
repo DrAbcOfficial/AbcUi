@@ -58,6 +58,7 @@ automatically extracted when it loads. No separate model installation is needed.
 
 All options are available in the in-game Settings menu. Changing the menu action
 model updates its animation choices without refreshing unrelated settings.
+Live character previews stay animated while you adjust multiplayer settings.
 Applying a new resolution or display mode restarts the game and then asks you to
 keep or revert the change.
 

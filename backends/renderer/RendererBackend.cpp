@@ -31,13 +31,13 @@
 #include <abcui/render_backend.h>
 
 #include "RenderCommon.h"
+#include "../common/GlState.h"
 
-#include <cmath>
+#include <array>
 #include <cstddef>
 #include <cstdio>
 #include <cstdarg>
 #include <unordered_map>
-#include <vector>
 
 // GL/gl.h is the 1.1 header; the 1.2 clamp constant is used for capture
 // textures (no GLEW dependency wanted here).
@@ -50,6 +50,7 @@ void freeWorldTarget();
 void freeBlurTargets();
 void endPreviewBuffers();
 void freePreviewBuffers();
+void freeCapturePass();
 } // namespace
 
 // The ABI vertex POD must stay byte-identical to Renderer's vertex types -
@@ -200,6 +201,7 @@ public:
     freeWorldTarget();
     freeBlurTargets();
     freePreviewBuffers();
+    freeCapturePass();
     if (Sink.invalidateTargets)
       Sink.invalidateTargets(Sink.userdata);
   }
@@ -532,8 +534,160 @@ struct CaptureTarget {
 };
 std::unordered_map<unsigned int, CaptureTarget> Targets;
 unsigned int NextTargetHandle = 0;
-// Reused readback buffer for the straight-alpha capture normalization.
-std::vector<float> CapturePixels;
+
+// Normalize the float scene directly into the capture texture. Reading it back
+// to the CPU here serialized every preview frame with the engine's GPU work.
+class CapturePass {
+public:
+  bool initialize() {
+    if (attempted)
+      return program != 0;
+    attempted = true;
+    if (const char *missing = api.load()) {
+      Host.warn("[AbcUi model] GPU capture unavailable: %s", missing);
+      return false;
+    }
+    gl::State saved(api);
+    constexpr const char *vertex = R"glsl(#version 330 core
+void main() {
+  vec2 p = vec2((gl_VertexID << 1) & 2, gl_VertexID & 2);
+  gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+}
+)glsl";
+    constexpr const char *fragment = R"glsl(#version 330 core
+uniform sampler2D scene;
+uniform vec2 sourceOrigin;
+out vec4 result;
+void main() {
+  vec4 pixel = texelFetch(scene, ivec2(gl_FragCoord.xy + sourceOrigin), 0);
+  // Studio's SRC_ALPHA blend stores premultiplied RGB and squared coverage.
+  float coverage = sqrt(clamp(pixel.a, 0.0, 1.0));
+  result = coverage > 0.0 ? vec4(pixel.rgb / coverage, coverage) : vec4(0.0);
+}
+)glsl";
+    const GLuint vs = compile(gl::kVertexShader, vertex);
+    const GLuint fs = compile(gl::kFragmentShader, fragment);
+    GLuint linked = 0;
+    if (vs && fs) {
+      linked = api.CreateProgram();
+      if (linked) {
+        api.AttachShader(linked, vs);
+        api.AttachShader(linked, fs);
+        api.LinkProgram(linked);
+      }
+    }
+    if (vs)
+      api.DeleteShader(vs);
+    if (fs)
+      api.DeleteShader(fs);
+    GLint ok = 0;
+    if (linked)
+      api.GetProgramiv(linked, gl::kLinkStatus, &ok);
+    if (!ok) {
+      char log[1024]{};
+      if (linked) {
+        api.GetProgramInfoLog(linked, sizeof(log), nullptr, log);
+        api.DeleteProgram(linked);
+      }
+      Host.warn("[AbcUi model] GPU capture program unavailable: %s", log);
+      return false;
+    }
+    api.GenVertexArrays(1, &vao);
+    api.GenFramebuffers(1, &framebuffer);
+    if (!vao || !framebuffer) {
+      api.DeleteProgram(linked);
+      Host.warn("[AbcUi model] GPU capture resources unavailable");
+      return false;
+    }
+    program = linked;
+    api.UseProgram(program);
+    api.Uniform1i(api.GetUniformLocation(program, "scene"), 0);
+    origin = api.GetUniformLocation(program, "sourceOrigin");
+    return true;
+  }
+
+  void copy(CaptureTarget &target, GLuint source, int x, int y, int width,
+            int height) {
+    gl::State saved(api);
+    api.ActiveTexture(gl::kTexture0);
+    api.BindSampler(0, 0);
+    glBindTexture(GL_TEXTURE_2D, target.texture);
+    if (!target.hasImage || target.width != width || target.height != height) {
+      api.BindBuffer(gl::kPixelUnpackBuffer, 0);
+      glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA,
+                   GL_UNSIGNED_BYTE, nullptr);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+      glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+      target.hasImage = true;
+      target.width = width;
+      target.height = height;
+    }
+    api.BindFramebuffer(gl::kDrawFramebuffer, framebuffer);
+    api.FramebufferTexture2D(gl::kDrawFramebuffer, gl::kColorAttachment0,
+                             GL_TEXTURE_2D, target.texture, 0);
+    for (GLenum capability : std::array<GLenum, 13>{
+             GL_BLEND, GL_DEPTH_TEST, GL_STENCIL_TEST, GL_CULL_FACE,
+             GL_SCISSOR_TEST, GL_ALPHA_TEST, GL_COLOR_LOGIC_OP,
+             gl::kFramebufferSrgb, gl::kRasterizerDiscard,
+             GL_POLYGON_OFFSET_FILL, 0x809E, 0x80A0, 0x0B42})
+      glDisable(capability);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glDepthMask(GL_FALSE);
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glViewport(0, 0, width, height);
+    api.UseProgram(program);
+    api.BindVertexArray(vao);
+    glBindTexture(GL_TEXTURE_2D, source);
+    api.Uniform2f(origin, static_cast<float>(x), static_cast<float>(y));
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+  }
+
+  void free() {
+    if (program)
+      api.DeleteProgram(program);
+    if (vao)
+      api.DeleteVertexArrays(1, &vao);
+    if (framebuffer)
+      api.DeleteFramebuffers(1, &framebuffer);
+    program = vao = framebuffer = 0;
+    attempted = false;
+  }
+
+private:
+  GLuint compile(GLenum type, const char *source) {
+    const GLuint shader = api.CreateShader(type);
+    if (!shader)
+      return 0;
+    api.ShaderSource(shader, 1, &source, nullptr);
+    api.CompileShader(shader);
+    GLint ok = 0;
+    api.GetShaderiv(shader, gl::kCompileStatus, &ok);
+    if (!ok) {
+      char log[1024]{};
+      api.GetShaderInfoLog(shader, sizeof(log), nullptr, log);
+      Host.warn("[AbcUi model] GPU capture shader failed: %s", log);
+      api.DeleteShader(shader);
+      return 0;
+    }
+    return shader;
+  }
+
+  gl::Api api;
+  GLuint program = 0, vao = 0, framebuffer = 0;
+  GLint origin = -1;
+  bool attempted = false;
+};
+
+CapturePass &capturePass() {
+  static CapturePass instance;
+  return instance;
+}
+
+void freeCapturePass() {
+  capturePass().free();
+}
 
 CaptureTarget *findTarget(unsigned int handle) {
   const auto it = Targets.find(handle);
@@ -541,7 +695,7 @@ CaptureTarget *findTarget(unsigned int handle) {
 }
 
 uint32_t ABCUI_CALL cbTargetCreate(void *, int32_t width, int32_t height) {
-  if (width <= 0 || height <= 0)
+  if (width <= 0 || height <= 0 || !capturePass().initialize())
     return 0;
   GLuint texture = 0;
   glGenTextures(1, &texture);
@@ -603,34 +757,6 @@ void ABCUI_CALL cbClearViewportRegion(void *, int32_t x, int32_t y,
   previewBuffers().begin();
 }
 
-// The engine's Studio pass blends with glBlendFunc(SRC_ALPHA,
-// ONE_MINUS_SRC_ALPHA), so the colour written into the pre-composite scene
-// is premultiplied while the alpha channel accumulates coverage squared.
-// Recover the straight-alpha image the 2D channel expects: coverage is the
-// square root of that accumulated alpha, and the stored colour is already
-// multiplied by that coverage. One layer over a transparent clear is exact;
-// nested surfaces approximate because only the aggregate alpha survives.
-void normalizeCapture(std::vector<float> &pixels, std::size_t pixelCount) {
-  for (std::size_t i = 0; i < pixelCount; ++i) {
-    float *pixel = pixels.data() + i * 4;
-    float alpha = pixel[3];
-    if (!(alpha > 0.0f)) {
-      pixel[0] = pixel[1] = pixel[2] = pixel[3] = 0.0f;
-      continue;
-    }
-    if (alpha >= 1.0f) {
-      pixel[3] = 1.0f;
-      continue;
-    }
-    const float coverage = std::sqrt(alpha);
-    const float inverse = 1.0f / coverage;
-    pixel[0] *= inverse;
-    pixel[1] *= inverse;
-    pixel[2] *= inverse;
-    pixel[3] = coverage;
-  }
-}
-
 void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
                                        int32_t y, int32_t width,
                                        int32_t height) {
@@ -640,34 +766,9 @@ void ABCUI_CALL cbCopyViewportToTarget(void *, uint32_t handle, int32_t x,
   // V_RenderView has already composited the scene onto the opaque final
   // buffer. Capture its gamma-corrected scene instead: the final buffer has
   // lost the transparent background a model element needs.
-  Renderer->PushFrameBuffer();
-  Renderer->BindFrameBuffer(Renderer->GetBackBufferFBO());
-  GLint previousTexture = 0;
-  glGetIntegerv(GL_TEXTURE_BINDING_2D, &previousTexture);
-  glBindTexture(GL_TEXTURE_2D, target->texture);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  // Read the float scene and normalize it before the 8-bit upload: the
-  // premultiplied-to-straight step needs the extra alpha precision.
-  const std::size_t pixelCount =
-      static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
-  CapturePixels.resize(pixelCount * 4);
-  glReadPixels(x, y, width, height, GL_RGBA, GL_FLOAT, CapturePixels.data());
-  normalizeCapture(CapturePixels, pixelCount);
-  if (!target->hasImage || target->width != width || target->height != height) {
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA,
-                 GL_FLOAT, CapturePixels.data());
-    target->hasImage = true;
-    target->width = width;
-    target->height = height;
-  } else {
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_FLOAT,
-                    CapturePixels.data());
-  }
-  glBindTexture(GL_TEXTURE_2D, previousTexture);
-  Renderer->PopFrameBuffer();
+  const auto *source = Renderer->GetBackBufferFBO();
+  if (source && source->s_hBackBufferTex)
+    capturePass().copy(*target, source->s_hBackBufferTex, x, y, width, height);
   endPreviewBuffers();
 }
 
@@ -707,6 +808,7 @@ void ABCUI_CALL cbShutdown(void *) {
   freeWorldTarget();
   freeBlurTargets();
   freePreviewBuffers();
+  capturePass().free();
   for (auto &entry : Targets)
     glDeleteTextures(1, &entry.second.texture);
   Targets.clear();
