@@ -703,14 +703,21 @@ std::string localizeToken(const char *token) {
   }
   if (!Localize)
     return {};
-  const wchar_t *wide = Localize->Find(token);
+  // Find accepts the label form ("#GameUI_...") and the bare token alike;
+  // normalize to the stored name.
+  const char *name = token[0] == '#' ? token + 1 : token;
+  if (!*name)
+    return {};
+  const wchar_t *wide = Localize->Find(name);
   if (!wide || !*wide)
     return {};
-  // UTF-16 -> UTF-8 (the engine localize stores UTF-16); bounded by the
-  // interface's own conversion so the codepage semantics match the shipped
-  // GameUI's display path.
+  // The engine stores UTF-16 and the Rml side consumes UTF-8. Do not use
+  // ILocalize's ANSI helper here: it converts to the system codepage, so a
+  // non-Latin translation would reach RmlUi as legacy bytes.
   char buffer[1024] = {};
-  if (Localize->ConvertUnicodeToANSI(wide, buffer, sizeof(buffer)) <= 0)
+  const int bytes = WideCharToMultiByte(CP_UTF8, 0, wide, -1, buffer,
+                                        sizeof(buffer), nullptr, nullptr);
+  if (bytes <= 0)
     return {};
   return buffer;
 }

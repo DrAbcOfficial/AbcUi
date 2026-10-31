@@ -404,8 +404,10 @@ typedef struct AbcUiUiApi {
                                        const char *value);
   void(ABCUI_CALL *elementSetInnerRML)(AbcUiElement *elem, const char *rml);
   // Localizes a translation token ("Vote_DefaultYes") through the game
-  // language table. Returns 1 and writes the translation (at most outSize-1
-  // bytes plus terminator); 0 when the token is unknown (out untouched).
+  // language tables: the module packages first, then the engine's own
+  // shipped strings (the "#GameUI_..." loading tokens). Returns 1 and writes
+  // the translation (at most outSize-1 bytes plus terminator); 0 when the
+  // token is unknown (out untouched).
   int(ABCUI_CALL *translate)(const char *token, char *out, uint32_t outSize);
   // Escapes server-derived text for elementSetInnerRML (the built-in panels'
   // TextUtil::escapeRml). Returns the byte count the escaped text needs

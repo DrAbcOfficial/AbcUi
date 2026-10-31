@@ -185,8 +185,15 @@ int apiTranslate(const char *token, char *out, uint32_t outSize) {
   if (!token || !*token || !out || outSize == 0)
     return 0;
   std::string translated;
-  if (!Localization::translate(translated, token))
-    return 0;
+  if (!Localization::translate(translated, token)) {
+    // Not a module token: the engine's own shipped strings (the loading
+    // stream's "#GameUI_..." status/failure tokens) live in vgui2's table,
+    // not in the module packages, so consult it before reporting unknown.
+    // The module table still wins (a package may override engine wording).
+    translated = vgui2ext::localizeToken(token);
+    if (translated.empty())
+      return 0;
+  }
   copyOut(translated, out, outSize);
   return 1;
 }
