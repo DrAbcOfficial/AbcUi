@@ -122,6 +122,16 @@ abcui_add_test(abc_ui_segment_bar
     SOURCES SegmentBar.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
 
+# The fixed-capacity particle system behind the HUD effects.
+abcui_add_test(abc_ui_particle_system
+    SOURCES ParticleSystem.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
+# The fired-round effect built on it, shared by both ammo readouts.
+abcui_add_test(abc_ui_bullet_fx
+    SOURCES BulletFx.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
 # The shipped group document: ids, RCSS grammar and a real laid-out row.
 abcui_add_test(abc_ui_division_document
     SOURCES DivisionDocument.cpp

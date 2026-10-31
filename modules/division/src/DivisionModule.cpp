@@ -24,6 +24,8 @@
 // group, so it claims the same native HUD elements and the engine's own
 // sprites never double up. It renders numbers and local sprite URIs only - no
 // server string reaches the DOM, so no RML escaping is needed here.
+#include "../../common/BulletFx.h"
+#include "../../common/BulletLayer.h"
 #include "../../common/FollowAnchor.h"
 #include "../../common/SegmentBar.h"
 
@@ -46,6 +48,9 @@ constexpr const char *kDocumentPath =
 
 // Persisted cvar contract shared with the classic HUD modules.
 constexpr const char *kFollowCvar = "hud_division_follow";
+constexpr const char *kSideCvar = "hud_division_side";
+// hud_division_side values: 0 = left of the character, 1 = right.
+constexpr int kSideLeft = 0;
 constexpr const char *kDangerHealth = "hud_danger_health";
 constexpr const char *kDangerArmor = "hud_danger_armor";
 constexpr int kDefaultDanger = 45;
@@ -86,6 +91,7 @@ constexpr const char *kFlashIds[] = {"flash-battery", "flash-value"};
 constexpr const char *kLongJumpIds[] = {"longjump"};
 
 AbcUiCvarHandle FollowCvar = nullptr;
+AbcUiCvarHandle SideCvar = nullptr;
 AbcUiCvarHandle DangerHealthCvar = nullptr;
 AbcUiCvarHandle DangerArmorCvar = nullptr;
 
@@ -152,6 +158,11 @@ struct AmmoState {
   int clip2 = -1;
   int reserve1 = -1;
   int reserve2 = -1;
+  // Weapon identity and the previous magazines, for the fired-round check.
+  int weaponSlot = -1;
+  int weaponPos = -1;
+  int lastClip1 = -1;
+  int lastClip2 = -1;
   char icon[192] = {};
   char icon2[192] = {};
 };
@@ -169,6 +180,7 @@ struct LongJumpState {
 BarState HealthBar;
 BarState ArmorBar;
 AmmoState Ammo;
+moduleui::bulletfx::Bullets Bullets;
 FlashState Flash;
 LongJumpState LongJump;
 int PeakHealth = 0;
@@ -275,6 +287,46 @@ bool spriteUri(const AbcUiWeaponSprite &sprite, char *out, size_t size) {
   std::snprintf(out, size, "spricon://%s/%d,%d,%d,%d", sprite.atlas,
                 sprite.rect[0], sprite.rect[1], sprite.rect[2], sprite.rect[3]);
   return true;
+}
+
+// One fired round: a copy of the magazine's sprite falling from its icon.
+void fireRound(AbcUiDocument *doc, const char *iconId, const char *uri) {
+  AbcUiElement *icon = elementById(doc, iconId);
+  if (!icon || !uri || !*uri)
+    return;
+  float x = 0.0f;
+  float y = 0.0f;
+  float width = 0.0f;
+  float height = 0.0f;
+  if (!Api->ui->elementAbsoluteOffset(icon, &x, &y))
+    return;
+  Api->ui->elementOffsetSize(icon, &width, &height);
+
+  // The round is a copy of the icon itself: same centre, same size, so it
+  // appears to leave the magazine instead of floating next to it.
+  const std::size_t slot = Bullets.fire({x + width * 0.5f, y + height * 0.5f});
+  AbcUiElement *layer = elementById(doc, "bullets");
+  if (!layer)
+    return;
+  AbcUiElement *element =
+      Api->ui->elementChild(layer, static_cast<int32_t>(slot));
+  if (!element)
+    return;
+
+  char sizeWidth[24] = {};
+  char sizeHeight[24] = {};
+  std::snprintf(sizeWidth, sizeof(sizeWidth), "%.1fpx", width);
+  std::snprintf(sizeHeight, sizeof(sizeHeight), "%.1fpx", height);
+  Api->ui->elementSetProperty(element, "width", sizeWidth);
+  Api->ui->elementSetProperty(element, "height", sizeHeight);
+  Api->ui->elementSetAttribute(element, "src", uri);
+}
+
+void updateBullets(AbcUiDocument *doc, double frameTime) {
+  if (!Bullets.update(static_cast<float>(frameTime)))
+    return;
+  if (AbcUiElement *layer = elementById(doc, "bullets"))
+    moduleui::bulletfx::paint(Api, layer, Bullets);
 }
 
 void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
@@ -392,6 +444,26 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
       Api->ui->elementSetAttribute(element, "src",
                                    hasIcon2 ? Ammo.icon2 : nullptr);
   }
+
+  // A shot shows as a round of that magazine's sprite falling from its icon.
+  // A weapon change only resets the counters, so switching guns never fires.
+  const bool sameWeapon = known && weapon.slot == Ammo.weaponSlot &&
+                          weapon.slotPos == Ammo.weaponPos;
+  if (sameWeapon && Ammo.lastClip1 >= 0 && clip1 < Ammo.lastClip1) {
+    const int fired = std::min(Ammo.lastClip1 - clip1, 3);
+    for (int i = 0; i < fired; ++i)
+      fireRound(doc, "ammo-icon", Ammo.icon);
+  }
+  if (sameWeapon && hasSecond && Ammo.lastClip2 >= 0 &&
+      clip2 < Ammo.lastClip2) {
+    const int fired = std::min(Ammo.lastClip2 - clip2, 3);
+    for (int i = 0; i < fired; ++i)
+      fireRound(doc, "ammo2-icon", Ammo.icon2);
+  }
+  Ammo.weaponSlot = known ? weapon.slot : -1;
+  Ammo.weaponPos = known ? weapon.slotPos : -1;
+  Ammo.lastClip1 = visible ? clip1 : -1;
+  Ammo.lastClip2 = (visible && hasSecond) ? clip2 : -1;
 }
 
 void applyFlash(AbcUiDocument *doc, const AbcUiHudState &hud, bool visible) {
@@ -444,6 +516,8 @@ struct AnchorState {
   // from the camera axis (-1..1); 0 keeps the plate flat.
   float Tilt = 0.0f;
   bool TiltApplied = false;
+  // hud_division_side: whether the plate currently floats right of the model.
+  bool SideRight = false;
 };
 
 AnchorState Anchor;
@@ -494,7 +568,7 @@ void measureCluster(AbcUiDocument *doc) {
 
 // ------------------------------------------------------------ lifecycle ----
 
-void panelOnData(void *, double) {
+void panelOnData(void *, double frameTime) {
   AbcUiDocument *doc = panelDocument();
   if (!doc)
     return;
@@ -541,6 +615,8 @@ void panelOnData(void *, double) {
     else
       Api->ui->documentHide(doc);
   }
+
+  updateBullets(doc, frameTime);
 }
 
 void panelOnRedraw(void *, double frameTime) {
@@ -597,11 +673,27 @@ void panelOnRedraw(void *, double frameTime) {
   }
 
   const bool followNow = Anchor.Armed && projected;
-  float targetX = kFallbackLeftDp * scale;
+
+  // hud_division_side picks the side the plate floats on. Flipping it
+  // re-pivots the lean at the other edge and snaps the plate, so it never
+  // slides through the character on the way over.
+  const bool rightSide = cvarInt(SideCvar, kSideLeft) != kSideLeft;
+  if (Anchor.SideRight != rightSide) {
+    Anchor.SideRight = rightSide;
+    setProperty(doc, "cluster", "transform-origin",
+                rightSide ? "0% 50%" : "100% 50%");
+    Anchor.TiltApplied = false;
+    Anchor.SnapNext = true;
+  }
+
+  float targetX = rightSide ? static_cast<float>(width) -
+                                  kFallbackLeftDp * scale - clusterWidth
+                            : kFallbackLeftDp * scale;
   float targetY =
       static_cast<float>(height) - kFallbackBottomDp * scale - clusterHeight;
   if (followNow) {
-    targetX = hipX - clusterWidth - kHipOffsetDp * scale;
+    targetX = rightSide ? hipX + kHipOffsetDp * scale
+                        : hipX - clusterWidth - kHipOffsetDp * scale;
     targetY = hipY - clusterHeight * 0.5f;
   }
 
@@ -616,10 +708,13 @@ void panelOnRedraw(void *, double frameTime) {
     tilt = std::clamp((hipX - halfWidth) / halfWidth, -1.0f, 1.0f);
   }
   if (!Anchor.TiltApplied || std::fabs(tilt - Anchor.Tilt) > 0.02f) {
+    // The far edge is the one away from the character, so the lean mirrors
+    // with the side.
+    const float direction = Anchor.SideRight ? -1.0f : 1.0f;
     char transform[96] = {};
     std::snprintf(transform, sizeof(transform),
                   "perspective(600dp) rotateY(%.1fdeg) skewX(%.1fdeg)",
-                  tilt * 14.0f, tilt * 6.0f);
+                  tilt * 14.0f * direction, tilt * 6.0f * direction);
     setProperty(doc, "cluster", "transform", transform);
     Anchor.Tilt = tilt;
     Anchor.TiltApplied = true;
@@ -656,6 +751,7 @@ void panelReset(void *) {
   Anchor.SnapNext = true;
   PeakHealth = 0;
   PeakArmor = 0;
+  Bullets.clear();
   // Force the next show to rewrite every readout.
   HealthBar = {};
   ArmorBar = {};
@@ -678,6 +774,7 @@ void panelDocumentReady(void *) {
   setGroupVisible(doc, kFlashIds, std::size(kFlashIds), false);
   setGroupVisible(doc, kLongJumpIds, std::size(kLongJumpIds), false);
   buildCells(doc);
+  Bullets.clear();
   HealthBar = {};
   ArmorBar = {};
   Ammo = {};
@@ -716,6 +813,7 @@ void onModuleLoad() {
 
 void onModuleInit() {
   FollowCvar = Api->console->registerCvar(kFollowCvar, "1", ABCUI_CVAR_VALUE);
+  SideCvar = Api->console->registerCvar(kSideCvar, "0", ABCUI_CVAR_VALUE);
   // The classic health module owns these two in its own group; share them
   // when it is loaded, otherwise keep the same defaults so switching groups
   // does not reset the user's thresholds.
@@ -738,6 +836,7 @@ void onModuleVidInit() {
   Anchor.SnapNext = true;
   Anchor.Tilt = 0.0f;
   Anchor.TiltApplied = false;
+  Anchor.SideRight = false;
 }
 
 void onModuleUnload() {

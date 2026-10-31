@@ -7,6 +7,8 @@
 // per ammo type); the stacks append pickup rows that fade in, expire and fade
 // out. Stack documents stay permanently visible - an empty transparent
 // container draws nothing.
+#include "../../common/BulletFx.h"
+#include "../../common/BulletLayer.h"
 #include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -46,6 +48,12 @@ AbcUiPanelDesc ItemStackDesc = {};
 bool BarWeaponKnown = false;
 AbcUiWeaponInfo BarWeapon = {};
 std::string PoolRml[2];
+// Fired-round effect and the previous magazines it compares against.
+moduleui::bulletfx::Bullets Bullets;
+int LastClip1 = -1;
+int LastClip2 = -1;
+int LastSlot = -1;
+int LastSlotPos = -1;
 
 AbcUiDocument *barDocument() {
   return Api->ui->panelDocument(kBarPanel);
@@ -130,6 +138,46 @@ void updatePool(int pool, const AbcUiWeaponSprite &sprite,
   Api->ui->elementSetInnerRML(container, PoolRml[pool].c_str());
 }
 
+// One fired round: a copy of the pool's sprite falling from the ammo line.
+void fireRound(const char *poolId, const std::string &uri) {
+  AbcUiDocument *doc = barDocument();
+  if (!doc || uri.empty())
+    return;
+  AbcUiElement *pool = Api->ui->querySelector(doc, poolId);
+  if (!pool)
+    return;
+  // The pool's first child is its ammo sprite: the round is a copy of that
+  // exact element (same centre and size), so it leaves from the icon.
+  AbcUiElement *icon = Api->ui->elementChild(pool, 0);
+  if (!icon)
+    return;
+
+  float x = 0.0f;
+  float y = 0.0f;
+  float width = 0.0f;
+  float height = 0.0f;
+  if (!Api->ui->elementAbsoluteOffset(icon, &x, &y))
+    return;
+  Api->ui->elementOffsetSize(icon, &width, &height);
+
+  const std::size_t slot = Bullets.fire({x + width * 0.5f, y + height * 0.5f});
+  AbcUiElement *layer = Api->ui->querySelector(doc, "bullets");
+  if (!layer)
+    return;
+  AbcUiElement *element =
+      Api->ui->elementChild(layer, static_cast<int32_t>(slot));
+  if (!element)
+    return;
+
+  char sizeWidth[24] = {};
+  char sizeHeight[24] = {};
+  std::snprintf(sizeWidth, sizeof(sizeWidth), "%.1fpx", width);
+  std::snprintf(sizeHeight, sizeof(sizeHeight), "%.1fpx", height);
+  Api->ui->elementSetProperty(element, "width", sizeWidth);
+  Api->ui->elementSetProperty(element, "height", sizeHeight);
+  Api->ui->elementSetAttribute(element, "src", uri.c_str());
+}
+
 void refreshAmmo() {
   if (!BarWeaponKnown) {
     applyHideToken();
@@ -186,6 +234,46 @@ void refreshAmmo() {
 
   if (!pool1 && !pool2)
     setBarVisible(false);
+
+  // Fired rounds: a shrinking magazine means a shot left the barrel. A
+  // weapon change only resets the counters, so switching never fires, and a
+  // sprite the registry does not carry is skipped rather than drawn wrong.
+  const int count1 =
+      BarWeapon.ammoType > 0 ? Api->weapons->countAmmo(BarWeapon.ammoType) : -1;
+  const int count2 = BarWeapon.ammo2Type > 0
+                         ? Api->weapons->countAmmo(BarWeapon.ammo2Type)
+                         : -1;
+  const int shot1 =
+      pool1 ? (BarWeapon.clip >= 0 ? BarWeapon.clip : count1) : -1;
+  const int shot2 =
+      pool2 ? (BarWeapon.clip2 >= 0 ? BarWeapon.clip2 : count2) : -1;
+  const bool sameWeapon = BarWeaponKnown && BarWeapon.slot == LastSlot &&
+                          BarWeapon.slotPos == LastSlotPos;
+
+  if (sameWeapon && LastClip1 >= 0 && shot1 >= 0 && shot1 < LastClip1 &&
+      BarWeapon.ammo.status == ABCUI_OK) {
+    const int fired = std::min(LastClip1 - shot1, 3);
+    const std::string uri = spriteUri(BarWeapon.ammo);
+    for (int i = 0; i < fired; ++i)
+      fireRound(kPoolIds[0], uri);
+  }
+  if (sameWeapon && LastClip2 >= 0 && shot2 >= 0 && shot2 < LastClip2) {
+    const bool hasIcon =
+        BarWeapon.ammo2.status == ABCUI_OK || BarWeapon.ammo.status == ABCUI_OK;
+    if (hasIcon) {
+      const auto &icon =
+          BarWeapon.ammo2.status == ABCUI_OK ? BarWeapon.ammo2 : BarWeapon.ammo;
+      const int fired = std::min(LastClip2 - shot2, 3);
+      const std::string uri = spriteUri(icon);
+      for (int i = 0; i < fired; ++i)
+        fireRound(kPoolIds[1], uri);
+    }
+  }
+
+  LastSlot = BarWeapon.slot;
+  LastSlotPos = BarWeapon.slotPos;
+  LastClip1 = shot1;
+  LastClip2 = shot2;
 }
 
 // -------------------------------------------------------------- stacks ----
@@ -436,8 +524,23 @@ void onItemPickup(void *, const void *payload) {
 
 // ---- panel callbacks ----
 
+void barOnData(void *, double frameTime) {
+  if (!Bullets.update(static_cast<float>(frameTime)))
+    return;
+  AbcUiDocument *doc = barDocument();
+  if (!doc)
+    return;
+  if (AbcUiElement *layer = Api->ui->querySelector(doc, "bullets"))
+    moduleui::bulletfx::paint(Api, layer, Bullets);
+}
+
 void barDocumentReady(void *) {
   BarWeaponKnown = false;
+  Bullets.clear();
+  LastClip1 = -1;
+  LastClip2 = -1;
+  LastSlot = -1;
+  LastSlotPos = -1;
   refreshAmmo();
 }
 
@@ -447,6 +550,11 @@ void barReset(void *) {
   if (doc)
     Api->ui->documentHide(doc);
   BarWeaponKnown = false;
+  Bullets.clear();
+  LastClip1 = -1;
+  LastClip2 = -1;
+  LastSlot = -1;
+  LastSlotPos = -1;
   for (std::string &rml : PoolRml)
     rml.clear();
 }
@@ -522,7 +630,7 @@ void onModuleLoad() {
   ItemStack.maxItems = 195 / 30; // tall 195 / item_tall 30
 
   registerPanel(BarPanel, kBarPanel, "mod://abcui.ammo/hud/rml/ammobar.rml",
-                &barDocumentReady, nullptr, &barReset);
+                &barDocumentReady, &barOnData, &barReset);
   registerPanel(AmmoStackDesc, kAmmoStackPanel,
                 "mod://abcui.ammo/hud/rml/ammostack.rml",
                 &ammoStackDocumentReady, &ammoStackOnData, &ammoStackReset);

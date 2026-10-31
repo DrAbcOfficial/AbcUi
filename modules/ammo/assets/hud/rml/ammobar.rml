@@ -12,5 +12,16 @@
 	<div id="ammo1" class="pool"></div>
 	<div id="pool-sep"></div>
 	<div id="ammo2" class="pool"></div>
+
+	<!-- Fired rounds: one sprite slot per particle; the bar panel binds the
+	     shot's ammo sprite and animates it below the pool. -->
+	<div id="bullets">
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+	</div>
 </body>
 </rml>

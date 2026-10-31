@@ -31,6 +31,24 @@
 	padding-bottom: 12dp;
 }
 
+/* Fired rounds: the layer spans the panel (the module positions each slot in
+   screen pixels); the sprite itself comes from the weapon's ammo icon. */
+#bullets {
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+}
+
+.bullet {
+	position: absolute;
+	display: none;
+	width: 8dp;
+	height: 14dp;
+	image-color: var(--abc-hud-accent);
+}
+
 /* One ammo type. Inline content inherits the big ammo type; the reserve span
    steps down without leaving the baseline. */
 #ammobar .pool {

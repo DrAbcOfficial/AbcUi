@@ -45,5 +45,16 @@
 
 		<img id="longjump" src="mod://abcui.division/hud/img/longjump.png"/>
 	</div>
+
+	<!-- Fired rounds: one sprite slot per particle; DivisionModule binds the
+	     shot's ammo sprite and animates it below the icon. -->
+	<div id="bullets">
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+		<img class="bullet"/>
+	</div>
 </body>
 </rml>

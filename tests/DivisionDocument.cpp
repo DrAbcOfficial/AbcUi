@@ -171,6 +171,14 @@ int main() {
     CHECK(hasId(document, "flash-fill"));
     CHECK(hasId(document, "flash-value"));
     CHECK(hasId(document, "longjump"));
+    CHECK(hasId(document, "bullets"));
+
+    TEST_CASE("bullet-slots");
+    // One render element per particle slot.
+    Rml::Element *layer = document->GetElementById("bullets");
+    CHECK(layer != nullptr);
+    if (layer)
+      CHECK(layer->GetNumChildren() == 6);
 
     TEST_CASE("icon-loads");
     bool iconLoaded = false;

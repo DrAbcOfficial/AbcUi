@@ -103,6 +103,7 @@ Useful console commands and variables:
 | `abc_ui_menu_model_sequence` | Animation sequence played by that model. |
 | `abc_ui_menu_weapon_model` | Weapon held by the main menu character. |
 | `hud_division_follow` | `1` follows your character in third person (default); `0` keeps the readouts fixed. |
+| `hud_division_side` | `0` keeps the readouts on your character's left (default); `1` puts them on the right. |
 
 ## Build the dist package
 
