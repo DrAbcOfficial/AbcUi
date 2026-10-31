@@ -54,6 +54,14 @@ rejoining a game, including models from downloaded and addon content.
 The two menu animation models ship inside the gameui module package and are
 automatically extracted when it loads. No separate model installation is needed.
 
+## Third-person HUD
+
+A build ships either the classic HUD or the third-person HUD group. The
+third-person group keeps the health, armor, ammo and flashlight readouts on
+your character in third person and returns them to a fixed bottom row in first
+person; every other element stays where it is. It replaces the classic health,
+ammo and flashlight readouts.
+
 ## Settings
 
 All options are available in the in-game Settings menu. Changing the menu action
@@ -94,6 +102,7 @@ Useful console commands and variables:
 | `abc_ui_menu_action_model` | Base model that drives the main menu character's animation. |
 | `abc_ui_menu_model_sequence` | Animation sequence played by that model. |
 | `abc_ui_menu_weapon_model` | Weapon held by the main menu character. |
+| `hud_division_follow` | `1` follows your character in third person (default); `0` keeps the readouts fixed. |
 
 ## Build the dist package
 
@@ -109,6 +118,8 @@ cmake --build --preset win32-release --target dist
 ```
 
 The archive is written to `build/win32-release/dist/AbcUi-<version>.zip`.
+The default archive ships the classic HUD group; configure with
+`-DABCUI_HUD_GROUP=division` to build the third-person HUD group instead.
 
 If AbcCore is checked out elsewhere, pass `-DABC_CORE_DIR=<path>` when configuring. The Renderer redirect is needed because AbcUi uses a Renderer version from the DrAbcOfficial fork.
 
