@@ -112,6 +112,11 @@ abcui_add_test(abc_ui_loading_model
 abcui_add_test(abc_ui_server_query
     SOURCES ServerQuery.cpp "${SRC}/services/serverbrowser/ServerQuery.cpp")
 
+# Module-side helper shared by the third-person HUD group (header-only).
+abcui_add_test(abc_ui_follow_anchor
+    SOURCES DivisionFollow.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
 abcui_add_test(abc_ui_audit_regressions
     SOURCES AuditRegressions.cpp
             "${SRC}/modules/gameui/navigation/MenuAction.cpp"
