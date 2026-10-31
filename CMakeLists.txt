@@ -408,6 +408,12 @@ foreach(ABCUI_SUBDIR IN LISTS ABCUI_SUBDIRECTORIES)
 endforeach()
 
 set(ABCUI_MODULE_PACK_DIR "${CMAKE_BINARY_DIR}/dist/modules")
+# HUD group (issue #15): a group that replaces another must not ship both
+# implementations in one archive, so the packer is given exactly one group.
+# Modules without a manifest hudGroup are shared by every group.
+set(ABCUI_HUD_GROUP "classic" CACHE STRING
+    "HUD group to pack (classic or division)")
+set_property(CACHE ABCUI_HUD_GROUP PROPERTY STRINGS classic division)
 find_package(Python3 COMPONENTS Interpreter)
 if(Python3_Interpreter_FOUND)
     add_custom_target(pack_modules
@@ -417,6 +423,7 @@ if(Python3_Interpreter_FOUND)
             --source-dir "${CMAKE_CURRENT_SOURCE_DIR}"
             --build-dir "${CMAKE_BINARY_DIR}"
             --config "$<CONFIG>"
+            --hud-group "${ABCUI_HUD_GROUP}"
             --out-dir "${ABCUI_MODULE_PACK_DIR}"
         DEPENDS AbcUi ${ABCUI_MODULE_TARGETS}
         COMMENT "Packing UI module packages")
