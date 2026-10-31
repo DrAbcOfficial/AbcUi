@@ -1,15 +1,19 @@
-/* division.rcss - the Division-style third-person group layout.
+/* division.rcss - the Division-style third-person cluster.
 
-   One row, four readouts: health + armor, the active weapon's ammo, and the
-   flashlight battery. The module moves #cluster in px every frame from the
-   projected head position; every box here is dp so the row scales with the
-   HUD density the framework applies. Slot boxes are fixed and hidden slots
-   keep their box (visibility, not display), so the measured row width never
-   changes and the anchor cannot drift while a readout comes and goes.
+   One compact plate at the character's hip (the module moves #cluster in px
+   from the projected player origin; every box here is dp):
 
-   Art direction: thin amber ticks, large amber numerals and flat meters
-   drawn entirely by these rules - no image or font asset ships with the
-   group, so nothing outside the repository's own palette is used. */
+     top     white segmented health bar (7dp) and its value
+             orange segmented armour bar (3dp) and its value
+     ammo    one row per ammo type: sprite, magazine (large), reserve (small);
+             the flashlight battery and the longjump state ride the right
+
+   The bars keep a fixed length; their cell count follows the tracked maximum
+   (10 points per cell) and the module positions the cells, so a 150 HP or an
+   80 HP maximum still fills the bar and the last cell can be partial. The
+   backing stays at 15% opacity (it must not block the view); legibility comes
+   from near-white ink with a 1px black outline. No image or font asset ships
+   with the group. */
 
 #division {
 	position: absolute;
@@ -23,152 +27,227 @@
 	position: absolute;
 	left: 0;
 	top: 0;
-	width: 400dp;
-	height: 34dp;
+	width: 150dp;
+	height: 40dp;
 }
 
-#vitals {
+#plate {
 	position: absolute;
 	left: 0;
 	top: 0;
-	width: 174dp;
-	height: 34dp;
+	width: 150dp;
+	height: 40dp;
+	background-color: #0b0e1226;
+	border-radius: 2dp;
 }
 
-.readout {
-	position: absolute;
-	top: 0;
-	width: 84dp;
-	height: 34dp;
-}
-
-#health { left: 0; }
-#armor { left: 90dp; }
-
-/* The 2dp amber tick that marks each readout's left edge. */
-.readout .tick {
+/* The one accent: a 2dp amber edge on the plate's left side. */
+#edge {
 	position: absolute;
 	left: 0;
 	top: 4dp;
 	width: 2dp;
-	height: 22dp;
+	height: 32dp;
 	background-color: var(--abc-hud-accent);
-	opacity: var(--abc-hud-value-opacity);
+	opacity: 0.8;
 }
 
-.readout .value {
+.big {
 	position: absolute;
-	left: 8dp;
-	top: 0;
-	width: 76dp;
-	height: 24dp;
 	font-family: Verdana;
 	font-weight: bold;
-	font-size: 20dp;
-	line-height: 24dp;
-	letter-spacing: 0.3dp;
-	color: var(--abc-hud-accent);
-	opacity: var(--abc-hud-value-opacity);
+	font-size: 11dp;
+	line-height: 15dp;
+	letter-spacing: 0.1dp;
+	color: #f5f7f8;
+	opacity: 0.95;
+	font-effect: outline(1px #000000b8);
 }
 
-/* Meter well: the shared black track, with the fill as its own rounded bar
-   (the same shape the classic vitals use). */
-.readout .meter {
+.small {
 	position: absolute;
-	left: 8dp;
-	top: 26dp;
-	width: 76dp;
-	height: 3dp;
-	background-color: var(--abc-hud-track);
-	border-radius: 1.5dp;
+	font-family: Verdana;
+	font-weight: normal;
+	font-size: 8dp;
+	line-height: 10dp;
+	color: #e4eaee;
+	opacity: 0.9;
+	font-effect: outline(1px #000000a8);
 }
 
-.readout .fill {
+.tiny {
+	position: absolute;
+	font-family: Verdana;
+	font-weight: normal;
+	font-size: 8dp;
+	line-height: 10dp;
+	color: #d8dfe4;
+	opacity: 0.85;
+	font-effect: outline(1px #000000a0);
+}
+
+.right {
+	text-align: right;
+}
+
+/* Segmented bars: the empty cell (track) plus its fill. The module sets each
+   cell's left/width and each fill's width; everything else is fixed here. */
+#health-cells {
+	position: absolute;
+	left: 6dp;
+	top: 1dp;
+	width: 112dp;
+	height: 7dp;
+}
+
+#health-cells .cell {
+	position: absolute;
+	top: 0;
+	height: 7dp;
+	background-color: #ffffff2e;
+	border-radius: 1dp;
+}
+
+#health-cells .cell .fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 7dp;
+	background-color: #ffffff;
+	border-radius: 1dp;
+	opacity: 0.95;
+}
+
+#armor-cells {
+	position: absolute;
+	left: 6dp;
+	top: 9dp;
+	width: 112dp;
+	height: 3dp;
+}
+
+#armor-cells .cell {
+	position: absolute;
+	top: 0;
+	height: 3dp;
+	background-color: #ffb00026;
+	border-radius: 1dp;
+}
+
+#armor-cells .cell .fill {
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 3dp;
+	background-color: var(--abc-hud-accent);
+	border-radius: 1dp;
+	opacity: 0.95;
+}
+
+#health-value {
+	left: 122dp;
+	top: 0;
+	width: 22dp;
+	height: 9dp;
+	font-size: 9dp;
+	line-height: 9dp;
+}
+
+#armor-value {
+	left: 122dp;
+	top: 9dp;
+	width: 22dp;
+	height: 9dp;
+	font-size: 8dp;
+	line-height: 9dp;
+}
+
+/* Ammo rows: the sprite sits flush against the magazine, the reserve follows
+   in the small type. The module shows the second row only for a weapon with a
+   second magazine or a distinct secondary ammo type, and centres the single
+   row when it is alone. */
+#ammo-row1,
+#ammo-row2 {
+	position: absolute;
+	left: 0;
+	width: 150dp;
+	height: 12dp;
+}
+
+#ammo-row1 {
+	top: 20dp;
+}
+
+#ammo-row2 {
+	top: 26dp;
+}
+
+#ammo-row1 .icon,
+#ammo-row2 .icon {
+	position: absolute;
+	left: 6dp;
+	top: 2dp;
+	width: 9dp;
+	height: 9dp;
+	image-color: #eef3f6;
+	opacity: 0.9;
+}
+
+#ammo-row1 .big,
+#ammo-row2 .big {
+	left: 18dp;
+	top: 0;
+	width: 24dp;
+	height: 12dp;
+	font-size: 11dp;
+	line-height: 12dp;
+}
+
+#ammo-row1 .small,
+#ammo-row2 .small {
+	left: 44dp;
+	top: 2dp;
+	width: 16dp;
+	height: 10dp;
+}
+
+/* Flashlight battery and percentage, on the first ammo row's line. */
+#flash-battery {
+	position: absolute;
+	left: 82dp;
+	top: 27dp;
+	width: 12dp;
+	height: 3dp;
+	background-color: #0000003d;
+	border-radius: 1dp;
+}
+
+#flash-battery .fill {
 	position: absolute;
 	left: 0;
 	top: 0;
 	width: 0;
 	height: 3dp;
 	background-color: var(--abc-hud-accent);
-	border-radius: 1.5dp;
-	opacity: var(--abc-hud-meter-opacity);
-	transition: width 0.12s linear-in;
+	border-radius: 1dp;
+	opacity: 0.9;
 }
 
-.rule {
-	position: absolute;
-	top: 6dp;
-	width: 1dp;
-	height: 22dp;
-	background-color: var(--abc-hud-accent-faint);
-}
-#rule-vitals { left: 182dp; }
-#rule-ammo { left: 306dp; }
-
-#ammo {
-	left: 190dp;
-	width: 108dp;
+#flash-value {
+	left: 96dp;
+	top: 22dp;
+	width: 22dp;
+	height: 10dp;
 }
 
-#ammo .icon {
-	position: absolute;
-	left: 0;
-	top: 8dp;
-	width: 18dp;
-	height: 18dp;
-	/* The game's own ammo sprite (hud.txt), tinted like the classic bar. */
-	image-color: var(--abc-hud-accent);
-	opacity: var(--abc-hud-icon-opacity);
-}
-
-#ammo .value {
-	left: 22dp;
-	width: 44dp;
-}
-
-#ammo .reserve {
-	position: absolute;
-	left: 66dp;
-	top: 6dp;
-	width: 42dp;
-	height: 18dp;
-	font-family: Verdana;
-	font-weight: normal;
-	font-size: 13dp;
-	line-height: 18dp;
-	color: var(--abc-hud-accent-reserve);
-	opacity: var(--abc-hud-value-opacity);
-}
-
-#flash {
-	left: 314dp;
-}
-
-/* The lamp mark: dim while the flashlight is off, amber while it is on. */
-#flash .lamp {
-	position: absolute;
-	left: 0;
-	top: 10dp;
-	width: 10dp;
-	height: 14dp;
-	border-radius: 2dp;
-	background-color: var(--abc-hud-accent-faint);
-}
-#flash.lit .lamp {
-	background-color: var(--abc-hud-accent);
-}
-
-#flash .value {
-	left: 14dp;
-	width: 50dp;
-	height: 18dp;
-	top: 4dp;
-	font-size: 15dp;
-	line-height: 18dp;
-	letter-spacing: 0.2dp;
-}
-
-#flash .meter {
-	left: 14dp;
-	width: 60dp;
+/* Longjump module state: only shown while the module is owned. */
+#longjump {
+	left: 122dp;
+	top: 27dp;
+	width: 22dp;
+	height: 12dp;
+	font-size: 9dp;
+	line-height: 12dp;
+	color: var(--abc-hud-accent);
+	letter-spacing: 0.4dp;
 }

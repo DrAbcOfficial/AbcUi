@@ -1,19 +1,31 @@
-// abcui.division - the Division-style third-person HUD group: health, armor,
-// ammo and flashlight readouts pinned to the local player model's projected
-// head position, with one fixed bottom-centre row when no third-person model
-// is visible.
+// abcui.division - the Division-style third-person HUD group: one compact
+// plate carried at the local player model's hip.
+//
+// Layout (top to bottom): a white segmented health bar and a thinner orange
+// armour bar, each cut into 10-point cells whose width follows the local
+// player's maximum (so a 150 HP or an 80 HP maximum still fills the bar); an
+// ammo line at the far left with the primary/secondary magazine and their
+// reserves, followed by the flashlight battery and the longjump module state.
+// First person, spectating and a failed projection return the plate to a
+// fixed bottom-left anchor.
 //
 // Group rules (issues #15 and #14): one panel document and one pump pair. The
 // framework's HUD_Redraw phase is the only place the engine's view matrices
 // are live (HudPanel::onRedraw, rmlui::onRedraw), so the anchor is solved
 // there while the values refresh in onData. Every DOM write is change-gated
-// and the per-frame path allocates nothing: fixed buffers, no std::string.
+// and the per-frame path allocates nothing.
+//
+// The maximum health/armour are not exposed by the client data, so 100 is the
+// baseline: the module tracks the highest value observed since the last map
+// change and grows the bar with more cells only above 100. A maximum below
+// 100 needs no special case - the bar simply reads as partly filled.
 //
 // The panel replaces the classic health/ammo/flashlight readouts in this
 // group, so it claims the same native HUD elements and the engine's own
 // sprites never double up. It renders numbers and local sprite URIs only - no
 // server string reaches the DOM, so no RML escaping is needed here.
 #include "../../common/FollowAnchor.h"
+#include "../../common/SegmentBar.h"
 
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -41,29 +53,37 @@ constexpr int kDefaultDanger = 45;
 constexpr int kFollowAuto = 1;
 constexpr int kFollowForce = 2;
 
-// HUD accent amber (255 176 0, base.rcss --abc-hud-accent) and the danger red
-// the hue shift walks toward (the classic panels' ColorUtil inputs).
+// HUD accent amber (255 176 0, base.rcss --abc-hud-accent), the danger red the
+// hue shift walks toward, and the white the health bar and numerals use.
 constexpr float kAccent[3] = {255.0f, 176.0f, 0.0f};
 constexpr float kRed[3] = {255.0f, 0.0f, 0.0f};
+constexpr float kNumeral[3] = {243.0f, 245.0f, 246.0f};
 
-// Anchor geometry (dp unless stated). The row floats above the projected head
-// so it never covers the model.
-constexpr float kHeadTopUnits = 4.0f; // world units above the eye
-constexpr float kHeadLiftDp = 8.0f;   // gap between the head and the row
+// Placement (dp unless stated): the plate sits to the left of the projected
+// player origin (the hull centre, i.e. hip height) with a fixed gap, and falls
+// back to the free bottom-left corner when there is no third-person model.
+constexpr float kHipOffsetDp = 24.0f;
+constexpr float kFallbackLeftDp = 18.0f;
 constexpr float kFallbackBottomDp = 12.0f;
 constexpr float kEdgeMarginDp = 8.0f;
 constexpr float kDeadbandPx = 0.5f;    // smallest DOM move worth writing
 constexpr double kDwellSeconds = 0.10; // third-person flag dwell
 
-// Row geometry the RCSS draws (fallback when the layout has not measured yet).
-constexpr float kClusterWidthDp = 400.0f;
-constexpr float kClusterHeightDp = 34.0f;
-constexpr float kHealthBarDp = 76.0f;
-constexpr float kFlashBarDp = 60.0f;
+// Plate geometry the RCSS draws (fallback when the layout has not measured).
+constexpr float kClusterWidthDp = 150.0f;
+constexpr float kClusterHeightDp = 40.0f;
+constexpr float kHealthBarDp = 112.0f;
+constexpr float kArmorBarDp = 112.0f;
+constexpr float kFlashBarDp = 12.0f;
+constexpr float kCellGapDp = 1.0f;
 
-// Old CAmmoPanel state/flag bits the akimbo fold keys on.
-constexpr int32_t kStateUzi = 1 << 2;
-constexpr int32_t kUziAkimboFlag = 32;
+// Element ids per readout: a hidden readout keeps its boxes (visibility), so
+// the plate width and the measured anchor never drift.
+constexpr const char *kHealthIds[] = {"health-cells", "health-value"};
+constexpr const char *kArmorIds[] = {"armor-cells", "armor-value"};
+constexpr const char *kAmmoIds[] = {"ammo-row1", "ammo-row2"};
+constexpr const char *kFlashIds[] = {"flash-battery", "flash-value"};
+constexpr const char *kLongJumpIds[] = {"longjump"};
 
 AbcUiCvarHandle FollowCvar = nullptr;
 AbcUiCvarHandle DangerHealthCvar = nullptr;
@@ -92,6 +112,12 @@ void setVisible(AbcUiDocument *doc, const char *id, bool visible) {
   setProperty(doc, id, "visibility", visible ? "visible" : "hidden");
 }
 
+void setGroupVisible(AbcUiDocument *doc, const char *const *ids, size_t count,
+                     bool visible) {
+  for (size_t i = 0; i < count; ++i)
+    setVisible(doc, ids[i], visible);
+}
+
 void setWidthDp(AbcUiDocument *doc, const char *id, float dp) {
   char buffer[24] = {};
   std::snprintf(buffer, sizeof(buffer), "%gdp", dp);
@@ -108,17 +134,26 @@ int cvarInt(AbcUiCvarHandle handle, int fallback) {
 
 // ---------------------------------------------------------------- values ----
 
-struct VitalState {
+struct BarState {
   int value = -1;
+  int cells = 0;
+  float cellWidth = 0.0f;
   bool visible = false;
 };
 
 struct AmmoState {
   bool visible = false;
+  bool hasSecond = false;
+  bool hasReserve1 = false;
+  bool hasReserve2 = false;
   bool hasIcon = false;
-  char clip[16] = {};
-  char reserve[16] = {};
+  bool hasIcon2 = false;
+  int clip1 = -1;
+  int clip2 = -1;
+  int reserve1 = -1;
+  int reserve2 = -1;
   char icon[192] = {};
+  char icon2[192] = {};
 };
 
 struct FlashState {
@@ -127,25 +162,81 @@ struct FlashState {
   bool lit = false;
 };
 
-VitalState HealthState;
-VitalState ArmorState;
+struct LongJumpState {
+  bool visible = false;
+};
+
+BarState HealthBar;
+BarState ArmorBar;
 AmmoState Ammo;
 FlashState Flash;
+LongJumpState LongJump;
+int PeakHealth = 0;
+int PeakArmor = 0;
 bool DocumentShown = false;
 
-void applyVital(AbcUiDocument *doc, const char *slotId, const char *valueId,
-                const char *fillId, int value, bool visible, int danger,
-                float fullWidthDp, VitalState &state) {
+// The cells are appended once per document; the bars then only reposition
+// them and set the fill widths (no per-frame DOM construction).
+void buildCells(AbcUiDocument *doc) {
+  static constexpr char kCell[] =
+      "<div class=\"cell\"><div class=\"fill\"></div></div>";
+  char markup[4096] = {};
+  size_t used = 0;
+  for (int i = 0; i < moduleui::segment::kMaxCells; ++i) {
+    if (used + sizeof(kCell) >= sizeof(markup))
+      break;
+    std::memcpy(markup + used, kCell, sizeof(kCell) - 1);
+    used += sizeof(kCell) - 1;
+  }
+  markup[used] = '\0';
+  if (AbcUiElement *health = elementById(doc, "health-cells"))
+    Api->ui->elementSetInnerRML(health, markup);
+  if (AbcUiElement *armor = elementById(doc, "armor-cells"))
+    Api->ui->elementSetInnerRML(armor, markup);
+}
+
+// One segmented bar: the cell count follows the maximum (10 points per cell),
+// the bar length stays fixed and the cells share it, and the last cell fills
+// partially when the value is not a multiple of ten.
+void applyBar(AbcUiDocument *doc, const char *containerId, const char *valueId,
+              int value, int maximum, bool visible, float barWidthDp,
+              const float normalColor[3], int danger, BarState &state) {
   const bool becameVisible = visible && !state.visible;
   if (state.visible != visible) {
-    setVisible(doc, slotId, visible);
+    setVisible(doc, containerId, visible);
+    setVisible(doc, valueId, visible);
     state.visible = visible;
   }
   if (!visible)
     return;
-  if (becameVisible)
-    state.value = -1;
-  if (state.value == value)
+
+  const int cells = moduleui::segment::cellCount(maximum);
+  if (cells != state.cells) {
+    const float cellWidth =
+        moduleui::segment::cellWidth(barWidthDp, kCellGapDp, cells);
+    AbcUiElement *container = elementById(doc, containerId);
+    for (int i = 0; i < moduleui::segment::kMaxCells; ++i) {
+      AbcUiElement *cell =
+          container ? Api->ui->elementChild(container, i) : nullptr;
+      if (!cell)
+        continue;
+      const bool drawn = i < cells;
+      Api->ui->elementSetProperty(cell, "display", drawn ? "block" : "none");
+      if (!drawn)
+        continue;
+      char left[24] = {};
+      char width[24] = {};
+      std::snprintf(left, sizeof(left), "%gdp",
+                    static_cast<float>(i) * (cellWidth + kCellGapDp));
+      std::snprintf(width, sizeof(width), "%gdp", cellWidth);
+      Api->ui->elementSetProperty(cell, "left", left);
+      Api->ui->elementSetProperty(cell, "width", width);
+    }
+    state.cells = cells;
+    state.cellWidth = cellWidth;
+  }
+
+  if (state.value == value && !becameVisible)
     return;
   state.value = value;
 
@@ -153,18 +244,37 @@ void applyVital(AbcUiDocument *doc, const char *slotId, const char *valueId,
   std::snprintf(text, sizeof(text), "%d", value);
   setText(doc, valueId, text);
 
-  const float ratio =
-      std::clamp(static_cast<float>(value) / 100.0f, 0.0f, 1.0f);
-  setWidthDp(doc, fillId, fullWidthDp * ratio);
-
   char color[64] = {};
-  if (danger > 0 && value < danger)
+  const bool dangerHit = danger > 0 && value < danger;
+  if (dangerHit)
     Api->ui->differColor(kAccent, kRed, static_cast<float>(value) / danger,
                          color, sizeof(color));
   else
-    Api->ui->formatColor(kAccent, color, sizeof(color));
+    Api->ui->formatColor(normalColor, color, sizeof(color));
   setProperty(doc, valueId, "color", color);
-  setProperty(doc, fillId, "background-color", color);
+
+  AbcUiElement *container = elementById(doc, containerId);
+  for (int i = 0; i < state.cells; ++i) {
+    AbcUiElement *cell =
+        container ? Api->ui->elementChild(container, i) : nullptr;
+    AbcUiElement *fill = cell ? Api->ui->elementChild(cell, 0) : nullptr;
+    if (!fill)
+      continue;
+    char width[24] = {};
+    std::snprintf(width, sizeof(width), "%gdp",
+                  moduleui::segment::fillWidth(value, i, state.cellWidth));
+    Api->ui->elementSetProperty(fill, "width", width);
+  }
+}
+
+// One ammo sprite as a spricon:// URI; false when the weapon has no usable
+// sprite for that slot.
+bool spriteUri(const AbcUiWeaponSprite &sprite, char *out, size_t size) {
+  if (sprite.status != ABCUI_OK || sprite.atlas[0] == '\0')
+    return false;
+  std::snprintf(out, size, "spricon://%s/%d,%d,%d,%d", sprite.atlas,
+                sprite.rect[0], sprite.rect[1], sprite.rect[2], sprite.rect[3]);
+  return true;
 }
 
 void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
@@ -175,53 +285,88 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
   weapon.structSize = sizeof(weapon);
   const bool known = armed && Api->weapons->current(&weapon) != 0;
 
-  char clip[16] = {};
-  char reserve[16] = {};
-  char icon[192] = {};
-  bool hasIcon = false;
-  bool visible = false;
+  const int pool1 =
+      weapon.ammoType > 0 ? Api->weapons->countAmmo(weapon.ammoType) : -1;
+  // A second pool only counts when it is a different ammo type: the akimbo
+  // case ships a second magazine but shares the primary pool.
+  const bool distinctSecond =
+      weapon.ammo2Type > 0 && weapon.ammo2Type != weapon.ammoType;
+  const int pool2 =
+      distinctSecond ? Api->weapons->countAmmo(weapon.ammo2Type) : -1;
 
-  if (known) {
-    const int primary =
-        weapon.ammoType > 0 ? weapon.ammoType : weapon.ammo2Type;
-    const int pool = primary > 0 ? Api->weapons->countAmmo(primary) : 0;
-    if (primary > 0 || weapon.clip >= 0) {
-      visible = true;
-      if (weapon.clip >= 0) {
-        if ((weapon.state & kStateUzi) && (weapon.flags & kUziAkimboFlag) &&
-            weapon.clip2 >= 0)
-          std::snprintf(clip, sizeof(clip), "%dx%d", weapon.clip2, weapon.clip);
-        else
-          std::snprintf(clip, sizeof(clip), "%d", weapon.clip);
-        std::snprintf(reserve, sizeof(reserve), "/%d", pool);
-      } else {
-        std::snprintf(clip, sizeof(clip), "%d", pool);
-      }
-      if (weapon.ammo.status == ABCUI_OK && weapon.ammo.atlas[0] != '\0') {
-        std::snprintf(icon, sizeof(icon), "spricon://%s/%d,%d,%d,%d",
-                      weapon.ammo.atlas, weapon.ammo.rect[0],
-                      weapon.ammo.rect[1], weapon.ammo.rect[2],
-                      weapon.ammo.rect[3]);
-        hasIcon = true;
-      }
-    }
-  }
+  const bool visible = known && (weapon.clip >= 0 || weapon.clip2 >= 0 ||
+                                 pool1 >= 0 || pool2 >= 0);
+  // Row two carries the second magazine: the akimbo clip when the ammo type is
+  // shared, or the distinct secondary pool.
+  const bool hasSecond = visible && (weapon.clip2 >= 0 || pool2 >= 0);
+  const bool hasReserve1 = visible && weapon.clip >= 0 && pool1 >= 0;
+  const bool hasReserve2 = visible && weapon.clip2 >= 0 && pool2 >= 0;
+
+  const int clip1 = weapon.clip >= 0 ? weapon.clip : pool1;
+  const int reserve1 = hasReserve1 ? pool1 : 0;
+  const int clip2 = weapon.clip2 >= 0 ? weapon.clip2 : pool2;
+  const int reserve2 = hasReserve2 ? pool2 : 0;
 
   if (Ammo.visible != visible) {
-    setVisible(doc, "ammo", visible);
+    setGroupVisible(doc, kAmmoIds, std::size(kAmmoIds), visible);
     Ammo.visible = visible;
+    if (visible) {
+      // The group write above turns every ammo slot on; restore the per-slot
+      // state so a hidden second row never flashes in.
+      setVisible(doc, "ammo-row2", Ammo.hasSecond);
+      setVisible(doc, "ammo1", Ammo.hasReserve1);
+      setVisible(doc, "ammo2", Ammo.hasReserve2);
+    }
   }
   if (!visible)
     return;
 
-  if (std::strcmp(Ammo.clip, clip) != 0) {
-    std::snprintf(Ammo.clip, sizeof(Ammo.clip), "%s", clip);
-    setText(doc, "ammo-clip", Ammo.clip);
+  if (Ammo.hasSecond != hasSecond) {
+    Ammo.hasSecond = hasSecond;
+    setVisible(doc, "ammo-row2", hasSecond);
+    // A single row is centred in the ammo band instead of leaving the second
+    // row's space empty; the flashlight and longjump marks follow it.
+    setProperty(doc, "ammo-row1", "top", hasSecond ? "13dp" : "20dp");
+    setProperty(doc, "flash-battery", "top", hasSecond ? "20dp" : "27dp");
+    setProperty(doc, "flash-value", "top", hasSecond ? "15dp" : "22dp");
+    setProperty(doc, "longjump", "top", hasSecond ? "20dp" : "27dp");
   }
-  if (std::strcmp(Ammo.reserve, reserve) != 0) {
-    std::snprintf(Ammo.reserve, sizeof(Ammo.reserve), "%s", reserve);
-    setText(doc, "ammo-reserve", Ammo.reserve);
+  if (Ammo.hasReserve1 != hasReserve1) {
+    Ammo.hasReserve1 = hasReserve1;
+    setVisible(doc, "ammo1", hasReserve1);
   }
+  if (Ammo.hasReserve2 != hasReserve2) {
+    Ammo.hasReserve2 = hasReserve2;
+    setVisible(doc, "ammo2", hasReserve2);
+  }
+
+  if (Ammo.clip1 != clip1) {
+    Ammo.clip1 = clip1;
+    char text[16] = {};
+    std::snprintf(text, sizeof(text), "%d", clip1);
+    setText(doc, "clip1", text);
+  }
+  if (hasSecond && Ammo.clip2 != clip2) {
+    Ammo.clip2 = clip2;
+    char text[16] = {};
+    std::snprintf(text, sizeof(text), "%d", clip2);
+    setText(doc, "clip2", text);
+  }
+  if (hasReserve1 && Ammo.reserve1 != reserve1) {
+    Ammo.reserve1 = reserve1;
+    char text[16] = {};
+    std::snprintf(text, sizeof(text), "%d", reserve1);
+    setText(doc, "ammo1", text);
+  }
+  if (hasReserve2 && Ammo.reserve2 != reserve2) {
+    Ammo.reserve2 = reserve2;
+    char text[16] = {};
+    std::snprintf(text, sizeof(text), "%d", reserve2);
+    setText(doc, "ammo2", text);
+  }
+
+  char icon[192] = {};
+  const bool hasIcon = spriteUri(weapon.ammo, icon, sizeof(icon));
   if (Ammo.hasIcon != hasIcon ||
       (hasIcon && std::strcmp(Ammo.icon, icon) != 0)) {
     std::snprintf(Ammo.icon, sizeof(Ammo.icon), "%s", icon);
@@ -230,12 +375,29 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
       Api->ui->elementSetAttribute(element, "src",
                                    hasIcon ? Ammo.icon : nullptr);
   }
+
+  // The second row's sprite: the weapon's "ammo2" slot, falling back to the
+  // primary sprite when the registry has no separate one.
+  char icon2[192] = {};
+  bool hasIcon2 = hasSecond && spriteUri(weapon.ammo2, icon2, sizeof(icon2));
+  if (hasSecond && !hasIcon2) {
+    std::snprintf(icon2, sizeof(icon2), "%s", icon);
+    hasIcon2 = hasIcon;
+  }
+  if (Ammo.hasIcon2 != hasIcon2 ||
+      (hasIcon2 && std::strcmp(Ammo.icon2, icon2) != 0)) {
+    std::snprintf(Ammo.icon2, sizeof(Ammo.icon2), "%s", icon2);
+    Ammo.hasIcon2 = hasIcon2;
+    if (AbcUiElement *element = elementById(doc, "ammo2-icon"))
+      Api->ui->elementSetAttribute(element, "src",
+                                   hasIcon2 ? Ammo.icon2 : nullptr);
+  }
 }
 
 void applyFlash(AbcUiDocument *doc, const AbcUiHudState &hud, bool visible) {
   const bool becameVisible = visible && !Flash.visible;
   if (Flash.visible != visible) {
-    setVisible(doc, "flash", visible);
+    setGroupVisible(doc, kFlashIds, std::size(kFlashIds), visible);
     Flash.visible = visible;
   }
   if (!visible)
@@ -244,12 +406,6 @@ void applyFlash(AbcUiDocument *doc, const AbcUiHudState &hud, bool visible) {
     Flash.battery = -1;
 
   const int battery = std::clamp(hud.flashBattery, 0, 100);
-  const bool lit = hud.flashOn != 0;
-  if (Flash.lit != lit) {
-    Flash.lit = lit;
-    if (AbcUiElement *element = elementById(doc, "flash"))
-      Api->ui->elementSetClass(element, "lit", lit ? 1 : 0);
-  }
   if (Flash.battery == battery)
     return;
   Flash.battery = battery;
@@ -259,12 +415,14 @@ void applyFlash(AbcUiDocument *doc, const AbcUiHudState &hud, bool visible) {
   setText(doc, "flash-value", text);
   setWidthDp(doc, "flash-fill",
              kFlashBarDp * static_cast<float>(battery) / 100.0f);
+}
 
-  char color[64] = {};
-  Api->ui->differColor(kAccent, kRed, static_cast<float>(battery) / 100.0f,
-                       color, sizeof(color));
-  setProperty(doc, "flash-value", "color", color);
-  setProperty(doc, "flash-fill", "background-color", color);
+void applyLongJump(AbcUiDocument *doc, const AbcUiHudState &hud, bool session) {
+  const bool visible = session && hud.longjump != 0;
+  if (LongJump.visible == visible)
+    return;
+  LongJump.visible = visible;
+  setGroupVisible(doc, kLongJumpIds, std::size(kLongJumpIds), visible);
 }
 
 // ---------------------------------------------------------------- anchor ----
@@ -350,17 +508,28 @@ void panelOnData(void *, double) {
   const bool flashVisible =
       session && !(hud.hideBits & ABCUI_HIDEBIT_FLASHLIGHT);
 
-  applyVital(doc, "health", "health-value", "health-fill", hud.health,
-             healthVisible, cvarInt(DangerHealthCvar, kDefaultDanger),
-             kHealthBarDp, HealthState);
-  applyVital(doc, "armor", "armor-value", "armor-fill", hud.armor, armorVisible,
-             cvarInt(DangerArmorCvar, kDefaultDanger), kHealthBarDp,
-             ArmorState);
+  if (hud.health > PeakHealth)
+    PeakHealth = hud.health;
+  if (hud.armor > PeakArmor)
+    PeakArmor = hud.armor;
+
+  // 100 is the baseline maximum: a higher value seen adds cells, a lower one
+  // simply reads as a partly filled bar.
+  const int maxHealth = std::max(PeakHealth, 100);
+  const int maxArmor = std::max(PeakArmor, 100);
+
+  applyBar(doc, "health-cells", "health-value", hud.health, maxHealth,
+           healthVisible, kHealthBarDp, kNumeral,
+           cvarInt(DangerHealthCvar, kDefaultDanger), HealthBar);
+  applyBar(doc, "armor-cells", "armor-value", hud.armor, maxArmor, armorVisible,
+           kArmorBarDp, kAccent, cvarInt(DangerArmorCvar, kDefaultDanger),
+           ArmorBar);
   applyAmmo(doc, hud);
   applyFlash(doc, hud, flashVisible);
+  applyLongJump(doc, hud, session);
 
-  const bool anyVisible =
-      healthVisible || armorVisible || Ammo.visible || flashVisible;
+  const bool anyVisible = healthVisible || armorVisible || Ammo.visible ||
+                          flashVisible || LongJump.visible;
   if (DocumentShown != anyVisible) {
     DocumentShown = anyVisible;
     if (anyVisible)
@@ -410,29 +579,26 @@ void panelOnRedraw(void *, double frameTime) {
   updateDwell(followDesired(hud, player), frameTime);
 
   bool projected = false;
-  float headX = 0.0f;
-  float headY = 0.0f;
+  float hipX = 0.0f;
+  float hipY = 0.0f;
   if (Anchor.Armed && player.index != 0) {
-    float eyeHeight[3] = {};
-    Api->data->viewHeight(eyeHeight);
-    const float head[3] = {player.origin[0] + eyeHeight[0],
-                           player.origin[1] + eyeHeight[1],
-                           player.origin[2] + eyeHeight[2] + kHeadTopUnits};
+    // The player origin is the hull centre, i.e. hip height: the plate's
+    // vertical centre rides it, its right edge keeps a fixed gap to the model.
     float screen[2] = {};
-    if (Api->ui->project(head, screen) == 0) {
+    if (Api->ui->project(player.origin, screen) == 0) {
       projected = true;
-      headX = screen[0];
-      headY = screen[1];
+      hipX = screen[0];
+      hipY = screen[1];
     }
   }
 
   const bool followNow = Anchor.Armed && projected;
-  float targetX = (static_cast<float>(width) - clusterWidth) * 0.5f;
+  float targetX = kFallbackLeftDp * scale;
   float targetY =
       static_cast<float>(height) - kFallbackBottomDp * scale - clusterHeight;
   if (followNow) {
-    targetX = headX - clusterWidth * 0.5f;
-    targetY = headY - kHeadLiftDp * scale - clusterHeight;
+    targetX = hipX - clusterWidth - kHipOffsetDp * scale;
+    targetY = hipY - clusterHeight * 0.5f;
   }
 
   const bool snap = Anchor.SnapNext || followNow != Anchor.FollowWas;
@@ -464,16 +630,35 @@ void panelReset(void *) {
   DocumentShown = false;
   Anchor = {};
   Anchor.SnapNext = true;
+  PeakHealth = 0;
+  PeakArmor = 0;
   // Force the next show to rewrite every readout.
-  HealthState = {};
-  ArmorState = {};
+  HealthBar = {};
+  ArmorBar = {};
   Ammo = {};
   Flash = {};
+  LongJump = {};
 }
 
 void panelDocumentReady(void *) {
-  // Seed from the live snapshot: the change events may have fired before the
-  // document existed (same seeding the classic panels do).
+  AbcUiDocument *doc = panelDocument();
+  if (!doc)
+    return;
+  // The document starts with every readout visible (the RML is a layout, not
+  // a runtime state). Hide all groups before the first snapshot so a readout
+  // that is already gated off cannot flash its placeholder zero, then build
+  // the bar cells once and seed from the live snapshot.
+  setGroupVisible(doc, kHealthIds, std::size(kHealthIds), false);
+  setGroupVisible(doc, kArmorIds, std::size(kArmorIds), false);
+  setGroupVisible(doc, kAmmoIds, std::size(kAmmoIds), false);
+  setGroupVisible(doc, kFlashIds, std::size(kFlashIds), false);
+  setGroupVisible(doc, kLongJumpIds, std::size(kLongJumpIds), false);
+  buildCells(doc);
+  HealthBar = {};
+  ArmorBar = {};
+  Ammo = {};
+  Flash = {};
+  LongJump = {};
   panelOnData(nullptr, 0.0);
   Anchor = {};
   Anchor.SnapNext = true;

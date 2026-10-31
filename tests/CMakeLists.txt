@@ -117,6 +117,11 @@ abcui_add_test(abc_ui_follow_anchor
     SOURCES DivisionFollow.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
 
+# The 10-point cell arithmetic behind the group's segmented bars.
+abcui_add_test(abc_ui_segment_bar
+    SOURCES SegmentBar.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
 # The shipped group document: ids, RCSS grammar and a real laid-out row.
 abcui_add_test(abc_ui_division_document
     SOURCES DivisionDocument.cpp

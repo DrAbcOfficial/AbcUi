@@ -4,36 +4,46 @@
 	<link type="text/rcss" href="../rcss/division.rcss"/>
 </head>
 <body id="division">
-	<!-- One row moved as a unit by DivisionModule: health + armor, then the
-	     active weapon's ammo, then the flashlight battery. Slots keep their
-	     box when hidden (visibility, never display) so the row width never
-	     changes and the anchor cannot drift. The row is positioned in px by
-	     the module; every other box is dp-laid by division.rcss. -->
+	<!-- The Division-style cluster: one compact plate at the character's hip,
+	     carried as a unit by DivisionModule.
+
+	     Top: a white segmented health bar with its value, a thinner orange
+	     armour bar with its value. Cells are appended by the module (one per
+	     10 points of the tracked maximum), so the RML only provides the two
+	     containers.
+
+	     Ammo: one row per ammo type - the type's sprite, its magazine (large)
+	     and its reserve (small). A weapon with a second, different ammo type
+	     gets a second row with its own sprite; the flashlight battery and the
+	     longjump module state sit to the right of the first row. -->
 	<div id="cluster">
-		<div id="vitals">
-			<div class="readout" id="health">
-				<div class="tick"></div>
-				<div class="value" id="health-value">0</div>
-				<div class="meter"><div class="fill" id="health-fill"></div></div>
-			</div>
-			<div class="readout" id="armor">
-				<div class="tick"></div>
-				<div class="value" id="armor-value">0</div>
-				<div class="meter"><div class="fill" id="armor-fill"></div></div>
-			</div>
+		<div id="plate"></div>
+		<div id="edge"></div>
+
+		<div id="health-cells"></div>
+		<div id="health-value" class="big right">0</div>
+
+		<div id="armor-cells"></div>
+		<div id="armor-value" class="small right">0</div>
+
+		<div id="ammo-row1">
+			<img id="ammo-icon" class="icon"/>
+			<div id="clip1" class="big">0</div>
+			<div id="ammo1" class="small">0</div>
 		</div>
-		<div class="rule" id="rule-vitals"></div>
-		<div class="readout" id="ammo">
-			<img class="icon" id="ammo-icon"/>
-			<div class="value" id="ammo-clip">0</div>
-			<div class="reserve" id="ammo-reserve"></div>
+
+		<div id="ammo-row2">
+			<img id="ammo2-icon" class="icon"/>
+			<div id="clip2" class="big">0</div>
+			<div id="ammo2" class="small">0</div>
 		</div>
-		<div class="rule" id="rule-ammo"></div>
-		<div class="readout" id="flash">
-			<div class="lamp"></div>
-			<div class="value" id="flash-value">100%</div>
-			<div class="meter"><div class="fill" id="flash-fill"></div></div>
+
+		<div id="flash-battery">
+			<div id="flash-fill" class="fill"></div>
 		</div>
+		<div id="flash-value" class="tiny">100%</div>
+
+		<div id="longjump" class="tiny right">LJ</div>
 	</div>
 </body>
 </rml>

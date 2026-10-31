@@ -122,20 +122,24 @@ int main() {
     TEST_CASE("dom-ids");
     CHECK(hasId(document, "division"));
     CHECK(hasId(document, "cluster"));
-    CHECK(hasId(document, "vitals"));
-    CHECK(hasId(document, "health"));
+    CHECK(hasId(document, "plate"));
+    CHECK(hasId(document, "edge"));
+    CHECK(hasId(document, "health-cells"));
     CHECK(hasId(document, "health-value"));
-    CHECK(hasId(document, "health-fill"));
-    CHECK(hasId(document, "armor"));
+    CHECK(hasId(document, "armor-cells"));
     CHECK(hasId(document, "armor-value"));
-    CHECK(hasId(document, "armor-fill"));
-    CHECK(hasId(document, "ammo"));
+    CHECK(hasId(document, "ammo-row1"));
+    CHECK(hasId(document, "ammo-row2"));
     CHECK(hasId(document, "ammo-icon"));
-    CHECK(hasId(document, "ammo-clip"));
-    CHECK(hasId(document, "ammo-reserve"));
-    CHECK(hasId(document, "flash"));
-    CHECK(hasId(document, "flash-value"));
+    CHECK(hasId(document, "ammo2-icon"));
+    CHECK(hasId(document, "clip1"));
+    CHECK(hasId(document, "clip2"));
+    CHECK(hasId(document, "ammo1"));
+    CHECK(hasId(document, "ammo2"));
+    CHECK(hasId(document, "flash-battery"));
     CHECK(hasId(document, "flash-fill"));
+    CHECK(hasId(document, "flash-value"));
+    CHECK(hasId(document, "longjump"));
 
     TEST_CASE("row-lays-out");
     Rml::Element *cluster = document->GetElementById("cluster");
@@ -148,14 +152,15 @@ int main() {
     TEST_CASE("hidden-slot-keeps-box");
     // The module hides slots through visibility; the box (and therefore the
     // row width the anchor clamps against) must survive.
-    Rml::Element *armor = document->GetElementById("armor");
-    CHECK(armor != nullptr);
-    if (armor) {
-      const float width = armor->GetOffsetWidth();
-      armor->SetProperty("visibility", "hidden");
+    Rml::Element *bar = document->GetElementById("health-cells");
+    CHECK(bar != nullptr);
+    if (bar) {
+      const float width = bar->GetOffsetWidth();
+      CHECK_NEAR(width, 112.0, 0.5);
+      bar->SetProperty("visibility", "hidden");
       context->Update();
-      CHECK_NEAR(armor->GetOffsetWidth(), width, 0.5);
-      armor->SetProperty("visibility", "visible");
+      CHECK_NEAR(bar->GetOffsetWidth(), width, 0.5);
+      bar->SetProperty("visibility", "visible");
       context->Update();
     }
 
