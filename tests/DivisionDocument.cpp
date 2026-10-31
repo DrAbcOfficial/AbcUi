@@ -34,6 +34,29 @@ public:
   int Messages = 0;
 };
 
+// The document carries the longjump icon; the null renderer returns empty
+// texture handles, which RmlUi reports as a load failure. This renderer
+// accepts every texture (the pixel data itself is never inspected offline).
+class TextureRenderInterface final : public abctest::NullRenderInterface {
+public:
+  // Rendering the document compiles every geometry; a zero handle would log
+  // "Got empty compiled geometry" and break the zero-warning contract.
+  Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex>,
+                                              Rml::Span<const int>) override {
+    return 1;
+  }
+  Rml::TextureHandle LoadTexture(Rml::Vector2i &size,
+                                 const Rml::String &) override {
+    size = Rml::Vector2i(1, 1);
+    return 1;
+  }
+  Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte>,
+                                     Rml::Vector2i) override {
+    return 1;
+  }
+  void ReleaseTexture(Rml::TextureHandle) override {}
+};
+
 std::string readFile(const std::filesystem::path &path) {
   std::ifstream input(path, std::ios::binary);
   std::ostringstream buffer;
@@ -58,7 +81,7 @@ bool hasId(Rml::ElementDocument *document, const char *id) {
 
 int main() {
   CountingSystemInterface systemInterface;
-  abctest::NullRenderInterface renderer;
+  TextureRenderInterface renderer;
   Rml::SetSystemInterface(&systemInterface);
   Rml::SetRenderInterface(&renderer);
   if (!Rml::Initialise()) {
@@ -85,6 +108,7 @@ int main() {
       source / "modules/base/assets/rcss/base.rcss";
   const std::filesystem::path divisionRcss = module / "rcss/division.rcss";
   const std::filesystem::path divisionRml = module / "rml/division.rml";
+  const std::filesystem::path longjumpIcon = module / "img/longjump.png";
 
   abctest::TempDir temp("abcui-division-document");
   std::string base = readFile(baseRcss);
@@ -96,8 +120,11 @@ int main() {
 
   std::string markup = readFile(divisionRml);
   CHECK(!markup.empty());
+  CHECK(std::filesystem::is_regular_file(longjumpIcon));
   replaceAll(markup, "mod://abcui.base/rcss/base.rcss", basePath);
   replaceAll(markup, "../rcss/division.rcss", sheetPath);
+  replaceAll(markup, "mod://abcui.division/hud/img/longjump.png",
+             longjumpIcon.generic_string());
   const std::string documentPath = temp.write("division.rml", markup.c_str());
 
   Rml::Context *context =
@@ -114,6 +141,10 @@ int main() {
   if (document) {
     document->Show();
     context->Update();
+    // Rendering is what actually fetches the icon through the file interface;
+    // the accepting render interface above turns it into a handle without a
+    // GPU.
+    context->Render();
 
     TEST_CASE("zero-warnings");
     CHECK(systemInterface.Messages == 0);
@@ -140,6 +171,26 @@ int main() {
     CHECK(hasId(document, "flash-fill"));
     CHECK(hasId(document, "flash-value"));
     CHECK(hasId(document, "longjump"));
+
+    TEST_CASE("icon-loads");
+    bool iconLoaded = false;
+    for (const Rml::String &source : Rml::GetTextureSourceList())
+      if (source.find("longjump.png") != Rml::String::npos)
+        iconLoaded = true;
+    CHECK(iconLoaded);
+
+    TEST_CASE("third-person-lean");
+    // The exact transform shape the module writes in third person must parse
+    // without a warning.
+    Rml::Element *tilted = document->GetElementById("cluster");
+    CHECK(tilted != nullptr);
+    if (tilted) {
+      tilted->SetProperty("transform", "perspective(600dp) rotateY(12.0deg) "
+                                       "skewX(6.0deg)");
+      context->Update();
+      context->Render();
+      CHECK(systemInterface.Messages == 0);
+    }
 
     TEST_CASE("row-lays-out");
     Rml::Element *cluster = document->GetElementById("cluster");

@@ -29,6 +29,8 @@
 	top: 0;
 	width: 150dp;
 	height: 40dp;
+	/* The third-person lean pivots at the edge nearest the character. */
+	transform-origin: 100% 50%;
 }
 
 #plate {
@@ -240,14 +242,14 @@
 	height: 10dp;
 }
 
-/* Longjump module state: only shown while the module is owned. */
+/* Longjump module state: the backpack mark, tinted amber, only shown while
+   the module is owned. */
 #longjump {
-	left: 122dp;
-	top: 27dp;
-	width: 22dp;
+	position: absolute;
+	left: 128dp;
+	top: 22dp;
+	width: 12dp;
 	height: 12dp;
-	font-size: 9dp;
-	line-height: 12dp;
-	color: var(--abc-hud-accent);
-	letter-spacing: 0.4dp;
+	image-color: var(--abc-hud-accent);
+	opacity: 0.9;
 }

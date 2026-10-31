@@ -329,7 +329,7 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
     setProperty(doc, "ammo-row1", "top", hasSecond ? "13dp" : "20dp");
     setProperty(doc, "flash-battery", "top", hasSecond ? "20dp" : "27dp");
     setProperty(doc, "flash-value", "top", hasSecond ? "15dp" : "22dp");
-    setProperty(doc, "longjump", "top", hasSecond ? "20dp" : "27dp");
+    setProperty(doc, "longjump", "top", hasSecond ? "15dp" : "22dp");
   }
   if (Ammo.hasReserve1 != hasReserve1) {
     Ammo.hasReserve1 = hasReserve1;
@@ -440,6 +440,10 @@ struct AnchorState {
   bool Armed = false;
   bool SnapNext = true;
   double Dwell = 0.0;
+  // Third-person lean, expressed as the player's normalised horizontal offset
+  // from the camera axis (-1..1); 0 keeps the plate flat.
+  float Tilt = 0.0f;
+  bool TiltApplied = false;
 };
 
 AnchorState Anchor;
@@ -601,6 +605,26 @@ void panelOnRedraw(void *, double frameTime) {
     targetY = hipY - clusterHeight * 0.5f;
   }
 
+  // Third person only: the plate leans like a world-anchored panel. The lean
+  // follows the player's horizontal offset from the camera axis, so the panel
+  // reads as attached to the character; first person keeps it flat. The
+  // projection's perspective gives the parallelogram its depth, the skew
+  // supplies the parallelogram itself.
+  float tilt = 0.0f;
+  if (followNow) {
+    const float halfWidth = static_cast<float>(width) * 0.5f;
+    tilt = std::clamp((hipX - halfWidth) / halfWidth, -1.0f, 1.0f);
+  }
+  if (!Anchor.TiltApplied || std::fabs(tilt - Anchor.Tilt) > 0.02f) {
+    char transform[96] = {};
+    std::snprintf(transform, sizeof(transform),
+                  "perspective(600dp) rotateY(%.1fdeg) skewX(%.1fdeg)",
+                  tilt * 14.0f, tilt * 6.0f);
+    setProperty(doc, "cluster", "transform", transform);
+    Anchor.Tilt = tilt;
+    Anchor.TiltApplied = true;
+  }
+
   const bool snap = Anchor.SnapNext || followNow != Anchor.FollowWas;
   float position[2] = {};
   moduleui::follow::step(Anchor.Follow, targetX, targetY, clusterWidth,
@@ -712,6 +736,8 @@ void onModuleVidInit() {
   Anchor.DocumentHeight = 0;
   Anchor.Applied = false;
   Anchor.SnapNext = true;
+  Anchor.Tilt = 0.0f;
+  Anchor.TiltApplied = false;
 }
 
 void onModuleUnload() {

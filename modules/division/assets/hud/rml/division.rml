@@ -43,7 +43,7 @@
 		</div>
 		<div id="flash-value" class="tiny">100%</div>
 
-		<div id="longjump" class="tiny right">LJ</div>
+		<img id="longjump" src="mod://abcui.division/hud/img/longjump.png"/>
 	</div>
 </body>
 </rml>
