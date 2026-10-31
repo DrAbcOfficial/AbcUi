@@ -117,6 +117,11 @@ abcui_add_test(abc_ui_follow_anchor
     SOURCES DivisionFollow.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
 
+# The shipped group document: ids, RCSS grammar and a real laid-out row.
+abcui_add_test(abc_ui_division_document
+    SOURCES DivisionDocument.cpp
+    LIBRARIES RmlUi::RmlUi)
+
 abcui_add_test(abc_ui_audit_regressions
     SOURCES AuditRegressions.cpp
             "${SRC}/modules/gameui/navigation/MenuAction.cpp"
