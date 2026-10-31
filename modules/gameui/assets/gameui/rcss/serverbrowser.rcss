@@ -595,7 +595,7 @@
 	width: 16dp;
 	height: 20dp;
 	background-color: var(--abc-surface-3);
-	decorator: image(../../img/select-arrow.png);
+	decorator: image(mod://abcui.base/img/select-arrow.png);
 }
 
 #sb-filters-reset {
