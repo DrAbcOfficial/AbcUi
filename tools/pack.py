@@ -79,9 +79,9 @@ def load_manifest(module_dir):
             raise ValueError("%s: '%s' must be an array of module ids" %
                              (path, field))
     # Optional HUD group (issue #15): modules without one are shared by every
-    # group. Only the group selected on the command line is packed, so a
-    # group that replaces another (classic vs division) never ships both
-    # implementations in the same archive.
+    # group. The selected group is packed, or every group with
+    # --hud-group all so the module manager can switch between the
+    # implementations at runtime.
     group = manifest.get("hudGroup", "any")
     if not isinstance(group, str) or re.fullmatch(r"[a-z][a-z0-9]*", group) is None:
         raise ValueError("%s: 'hudGroup' must be a lowercase group name" % path)
@@ -164,13 +164,16 @@ def collect_modules(module_dirs, hud_group, explicit):
     """Loads manifests and drops modules belonging to another HUD group.
 
     An explicit --module keeps every named module (the caller asked for that
-    set); the default discovery applies the group filter.
+    set); the default discovery applies the group filter. --hud-group all
+    keeps every group, shipping both implementations for the module manager.
     """
     selected = []
+    packing_all = hud_group == "all"
     for module_dir in module_dirs:
         manifest = load_manifest(module_dir)
         group = manifest["hudGroup"]
-        if not explicit and group != "any" and group != hud_group:
+        if (not explicit and not packing_all and group != "any"
+                and group != hud_group):
             print("pack: skip %s (hud group '%s', packing '%s')" %
                   (manifest["id"], group, hud_group))
             continue
@@ -178,12 +181,14 @@ def collect_modules(module_dirs, hud_group, explicit):
     return selected
 
 
-def validate_set(selected, check_dependencies):
+def validate_set(selected, check_dependencies, check_conflicts=True):
     """No two packed modules conflict; the default pack is self-contained.
 
     An explicit --module set is an ad-hoc pack (a single module for a test),
     so only the conflict rule applies there; the default discovery must pack
-    every dependency or the archive would not load at runtime.
+    every dependency or the archive would not load at runtime. --hud-group all
+    intentionally packs conflicting groups: the loader resolves them at boot
+    and the module manager switches the active set.
     """
     ids = {manifest["id"] for _, manifest in selected}
     problems = []
@@ -193,10 +198,11 @@ def validate_set(selected, check_dependencies):
                 if dependency not in ids:
                     problems.append("module '%s' needs '%s', which is not in "
                                     "this pack" % (manifest["id"], dependency))
-        for conflict in manifest.get("conflicts", []):
-            if conflict in ids:
-                problems.append("module '%s' conflicts with '%s' in this "
-                                "pack" % (manifest["id"], conflict))
+        if check_conflicts:
+            for conflict in manifest.get("conflicts", []):
+                if conflict in ids:
+                    problems.append("module '%s' conflicts with '%s' in this "
+                                    "pack" % (manifest["id"], conflict))
     return problems
 
 
@@ -209,7 +215,8 @@ def main(argv):
     parser.add_argument("--module", action="append", default=[],
                         help="module directory name (repeatable); default release modules")
     parser.add_argument("--hud-group", default="classic",
-                        help="HUD group packed when it is not 'any' (default classic)")
+                        help="HUD group to pack: classic, division or all "
+                             "(default classic)")
     args = parser.parse_args(argv)
 
     modules_root = os.path.join(args.source_dir, "modules")
@@ -229,7 +236,8 @@ def main(argv):
     except (OSError, ValueError, json.JSONDecodeError) as error:
         fail(str(error))
         return 1
-    problems = validate_set(selected, not args.module)
+    problems = validate_set(selected, not args.module,
+                            args.hud_group != "all")
     if problems:
         for problem in problems:
             fail(problem)
