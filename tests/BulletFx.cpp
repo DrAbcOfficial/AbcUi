@@ -74,5 +74,21 @@ int main() {
     CHECK(!Effect.update(0.016f));
   }
 
+  TEST_CASE("per-drop-cap");
+  {
+    // One event never emits more than kMaxPerDrop rounds, however large the
+    // magazine drop is; a negative drop (a refill) emits nothing.
+    CHECK(moduleui::bulletfx::roundsForDrop(0) == 0);
+    CHECK(moduleui::bulletfx::roundsForDrop(1) == 1);
+    CHECK(moduleui::bulletfx::roundsForDrop(2) == 2);
+    CHECK(moduleui::bulletfx::roundsForDrop(3) == 3);
+    CHECK(moduleui::bulletfx::roundsForDrop(17) ==
+          moduleui::bulletfx::kMaxPerDrop);
+    CHECK(moduleui::bulletfx::roundsForDrop(400) ==
+          moduleui::bulletfx::kMaxPerDrop);
+    CHECK(moduleui::bulletfx::roundsForDrop(-5) == 0);
+    CHECK(moduleui::bulletfx::kMaxPerDrop <= 10);
+  }
+
   return abctest::finish("abc_ui_bullet_fx");
 }

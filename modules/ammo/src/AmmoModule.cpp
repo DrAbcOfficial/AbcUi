@@ -138,29 +138,45 @@ void updatePool(int pool, const AbcUiWeaponSprite &sprite,
   Api->ui->elementSetInnerRML(container, PoolRml[pool].c_str());
 }
 
-// One fired round: a copy of the pool's sprite falling from the ammo line.
-void fireRound(const char *poolId, const std::string &uri) {
+// The ammo sprite's laid-out box. Captured before the pool markup is rebuilt:
+// updatePool() replaces the image, and a freshly created element has no layout
+// yet, so measuring it at spawn time would give an empty box and the round
+// would spawn at the origin with no size (invisible).
+struct IconRect {
+  float X = 0.0f;
+  float Y = 0.0f;
+  float Width = 0.0f;
+  float Height = 0.0f;
+  bool Valid = false;
+};
+
+IconRect captureIcon(const char *poolId) {
+  IconRect rect;
   AbcUiDocument *doc = barDocument();
-  if (!doc || uri.empty())
-    return;
+  if (!doc)
+    return rect;
   AbcUiElement *pool = Api->ui->querySelector(doc, poolId);
   if (!pool)
-    return;
-  // The pool's first child is its ammo sprite: the round is a copy of that
-  // exact element (same centre and size), so it leaves from the icon.
+    return rect;
+  // The pool's first child is its ammo sprite.
   AbcUiElement *icon = Api->ui->elementChild(pool, 0);
   if (!icon)
+    return rect;
+  if (!Api->ui->elementAbsoluteOffset(icon, &rect.X, &rect.Y))
+    return rect;
+  Api->ui->elementOffsetSize(icon, &rect.Width, &rect.Height);
+  rect.Valid = rect.Width > 0.0f && rect.Height > 0.0f;
+  return rect;
+}
+
+// One fired round: a copy of the pool's sprite falling from the ammo line.
+void fireRound(const IconRect &icon, const std::string &uri) {
+  AbcUiDocument *doc = barDocument();
+  if (!doc || uri.empty() || !icon.Valid)
     return;
 
-  float x = 0.0f;
-  float y = 0.0f;
-  float width = 0.0f;
-  float height = 0.0f;
-  if (!Api->ui->elementAbsoluteOffset(icon, &x, &y))
-    return;
-  Api->ui->elementOffsetSize(icon, &width, &height);
-
-  const std::size_t slot = Bullets.fire({x + width * 0.5f, y + height * 0.5f});
+  const std::size_t slot =
+      Bullets.fire({icon.X + icon.Width * 0.5f, icon.Y + icon.Height * 0.5f});
   AbcUiElement *layer = Api->ui->querySelector(doc, "bullets");
   if (!layer)
     return;
@@ -171,8 +187,8 @@ void fireRound(const char *poolId, const std::string &uri) {
 
   char sizeWidth[24] = {};
   char sizeHeight[24] = {};
-  std::snprintf(sizeWidth, sizeof(sizeWidth), "%.1fpx", width);
-  std::snprintf(sizeHeight, sizeof(sizeHeight), "%.1fpx", height);
+  std::snprintf(sizeWidth, sizeof(sizeWidth), "%.1fpx", icon.Width);
+  std::snprintf(sizeHeight, sizeof(sizeHeight), "%.1fpx", icon.Height);
   Api->ui->elementSetProperty(element, "width", sizeWidth);
   Api->ui->elementSetProperty(element, "height", sizeHeight);
   Api->ui->elementSetAttribute(element, "src", uri.c_str());
@@ -189,6 +205,9 @@ void refreshAmmo() {
 
   const bool pool1 = BarWeapon.ammoType > 0;
   const bool pool2 = BarWeapon.ammo2Type > 0;
+  // Capture both icon boxes before updatePool() rebuilds the pool markup.
+  const IconRect icon1 = captureIcon(kPoolIds[0]);
+  const IconRect icon2 = captureIcon(kPoolIds[1]);
   setPoolVisible(0, pool1);
   setPoolVisible(1, pool2);
 
@@ -252,10 +271,10 @@ void refreshAmmo() {
 
   if (sameWeapon && LastClip1 >= 0 && shot1 >= 0 && shot1 < LastClip1 &&
       BarWeapon.ammo.status == ABCUI_OK) {
-    const int fired = std::min(LastClip1 - shot1, 3);
+    const int fired = moduleui::bulletfx::roundsForDrop(LastClip1 - shot1);
     const std::string uri = spriteUri(BarWeapon.ammo);
     for (int i = 0; i < fired; ++i)
-      fireRound(kPoolIds[0], uri);
+      fireRound(icon1, uri);
   }
   if (sameWeapon && LastClip2 >= 0 && shot2 >= 0 && shot2 < LastClip2) {
     const bool hasIcon =
@@ -263,10 +282,10 @@ void refreshAmmo() {
     if (hasIcon) {
       const auto &icon =
           BarWeapon.ammo2.status == ABCUI_OK ? BarWeapon.ammo2 : BarWeapon.ammo;
-      const int fired = std::min(LastClip2 - shot2, 3);
+      const int fired = moduleui::bulletfx::roundsForDrop(LastClip2 - shot2);
       const std::string uri = spriteUri(icon);
       for (int i = 0; i < fired; ++i)
-        fireRound(kPoolIds[1], uri);
+        fireRound(icon2, uri);
     }
   }
 

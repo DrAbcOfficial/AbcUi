@@ -23,6 +23,18 @@ inline constexpr float kFallSpeed = 30.0f; // initial downward speed
 inline constexpr float kDrift = 26.0f;     // horizontal spread
 inline constexpr float kSpin = 300.0f;     // deg/s
 
+// Per-event emission cap, independent of the pool size: one magazine drop
+// (a shot, or an admin/refill reset that lowers the clip by hundreds) emits at
+// most this many rounds, so a large drop can never spawn a burst that stalls
+// a frame. kMaxRounds above is the separate "how many render slots exist"
+// bound, and it recycles.
+inline constexpr int kMaxPerDrop = 3;
+
+// Rounds to emit for one magazine drop; a non-positive drop emits nothing.
+[[nodiscard]] inline int roundsForDrop(int Dropped) {
+  return std::clamp(Dropped, 0, kMaxPerDrop);
+}
+
 // Deterministic 0..1 stream: the spread must not depend on global RNG state.
 class Spread {
 public:

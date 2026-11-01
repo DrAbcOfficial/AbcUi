@@ -477,13 +477,13 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
   const bool sameWeapon = known && weapon.slot == Ammo.weaponSlot &&
                           weapon.slotPos == Ammo.weaponPos;
   if (sameWeapon && Ammo.lastClip1 >= 0 && clip1 < Ammo.lastClip1) {
-    const int fired = std::min(Ammo.lastClip1 - clip1, 3);
+    const int fired = moduleui::bulletfx::roundsForDrop(Ammo.lastClip1 - clip1);
     for (int i = 0; i < fired; ++i)
       fireRound(doc, "ammo-icon", Ammo.icon);
   }
   if (sameWeapon && hasSecond && Ammo.lastClip2 >= 0 &&
       clip2 < Ammo.lastClip2) {
-    const int fired = std::min(Ammo.lastClip2 - clip2, 3);
+    const int fired = moduleui::bulletfx::roundsForDrop(Ammo.lastClip2 - clip2);
     for (int i = 0; i < fired; ++i)
       fireRound(doc, "ammo2-icon", Ammo.icon2);
   }
