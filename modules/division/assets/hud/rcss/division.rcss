@@ -265,6 +265,18 @@
 	height: 10dp;
 }
 
+/* Readout pops (moduleui::bounce): a changed number scales around its own
+   alignment edge, so it grows over the plate without sliding sideways. */
+#health-value,
+#armor-value {
+	transform-origin: 100% 50%;
+}
+
+#clip1,
+#clip2 {
+	transform-origin: 0% 50%;
+}
+
 /* Longjump module state: the backpack mark, tinted amber, only shown while
    the module is owned. */
 #longjump {

@@ -29,6 +29,7 @@
 #include "../../common/BulletLayer.h"
 #include "../../common/FollowAnchor.h"
 #include "../../common/SegmentBar.h"
+#include "../../common/ValueBounce.h"
 
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -144,8 +145,10 @@ int cvarInt(AbcUiCvarHandle handle, int fallback) {
 // ---------------------------------------------------------------- values ----
 
 struct BarState {
-  // Write policy: the first show snaps, later changes animate by direction.
+  // Write policy: the first show snaps, later changes animate by direction,
+  // and a real change pops the numeral.
   moduleui::barmotion::Tracker Motion;
+  moduleui::bounce::Pulse Pop;
   int cells = 0;
   // Width-ladder percent last written per cell (-1 = needs a write).
   int fillPercent[moduleui::segment::kMaxCells] = {};
@@ -168,6 +171,9 @@ struct AmmoState {
   int clip2 = -1;
   int reserve1 = -1;
   int reserve2 = -1;
+  // The magazine numbers' pop; the first value of a row seeds in place.
+  moduleui::bounce::Pulse ClipPop1;
+  moduleui::bounce::Pulse ClipPop2;
   // Weapon identity and the previous magazines, for the fired-round check.
   int weaponSlot = -1;
   int weaponPos = -1;
@@ -270,6 +276,10 @@ void applyBar(AbcUiDocument *doc, const char *containerId, const char *valueId,
   char text[16] = {};
   std::snprintf(text, sizeof(text), "%d", value);
   setText(doc, valueId, text);
+  // A real value change pops the numeral; a snap (first show, re-show) lands
+  // on the value in place.
+  if (!step.snap)
+    state.Pop.trigger();
 
   char color[64] = {};
   const bool dangerHit = danger > 0 && value < danger;
@@ -420,12 +430,17 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
   }
 
   if (Ammo.clip1 != clip1) {
+    // The first value of a row seeds in place; later changes pop.
+    if (Ammo.clip1 >= 0)
+      Ammo.ClipPop1.trigger();
     Ammo.clip1 = clip1;
     char text[16] = {};
     std::snprintf(text, sizeof(text), "%d", clip1);
     setText(doc, "clip1", text);
   }
   if (hasSecond && Ammo.clip2 != clip2) {
+    if (Ammo.clip2 >= 0)
+      Ammo.ClipPop2.trigger();
     Ammo.clip2 = clip2;
     char text[16] = {};
     std::snprintf(text, sizeof(text), "%d", clip2);
@@ -601,6 +616,28 @@ void measureCluster(AbcUiDocument *doc) {
 
 // ------------------------------------------------------------ lifecycle ----
 
+// One frame of one number's pop. Only a running pulse writes, so a settled
+// readout costs one boolean per frame.
+void tickNumber(AbcUiDocument *doc, const char *id,
+                moduleui::bounce::Pulse &pop, double frameTime) {
+  if (!pop.active())
+    return;
+  float scale = 1.0f;
+  if (!pop.advance(frameTime, scale))
+    return;
+  char transform[32] = {};
+  setProperty(
+      doc, id, "transform",
+      moduleui::bounce::transformText(scale, transform, sizeof(transform)));
+}
+
+void tickNumberPops(AbcUiDocument *doc, double frameTime) {
+  tickNumber(doc, "health-value", HealthBar.Pop, frameTime);
+  tickNumber(doc, "armor-value", ArmorBar.Pop, frameTime);
+  tickNumber(doc, "clip1", Ammo.ClipPop1, frameTime);
+  tickNumber(doc, "clip2", Ammo.ClipPop2, frameTime);
+}
+
 void panelOnData(void *, double frameTime) {
   AbcUiDocument *doc = panelDocument();
   if (!doc)
@@ -638,6 +675,7 @@ void panelOnData(void *, double frameTime) {
   applyAmmo(doc, hud);
   applyFlash(doc, hud, flashVisible);
   applyLongJump(doc, hud, session);
+  tickNumberPops(doc, frameTime);
 
   const bool anyVisible = healthVisible || armorVisible || Ammo.visible ||
                           flashVisible || LongJump.visible;
@@ -779,12 +817,14 @@ void panelOnRedraw(void *, double frameTime) {
 void resetBar(BarState &state) {
   resetFillClasses(state);
   state.Motion.reset();
+  state.Pop.reset();
   state.cells = 0;
   state.visible = false;
 }
 
 void panelReset(void *) {
-  if (AbcUiDocument *doc = panelDocument())
+  AbcUiDocument *doc = panelDocument();
+  if (doc)
     Api->ui->documentHide(doc);
   DocumentShown = false;
   Anchor = {};
@@ -798,6 +838,12 @@ void panelReset(void *) {
   Ammo = {};
   Flash = {};
   LongJump = {};
+  // The document outlives the reset: an interrupted pop has to be put back on
+  // the rest scale, or the number stays enlarged until its next change.
+  static constexpr const char *kPopIds[] = {"health-value", "armor-value",
+                                            "clip1", "clip2"};
+  for (const char *id : kPopIds)
+    setProperty(doc, id, "transform", moduleui::bounce::kRestTransform);
 }
 
 void panelDocumentReady(void *) {

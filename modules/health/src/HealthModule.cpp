@@ -7,6 +7,7 @@
 // spectating. hud_danger_health / hud_danger_armor keep their old names and
 // defaults (persisted contract).
 #include "../../common/BarMotion.h"
+#include "../../common/ValueBounce.h"
 
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -33,9 +34,11 @@ constexpr float kRed[3] = {255.0f, 0.0f, 0.0f};
 AbcUiCvarHandle DangerHealth = nullptr;
 AbcUiCvarHandle DangerArmor = nullptr;
 
-// One write policy per vitals bar (first show snaps, later changes animate).
+// One write policy per vitals bar (first show snaps, later changes animate),
+// plus the number's pop on a real value change.
 struct VitalState {
   moduleui::barmotion::Tracker Motion;
+  moduleui::bounce::Pulse Pop;
 };
 
 VitalState HealthVital;
@@ -155,6 +158,10 @@ void applyVital(const char *labelId, const char *barId, const char *iconId,
     const std::string text = std::to_string(value);
     Api->ui->elementSetInnerRML(label, text.c_str());
     Api->ui->elementSetProperty(label, "color", color.c_str());
+    // A real value change pops the number; the first show and a re-show land
+    // on the value without one (the tracker's snap flag).
+    if (!step.snap)
+      vital.Pop.trigger();
   }
   // The meter is a flat rounded fill; its width is the bar-fill-N ladder
   // percentage of the well, and the box's direction class picks the ramp. The
@@ -169,6 +176,33 @@ void applyVital(const char *labelId, const char *barId, const char *iconId,
   Api->ui->elementSetProperty(bar, "background-color", color.c_str());
   if (AbcUiElement *icon = Api->ui->querySelector(doc, iconId))
     Api->ui->elementSetProperty(icon, "image-color", color.c_str());
+}
+
+// The value pop: the label at a scale factor.
+void writeVitalScale(AbcUiDocument *doc, const char *labelId, float scale) {
+  AbcUiElement *label = doc ? Api->ui->querySelector(doc, labelId) : nullptr;
+  if (!label)
+    return;
+  char transform[32] = {};
+  Api->ui->elementSetProperty(
+      label, "transform",
+      moduleui::bounce::transformText(scale, transform, sizeof(transform)));
+}
+
+// One frame of a running pop. Only a running pulse writes, so a settled
+// readout costs one boolean per frame.
+void tickVital(const char *labelId, VitalState &vital, double frameTime) {
+  if (!vital.Pop.active())
+    return;
+  float scale = 1.0f;
+  if (!vital.Pop.advance(frameTime, scale))
+    return;
+  writeVitalScale(panelDocument(), labelId, scale);
+}
+
+void panelOnData(void *, double frameTime) {
+  tickVital("health-label", HealthVital, frameTime);
+  tickVital("armor-label", ArmorVital, frameTime);
 }
 
 void setHealth(int health) {
@@ -231,6 +265,8 @@ void panelDocumentReady(void *) {
   // again per map and the DOM is rebuilt with it).
   HealthVital.Motion.reset();
   ArmorVital.Motion.reset();
+  HealthVital.Pop.reset();
+  ArmorVital.Pop.reset();
   // Seed from the current snapshot: the change events may have fired before
   // the panels existed (the suit bit arrives on the first client-data frame,
   // ahead of the first HUD_Frame that builds them).
@@ -250,6 +286,12 @@ void panelReset(void *) {
   // snaps, so no width from the previous session animates in.
   HealthVital.Motion.reset();
   ArmorVital.Motion.reset();
+  HealthVital.Pop.reset();
+  ArmorVital.Pop.reset();
+  // The document outlives the reset: an interrupted pop has to be put back on
+  // the rest scale, or the value stays enlarged until its next change.
+  writeVitalScale(doc, "health-label", 1.0f);
+  writeVitalScale(doc, "armor-label", 1.0f);
 }
 
 // ---- lifecycle ----
@@ -269,7 +311,7 @@ void onModuleLoad() {
   Panel.zIndex = 0;
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
-  Panel.onData = nullptr;
+  Panel.onData = &panelOnData;
   Panel.onRedraw = nullptr;
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);

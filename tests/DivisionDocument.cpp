@@ -207,6 +207,30 @@ int main() {
       CHECK(systemInterface.Messages == 0);
     }
 
+    TEST_CASE("number-pop");
+    // The pop is an inline scale on the value element (moduleui::bounce): it
+    // must parse, keep the laid-out box and resolve the sheet's alignment
+    // edge as the scale origin.
+    Rml::Element *value = document->GetElementById("health-value");
+    CHECK(value != nullptr);
+    if (value) {
+      const float width = value->GetOffsetWidth();
+      value->SetProperty("transform", "scale(1.280)");
+      context->Update();
+      context->Render();
+      CHECK_NEAR(value->GetOffsetWidth(), width, 0.5);
+      const Rml::Property *origin = value->GetProperty("transform-origin-x");
+      CHECK(origin != nullptr);
+      if (origin) {
+        const Rml::NumericValue numeric = origin->GetNumericValue();
+        CHECK(numeric.unit == Rml::Unit::PERCENT);
+        CHECK_NEAR(numeric.number, 100.0, 0.01);
+      }
+      value->SetProperty("transform", "scale(1.000)");
+      context->Update();
+    }
+    CHECK(systemInterface.Messages == 0);
+
     TEST_CASE("row-lays-out");
     Rml::Element *cluster = document->GetElementById("cluster");
     CHECK(cluster != nullptr);

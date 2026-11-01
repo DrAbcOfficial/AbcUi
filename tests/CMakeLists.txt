@@ -133,6 +133,12 @@ abcui_add_test(abc_ui_bar_animation
     SOURCES BarAnimation.cpp
     LIBRARIES RmlUi::RmlUi)
 
+# The shared number pop behind the vitals and magazine readouts: peak frame,
+# eased return, restart and reset rules (header-only).
+abcui_add_test(abc_ui_value_bounce
+    SOURCES ValueBounce.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
 # The fixed-capacity particle system behind the HUD effects.
 abcui_add_test(abc_ui_particle_system
     SOURCES ParticleSystem.cpp

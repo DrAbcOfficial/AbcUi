@@ -10,6 +10,7 @@
 #include "../../common/BulletFx.h"
 #include "../../common/BulletLayer.h"
 #include "../../common/UiText.h"
+#include "../../common/ValueBounce.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Glyphs.h"
@@ -48,6 +49,16 @@ AbcUiPanelDesc ItemStackDesc = {};
 bool BarWeaponKnown = false;
 AbcUiWeaponInfo BarWeapon = {};
 std::string PoolRml[2];
+// One pool's magazine pop (moduleui::bounce). The pool line is rebuilt on
+// every change, so the last clip string decides whether the number really
+// changed; the last scale is re-applied to the fresh span when only the line
+// around it moved (a reserve change must not cut a running pop short).
+struct ClipBounce {
+  moduleui::bounce::Pulse Pop;
+  std::string Clip;
+  float Scale = 1.0f;
+};
+ClipBounce Clip[2];
 // Fired-round effect and the previous magazines it compares against.
 moduleui::bulletfx::Bullets Bullets;
 int LastClip1 = -1;
@@ -77,6 +88,34 @@ void setBarVisible(bool visible) {
     Api->ui->documentHide(doc);
 }
 
+// The magazine pop: one pool's clip span (child 1 of the pool line, after the
+// ammo sprite) at a scale factor.
+void writeClipScale(int pool, float scale) {
+  AbcUiDocument *doc = barDocument();
+  AbcUiElement *container =
+      doc ? Api->ui->querySelector(doc, kPoolIds[pool]) : nullptr;
+  AbcUiElement *clip =
+      container ? Api->ui->elementChild(container, 1) : nullptr;
+  if (!clip)
+    return;
+  char transform[32] = {};
+  Api->ui->elementSetProperty(
+      clip, "transform",
+      moduleui::bounce::transformText(scale, transform, sizeof(transform)));
+}
+
+void tickClipBounces(double frameTime) {
+  for (int pool = 0; pool < 2; ++pool) {
+    if (!Clip[pool].Pop.active())
+      continue;
+    float scale = 1.0f;
+    if (!Clip[pool].Pop.advance(frameTime, scale))
+      continue;
+    Clip[pool].Scale = scale;
+    writeClipScale(pool, scale);
+  }
+}
+
 void applyHideToken() {
   // Old hudhideCallback: ShowPanel(!HIDEWEAPONS) while suited; the
   // Viewport-wide HIDEALL bit hides the ammo bar with everything else.
@@ -95,6 +134,9 @@ void setPoolVisible(int pool, bool visible) {
   setElementProperty(kPoolIds[pool], "display", visible ? "block" : "none");
   if (visible)
     return;
+  // A hidden pool has no clip line: forget the last number and the pop, so
+  // the next show seeds in place instead of bouncing in the previous value.
+  Clip[pool] = ClipBounce{};
   AbcUiDocument *doc = barDocument();
   if (!doc)
     return;
@@ -136,6 +178,20 @@ void updatePool(int pool, const AbcUiWeaponSprite &sprite,
     return;
   PoolRml[pool] = std::move(rml);
   Api->ui->elementSetInnerRML(container, PoolRml[pool].c_str());
+
+  // The magazine pop follows the clip number: a changed number starts one, a
+  // rebuilt line hands the running scale to its fresh span. The first seed
+  // after a (re)show has no pop to continue - the number appears, not moves.
+  ClipBounce &bounce = Clip[pool];
+  if (bounce.Clip != clip) {
+    const bool appeared = bounce.Clip.empty();
+    bounce.Clip = clip;
+    bounce.Scale = 1.0f;
+    if (!appeared)
+      bounce.Pop.trigger();
+  } else if (bounce.Pop.active()) {
+    writeClipScale(pool, bounce.Scale);
+  }
 }
 
 // The ammo sprite's laid-out box. Captured before the pool markup is rebuilt:
@@ -544,6 +600,7 @@ void onItemPickup(void *, const void *payload) {
 // ---- panel callbacks ----
 
 void barOnData(void *, double frameTime) {
+  tickClipBounces(frameTime);
   if (!Bullets.update(static_cast<float>(frameTime)))
     return;
   AbcUiDocument *doc = barDocument();
@@ -556,6 +613,8 @@ void barOnData(void *, double frameTime) {
 void barDocumentReady(void *) {
   BarWeaponKnown = false;
   Bullets.clear();
+  Clip[0] = ClipBounce{};
+  Clip[1] = ClipBounce{};
   LastClip1 = -1;
   LastClip2 = -1;
   LastSlot = -1;
@@ -570,6 +629,8 @@ void barReset(void *) {
     Api->ui->documentHide(doc);
   BarWeaponKnown = false;
   Bullets.clear();
+  Clip[0] = ClipBounce{};
+  Clip[1] = ClipBounce{};
   LastClip1 = -1;
   LastClip2 = -1;
   LastSlot = -1;
@@ -683,6 +744,8 @@ void onModuleShutdown() {
   AmmoStack.items.clear();
   WeaponStack.items.clear();
   ItemStack.items.clear();
+  Clip[0] = ClipBounce{};
+  Clip[1] = ClipBounce{};
   BarWeaponKnown = false;
 }
 

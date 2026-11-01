@@ -207,6 +207,28 @@ int main() {
       context->Update();
     }
 
+    TEST_CASE("value-pop");
+    // The number pop is an inline scale on the label (moduleui::bounce): the
+    // transform must parse, leave the laid-out box alone (it is a visual
+    // scale, not a font-size change) and resolve the sheet's left-edge origin.
+    if (Rml::Element *label = document->GetElementById("health-label")) {
+      const float height = label->GetOffsetHeight();
+      label->SetProperty("transform", "scale(1.280)");
+      context->Update();
+      context->Render();
+      CHECK_NEAR(label->GetOffsetHeight(), height, 0.5);
+      const Rml::Property *origin = label->GetProperty("transform-origin-x");
+      CHECK(origin != nullptr);
+      if (origin) {
+        const Rml::NumericValue value = origin->GetNumericValue();
+        CHECK(value.unit == Rml::Unit::PERCENT);
+        CHECK_NEAR(value.number, 0.0, 0.01);
+      }
+      label->SetProperty("transform", "scale(1.000)");
+      context->Update();
+    }
+    CHECK(systemInterface.Messages == 0);
+
     document->Close();
   }
 

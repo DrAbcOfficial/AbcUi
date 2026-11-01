@@ -57,6 +57,9 @@
 	/* HUD accent; the danger rule overrides per value at runtime. */
 	color: var(--abc-hud-accent);
 	opacity: var(--abc-hud-value-opacity);
+	/* The value pop (moduleui::bounce) scales the numeral around its left
+	   edge, so it grows away from the icon instead of sliding sideways. */
+	transform-origin: 0% 50%;
 }
 #health-label { left: 26dp; }
 #armor-label { left: 176dp; }
