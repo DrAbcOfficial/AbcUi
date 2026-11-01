@@ -94,13 +94,28 @@ public:
   // Show: visible, context focus (autofocus element wins), front of the
   // context z-order. Idempotent while visible: a repeated show neither
   // re-focuses nor re-orders (HudPanel::show's steal-the-focus guard, the
-  // interactive counterpart).
+  // interactive counterpart). A show during a running fade-out reverses it.
   void show();
-  // Hide: visibility only. Listener bindings survive hide/show cycles.
-  // Context-focus release when no other document exists is RmlUi's own
-  // behavior (UnfocusDocument keeps the pointer with nothing to hand to);
-  // real focus-release semantics are T06's input ownership.
+  // Hide: begins the fade-out. isVisible() turns false immediately - the page
+  // logic, the menu layer's hide-all rule and the focus guard keep their
+  // synchronous truth - while the document keeps drawing until its opacity
+  // reaches zero; only then is the physical Hide() applied. Listener bindings
+  // survive hide/show cycles. Context-focus release when no other document
+  // exists is RmlUi's own behavior (UnfocusDocument keeps the pointer with
+  // nothing to hand to); real focus-release semantics are T06's ownership.
   void hide();
+  // Advances the opacity ramp. The page layer pumps it once per frame before
+  // the context update (module_documents::pump), so a page never blocks on its
+  // own animation and a fade that outlives the menu layer still completes.
+  void pump(double frameTime);
+
+  // The show/hide dissolve: a page ramps in over kFadeInSeconds and out over
+  // the shorter kFadeOutSeconds, so a page switch dissolves into the next one
+  // instead of cross-fading two equal ghosts. The ramp lives here because it
+  // belongs to document ownership - the one place that knows when a page
+  // appears and leaves - and not to a page stylesheet.
+  static constexpr double kFadeInSeconds = 0.16;
+  static constexpr double kFadeOutSeconds = 0.10;
   // Close: detach every listener, then close the document. After close()
   // the object is back to the pre-load state and may load() again.
   void close();
@@ -151,10 +166,24 @@ protected:
   // Common lookup with a warn-on-missing guard (HudPanel parity).
   Rml::Element *element(const char *id);
 
+  // show() with an explicit focus policy: the noninteractive decoration
+  // documents must never take the keyboard.
+  void show(Rml::FocusFlag focus);
+
 private:
   // Applies the constructor's z-index to whichever document load() ended up
   // with (main or emergency); no-op for a default document.
   void applyZIndex();
+
+  // Resets the fade state for a freshly loaded document (transparent, so
+  // show() ramps the page in).
+  void beginLoaded();
+  // Starts an opacity ramp toward the target value. A completed ramp either
+  // restores the stylesheet's own opacity (a shown page) or physically hides
+  // the document (a closed page).
+  void startFade(float target, double seconds, bool hideWhenDone);
+  void finishFade();
+  void writeOpacity(float opacity);
 
   struct ListenerBinding {
     Rml::ObserverPtr<Rml::Element> Target;
@@ -170,6 +199,16 @@ private:
   Rml::ElementDocument *Document = nullptr;
   bool Degraded = false;
   bool RetryRequested = false;
+  // Fade state (see pump()). Presented is the logical truth isVisible()
+  // reports; the document itself stays drawn until a fade-out lands.
+  bool Presented = false;
+  bool FadeActive = false;
+  bool HideWhenFadeDone = false;
+  float FadeFrom = 1.0f;
+  float FadeTo = 1.0f;
+  float FadeOpacity = 1.0f; // last value written to the document
+  double FadeElapsed = 0.0;
+  double FadeDuration = 0.0;
   std::vector<ListenerBinding> Listeners;
 };
 

@@ -10,6 +10,7 @@
 
 #include <abc/Console.h>
 
+#include <cstdio>
 #include <utility>
 
 namespace framework {
@@ -49,6 +50,7 @@ InteractiveDocument::load(Rml::Context *context) {
   if (Document) {
     Degraded = false;
     applyZIndex();
+    beginLoaded();
     // Backdrop before the page's own setup: the page's onDocumentReady may
     // resolve or reorder nodes, and the backdrop must already sit behind
     // them (paint order is DOM order).
@@ -76,6 +78,7 @@ InteractiveDocument::load(Rml::Context *context) {
   Degraded = true;
   RetryRequested = false;
   applyZIndex();
+  beginLoaded();
   onRecoveryReady();
   return LoadOutcome::kEmergencyFallback;
 }
@@ -88,24 +91,96 @@ InteractiveDocument::retry(Rml::Context *context) {
   return load(context);
 }
 
-void InteractiveDocument::show() {
-  if (!Document || Document->IsVisible())
+void InteractiveDocument::show() { show(Rml::FocusFlag::Auto); }
+
+void InteractiveDocument::show(Rml::FocusFlag focus) {
+  if (!Document || Presented)
     return;
-  // FocusFlag::Auto + the document's autofocus attribute: first show lands
-  // on the page's primary element, re-shows land the same way. Modal stays
-  // off - input ownership arbitration is T06, not a document property.
-  Document->Show(Rml::ModalFlag::None, Rml::FocusFlag::Auto);
-  // Show() does not order the context's document stack; interactive
-  // windows own their z-order explicitly.
+  Presented = true;
+  // A document still dissolving out (see hide()) is already on screen; only a
+  // finished hide needs Rml's Show(). Skipping it also keeps the focus where
+  // it is, so reversing a fade never churns the keyboard owner.
+  if (!Document->IsVisible()) {
+    // FocusFlag::Auto + the document's autofocus attribute: first show lands
+    // on the page's primary element, re-shows land the same way. Modal stays
+    // off - input ownership arbitration is T06, not a document property.
+    Document->Show(Rml::ModalFlag::None, focus);
+  }
+  // Show() does not order the context's document stack; interactive windows
+  // own their z-order explicitly. Also when the page reversed its own
+  // fade-out: a page that comes back must come back to the front.
   Document->PullToFront();
+  startFade(1.0f, kFadeInSeconds, false);
 }
 
 void InteractiveDocument::hide() {
   // Idempotent like show(): Rml's Hide re-dispatches the hide event and
   // unfocuses the document every call, which would churn focus each time a
   // sync re-hides an already hidden document.
-  if (Document && Document->IsVisible())
-    Document->Hide();
+  if (!Document || !Presented)
+    return;
+  // The logical truth flips now; the pixels follow over kFadeOutSeconds and
+  // pump() applies the physical Hide() once the page is fully transparent.
+  Presented = false;
+  startFade(0.0f, kFadeOutSeconds, true);
+}
+
+void InteractiveDocument::pump(double frameTime) {
+  if (!Document || !FadeActive)
+    return;
+  if (FadeDuration <= 0.0) {
+    writeOpacity(FadeTo);
+    finishFade();
+    return;
+  }
+  FadeElapsed += frameTime;
+  if (FadeElapsed >= FadeDuration) {
+    writeOpacity(FadeTo);
+    finishFade();
+    return;
+  }
+  // Ease-out over the ramp: the page leaves/arrives quickly, then settles.
+  const float progress = static_cast<float>(FadeElapsed / FadeDuration);
+  const float remaining = 1.0f - progress;
+  const float eased = 1.0f - remaining * remaining;
+  writeOpacity(FadeFrom + (FadeTo - FadeFrom) * eased);
+}
+
+void InteractiveDocument::startFade(float target, double seconds,
+                                    bool hideWhenDone) {
+  FadeFrom = FadeOpacity;
+  FadeTo = target;
+  FadeElapsed = 0.0;
+  FadeDuration = seconds;
+  HideWhenFadeDone = hideWhenDone;
+  FadeActive = true;
+  if (FadeFrom == FadeTo) // nothing to ramp (e.g. hidden before it drew)
+    finishFade();
+}
+
+void InteractiveDocument::finishFade() {
+  FadeActive = false;
+  if (HideWhenFadeDone) {
+    HideWhenFadeDone = false;
+    // Keep the inline zero: the next show() ramps up from transparent.
+    if (Document)
+      Document->Hide();
+    return;
+  }
+  // Back to the stylesheet's own opacity: an open page carries no residue.
+  if (Document) {
+    Document->RemoveProperty("opacity");
+    FadeOpacity = 1.0f;
+  }
+}
+
+void InteractiveDocument::writeOpacity(float opacity) {
+  FadeOpacity = opacity;
+  if (!Document)
+    return;
+  char value[16];
+  std::snprintf(value, sizeof(value), "%.3f", opacity);
+  Document->SetProperty("opacity", value);
 }
 
 void InteractiveDocument::close() {
@@ -117,6 +192,12 @@ void InteractiveDocument::close() {
   const bool WasDegraded = Degraded;
   Degraded = false;
   RetryRequested = false;
+  // A fade in flight dies with the document; the next load() starts
+  // transparent again.
+  Presented = false;
+  FadeActive = false;
+  HideWhenFadeDone = false;
+  FadeOpacity = 0.0f;
   if (WasDegraded)
     onRecoveryClose();
   auto Bindings = std::move(Listeners);
@@ -129,8 +210,20 @@ void InteractiveDocument::close() {
   ClosingDocument->Close();
 }
 
-bool InteractiveDocument::isVisible() const {
-  return Document && Document->IsVisible();
+bool InteractiveDocument::isVisible() const { return Document && Presented; }
+
+void InteractiveDocument::beginLoaded() {
+  // A freshly loaded page starts fully transparent and hidden: the first
+  // show() ramps it in (writeOpacity is the only place that touches the
+  // inline opacity, so load and fade can never disagree).
+  Presented = false;
+  FadeActive = false;
+  HideWhenFadeDone = false;
+  FadeFrom = 0.0f;
+  FadeTo = 0.0f;
+  FadeElapsed = 0.0;
+  FadeDuration = 0.0;
+  writeOpacity(0.0f);
 }
 
 void InteractiveDocument::applyZIndex() {

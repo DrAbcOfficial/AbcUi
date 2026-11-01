@@ -919,6 +919,11 @@ typedef struct AbcUiVoiceApi {
 // The page keeps its DOM work through the ui section: root() is the document
 // element for delegated listeners (querySelector resolves ids inside it),
 // and every element handle follows the same per-callback lifetime rule.
+//
+// Pages dissolve: show() ramps the page in, and hide() turns visible() false
+// at once while the page keeps drawing until its fade-out lands (the
+// framework then hides it physically). Page code must never wait on the
+// animation - a closing page may hide, show or destroy itself the same frame.
 #define ABCUI_DOC_FLAG_BACKDROP                                                \
   (1 << 0)                                 // wall-sized surface: attach the
                                            // shared blurred backdrop
@@ -976,8 +981,11 @@ typedef struct AbcUiDocumentsApi {
   void(ABCUI_CALL *destroy)(AbcUiDocument *doc);
   int32_t(ABCUI_CALL *loaded)(AbcUiDocument *doc);
   int32_t(ABCUI_CALL *degraded)(AbcUiDocument *doc);
+  // False from the moment hide() lands; the page's pixels fade out after it.
   int32_t(ABCUI_CALL *visible)(AbcUiDocument *doc);
+  // Fades the page in (front of the z-order, focus per the document flags).
   void(ABCUI_CALL *show)(AbcUiDocument *doc);
+  // Fades the page out and hides it once it is transparent.
   void(ABCUI_CALL *hide)(AbcUiDocument *doc);
   // The document element, for delegated listeners; null while unloaded.
   AbcUiElement *(ABCUI_CALL *root)(AbcUiDocument *doc);

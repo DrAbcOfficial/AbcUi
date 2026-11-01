@@ -48,12 +48,12 @@ public:
     auto keepAlive = shared_from_this();
     if (isVisible())
       return;
-    if ((Desc.flags & ABCUI_DOC_FLAG_DECORATION) && document()) {
-      document()->Show(Rml::ModalFlag::None, Rml::FocusFlag::None);
-      document()->PullToFront();
-    } else {
+    // The decoration documents are noninteractive overlays: same fade, but
+    // they must never take the keyboard.
+    if (Desc.flags & ABCUI_DOC_FLAG_DECORATION)
+      InteractiveDocument::show(Rml::FocusFlag::None);
+    else
       InteractiveDocument::show();
-    }
     module_resources::invoke(Lifetime.owner(), "document show", Desc.onShow,
                              Desc.userdata);
   }
@@ -315,14 +315,21 @@ void contextReady(Rml::Context *context) {
       doc->load(context);
 }
 
-void pump() {
+void pump(double frameTime) {
   Rml::Context *context = liveContext();
   if (!context)
     return;
-  if (std::none_of(documents().begin(), documents().end(),
+  // Snapshot first: a page's fade can dispatch DOM events whose listeners
+  // register or destroy pages.
+  const auto snapshot = documents();
+  // The show/hide dissolve of every registered page advances here, before the
+  // context update (the caller's order): a page that just closed finishes its
+  // fade-out even when the menu layer - its usual beat - is already down.
+  for (const auto &doc : snapshot)
+    doc->pump(frameTime);
+  if (std::none_of(snapshot.begin(), snapshot.end(),
                    [](const auto &doc) { return doc->retryRequested(); }))
     return;
-  const auto snapshot = documents();
   for (const auto &doc : snapshot) {
     if (!resolve(reinterpret_cast<AbcUiDocument *>(doc.get())) ||
         !doc->retryRequested())

@@ -185,6 +185,14 @@ implemented rules the transition must keep:
   (`openPage`/`back`/`ensureUp`/`resume`) - never through a native GameUI
   window. The page stack, phase machine and takeover stay framework-side;
   every page is a module document.
+- Page show/hide run a framework-owned opacity dissolve (InteractiveDocument:
+  the ramp is inherited by the page's elements, pumped once per frame by
+  `module_documents::pump` before the context update). `hide()` flips
+  `visible()` immediately and only then ramps out, so the menu layer's
+  hide-all rule, the focus guard and every page flow keep their synchronous
+  truth while the page is still on screen for ~0.1 s. An element that sets its
+  own `opacity` does not inherit the ramp (the backdrop's dimmer therefore
+  rides its background alpha, not its opacity).
 - Data exchange is event-bus based (`src/modsys/EventBus.h`): string channels,
   each backed by priority buckets of `abc::CallbackList` (eventpp reused from
   AbcCore). Priority > 0 runs before the framework default (interception and

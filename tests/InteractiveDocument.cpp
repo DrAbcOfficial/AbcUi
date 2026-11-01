@@ -310,6 +310,60 @@ int main() {
     doc.close();
   }
 
+  {
+    TEST_CASE("show-hide-dissolve");
+    CountingDocument doc(tempFixturePath(true).c_str());
+    CHECK(doc.load(context) ==
+          framework::InteractiveDocument::LoadOutcome::kLoaded);
+    // A loaded page waits transparent, so its first show ramps in instead of
+    // popping at full opacity.
+    const Rml::Property *loaded = doc.document()->GetLocalProperty("opacity");
+    CHECK(loaded != nullptr);
+    if (loaded)
+      CHECK_NEAR(loaded->Get<float>(), 0.0, 0.001);
+
+    doc.show();
+    CHECK(doc.isVisible());
+    doc.pump(framework::InteractiveDocument::kFadeInSeconds * 0.5);
+    const Rml::Property *midIn = doc.document()->GetProperty("opacity");
+    CHECK(midIn != nullptr);
+    if (midIn) {
+      const float value = midIn->Get<float>();
+      CHECK(value > 0.0f && value < 1.0f);
+    }
+    doc.pump(framework::InteractiveDocument::kFadeInSeconds);
+    // A settled page carries no inline opacity: the stylesheet rules again.
+    CHECK(doc.document()->GetLocalProperty("opacity") == nullptr);
+    CHECK(doc.document()->IsVisible());
+
+    // hide() flips the logical truth at once (the page logic and the menu
+    // layer's hide-all rule never wait for an animation) while the document
+    // keeps drawing until the ramp reaches zero.
+    doc.hide();
+    CHECK(!doc.isVisible());
+    CHECK(doc.document()->IsVisible());
+    doc.pump(framework::InteractiveDocument::kFadeOutSeconds * 0.5);
+    CHECK(doc.document()->IsVisible());
+    doc.pump(framework::InteractiveDocument::kFadeOutSeconds);
+    CHECK(!doc.document()->IsVisible());
+
+    // A show during the fade-out reverses it: no hide, no focus churn.
+    doc.show();
+    CHECK(doc.isVisible() && doc.document()->IsVisible());
+    doc.pump(framework::InteractiveDocument::kFadeInSeconds * 0.5);
+    doc.hide();
+    CHECK(!doc.isVisible());
+    doc.show();
+    doc.pump(framework::InteractiveDocument::kFadeOutSeconds);
+    CHECK(doc.isVisible() && doc.document()->IsVisible());
+
+    // close() drops a fade in flight with the DOM.
+    doc.hide();
+    doc.close();
+    CHECK(!doc.isVisible());
+    CHECK(!doc.isLoaded());
+  }
+
   tempFixturePath(false); // remove the fixture file
   Rml::RemoveContext("test");
   Rml::Shutdown();

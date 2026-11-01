@@ -424,7 +424,7 @@ void contextReadyAll(Rml::Context *context) {
 }
 
 void frameAll(double frameTime) {
-  module_documents::pump();
+  module_documents::pump(frameTime);
   for (LoadedModule &module : loaded())
     module_resources::invoke(module.owner, "onFrame", module.descriptor.onFrame,
                              frameTime);

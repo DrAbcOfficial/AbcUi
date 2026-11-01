@@ -54,9 +54,10 @@ int32_t requestRetry(AbcUiDocument *doc);
 // still alive; unload() additionally forgets the descriptors (process
 // teardown, before the module images go away).
 void contextReady(Rml::Context *context);
-// Per-frame beat: a degraded page's Retry button is acted on here (never from
-// inside its own event dispatch).
-void pump();
+// Per-frame beat: the pages' show/hide dissolve advances here, and a degraded
+// page's Retry button is acted on here (never from inside its own event
+// dispatch).
+void pump(double frameTime);
 void shutdown();
 void unload();
 
