@@ -7,6 +7,9 @@
 // testable without RmlUi: the cell count follows the tracked maximum (a
 // 150 HP or an 80 HP maximum still fills the bar with 10-point cells) and the
 // last cell only fills partially when the value is not a multiple of ten.
+// The fill itself is drawn by the fill's width percentage
+// (moduleui::barmotion), not by a dp length, so a relayout never animates the
+// strip.
 
 #include <algorithm>
 
@@ -36,10 +39,6 @@ inline float fillRatio(int value, int index) {
   const float within =
       static_cast<float>(value) - index * static_cast<float>(kPointsPerCell);
   return std::clamp(within / static_cast<float>(kPointsPerCell), 0.0f, 1.0f);
-}
-
-inline float fillWidth(int value, int index, float cellWidth) {
-  return fillRatio(value, index) * cellWidth;
 }
 
 } // namespace moduleui::segment

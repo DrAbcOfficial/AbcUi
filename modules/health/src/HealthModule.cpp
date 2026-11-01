@@ -6,12 +6,11 @@
 // possessed, neither of the health/battery hide bits fully covering, and not
 // spectating. hud_danger_health / hud_danger_armor keep their old names and
 // defaults (persisted contract).
+#include "../../common/BarMotion.h"
+
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
-#include <algorithm>
-#include <cstdio>
-#include <format>
 #include <string>
 
 namespace {
@@ -31,11 +30,16 @@ constexpr const char *kDocumentPath = "mod://abcui.health/hud/rml/health.rml";
 // retuned to the Half-Life amber; the hue-shift path is unchanged.
 constexpr float kAccent[3] = {255.0f, 176.0f, 0.0f};
 constexpr float kRed[3] = {255.0f, 0.0f, 0.0f};
-// Bar geometry (health.rcss meter): 92dp full width.
-constexpr float kBarWidth = 92.0f;
-
 AbcUiCvarHandle DangerHealth = nullptr;
 AbcUiCvarHandle DangerArmor = nullptr;
+
+// One write policy per vitals bar (first show snaps, later changes animate).
+struct VitalState {
+  moduleui::barmotion::Tracker Motion;
+};
+
+VitalState HealthVital;
+VitalState ArmorVital;
 
 AbcUiDocument *panelDocument() {
   return Api->ui->panelDocument(kPanelName);
@@ -63,6 +67,9 @@ void setLongJump(bool longJump) {
   setElementProperty("longjump", "visibility", longJump ? "visible" : "hidden");
 }
 
+void setHealth(int health);
+void setArmor(int armor);
+
 // Old SetHealthVisible/SetArmorVisible element groups.
 void setGroupVisible(const char *const *ids, size_t count, bool visible) {
   for (size_t i = 0; i < count; ++i)
@@ -87,6 +94,12 @@ void updateVisibility() {
                                             "armor-bar-bg", "armor-bar"};
   setGroupVisible(kHealthGroup, 4, !hideHealth);
   setGroupVisible(kArmorGroup, 4, !hideBattery);
+
+  // Re-seed after the visibility flip: a group hidden while its value moved
+  // must land on the current value, and the tracker snaps it instead of
+  // animating from the last drawn width.
+  setHealth(state.health);
+  setArmor(state.armor);
 }
 
 std::string dangerColor(int value, AbcUiCvarHandle cvar, float fallback) {
@@ -104,12 +117,38 @@ std::string dangerColor(int value, AbcUiCvarHandle cvar, float fallback) {
   return color;
 }
 
+// A vitals bar is drawn only while the suit is owned, the HUD is not hidden
+// and the group's own hide bit is clear. A hidden bar has no live width, so the
+// tracker snaps the first shown write instead of animating from a stale one.
+bool healthShown(const AbcUiHudState &state) {
+  return state.suit && state.spectate == 0 &&
+         !(state.hideBits & ABCUI_HIDEBIT_ALL) &&
+         !(state.hideBits & ABCUI_HIDEBIT_HEALTH);
+}
+
+bool armorShown(const AbcUiHudState &state) {
+  return state.suit && state.spectate == 0 &&
+         !(state.hideBits & ABCUI_HIDEBIT_ALL) &&
+         !(state.hideBits & ABCUI_HIDEBIT_BATTERY);
+}
+
 void applyVital(const char *labelId, const char *barId, const char *iconId,
-                int value, AbcUiCvarHandle cvar, float fallback) {
-  const std::string color = dangerColor(value, cvar, fallback);
+                int value, AbcUiCvarHandle cvar, float fallback, bool shown,
+                VitalState &vital) {
   AbcUiDocument *doc = panelDocument();
   if (!doc)
     return;
+  AbcUiElement *bar = Api->ui->querySelector(doc, barId);
+  if (!bar)
+    return;
+
+  // One gate for every write below: a repeated value, a hidden bar and a
+  // transition that is still running must not be disturbed.
+  const moduleui::barmotion::Step step = vital.Motion.observe(value, shown);
+  if (!step.write)
+    return;
+
+  const std::string color = dangerColor(value, cvar, fallback);
   if (AbcUiElement *label = Api->ui->querySelector(doc, labelId)) {
     // Plain type with the 1px outline from health.rcss: the additive glyph
     // pass read worse here, so the value is text again.
@@ -117,14 +156,17 @@ void applyVital(const char *labelId, const char *barId, const char *iconId,
     Api->ui->elementSetInnerRML(label, text.c_str());
     Api->ui->elementSetProperty(label, "color", color.c_str());
   }
-  // The meter is a flat rounded fill scaled by the value; the icon stays the
-  // additive sprite. The danger rule retints both.
-  if (AbcUiElement *bar = Api->ui->querySelector(doc, barId)) {
-    const float pct = std::clamp(value / 100.0f, 0.0f, 1.0f);
-    const std::string width = std::format("{:g}dp", pct * kBarWidth);
-    Api->ui->elementSetProperty(bar, "background-color", color.c_str());
-    Api->ui->elementSetProperty(bar, "width", width.c_str());
-  }
+  // The meter is a flat rounded fill; its width is the bar-fill-N ladder
+  // percentage of the well, and the box's direction class picks the ramp. The
+  // icon stays the additive sprite. The danger rule retints both.
+  char classes[moduleui::barmotion::kClassCapacity] = {};
+  Api->ui->elementSetAttribute(
+      bar, "class",
+      moduleui::barmotion::barClasses(
+          step.direction, step.snap,
+          moduleui::barmotion::percent(static_cast<float>(value) / 100.0f),
+          classes, sizeof(classes)));
+  Api->ui->elementSetProperty(bar, "background-color", color.c_str());
   if (AbcUiElement *icon = Api->ui->querySelector(doc, iconId))
     Api->ui->elementSetProperty(icon, "image-color", color.c_str());
 }
@@ -141,12 +183,15 @@ void setHealth(int health) {
   if (health <= 0 && player.index != 0 && !state.spectate)
     health = 1;
   applyVital("health-label", "health-bar", "health-icon", health, DangerHealth,
-             45.0f);
+             45.0f, healthShown(state), HealthVital);
 }
 
 void setArmor(int armor) {
+  AbcUiHudState state{};
+  state.structSize = sizeof(state);
+  Api->data->hudState(&state);
   applyVital("armor-label", "armor-bar", "armor-icon", armor, DangerArmor,
-             45.0f);
+             45.0f, armorShown(state), ArmorVital);
 }
 
 // ---- event sinks ----
@@ -181,6 +226,11 @@ void panelDocumentReady(void *) {
   AbcUiHudState state{};
   state.structSize = sizeof(state);
   Api->data->hudState(&state);
+  // A fresh document starts from its placeholders, so the trackers must forget
+  // the previous document's widths before the first seed (the HUD cycle runs
+  // again per map and the DOM is rebuilt with it).
+  HealthVital.Motion.reset();
+  ArmorVital.Motion.reset();
   // Seed from the current snapshot: the change events may have fired before
   // the panels existed (the suit bit arrives on the first client-data frame,
   // ahead of the first HUD_Frame that builds them).
@@ -196,6 +246,10 @@ void panelReset(void *) {
   if (doc)
     Api->ui->documentHide(doc);
   setLongJump(false);
+  // A new map or a reconnect starts from a clean slate: the next shown write
+  // snaps, so no width from the previous session animates in.
+  HealthVital.Motion.reset();
+  ArmorVital.Motion.reset();
 }
 
 // ---- lifecycle ----

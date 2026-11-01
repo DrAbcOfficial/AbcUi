@@ -24,6 +24,7 @@
 // group, so it claims the same native HUD elements and the engine's own
 // sprites never double up. It renders numbers and local sprite URIs only - no
 // server string reaches the DOM, so no RML escaping is needed here.
+#include "../../common/BarMotion.h"
 #include "../../common/BulletFx.h"
 #include "../../common/BulletLayer.h"
 #include "../../common/FollowAnchor.h"
@@ -79,7 +80,6 @@ constexpr float kClusterWidthDp = 150.0f;
 constexpr float kClusterHeightDp = 40.0f;
 constexpr float kHealthBarDp = 112.0f;
 constexpr float kArmorBarDp = 112.0f;
-constexpr float kFlashBarDp = 12.0f;
 constexpr float kCellGapDp = 1.0f;
 
 // Element ids per readout: a hidden readout keeps its boxes (visibility), so
@@ -124,10 +124,13 @@ void setGroupVisible(AbcUiDocument *doc, const char *const *ids, size_t count,
     setVisible(doc, ids[i], visible);
 }
 
-void setWidthDp(AbcUiDocument *doc, const char *id, float dp) {
-  char buffer[24] = {};
-  std::snprintf(buffer, sizeof(buffer), "%gdp", dp);
-  setProperty(doc, id, "width", buffer);
+// Replaces an element's class attribute; the bar box and its fills carry the
+// barmotion tokens (bar-motion / bar-drop / bar-gain / bar-snap and
+// bar-fill-N), so the module owns the whole list instead of toggling tokens.
+void setClassAttribute(AbcUiDocument *doc, const char *id,
+                       const char *classes) {
+  if (AbcUiElement *element = elementById(doc, id))
+    Api->ui->elementSetAttribute(element, "class", classes);
 }
 
 int cvarInt(AbcUiCvarHandle handle, int fallback) {
@@ -141,11 +144,18 @@ int cvarInt(AbcUiCvarHandle handle, int fallback) {
 // ---------------------------------------------------------------- values ----
 
 struct BarState {
-  int value = -1;
+  // Write policy: the first show snaps, later changes animate by direction.
+  moduleui::barmotion::Tracker Motion;
   int cells = 0;
-  float cellWidth = 0.0f;
+  // Width-ladder percent last written per cell (-1 = needs a write).
+  int fillPercent[moduleui::segment::kMaxCells] = {};
   bool visible = false;
 };
+
+void resetFillClasses(BarState &state) {
+  for (int &percent : state.fillPercent)
+    percent = -1;
+}
 
 struct AmmoState {
   bool visible = false;
@@ -168,9 +178,8 @@ struct AmmoState {
 };
 
 struct FlashState {
+  moduleui::barmotion::Tracker Motion;
   bool visible = false;
-  int battery = -1;
-  bool lit = false;
 };
 
 struct LongJumpState {
@@ -188,10 +197,10 @@ int PeakArmor = 0;
 bool DocumentShown = false;
 
 // The cells are appended once per document; the bars then only reposition
-// them and set the fill widths (no per-frame DOM construction).
+// them and change the fill's width class (no per-frame DOM construction).
 void buildCells(AbcUiDocument *doc) {
   static constexpr char kCell[] =
-      "<div class=\"cell\"><div class=\"fill\"></div></div>";
+      "<div class=\"cell\"><div class=\"fill bar-fill-0\"></div></div>";
   char markup[4096] = {};
   size_t used = 0;
   for (int i = 0; i < moduleui::segment::kMaxCells; ++i) {
@@ -210,15 +219,23 @@ void buildCells(AbcUiDocument *doc) {
 // One segmented bar: the cell count follows the maximum (10 points per cell),
 // the bar length stays fixed and the cells share it, and the last cell fills
 // partially when the value is not a multiple of ten.
+//
+// The fills are a percentage of their own cell (moduleui::barmotion's ladder),
+// so the maximum change above is a pure dp relayout: only the cells' left and
+// width move, the fill class - and with it the percentage - stays put, and
+// nothing on the strip animates. The value change itself rewrites just the
+// cells whose percentage differs (normally the boundary cell) and the box's
+// direction class, which picks the transition's duration.
 void applyBar(AbcUiDocument *doc, const char *containerId, const char *valueId,
               int value, int maximum, bool visible, float barWidthDp,
               const float normalColor[3], int danger, BarState &state) {
-  const bool becameVisible = visible && !state.visible;
   if (state.visible != visible) {
     setVisible(doc, containerId, visible);
     setVisible(doc, valueId, visible);
     state.visible = visible;
   }
+  // A hidden bar keeps no live width, so the first shown write snaps.
+  const moduleui::barmotion::Step step = state.Motion.observe(value, visible);
   if (!visible)
     return;
 
@@ -245,12 +262,10 @@ void applyBar(AbcUiDocument *doc, const char *containerId, const char *valueId,
       Api->ui->elementSetProperty(cell, "width", width);
     }
     state.cells = cells;
-    state.cellWidth = cellWidth;
   }
 
-  if (state.value == value && !becameVisible)
+  if (!step.write)
     return;
-  state.value = value;
 
   char text[16] = {};
   std::snprintf(text, sizeof(text), "%d", value);
@@ -265,17 +280,29 @@ void applyBar(AbcUiDocument *doc, const char *containerId, const char *valueId,
     Api->ui->formatColor(normalColor, color, sizeof(color));
   setProperty(doc, valueId, "color", color);
 
+  char boxClasses[moduleui::barmotion::kClassCapacity] = {};
+  setClassAttribute(doc, containerId,
+                    moduleui::barmotion::motionClasses(step.direction,
+                                                       step.snap, boxClasses,
+                                                       sizeof(boxClasses)));
+
   AbcUiElement *container = elementById(doc, containerId);
   for (int i = 0; i < state.cells; ++i) {
+    const int percent =
+        moduleui::barmotion::percent(moduleui::segment::fillRatio(value, i));
+    if (percent == state.fillPercent[i])
+      continue;
+    state.fillPercent[i] = percent;
     AbcUiElement *cell =
         container ? Api->ui->elementChild(container, i) : nullptr;
     AbcUiElement *fill = cell ? Api->ui->elementChild(cell, 0) : nullptr;
     if (!fill)
       continue;
-    char width[24] = {};
-    std::snprintf(width, sizeof(width), "%gdp",
-                  moduleui::segment::fillWidth(value, i, state.cellWidth));
-    Api->ui->elementSetProperty(fill, "width", width);
+    char classes[moduleui::barmotion::kClassCapacity] = {};
+    Api->ui->elementSetAttribute(
+        fill, "class",
+        moduleui::barmotion::fillClasses("fill", percent, classes,
+                                         sizeof(classes)));
   }
 }
 
@@ -467,26 +494,32 @@ void applyAmmo(AbcUiDocument *doc, const AbcUiHudState &hud) {
 }
 
 void applyFlash(AbcUiDocument *doc, const AbcUiHudState &hud, bool visible) {
-  const bool becameVisible = visible && !Flash.visible;
   if (Flash.visible != visible) {
     setGroupVisible(doc, kFlashIds, std::size(kFlashIds), visible);
     Flash.visible = visible;
   }
-  if (!visible)
-    return;
-  if (becameVisible)
-    Flash.battery = -1;
 
   const int battery = std::clamp(hud.flashBattery, 0, 100);
-  if (Flash.battery == battery)
+  // The battery well is a bar as well: the same ladder, direction and snap
+  // rules, with its fill a percentage of the 12dp well.
+  const moduleui::barmotion::Step step = Flash.Motion.observe(battery, visible);
+  if (!visible || !step.write)
     return;
-  Flash.battery = battery;
 
   char text[16] = {};
   std::snprintf(text, sizeof(text), "%d%%", battery);
   setText(doc, "flash-value", text);
-  setWidthDp(doc, "flash-fill",
-             kFlashBarDp * static_cast<float>(battery) / 100.0f);
+
+  char boxClasses[moduleui::barmotion::kClassCapacity] = {};
+  setClassAttribute(doc, "flash-battery",
+                    moduleui::barmotion::motionClasses(step.direction,
+                                                       step.snap, boxClasses,
+                                                       sizeof(boxClasses)));
+  char classes[moduleui::barmotion::kClassCapacity] = {};
+  setClassAttribute(doc, "flash-fill",
+                    moduleui::barmotion::fillClasses(
+                        "fill", moduleui::barmotion::percent(battery / 100.0f),
+                        classes, sizeof(classes)));
 }
 
 void applyLongJump(AbcUiDocument *doc, const AbcUiHudState &hud, bool session) {
@@ -743,6 +776,13 @@ void panelOnRedraw(void *, double frameTime) {
   }
 }
 
+void resetBar(BarState &state) {
+  resetFillClasses(state);
+  state.Motion.reset();
+  state.cells = 0;
+  state.visible = false;
+}
+
 void panelReset(void *) {
   if (AbcUiDocument *doc = panelDocument())
     Api->ui->documentHide(doc);
@@ -752,9 +792,9 @@ void panelReset(void *) {
   PeakHealth = 0;
   PeakArmor = 0;
   Bullets.clear();
-  // Force the next show to rewrite every readout.
-  HealthBar = {};
-  ArmorBar = {};
+  // Force the next show to snap every readout to its current value.
+  resetBar(HealthBar);
+  resetBar(ArmorBar);
   Ammo = {};
   Flash = {};
   LongJump = {};
@@ -775,8 +815,8 @@ void panelDocumentReady(void *) {
   setGroupVisible(doc, kLongJumpIds, std::size(kLongJumpIds), false);
   buildCells(doc);
   Bullets.clear();
-  HealthBar = {};
-  ArmorBar = {};
+  resetBar(HealthBar);
+  resetBar(ArmorBar);
   Ammo = {};
   Flash = {};
   LongJump = {};

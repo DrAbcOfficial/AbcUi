@@ -1,6 +1,7 @@
 <rml>
 <head>
 	<link type="text/rcss" href="mod://abcui.base/rcss/base.rcss"/>
+	<link type="text/rcss" href="mod://abcui.base/rcss/barmotion.rcss"/>
 	<link type="text/rcss" href="../rcss/health.rcss"/>
 </head>
 <body id="health">
@@ -12,13 +13,15 @@
 	     that want them. -->
 	<img id="health-icon" src="modadd://abcui.health/hud/img/healthbar_icon.png"/>
 	<div id="health-label" class="font-vital">0</div>
-	<div id="health-bar-bg"></div>
-	<div id="health-bar"></div>
+	<div id="health-bar-bg">
+		<div id="health-bar" class="bar-motion bar-fill-0"></div>
+	</div>
 
 	<img id="armor-icon" src="modadd://abcui.health/hud/img/armorbar_icon.png"/>
 	<div id="armor-label" class="font-vital">0</div>
-	<div id="armor-bar-bg"></div>
-	<div id="armor-bar"></div>
+	<div id="armor-bar-bg">
+		<div id="armor-bar" class="bar-motion bar-fill-0"></div>
+	</div>
 
 	<img id="longjump" src="modadd://abcui.health/hud/img/longjump.png"/>
 </body>

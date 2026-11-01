@@ -10,10 +10,13 @@
 
    The bars keep a fixed length; their cell count follows the tracked maximum
    (10 points per cell) and the module positions the cells, so a 150 HP or an
-   80 HP maximum still fills the bar and the last cell can be partial. The
-   backing stays at 15% opacity (it must not block the view); legibility comes
-   from near-white ink with a 1px black outline. No image or font asset ships
-   with the group. */
+   80 HP maximum still fills the bar and the last cell can be partial. Each
+   fill's width is a percentage of its own cell (the bar-fill-N ladder in the
+   base package's barmotion.rcss), so a maximum change only moves the cells
+   and never animates the strip; a value change ramps the fill through the
+   shared drop/gain durations. The backing stays at 15% opacity (it must not
+   block the view); legibility comes from near-white ink with a 1px black
+   outline. No image or font asset ships with the group. */
 
 #division {
 	position: absolute;
@@ -113,7 +116,8 @@
 }
 
 /* Segmented bars: the empty cell (track) plus its fill. The module sets each
-   cell's left/width and each fill's width; everything else is fixed here. */
+   cell's left/width and each fill's width ladder class; everything else is
+   fixed here. */
 #health-cells {
 	position: absolute;
 	left: 6dp;
@@ -248,7 +252,6 @@
 	position: absolute;
 	left: 0;
 	top: 0;
-	width: 0;
 	height: 3dp;
 	background-color: var(--abc-hud-accent);
 	border-radius: 1dp;

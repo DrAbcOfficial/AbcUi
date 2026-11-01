@@ -1,0 +1,143 @@
+/* barmotion.rcss - shared smooth state for HUD value bars (issue #30,
+   moduleui::barmotion). Linked by the panels whose readouts fill a bar; the
+   module writes the classes, this sheet owns the timing.
+
+   A bar box carries .bar-motion plus exactly one direction class per write:
+     .bar-drop  the value fell, a 0.12s cubic ramp (damage reads instantly)
+     .bar-gain  the value rose, a 0.30s cubic ramp (healing reads as a fill)
+     .bar-snap  no transition at all (first show, re-show, reset)
+   The fill itself carries .bar-fill-N, its width as a percentage of its own
+   box. Percentages are what make the segmented bar's relayout inert: when the
+   maximum changes, only the cells' dp left/width move, the class - and so the
+   percentage - stays, and nothing on the strip animates.
+
+   RCSS transitions fire on definition changes only, which is why the width is
+   a class rather than an inline length. The box's direction class and the
+   fill's width class are set in the same frame; RmlUi picks the transition up
+   from the new definition. */
+
+/* A fill that is the box itself (the classic vitals meter) and the fills of a
+   segmented box are both covered. */
+.bar-motion,
+.bar-motion .fill {
+	transition: width 0.30s cubic-out;
+}
+
+.bar-motion.bar-drop,
+.bar-motion.bar-drop .fill {
+	transition: width 0.12s cubic-out;
+}
+
+.bar-motion.bar-gain,
+.bar-motion.bar-gain .fill {
+	transition: width 0.30s cubic-out;
+}
+
+.bar-motion.bar-snap,
+.bar-motion.bar-snap .fill {
+	transition: none;
+}
+
+/* Width ladder: one class per percent of the fill's box. Generated; keep it
+   in step with barmotion::kSteps. */
+.bar-fill-0 { width: 0%; }
+.bar-fill-1 { width: 1%; }
+.bar-fill-2 { width: 2%; }
+.bar-fill-3 { width: 3%; }
+.bar-fill-4 { width: 4%; }
+.bar-fill-5 { width: 5%; }
+.bar-fill-6 { width: 6%; }
+.bar-fill-7 { width: 7%; }
+.bar-fill-8 { width: 8%; }
+.bar-fill-9 { width: 9%; }
+.bar-fill-10 { width: 10%; }
+.bar-fill-11 { width: 11%; }
+.bar-fill-12 { width: 12%; }
+.bar-fill-13 { width: 13%; }
+.bar-fill-14 { width: 14%; }
+.bar-fill-15 { width: 15%; }
+.bar-fill-16 { width: 16%; }
+.bar-fill-17 { width: 17%; }
+.bar-fill-18 { width: 18%; }
+.bar-fill-19 { width: 19%; }
+.bar-fill-20 { width: 20%; }
+.bar-fill-21 { width: 21%; }
+.bar-fill-22 { width: 22%; }
+.bar-fill-23 { width: 23%; }
+.bar-fill-24 { width: 24%; }
+.bar-fill-25 { width: 25%; }
+.bar-fill-26 { width: 26%; }
+.bar-fill-27 { width: 27%; }
+.bar-fill-28 { width: 28%; }
+.bar-fill-29 { width: 29%; }
+.bar-fill-30 { width: 30%; }
+.bar-fill-31 { width: 31%; }
+.bar-fill-32 { width: 32%; }
+.bar-fill-33 { width: 33%; }
+.bar-fill-34 { width: 34%; }
+.bar-fill-35 { width: 35%; }
+.bar-fill-36 { width: 36%; }
+.bar-fill-37 { width: 37%; }
+.bar-fill-38 { width: 38%; }
+.bar-fill-39 { width: 39%; }
+.bar-fill-40 { width: 40%; }
+.bar-fill-41 { width: 41%; }
+.bar-fill-42 { width: 42%; }
+.bar-fill-43 { width: 43%; }
+.bar-fill-44 { width: 44%; }
+.bar-fill-45 { width: 45%; }
+.bar-fill-46 { width: 46%; }
+.bar-fill-47 { width: 47%; }
+.bar-fill-48 { width: 48%; }
+.bar-fill-49 { width: 49%; }
+.bar-fill-50 { width: 50%; }
+.bar-fill-51 { width: 51%; }
+.bar-fill-52 { width: 52%; }
+.bar-fill-53 { width: 53%; }
+.bar-fill-54 { width: 54%; }
+.bar-fill-55 { width: 55%; }
+.bar-fill-56 { width: 56%; }
+.bar-fill-57 { width: 57%; }
+.bar-fill-58 { width: 58%; }
+.bar-fill-59 { width: 59%; }
+.bar-fill-60 { width: 60%; }
+.bar-fill-61 { width: 61%; }
+.bar-fill-62 { width: 62%; }
+.bar-fill-63 { width: 63%; }
+.bar-fill-64 { width: 64%; }
+.bar-fill-65 { width: 65%; }
+.bar-fill-66 { width: 66%; }
+.bar-fill-67 { width: 67%; }
+.bar-fill-68 { width: 68%; }
+.bar-fill-69 { width: 69%; }
+.bar-fill-70 { width: 70%; }
+.bar-fill-71 { width: 71%; }
+.bar-fill-72 { width: 72%; }
+.bar-fill-73 { width: 73%; }
+.bar-fill-74 { width: 74%; }
+.bar-fill-75 { width: 75%; }
+.bar-fill-76 { width: 76%; }
+.bar-fill-77 { width: 77%; }
+.bar-fill-78 { width: 78%; }
+.bar-fill-79 { width: 79%; }
+.bar-fill-80 { width: 80%; }
+.bar-fill-81 { width: 81%; }
+.bar-fill-82 { width: 82%; }
+.bar-fill-83 { width: 83%; }
+.bar-fill-84 { width: 84%; }
+.bar-fill-85 { width: 85%; }
+.bar-fill-86 { width: 86%; }
+.bar-fill-87 { width: 87%; }
+.bar-fill-88 { width: 88%; }
+.bar-fill-89 { width: 89%; }
+.bar-fill-90 { width: 90%; }
+.bar-fill-91 { width: 91%; }
+.bar-fill-92 { width: 92%; }
+.bar-fill-93 { width: 93%; }
+.bar-fill-94 { width: 94%; }
+.bar-fill-95 { width: 95%; }
+.bar-fill-96 { width: 96%; }
+.bar-fill-97 { width: 97%; }
+.bar-fill-98 { width: 98%; }
+.bar-fill-99 { width: 99%; }
+.bar-fill-100 { width: 100%; }

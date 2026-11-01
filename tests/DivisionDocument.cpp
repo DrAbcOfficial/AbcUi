@@ -1,10 +1,11 @@
 // abc_ui_division_document - the shipped abcui.division document parsed by
 // the real RmlUi: every id the module drives must exist, the shipped RCSS and
-// RML must produce zero warnings or errors, and the row must lay out with a
-// real width so the follow anchor has a box to clamp.
+// RML must produce zero warnings or errors, the row must lay out with a real
+// width so the follow anchor has a box to clamp, and the segmented fills must
+// resolve their bar-fill-N ladder against the cell they live in.
 //
 // The module package resolves assets through mod:// inside the engine. This
-// test rewrites the two stylesheet links and the font family to repository
+// test rewrites the three stylesheet links and the font family to repository
 // paths / the bundled test font (the same substitution the other offline page
 // tests rely on); nothing else about the document changes.
 #include "framework/RmlTestHarness.h"
@@ -106,22 +107,28 @@ int main() {
   const std::filesystem::path module = source / "modules/division/assets/hud";
   const std::filesystem::path baseRcss =
       source / "modules/base/assets/rcss/base.rcss";
+  const std::filesystem::path motionRcss =
+      source / "modules/base/assets/rcss/barmotion.rcss";
   const std::filesystem::path divisionRcss = module / "rcss/division.rcss";
   const std::filesystem::path divisionRml = module / "rml/division.rml";
   const std::filesystem::path longjumpIcon = module / "img/longjump.png";
 
   abctest::TempDir temp("abcui-division-document");
   std::string base = readFile(baseRcss);
+  std::string motion = readFile(motionRcss);
   std::string sheet = readFile(divisionRcss);
+  CHECK(!motion.empty());
   replaceAll(base, "Verdana", "Lato");
   replaceAll(sheet, "Verdana", "Lato");
   const std::string basePath = temp.write("base.rcss", base.c_str());
+  const std::string motionPath = temp.write("barmotion.rcss", motion.c_str());
   const std::string sheetPath = temp.write("division.rcss", sheet.c_str());
 
   std::string markup = readFile(divisionRml);
   CHECK(!markup.empty());
   CHECK(std::filesystem::is_regular_file(longjumpIcon));
   replaceAll(markup, "mod://abcui.base/rcss/base.rcss", basePath);
+  replaceAll(markup, "mod://abcui.base/rcss/barmotion.rcss", motionPath);
   replaceAll(markup, "../rcss/division.rcss", sheetPath);
   replaceAll(markup, "mod://abcui.division/hud/img/longjump.png",
              longjumpIcon.generic_string());
@@ -222,6 +229,47 @@ int main() {
       bar->SetProperty("visibility", "visible");
       context->Update();
     }
+
+    TEST_CASE("motion-classes");
+    // The two bars and the battery well carry the shared motion class; the
+    // module owns the direction token from then on.
+    Rml::Element *healthCells = document->GetElementById("health-cells");
+    Rml::Element *armorCells = document->GetElementById("armor-cells");
+    Rml::Element *battery = document->GetElementById("flash-battery");
+    Rml::Element *batteryFill = document->GetElementById("flash-fill");
+    CHECK(healthCells && healthCells->IsClassSet("bar-motion"));
+    CHECK(armorCells && armorCells->IsClassSet("bar-motion"));
+    CHECK(battery && battery->IsClassSet("bar-motion"));
+    CHECK(batteryFill && batteryFill->IsClassSet("fill"));
+    CHECK(batteryFill && batteryFill->IsClassSet("bar-fill-0"));
+
+    TEST_CASE("fill-ladder-resolves");
+    // One cell as the module builds it: the fill's percentage resolves
+    // against its own cell, which is what keeps a maximum change a pure
+    // (un-animated) relayout.
+    if (healthCells) {
+      healthCells->SetInnerRML(
+          "<div class=\"cell\"><div class=\"fill bar-fill-0\"></div></div>");
+      Rml::Element *cell = healthCells->GetChild(0);
+      Rml::Element *fill = cell ? cell->GetChild(0) : nullptr;
+      CHECK(cell != nullptr);
+      CHECK(fill != nullptr);
+      if (cell && fill) {
+        cell->SetProperty("left", "0dp");
+        cell->SetProperty("width", "10dp");
+        healthCells->SetAttribute("class", "bar-motion bar-snap");
+        fill->SetAttribute("class", "fill bar-fill-50");
+        context->Update();
+        CHECK_NEAR(fill->GetOffsetWidth(), 5.0, 0.2);
+        fill->SetAttribute("class", "fill bar-fill-100");
+        context->Update();
+        CHECK_NEAR(fill->GetOffsetWidth(), 10.0, 0.2);
+      }
+    }
+
+    TEST_CASE("still-zero-warnings");
+    CHECK(systemInterface.Messages == 0);
+    CHECK(systemInterface.Errors == 0);
 
     document->Close();
   }

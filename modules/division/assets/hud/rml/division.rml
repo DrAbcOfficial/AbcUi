@@ -1,6 +1,7 @@
 <rml>
 <head>
 	<link type="text/rcss" href="mod://abcui.base/rcss/base.rcss"/>
+	<link type="text/rcss" href="mod://abcui.base/rcss/barmotion.rcss"/>
 	<link type="text/rcss" href="../rcss/division.rcss"/>
 </head>
 <body id="division">
@@ -20,10 +21,10 @@
 		<div id="plate"></div>
 		<div id="edge"></div>
 
-		<div id="health-cells"></div>
+		<div id="health-cells" class="bar-motion"></div>
 		<div id="health-value" class="big right">0</div>
 
-		<div id="armor-cells"></div>
+		<div id="armor-cells" class="bar-motion"></div>
 		<div id="armor-value" class="small right">0</div>
 
 		<div id="ammo-row1">
@@ -38,8 +39,8 @@
 			<div id="ammo2" class="small">0</div>
 		</div>
 
-		<div id="flash-battery">
-			<div id="flash-fill" class="fill"></div>
+		<div id="flash-battery" class="bar-motion">
+			<div id="flash-fill" class="fill bar-fill-0"></div>
 		</div>
 		<div id="flash-value" class="tiny">100%</div>
 

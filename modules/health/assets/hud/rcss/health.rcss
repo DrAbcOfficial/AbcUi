@@ -1,8 +1,8 @@
 /* health.rcss - HealthPanel layout, HL2-inspired but not a copy: the vital
    readout is an amber icon plus one large amber number drawn straight on the
    scene (HL2 has no plate behind the vitals), while the vgui-era meter stays
-   as the bar indicator under each value - the bar fill still animates by
-   value/100 with the old 0.15s linear ramp.
+   as the bar indicator under each value - the fill is a percentage of the
+   well and ramps through the shared barmotion.rcss drop/gain durations.
 
    Geometry (design units, 1dp = one old proportional unit):
      health group  icon 0,4 20x20   number 26,0 78x28   meter 26,32 92x5
@@ -74,20 +74,19 @@
 #health-bar-bg { left: 26dp; }
 #armor-bar-bg { left: 176dp; }
 
-/* The fill is its own rounded bar (no clipping wrapper): its width is the
-   value, so both ends stay round while it animates. */
+/* The fill is its own rounded bar inside the well: its width is the
+   bar-fill-N ladder percentage (barmotion.rcss), so both ends stay round while
+   it ramps and a repeated value never restarts the transition. The well is the
+   containing block, which is what makes the percentage resolve to 92dp. */
 #health-bar, #armor-bar {
 	position: absolute;
-	top: 32dp;
-	width: 92dp;
+	left: 0;
+	top: 0;
 	height: 5dp;
 	background-color: var(--abc-hud-accent);
 	border-radius: 2.5dp;
 	opacity: var(--abc-hud-meter-opacity);
-	transition: width 0.15s linear-in;
 }
-#health-bar { left: 26dp; }
-#armor-bar { left: 176dp; }
 
 #longjump {
 	position: absolute;

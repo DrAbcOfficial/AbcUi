@@ -122,6 +122,17 @@ abcui_add_test(abc_ui_segment_bar
     SOURCES SegmentBar.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
 
+# The shared smooth-bar policy: width ladder, direction tokens and the write
+# tracker both vitals groups drive (header-only).
+abcui_add_test(abc_ui_bar_motion
+    SOURCES BarMotion.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
+# The shipped shared bar ramp driven like the modules drive it (fake clock).
+abcui_add_test(abc_ui_bar_animation
+    SOURCES BarAnimation.cpp
+    LIBRARIES RmlUi::RmlUi)
+
 # The fixed-capacity particle system behind the HUD effects.
 abcui_add_test(abc_ui_particle_system
     SOURCES ParticleSystem.cpp
@@ -135,6 +146,12 @@ abcui_add_test(abc_ui_bullet_fx
 # The shipped group document: ids, RCSS grammar and a real laid-out row.
 abcui_add_test(abc_ui_division_document
     SOURCES DivisionDocument.cpp
+    LIBRARIES RmlUi::RmlUi)
+
+# The shipped classic vitals document: ids, the nested meter fill and the
+# width ladder resolving against its well.
+abcui_add_test(abc_ui_health_document
+    SOURCES HealthDocument.cpp
     LIBRARIES RmlUi::RmlUi)
 
 abcui_add_test(abc_ui_audit_regressions

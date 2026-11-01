@@ -41,10 +41,5 @@ int main() {
   CHECK_NEAR(fillRatio(150, 15), 0.0, 0.001); // beyond the value
   CHECK_NEAR(fillRatio(-3, 0), 0.0, 0.001);
 
-  TEST_CASE("fill-width");
-  const float cell = cellWidth(112.0f, 1.0f, 10);
-  CHECK_NEAR(fillWidth(95, 9, cell), cell * 0.5f, 0.001);
-  CHECK_NEAR(fillWidth(100, 0, cell), cell, 0.001);
-
   return abctest::finish("abc_ui_segment_bar");
 }
