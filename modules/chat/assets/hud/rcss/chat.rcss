@@ -30,6 +30,24 @@
 	overflow-y: auto;
 }
 
+/* New-line entrance: a row rises from just under its slot while it fades in,
+   so a burst reads as messages stacking up from the input line instead of
+   blinking on. The panel glides the viewport toward the tail at the same time
+   (see followTail in ChatModule.cpp), which is where the "scroll up" half of
+   the motion comes from. RmlUi (re)starts an animation whenever the computed
+   `animation` value changes, and the panel never touches that property after
+   a row is appended, so every row plays this exactly once. */
+@keyframes chat-line-enter {
+	from {
+		transform: translateY(7dp);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0dp);
+		opacity: 1;
+	}
+}
+
 /* One message: a plate that never widens past the window - a long line wraps
    inside it instead of stretching the chat across the screen. */
 .chat-line {
@@ -46,6 +64,7 @@
 	color: #e8e8e8;
 	white-space: normal;
 	word-break: break-word;
+	animation: chat-line-enter 0.18s cubic-out;
 }
 
 /* Sender name: bold in the engine's per-player tint (set inline by the

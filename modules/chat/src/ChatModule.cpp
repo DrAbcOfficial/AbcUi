@@ -11,6 +11,12 @@
 // capped (hud_saytext_lines, at most six rows) over a 256-line scrollback,
 // the wheel browses older lines while the input line is open, and the block
 // fades out one second after hud_saytext_time elapses.
+//
+// Motion: a new row plays the stylesheet's entrance animation (rise + fade,
+// see chat.rcss) while the log glides its viewport down to the tail, so a
+// burst of messages reads as one continuous upward scroll instead of discrete
+// jumps. The glide is a per-frame ease that stops as soon as the reader
+// scrolls away from the tail.
 #include "saytext/SayText.h"
 
 #include "../../common/UiText.h"
@@ -67,7 +73,14 @@ double Clock = 0.0;
 double HideAt = 0.0;
 int FadeOpacity = -1;
 int WindowRows = 0;
-int ScrollFrames = 0;
+// Tail follow: while armed, panelOnData eases the viewport down to the newest
+// row instead of snapping. Appending re-arms it when the reader is at the
+// tail; the wheel, a dragged scrollbar or any other scroll the module did not
+// issue disarms it, so a reader browsing history is never yanked back.
+// SnapFrames forces the next frames to jump: a freshly appended row (or a
+// resized window) is only measured by the following layout pass.
+bool FollowTail = true;
+int SnapFrames = 0;
 std::vector<Line> Lines;
 std::vector<std::string> History;
 int HistoryCursor = -1;
@@ -230,14 +243,60 @@ bool atLogBottom() {
          Api->ui->elementScrollTop(log) >= scrollable - 4.0f;
 }
 
-void scrollLogToBottom() {
-  if (AbcUiElement *log = chatLog())
-    Api->ui->elementSetScrollTop(log, Api->ui->elementScrollHeight(log));
+// Tail follow, the "scrolling" half of the new-message motion. The target is
+// re-read every frame, so a burst of appends (and the row a layout pass has
+// not measured yet) needs no bookkeeping: the same ease keeps running until
+// the tail is reached. The two consts are the glide's time constant and the
+// distance at which the viewport is parked exactly on the tail instead of
+// asymptotically approaching it.
+constexpr double kFollowSeconds = 0.075;
+constexpr float kFollowEpsilonDp = 0.5f;
+
+// Guard for our own scroll writes: the follow must be able to tell its own
+// viewport movement from the reader's. RmlUi dispatches "scroll" synchronously
+// from SetScrollTop (and from nothing else - a layout clamp after a buffer
+// trim stays silent), so a raised flag is an exact "this one was the module".
+bool SettingScroll = false;
+
+int32_t onLogScroll(void *, AbcUiElement *, const AbcUiElementEvent *) {
+  // A scroll the module did not issue (a dragged scrollbar, a wheel the input
+  // router forwards) is the reader browsing history: drop the follow so the
+  // arrival glide can never fight the pointer.
+  if (!SettingScroll)
+    FollowTail = false;
+  return 0;
+}
+
+void setLogScrollTop(AbcUiElement *log, float top) {
+  SettingScroll = true;
+  Api->ui->elementSetScrollTop(log, top);
+  SettingScroll = false;
+}
+
+void followTail(double frameTime, bool snap) {
+  AbcUiElement *log = chatLog();
+  if (!log)
+    return;
+  const float top = Api->ui->elementScrollTop(log);
+  const float tail = Api->ui->elementScrollHeight(log) -
+                     Api->ui->elementClientHeight(log);
+  if (tail - top <= kFollowEpsilonDp)
+    return; // the log fits its window (or is already parked on the tail)
+  float next = tail;
+  if (!snap && frameTime > 0.0) {
+    // Frame-time independent ease-out: the first frames carry most of the
+    // distance, which is what makes a one-line arrival read as a glide.
+    const double ease = 1.0 - std::exp(-frameTime / kFollowSeconds);
+    next = top + (tail - top) * static_cast<float>(ease);
+    if (tail - next < kFollowEpsilonDp)
+      next = tail;
+  }
+  setLogScrollTop(log, next);
 }
 
 void scrollLog(float deltaDp) {
   if (AbcUiElement *log = chatLog())
-    Api->ui->elementSetScrollTop(log, Api->ui->elementScrollTop(log) + deltaDp);
+    setLogScrollTop(log, Api->ui->elementScrollTop(log) + deltaDp);
 }
 
 void clearLines() {
@@ -248,7 +307,8 @@ void clearLines() {
   Lines.clear();
   HideAt = 0.0;
   FadeOpacity = -1;
-  ScrollFrames = 0;
+  FollowTail = true;
+  SnapFrames = 0;
 }
 
 void setVisible(bool visible) {
@@ -296,6 +356,9 @@ void applyWindowHeight() {
   if (AbcUiElement *log = chatLog()) {
     const std::string value = std::format("{:.0f}dp", rows * kRowHeightDp);
     setProperty(log, "max-height", value.c_str());
+    // The viewport change moves the tail: jump there, never glide (the row
+    // heights did not change, only how much of the log is on screen).
+    SnapFrames = 2;
   }
 }
 
@@ -304,8 +367,10 @@ void appendNode(const std::vector<chatsaytext::Run> &runs,
   AbcUiElement *log = chatLog();
   if (!log)
     return;
-  // Follow the tail only when the reader is already there.
-  const bool follow = atLogBottom();
+  // Follow the tail only when the reader is already there (a glide that is
+  // still running keeps its follow armed: atLogBottom() is false mid-glide).
+  if (!FollowTail && atLogBottom())
+    FollowTail = true;
   const std::string rml = runsToRml(runs, nameColor);
   AbcUiElement *row = Api->ui->elementAppendRml(log, rml.c_str(), "chat-line");
   if (!row)
@@ -318,8 +383,6 @@ void appendNode(const std::vector<chatsaytext::Run> &runs,
   }
   HideAt = Clock + sayTextTime();
   FadeOpacity = -1;
-  if (follow)
-    ScrollFrames = 2;
   updateFade();
   updateVisibility();
 }
@@ -388,6 +451,10 @@ int32_t onWheelPulse(void *, int32_t keynum) {
     scrollLog(-kRowHeightDp * 3.0f);
   else if (keynum == ABCUI_KEY_MWHEELDOWN)
     scrollLog(kRowHeightDp * 3.0f);
+  // The wheel is the reader's intent: browsing history stops the follow, and
+  // wheeling back to the tail re-arms it. The wheel step is instant on
+  // purpose - it is a deliberate command, not a message arrival.
+  FollowTail = atLogBottom();
   return 1;
 }
 
@@ -495,7 +562,10 @@ void openInput(Mode mode) {
   }
   HideAt = Clock + sayTextTime();
   FadeOpacity = -1;
-  ScrollFrames = 2;
+  // Opening the input snaps to the tail: the player is about to type, so the
+  // newest line must already be in place.
+  FollowTail = true;
+  SnapFrames = 2;
   HistoryCursor = -1;
   HistoryDraft.clear();
   updateImeBadge();
@@ -581,6 +651,14 @@ int32_t onMessageMode(void *userdata, const void *) {
 
 // ---- panel callbacks ----
 
+void onPanelReady(void *) {
+  // Reader intent: bind the log's scroll listener once per loaded document
+  // (element handles die with it, and the framework drops module listeners on
+  // context teardown, so this is the one place that must not be cached).
+  if (AbcUiElement *log = chatLog())
+    Api->ui->elementAddListener(log, "scroll", &onLogScroll, nullptr);
+}
+
 void panelReset(void *) {
   clearLines();
   closeInput();
@@ -598,10 +676,16 @@ void panelOnData(void *, double frameTime) {
     if (Api->input->menuUp() || (state.hideBits & ABCUI_HIDEBIT_ALL))
       closeInput();
   }
-  // The appended row is measured by the next layout pass.
-  if (ScrollFrames > 0) {
-    scrollLogToBottom();
-    ScrollFrames--;
+  // The appended row is measured by the next layout pass: snap while a snap
+  // is pending (a fresh row, a resized window, a just-opened input line),
+  // glide otherwise - that glide is the new-message scroll.
+  if (FollowTail) {
+    if (SnapFrames > 0) {
+      followTail(frameTime, true);
+      SnapFrames--;
+    } else {
+      followTail(frameTime, false);
+    }
   }
   if (InputMode != Mode::kNone)
     updateImeBadge();
@@ -623,7 +707,7 @@ void onModuleLoad() {
   Panel.documentPath = kDocumentPath;
   Panel.zIndex = 0;
   Panel.userdata = nullptr;
-  Panel.onDocumentReady = nullptr;
+  Panel.onDocumentReady = &onPanelReady;
   Panel.onData = &panelOnData;
   Panel.onRedraw = nullptr;
   Panel.reset = &panelReset;
@@ -655,6 +739,8 @@ void onModuleShutdown() {
   HideAt = 0.0;
   FadeOpacity = -1;
   WindowRows = 0;
+  FollowTail = true;
+  SnapFrames = 0;
   ImeBadge.clear();
 }
 
