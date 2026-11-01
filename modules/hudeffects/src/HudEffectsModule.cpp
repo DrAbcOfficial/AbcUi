@@ -6,6 +6,7 @@
 // are <animimg> elements playing animated WebP files of the same frames; the
 // element owns the frame clock and the texture, this controller only restarts
 // the sequence on the OUT_WATER edge and drives the alpha ramps.
+#include "../../common/OpacityMotion.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -50,6 +51,7 @@ double ClientTimeNow = 0.0;
 // The splash elements replay from frame 0 once per OUT_WATER transition -
 // the old CSPRImage SetFrame(0) restart.
 bool OutWaterStarted = false;
+moduleui::opacity::Ramp DangerOpacity;
 
 AbcUiDocument *panelDocument() {
   return Api->ui->panelDocument(kPanelName);
@@ -84,8 +86,8 @@ void restartSplash(const char *id) {
 void setHealth(int health) {
   // Old SetHealth: below hud_danger_health, ramp the danger vignette toward
   // (1 - health/threshold) * 255; at/above, hide it. The RunAnimationCommand
-  // from-current-value semantic is Rml's opacity transition (0.2s linear) -
-  // every Health message re-targets it, matching the old re-run.
+  // from-current-value semantic is an explicit ramp; repeated health values
+  // do not restart an interpolation already heading to that target.
   if (!panelDocument())
     return;
   // Old gCVars.pDangerHealth - one engine cvar shared by the health and
@@ -94,13 +96,16 @@ void setHealth(int health) {
       Api->console->findCvar("hud_danger_health");
   const float dangerValue =
       dangerCvar ? Api->console->cvarValue(dangerCvar, 45.0f) : 45.0f;
-  if (dangerValue > 0.0f && health < static_cast<int>(dangerValue)) {
+  if (std::isfinite(dangerValue) && dangerValue > 0.0f &&
+      static_cast<float>(health) < dangerValue) {
     const float target = 1.0f - static_cast<float>(health) / dangerValue;
-    const std::string opacity = std::format("{:g}", target);
+    char value[16];
+    moduleui::opacity::text(DangerOpacity.value(), value);
+    setElementProperty("danger", "opacity", value);
     setElementProperty("danger", "display", "block");
-    setElementProperty("danger", "transition", "opacity 0.2s linear-in");
-    setElementProperty("danger", "opacity", opacity.c_str());
+    DangerOpacity.retarget(target, kFadeTime);
   } else {
+    DangerOpacity.reset();
     setElementProperty("danger", "display", "none");
     setElementProperty("danger", "opacity", "0");
   }
@@ -142,6 +147,7 @@ void panelReset(void *) {
   OldWaterStatus = 0;
   NowWaterType = WaterType::None;
   OutWaterStarted = false;
+  DangerOpacity.reset();
   for (const char *id :
        {"left-water", "right-water", "under-water", "danger"}) {
     setElementProperty(id, "display", "none");
@@ -154,6 +160,12 @@ void panelOnData(void *, double frameTime) {
   ClientTimeNow += frameTime;
   if (!panelDocument())
     return;
+  float dangerOpacity = 0.0f;
+  if (DangerOpacity.advance(frameTime, dangerOpacity)) {
+    char value[16];
+    moduleui::opacity::text(dangerOpacity, value);
+    setElementProperty("danger", "opacity", value);
+  }
 
   AbcUiHudState state{};
   state.structSize = sizeof(state);
@@ -259,6 +271,7 @@ void onModuleShutdown() {
   OldWaterStatus = 0;
   NowWaterType = WaterType::None;
   OutWaterStarted = false;
+  DangerOpacity.reset();
 }
 
 void onModuleUnload() {

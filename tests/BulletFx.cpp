@@ -71,6 +71,7 @@ int main() {
     Bullets Effect;
     Effect.fire({0.0f, 0.0f});
     Effect.clear();
+    CHECK(Effect.update(0.0f)); // the renderer must hide previously live slots
     CHECK(!Effect.update(0.016f));
   }
 

@@ -9,6 +9,7 @@
 // the format slot); the port prints the localized "DeathMsg_ConsolePrint"
 // template with a positional substitution, never a printf format.
 #include "../../common/Text.h"
+#include "../../common/OpacityMotion.h"
 #include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -43,6 +44,7 @@ struct Row {
   AbcUiElement *element = nullptr;
   double createTime = 0.0;
   double fadeStartTime = -1.0;
+  moduleui::opacity::Ramp opacity{1.0f};
 };
 
 double ClientTimeNow = 0.0;
@@ -191,6 +193,7 @@ void onHideToken(void *, const void *payload) {
 // ---- panel callbacks ----
 
 void panelOnData(void *, double frameTime) {
+  frameTime = moduleui::opacity::frameDelta(frameTime);
   ClientTimeNow += frameTime;
   if (cvarInt(DeathNotice, 1) <= 0) {
     clearRows(panelDocument());
@@ -202,24 +205,28 @@ void panelOnData(void *, double frameTime) {
   const double keep = static_cast<double>(cvarInt(DeathNoticeTime, 6));
   for (auto itor = Rows.begin(); itor != Rows.end();) {
     Row &row = *itor;
+    bool fadeStarted = false;
     if (row.fadeStartTime < 0.0) {
       // Old per-row RunAnimationCommand: fade starts keep seconds after the
       // row was added.
       if (ClientTimeNow >= row.createTime + keep) {
         row.fadeStartTime = ClientTimeNow;
-        if (row.element) {
-          Api->ui->elementSetProperty(row.element, "transition",
-                                      "opacity 0.5s linear-in");
-          Api->ui->elementSetProperty(row.element, "opacity", "0");
-        }
+        row.opacity.retarget(0.0f, kFadeSeconds);
+        fadeStarted = true;
       }
-      ++itor;
-      continue;
     }
-    if (ClientTimeNow >= row.fadeStartTime + kFadeSeconds) {
+    if (row.fadeStartTime >= 0.0 &&
+        ClientTimeNow >= row.fadeStartTime + kFadeSeconds) {
       removeRow(row);
       itor = Rows.erase(itor);
       continue;
+    }
+    float opacity = 1.0f;
+    if (row.element &&
+        row.opacity.advance(fadeStarted ? 0.0 : frameTime, opacity)) {
+      char value[16];
+      moduleui::opacity::text(opacity, value);
+      Api->ui->elementSetProperty(row.element, "opacity", value);
     }
     ++itor;
   }

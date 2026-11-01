@@ -10,6 +10,7 @@
 #include "framework/DocumentLoadGuard.h"
 
 #include <RmlUi/Core.h>
+#include <RmlUi/Core/Elements/ElementFormControlInput.h>
 
 // cl_enginefunc_t + the gEngfuncs extern, with the SDK's include-order
 // ritual already handled (same include set as abc_ui_hook_contract).
@@ -19,6 +20,7 @@
 
 #include <cstdio>
 #include <iostream>
+#include <limits>
 #include <string>
 #include <vector>
 #include "framework/TestHarness.h"
@@ -59,6 +61,9 @@ class CountingDocument final : public framework::InteractiveDocument {
 public:
   explicit CountingDocument(const char *path)
       : InteractiveDocument("counting", path) {}
+  ~CountingDocument() override {
+    close();
+  }
 
   class ClickCounter final : public Rml::EventListener {
   public:
@@ -70,6 +75,10 @@ public:
 
   ClickCounter Counter;
   int ReadyCount = 0;
+
+  void watch(Rml::Element *target, const char *event) {
+    addListener(target, event, &Counter);
+  }
 
 protected:
   void onDocumentReady() override {
@@ -201,6 +210,7 @@ int main() {
           framework::InteractiveDocument::LoadOutcome::kLoaded);
     CHECK(!doc.isDegraded());
     CHECK(doc.ReadyCount == 1); // real page wiring ran
+    doc.show();
     if (Rml::Element *probe = doc.document()->GetElementById("probe"))
       probe->DispatchEvent("click", Rml::Dictionary());
     CHECK(doc.Counter.Clicks == 1);
@@ -256,6 +266,7 @@ int main() {
           framework::InteractiveDocument::LoadOutcome::kLoaded);
     CHECK(!doc.isDegraded());
     CHECK(doc.ReadyCount == 1);
+    doc.show();
     Rml::Element *probe = doc.document()->GetElementById("probe");
     CHECK(probe != nullptr);
     if (probe)
@@ -275,6 +286,7 @@ int main() {
             framework::InteractiveDocument::LoadOutcome::kLoaded);
       Rml::Element *probe2 = reloaded.document()->GetElementById("probe");
       CHECK(probe2 != nullptr);
+      reloaded.show();
       if (probe2)
         probe2->DispatchEvent("click", Rml::Dictionary());
       CHECK(doc.Counter.Clicks == oldClicks); // stale binding silent
@@ -296,9 +308,8 @@ int main() {
     CHECK(context->GetFocusElement() == firstFocus);
     doc.hide();
     CHECK(!doc.isVisible());
-    // Focus release semantics are T06: with this test context holding
-    // only our document, RmlUi's UnfocusDocument has no other document
-    // to hand focus to and the context focus pointer stays put.
+    CHECK(context->GetFocusElement() == doc.document() ||
+          !focusBelongsTo(context, doc.document()));
     doc.hide(); // repeated hide stays benign
     CHECK(!doc.isVisible());
     doc.show();
@@ -307,6 +318,113 @@ int main() {
     if (Rml::Element *probe = doc.document()->GetElementById("probe"))
       probe->DispatchEvent("click", Rml::Dictionary());
     CHECK(doc.Counter.Clicks == 1);
+    doc.close();
+  }
+
+  {
+    TEST_CASE("fade-preserves-opacity-and-stops-input");
+    abctest::TempDir fixture("abcui-dissolve");
+    const std::string path = fixture.write(
+        "page.rml",
+        "<rml><head><style>"
+        "body { width: 800px; height: 600px; opacity: 0.8; }"
+        "#probe { position: absolute; left: 10px; top: 10px;"
+        "width: 100px; height: 50px; opacity: 0.55;"
+        "pointer-events: auto; focus: auto; }"
+        "#nested { opacity: 0.2; }"
+        "</style></head><body><button id='probe' autofocus='autofocus'>"
+        "<span id='inherited'>text</span><span id='nested'>dim</span>"
+        "</button><input id='editor' type='text' value='before'/>"
+        "<div id='inline' style='opacity: 0.3;'>inline</div>"
+        "</body></rml>");
+    CountingDocument doc(path.c_str());
+    CHECK(doc.load(context) ==
+          framework::InteractiveDocument::LoadOutcome::kLoaded);
+    doc.show();
+    doc.pump(framework::InteractiveDocument::kFadeInSeconds);
+    context->Update();
+    Rml::Element *probe = doc.document()->GetElementById("probe");
+    Rml::Element *inherited = doc.document()->GetElementById("inherited");
+    Rml::Element *nested = doc.document()->GetElementById("nested");
+    Rml::Element *inlineElement = doc.document()->GetElementById("inline");
+    auto *editor = rmlui_dynamic_cast<Rml::ElementFormControlInput *>(
+        doc.document()->GetElementById("editor"));
+    CHECK(editor != nullptr);
+    CHECK_NEAR(probe->GetComputedValues().opacity(), 0.55, 0.001);
+    CHECK_NEAR(doc.document()->GetComputedValues().opacity(), 0.8, 0.001);
+    CHECK(editor->Focus());
+    doc.watch(probe, "keydown");
+    doc.watch(probe, "textinput");
+    doc.watch(doc.document(), "keydown");
+    const int clicks = doc.Counter.Clicks;
+    doc.hide();
+    CHECK(!doc.isVisible());
+    CHECK(context->GetFocusElement() != probe);
+    CHECK(context->GetFocusElement() != editor);
+    probe->DispatchEvent("click", {});
+    probe->DispatchEvent("keydown", {});
+    Rml::Dictionary textInput;
+    textInput["text"] = Rml::String("x");
+    probe->DispatchEvent("textinput", textInput);
+    context->ProcessTextInput("x");
+    context->ProcessKeyDown(Rml::Input::KI_RETURN, 0);
+    context->ProcessMouseMove(20, 20, 0);
+    context->ProcessMouseButtonDown(0, 0);
+    context->ProcessMouseButtonUp(0, 0);
+    CHECK(editor->GetValue() == "before");
+    CHECK(doc.Counter.Clicks == clicks);
+    Rml::Element *hit = context->GetElementAtPoint({20, 20});
+    CHECK(!hit || hit->GetOwnerDocument() != doc.document());
+    CHECK(!probe->Focus()); // even a locally focus:auto control is blocked
+    doc.pump(framework::InteractiveDocument::kFadeOutSeconds * 0.5);
+    context->Update();
+    // Quadratic fade-out is at 25%, applied once per local opacity.
+    CHECK_NEAR(doc.document()->GetComputedValues().opacity(), 0.2, 0.001);
+    CHECK_NEAR(probe->GetComputedValues().opacity(), 0.1375, 0.001);
+    CHECK_NEAR(inherited->GetComputedValues().opacity(), 0.1375, 0.001);
+    CHECK_NEAR(nested->GetComputedValues().opacity(), 0.05, 0.001);
+    CHECK_NEAR(inlineElement->GetComputedValues().opacity(), 0.075, 0.001);
+    for (double delta : {std::numeric_limits<double>::quiet_NaN(),
+                         std::numeric_limits<double>::infinity(), -1.0})
+      doc.pump(delta);
+    CHECK(doc.document()->IsVisible());
+    // Reverse without losing authored inline values or input policies.
+    doc.show();
+    doc.pump(framework::InteractiveDocument::kFadeInSeconds);
+    context->Update();
+    CHECK_NEAR(inlineElement->GetProperty<float>("opacity"), 0.3, 0.001);
+    CHECK(probe->GetLocalStyleProperties().count(Rml::PropertyId::Opacity) ==
+          0);
+    CHECK(probe->GetComputedValues().pointer_events() ==
+          Rml::Style::PointerEvents::Auto);
+    CHECK(probe->Focus());
+    probe->DispatchEvent("click", {});
+    CHECK(doc.Counter.Clicks == clicks + 1);
+    // A newer page-owned inline value survives the temporary fade overrides.
+    context->ProcessMouseMove(20, 20, 0);
+    context->ProcessMouseButtonDown(0, 0);
+    const int beforeHide = doc.Counter.Clicks;
+    doc.hide();
+    context->ProcessMouseButtonUp(0, 0);
+    CHECK(doc.Counter.Clicks == beforeHide);
+    inlineElement->SetProperty("opacity", "0.4");
+    doc.pump(0.01);
+    doc.show();
+    doc.pump(framework::InteractiveDocument::kFadeInSeconds);
+    CHECK_NEAR(inlineElement->GetProperty<float>("opacity"), 0.4, 0.001);
+    // Destroying a faded node cannot leave a dangling snapshot.
+    doc.hide();
+    auto late = doc.document()->CreateElement("button");
+    late->SetProperty("pointer-events", "auto");
+    late->SetProperty("focus", "auto");
+    Rml::Element *lateControl = doc.document()->AppendChild(std::move(late));
+    doc.pump(0.0);
+    context->Update();
+    CHECK(lateControl->GetComputedValues().pointer_events() ==
+          Rml::Style::PointerEvents::None);
+    CHECK(!lateControl->Focus());
+    probe->GetParentNode()->RemoveChild(probe);
+    doc.pump(framework::InteractiveDocument::kFadeOutSeconds);
     doc.close();
   }
 

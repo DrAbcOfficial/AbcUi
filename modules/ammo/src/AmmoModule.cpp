@@ -9,6 +9,7 @@
 // container draws nothing.
 #include "../../common/BulletFx.h"
 #include "../../common/BulletLayer.h"
+#include "../../common/OpacityMotion.h"
 #include "../../common/UiText.h"
 #include "../../common/ValueBounce.h"
 #include <abcui/events.h>
@@ -358,6 +359,7 @@ struct StackItem {
   double expireTime = 0.0;
   double fadeStartTime = -1.0;
   bool fadeInPending = true;
+  moduleui::opacity::Ramp opacity;
   int weaponId = 0;
   std::string iconUri; // last applied weapon sprite, so a reload is cheap
 };
@@ -405,8 +407,7 @@ AbcUiElement *appendStackItem(StackState &stack, const std::string &rml) {
       Api->ui->elementAppendRml(container, rml.c_str(), "item");
   if (!item)
     return nullptr;
-  // Start the old Show() state: alpha 0, the fade-in runs on the next style
-  // computation (transition to opacity 1 in tickItems).
+  // Start transparent; the explicit ramp begins on the next frame.
   Api->ui->elementSetProperty(item, "opacity", "0");
 
   StackItem entry;
@@ -431,6 +432,7 @@ void clearStackItems(StackState &stack) {
 }
 
 void tickStack(StackState &stack, double frameTime) {
+  frameTime = moduleui::opacity::frameDelta(frameTime);
   stack.clientTimeNow += frameTime;
   AbcUiDocument *doc = stackDocument(stack);
   if (!doc)
@@ -453,23 +455,25 @@ void tickStack(StackState &stack, double frameTime) {
     }
     if (item.fadeInPending) {
       item.fadeInPending = false;
-      Api->ui->elementSetProperty(
-          item.element, "transition",
-          std::format("opacity {:.2f}s linear-in", stack.fadeIn).c_str());
-      Api->ui->elementSetProperty(item.element, "opacity", "1");
+      item.opacity.retarget(1.0f, stack.fadeIn);
     }
+    bool fadeOutStarted = false;
     if (item.fadeStartTime < 0.0 && stack.clientTimeNow >= item.expireTime) {
       item.fadeStartTime = stack.clientTimeNow;
-      Api->ui->elementSetProperty(
-          item.element, "transition",
-          std::format("opacity {:.2f}s linear-in", stack.fadeOut).c_str());
-      Api->ui->elementSetProperty(item.element, "opacity", "0");
+      item.opacity.retarget(0.0f, stack.fadeOut);
+      fadeOutStarted = true;
     }
     if (item.fadeStartTime >= 0.0 &&
         stack.clientTimeNow >= item.fadeStartTime + stack.fadeOut) {
       Api->ui->elementRemove(item.element);
       itor = stack.items.erase(itor);
       continue;
+    }
+    float opacity = 0.0f;
+    if (item.opacity.advance(fadeOutStarted ? 0.0 : frameTime, opacity)) {
+      char value[16];
+      moduleui::opacity::text(opacity, value);
+      Api->ui->elementSetProperty(item.element, "opacity", value);
     }
     ++itor;
   }

@@ -7,6 +7,7 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Glyphs.h"
+#include "../../common/OpacityMotion.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -17,6 +18,9 @@ namespace {
 const AbcUiModuleApi *Api = nullptr;
 moduleui::Glyphs GlyphInk;
 AbcUiPanelDesc Panel = {};
+moduleui::opacity::Ramp IconOpacity;
+bool FlashStateKnown = false;
+bool FlashOn = false;
 
 // HUD accent amber (255 176 0, base.rcss --abc-hud-accent); saturation and
 // value drive the old hue *= battery-ratio shift.
@@ -142,9 +146,17 @@ void setFlashBattery(int battery) {
 }
 
 void setFlashLight(int on, int battery) {
+  const bool changed = !FlashStateKnown || FlashOn != (on != 0);
+  FlashStateKnown = true;
+  FlashOn = on != 0;
   elementSetProperty("on-image", "visibility", on ? "visible" : "hidden");
   elementSetProperty("off-image", "visibility", on ? "hidden" : "visible");
   applyBrightness(on);
+  if (changed) {
+    IconOpacity.reset();
+    IconOpacity.retarget(on ? 0.75f : 0.53f, 0.1);
+    elementSetProperty(on ? "on-image" : "off-image", "opacity", "0");
+  }
   setFlashBattery(battery);
 }
 
@@ -192,6 +204,7 @@ void panelDocumentReady(void *) {
   AbcUiHudState state{};
   state.structSize = sizeof(state);
   Api->data->hudState(&state);
+  FlashStateKnown = false;
   setFlashLight(state.flashOn, state.flashBattery);
   updateVisibility();
 }
@@ -201,6 +214,17 @@ void panelReset(void *) {
   if (AbcUiDocument *doc = panelDocument())
     Api->ui->documentHide(doc);
   setFlashBattery(100);
+  FlashStateKnown = false;
+  IconOpacity.reset(FlashOn ? 0.75f : 0.53f);
+}
+
+void panelOnData(void *, double frameTime) {
+  float opacity = 0.0f;
+  if (IconOpacity.advance(frameTime, opacity)) {
+    char value[16];
+    moduleui::opacity::text(opacity, value);
+    elementSetProperty(FlashOn ? "on-image" : "off-image", "opacity", value);
+  }
 }
 
 // ---- lifecycle ----
@@ -219,7 +243,7 @@ void onModuleLoad() {
   Panel.zIndex = 0;
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
-  Panel.onData = nullptr;
+  Panel.onData = &panelOnData;
   Panel.onRedraw = nullptr;
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
@@ -235,6 +259,8 @@ void onModuleLoad() {
 
 void onModuleShutdown() {
   GlyphInk.reset();
+  FlashStateKnown = false;
+  IconOpacity.reset();
 }
 
 void onModuleUnload() {

@@ -13,6 +13,7 @@
 // hole). The old character-count pagination rode vgui font metrics - one
 // scrollable page with the same keep_time/fade rhythm replaces it.
 #include "../../common/Text.h"
+#include "../../common/OpacityMotion.h"
 #include "../../common/UiText.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -55,6 +56,7 @@ bool HasContent = false;
 double ShowTime = 0.0;
 double ClientTimeNow = 0.0;
 bool Fading = false;
+moduleui::opacity::Ramp Fade{1.0f};
 
 AbcUiDocument *panelDocument() {
   return Api->ui->panelDocument(kPanelName);
@@ -218,6 +220,7 @@ void startCountdown() {
   HasContent = !Page.empty();
   ShowTime = ClientTimeNow + kKeepTime;
   Fading = false;
+  Fade.reset(1.0f);
   setOpacity("1");
   showWindow();
 }
@@ -287,6 +290,7 @@ void onHudMotdChanged(void *) {
 // ---- panel callbacks ----
 
 void panelOnData(void *, double frameTime) {
+  frameTime = moduleui::opacity::frameDelta(frameTime);
   ClientTimeNow += frameTime;
   AbcUiDocument *doc = panelDocument();
   if (!HasContent || !doc || !Api->ui->documentVisible(doc))
@@ -303,16 +307,22 @@ void panelOnData(void *, double frameTime) {
     Fading = false;
     return;
   }
-  // Fade window: opacity rides the CSS transition (fade_time 1s), the box
-  // hides when the window closes.
+  // Fade window: explicit interpolation for the inline opacity.
   if (ClientTimeNow > ShowTime + kFadeTime) {
     HasContent = false;
     hideWindow();
     return;
   }
-  if (!Fading) {
+  const bool fadeStarted = !Fading;
+  if (fadeStarted) {
     Fading = true;
-    setOpacity("0");
+    Fade.retarget(0.0f, kFadeTime);
+  }
+  float opacity = 1.0f;
+  if (Fade.advance(fadeStarted ? 0.0 : frameTime, opacity)) {
+    char value[16];
+    moduleui::opacity::text(opacity, value);
+    setOpacity(value);
   }
 }
 
@@ -321,6 +331,7 @@ void panelReset(void *) {
   Page.clear();
   HasContent = false;
   Fading = false;
+  Fade.reset(1.0f);
   // Old Reset cleared the mission-brief flag too (m_bLoadedMissionBrief =
   // false) - the brief reloads per map through the VidInit panel reset.
   LoadedMissionBrief = false;
@@ -379,6 +390,7 @@ void onModuleShutdown() {
   HasContent = false;
   Fading = false;
   LoadedMissionBrief = false;
+  Fade.reset(1.0f);
 }
 
 void onModuleUnload() {

@@ -6,6 +6,7 @@
 // commands turn into menuselect and the engine weapon-slot path only runs
 // while the menu is closed. The shared number-menu-open flag rides the
 // commands api (the weaponchoose module gates on it).
+#include "../../common/OpacityMotion.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -32,13 +33,10 @@ std::string MenuString;
 double ShutoffTime = -1.0;
 double HideAtTime = -1.0;
 double ClientTimeNow = 0.0;
+moduleui::opacity::Ramp Fade;
 
 void fadeTo(bool state) {
-  AbcUiDocument *doc = Api->ui->panelDocument("textmenu");
-  if (!doc)
-    return;
-  Api->ui->documentSetProperty(doc, "transition", "opacity 0.2s linear-in");
-  Api->ui->documentSetProperty(doc, "opacity", state ? "1" : "0");
+  Fade.retarget(state ? 1.0f : 0.0f, kFadeSeconds);
 }
 
 void setMenuOpen(bool open) {
@@ -213,16 +211,28 @@ void selectMenuItem(int slot) {
 void panelDocumentReady(void *) {
   // Invisible until a ShowMenu arrives (opacity 0, not display:none - the
   // fade-out transition needs the element alive).
-  fadeTo(false);
+  Fade.reset();
+  Api->ui->documentSetProperty(Api->ui->panelDocument("textmenu"), "opacity",
+                               "0");
 }
 
 void panelOnData(void *, double frameTime) {
+  frameTime = moduleui::opacity::frameDelta(frameTime);
   ClientTimeNow += frameTime;
   // Old OnThink shutoff.
+  bool fadeStarted = false;
   if (ShutoffTime >= 0.0 && ClientTimeNow >= ShutoffTime) {
     setMenuOpen(false);
     closeForFade();
     ShutoffTime = -1.0;
+    fadeStarted = true;
+  }
+  float opacity = 0.0f;
+  if (Fade.advance(fadeStarted ? 0.0 : frameTime, opacity)) {
+    char value[16];
+    moduleui::opacity::text(opacity, value);
+    Api->ui->documentSetProperty(Api->ui->panelDocument("textmenu"), "opacity",
+                                 value);
   }
   // Fade-out finished: take the document out of the layout. Doing it here -
   // instead of keeping the document permanently shown - is what keeps
@@ -243,7 +253,9 @@ void panelReset(void *) {
   setMenuOpen(false);
   HideAtTime = -1.0;
   setMenuInnerRml("");
-  fadeTo(false);
+  Fade.reset();
+  Api->ui->documentSetProperty(Api->ui->panelDocument("textmenu"), "opacity",
+                               "0");
   Api->ui->documentHide(Api->ui->panelDocument("textmenu"));
 }
 
@@ -300,6 +312,7 @@ void onModuleShutdown() {
   // The panel dtor ran setTextMenuOpen(false); with the document gone the
   // flag must not stay set into the next cycle.
   setMenuOpen(false);
+  Fade.reset();
 }
 
 void onModuleUnload() {

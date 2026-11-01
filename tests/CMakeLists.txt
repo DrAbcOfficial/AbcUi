@@ -139,6 +139,20 @@ abcui_add_test(abc_ui_value_bounce
     SOURCES ValueBounce.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
 
+abcui_add_test(abc_ui_opacity_motion
+    SOURCES OpacityMotion.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
+# Exercise each production module against the same recording ABI seams.
+foreach(module IN ITEMS Ammo Flashlight HudEffects KillFeed Motd TextMenu)
+    string(TOLOWER "${module}" module_id)
+    abcui_add_test("abc_ui_${module_id}_opacity"
+        SOURCES HudOpacity.cpp
+                "${PROJECT_SOURCE_DIR}/modules/${module_id}/src/${module}Module.cpp"
+        DEFINITIONS "ABCUI_TEST_MODULE=\"${module_id}\"" NOMINMAX
+                    WIN32_LEAN_AND_MEAN)
+endforeach()
+
 # The fixed-capacity particle system behind the HUD effects.
 abcui_add_test(abc_ui_particle_system
     SOURCES ParticleSystem.cpp
@@ -148,6 +162,11 @@ abcui_add_test(abc_ui_particle_system
 abcui_add_test(abc_ui_bullet_fx
     SOURCES BulletFx.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
+abcui_add_test(abc_ui_bullet_layer
+    SOURCES BulletLayer.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules"
+    LIBRARIES RmlUi::RmlUi)
 
 # The shipped group document: ids, RCSS grammar and a real laid-out row.
 abcui_add_test(abc_ui_division_document

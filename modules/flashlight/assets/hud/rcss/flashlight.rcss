@@ -20,7 +20,6 @@
 	height: 12dp;
 	/* Old FlashLightOn/Off animation sequences: the newly shown icon fades
 	   in over 0.1s. */
-	transition: opacity 0.1s linear-in;
 	/* White lamp glyph tinted by the HUD accent; the readout brightness rides
 	   --abc-hud-flashlight-opacity (0.75 lit / 0.53 off, set by the panel) and
 	   the off art also carries its own lower alpha. */

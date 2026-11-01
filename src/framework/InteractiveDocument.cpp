@@ -7,10 +7,12 @@
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/EventListener.h>
+#include <RmlUi/Core/Event.h>
 
 #include <abc/Console.h>
 
-#include <cstdio>
+#include <algorithm>
+#include <cmath>
 #include <utility>
 
 namespace framework {
@@ -91,21 +93,27 @@ InteractiveDocument::retry(Rml::Context *context) {
   return load(context);
 }
 
-void InteractiveDocument::show() { show(Rml::FocusFlag::Auto); }
+void InteractiveDocument::show() {
+  show(Rml::FocusFlag::Auto);
+}
 
 void InteractiveDocument::show(Rml::FocusFlag focus) {
   if (!Document || Presented)
     return;
   Presented = true;
-  // A document still dissolving out (see hide()) is already on screen; only a
-  // finished hide needs Rml's Show(). Skipping it also keeps the focus where
-  // it is, so reversing a fade never churns the keyboard owner.
-  if (!Document->IsVisible()) {
+  const bool wasBlocked = !InputProperties.empty();
+  restoreProperties(InputProperties);
+  writeOpacity(FadeOpacity);
+  if (!Document->IsVisible() || wasBlocked) {
     // FocusFlag::Auto + the document's autofocus attribute: first show lands
     // on the page's primary element, re-shows land the same way. Modal stays
     // off - input ownership arbitration is T06, not a document property.
     Document->Show(Rml::ModalFlag::None, focus);
   }
+  if (!Document || !Presented)
+    return; // Show/focus listeners may close or hide the page.
+  // Show updates the DOM, including newly added controls and their styles.
+  writeOpacity(FadeOpacity);
   // Show() does not order the context's document stack; interactive windows
   // own their z-order explicitly. Also when the page reversed its own
   // fade-out: a page that comes back must come back to the front.
@@ -122,17 +130,41 @@ void InteractiveDocument::hide() {
   // The logical truth flips now; the pixels follow over kFadeOutSeconds and
   // pump() applies the physical Hide() once the page is fully transparent.
   Presented = false;
+  Rml::ElementDocument *closing = Document;
+  if (Rml::Context *context = closing->GetContext()) {
+    // Deactivate editors before focus:none prevents even programmatic Focus.
+    // RmlUi's context root cannot Focus(), so with no other page the inert
+    // document may remain the focus target; the capture gate rejects input.
+    Rml::Element *focused = context->GetFocusElement();
+    if (focused && focused != closing && focused->GetOwnerDocument() == closing)
+      closing->Focus();
+    if (Document != closing || Presented)
+      return;
+    blockInput();
+    closing->UpdateDocument();
+    if (Document != closing || Presented)
+      return;
+    context->UnfocusDocument(closing);
+    if (Document != closing || Presented)
+      return;
+  }
+  if (Document != closing || Presented)
+    return;
   startFade(0.0f, kFadeOutSeconds, true);
 }
 
 void InteractiveDocument::pump(double frameTime) {
   if (!Document || !FadeActive)
     return;
+  if (!Presented)
+    blockInput(); // include controls appended during the fade-out
   if (FadeDuration <= 0.0) {
     writeOpacity(FadeTo);
     finishFade();
     return;
   }
+  if (!std::isfinite(frameTime) || frameTime < 0.0)
+    frameTime = 0.0;
   FadeElapsed += frameTime;
   if (FadeElapsed >= FadeDuration) {
     writeOpacity(FadeTo);
@@ -162,25 +194,103 @@ void InteractiveDocument::finishFade() {
   FadeActive = false;
   if (HideWhenFadeDone) {
     HideWhenFadeDone = false;
-    // Keep the inline zero: the next show() ramps up from transparent.
-    if (Document)
-      Document->Hide();
+    Rml::ElementDocument *closing = Document;
+    if (closing)
+      closing->Hide();
+    if (Document == closing && !Presented && !FadeActive)
+      restoreProperties(FadeProperties);
     return;
   }
   // Back to the stylesheet's own opacity: an open page carries no residue.
   if (Document) {
-    Document->RemoveProperty("opacity");
+    restoreProperties(FadeProperties);
     FadeOpacity = 1.0f;
   }
 }
 
 void InteractiveDocument::writeOpacity(float opacity) {
-  FadeOpacity = opacity;
+  FadeOpacity = std::clamp(opacity, 0.0f, 1.0f);
   if (!Document)
     return;
-  char value[16];
-  std::snprintf(value, sizeof(value), "%.3f", opacity);
-  Document->SetProperty("opacity", value);
+  restoreProperties(FadeProperties);
+  // Opacity is inherited, not multiplied by RmlUi. Scale every locally
+  // declared opacity once so a 55%-opaque control keeps that proportion.
+  // Resolve all baselines before installing any parent override.
+  std::vector<std::pair<Rml::Element *, float>> values;
+  std::vector<Rml::Element *> pending{Document};
+  while (!pending.empty()) {
+    Rml::Element *target = pending.back();
+    pending.pop_back();
+    if (target == Document ||
+        target->GetLocalProperty(Rml::PropertyId::Opacity)) {
+      const Rml::Property *property =
+          target->GetProperty(Rml::PropertyId::Opacity);
+      const float base = property ? property->Get<float>() : 1.0f;
+      values.emplace_back(
+          target, std::isfinite(base) ? std::clamp(base, 0.0f, 1.0f) : 1.0f);
+    }
+    for (int i = 0; i < target->GetNumChildren(true); ++i)
+      pending.push_back(target->GetChild(i));
+  }
+  for (const auto &[target, base] : values)
+    overrideProperty(FadeProperties, target, Rml::PropertyId::Opacity,
+                     Rml::Property(base * FadeOpacity, Rml::Unit::NUMBER));
+}
+
+void InteractiveDocument::restoreProperties(
+    std::vector<PropertyOverride> &properties) {
+  for (const PropertyOverride &entry : properties) {
+    Rml::Element *target = entry.Target.get();
+    if (!target)
+      continue;
+    const auto &local = target->GetLocalStyleProperties();
+    const auto current = local.find(entry.Id);
+    // A page may have authored a newer value since the last pump.
+    if (current == local.end() || current->second != entry.Applied)
+      continue;
+    if (entry.Original)
+      target->SetProperty(entry.Id, *entry.Original);
+    else
+      target->RemoveProperty(entry.Id);
+  }
+  properties.clear();
+}
+
+void InteractiveDocument::overrideProperty(
+    std::vector<PropertyOverride> &properties, Rml::Element *target,
+    Rml::PropertyId id, const Rml::Property &value) {
+  std::optional<Rml::Property> original;
+  const auto &local = target->GetLocalStyleProperties();
+  if (const auto found = local.find(id); found != local.end())
+    original = found->second;
+  target->SetProperty(id, value);
+  // SetProperty attaches the definition; keep the installed property for
+  // equality checks rather than its definition-free input.
+  properties.push_back({target->GetObserverPtr(), id, std::move(original),
+                        target->GetLocalStyleProperties().at(id)});
+}
+
+void InteractiveDocument::blockInput() {
+  restoreProperties(InputProperties);
+  std::vector<Rml::Element *> pending{Document};
+  while (!pending.empty()) {
+    Rml::Element *target = pending.back();
+    pending.pop_back();
+    if (target == Document ||
+        target->GetLocalProperty(Rml::PropertyId::PointerEvents))
+      overrideProperty(InputProperties, target, Rml::PropertyId::PointerEvents,
+                       Rml::Property(Rml::Style::PointerEvents::None));
+    if (target == Document || target->GetLocalProperty(Rml::PropertyId::Focus))
+      overrideProperty(InputProperties, target, Rml::PropertyId::Focus,
+                       Rml::Property(Rml::Style::Focus::None));
+    for (int i = 0; i < target->GetNumChildren(true); ++i)
+      pending.push_back(target->GetChild(i));
+  }
+}
+
+void InteractiveDocument::InputBlocker::ProcessEvent(Rml::Event &event) {
+  if (!Owner.Presented)
+    event.StopImmediatePropagation();
 }
 
 void InteractiveDocument::close() {
@@ -198,6 +308,8 @@ void InteractiveDocument::close() {
   FadeActive = false;
   HideWhenFadeDone = false;
   FadeOpacity = 0.0f;
+  FadeProperties.clear();
+  InputProperties.clear();
   if (WasDegraded)
     onRecoveryClose();
   auto Bindings = std::move(Listeners);
@@ -210,7 +322,9 @@ void InteractiveDocument::close() {
   ClosingDocument->Close();
 }
 
-bool InteractiveDocument::isVisible() const { return Document && Presented; }
+bool InteractiveDocument::isVisible() const {
+  return Document && Presented;
+}
 
 void InteractiveDocument::beginLoaded() {
   // A freshly loaded page starts fully transparent and hidden: the first
@@ -223,6 +337,20 @@ void InteractiveDocument::beginLoaded() {
   FadeTo = 0.0f;
   FadeElapsed = 0.0;
   FadeDuration = 0.0;
+  // Register before the page's own listeners. This also blocks events from
+  // stale hover/active pointers before a style update has caught up.
+  static constexpr const char *inputEvents[] = {
+      "keydown",   "keyup",       "textinput", "mousedown", "mouseup",
+      "mousemove", "mousescroll", "click",     "dblclick",  "mouseover",
+      "mouseout",  "drag",        "dragstart", "dragmove",  "dragover",
+      "dragdrop",  "dragout",     "dragend",   "handledrag"};
+  for (const char *event : inputEvents) {
+    addListener(Document, event, &InputGate, true);
+    // At the target RmlUi orders non-capture listeners first, regardless of
+    // their registration relative to capture listeners. Guard both phases
+    // so a key routed to the inert document itself cannot reach page code.
+    addListener(Document, event, &InputGate, false);
+  }
   writeOpacity(0.0f);
 }
 

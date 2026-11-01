@@ -24,7 +24,9 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/EventListener.h>
 #include <RmlUi/Core/ObserverPtr.h>
+#include <RmlUi/Core/Property.h>
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -99,10 +101,8 @@ public:
   // Hide: begins the fade-out. isVisible() turns false immediately - the page
   // logic, the menu layer's hide-all rule and the focus guard keep their
   // synchronous truth - while the document keeps drawing until its opacity
-  // reaches zero; only then is the physical Hide() applied. Listener bindings
-  // survive hide/show cycles. Context-focus release when no other document
-  // exists is RmlUi's own behavior (UnfocusDocument keeps the pointer with
-  // nothing to hand to); real focus-release semantics are T06's ownership.
+  // reaches zero; only then is the physical Hide() applied. Input is blocked
+  // and editors deactivated immediately. Listener bindings survive hide/show.
   void hide();
   // Advances the opacity ramp. The page layer pumps it once per frame before
   // the context update (module_documents::pump), so a page never blocks on its
@@ -184,6 +184,30 @@ private:
   void startFade(float target, double seconds, bool hideWhenDone);
   void finishFade();
   void writeOpacity(float opacity);
+  void blockInput();
+
+  // Temporary overrides never replace the authored inline declarations or
+  // stylesheet values permanently. Observers tolerate a page rebuilding its
+  // controls while a dissolve is in flight.
+  struct PropertyOverride {
+    Rml::ObserverPtr<Rml::Element> Target;
+    Rml::PropertyId Id;
+    std::optional<Rml::Property> Original;
+    Rml::Property Applied;
+  };
+  static void restoreProperties(std::vector<PropertyOverride> &properties);
+  static void overrideProperty(std::vector<PropertyOverride> &properties,
+                               Rml::Element *target, Rml::PropertyId id,
+                               const Rml::Property &value);
+
+  class InputBlocker final : public Rml::EventListener {
+  public:
+    explicit InputBlocker(InteractiveDocument &owner) : Owner(owner) {}
+    void ProcessEvent(Rml::Event &event) override;
+
+  private:
+    InteractiveDocument &Owner;
+  };
 
   struct ListenerBinding {
     Rml::ObserverPtr<Rml::Element> Target;
@@ -209,6 +233,9 @@ private:
   float FadeOpacity = 1.0f; // last value written to the document
   double FadeElapsed = 0.0;
   double FadeDuration = 0.0;
+  std::vector<PropertyOverride> FadeProperties;
+  std::vector<PropertyOverride> InputProperties;
+  InputBlocker InputGate{*this};
   std::vector<ListenerBinding> Listeners;
 };
 

@@ -1,9 +1,10 @@
 // abc_ui_particle_system - the fixed-capacity particle system behind the HUD
-// effects: emission, semi-implicit integration, expiry, oldest-slot recycling
+// effects: emission, constant-acceleration integration, expiry, slot recycling
 // and reset. Pure math.
 #include "common/ParticleSystem.h"
 
 #include <cmath>
+#include <limits>
 
 #include "framework/TestHarness.h"
 
@@ -41,10 +42,10 @@ int main() {
     const std::size_t Index = Pool.emit(Spec);
 
     CHECK(Pool.update(0.5f));
-    // Semi-implicit Euler: v += a*dt, then p += v*dt.
+    // p += v*dt + a*dt*dt/2, then v += a*dt.
     CHECK_NEAR(Pool.at(Index).Velocity.Y, 8.0, 0.001);
     CHECK_NEAR(Pool.at(Index).Position.X, 11.0, 0.001);
-    CHECK_NEAR(Pool.at(Index).Position.Y, 24.0, 0.001);
+    CHECK_NEAR(Pool.at(Index).Position.Y, 22.75, 0.001);
   }
 
   TEST_CASE("expiry");
@@ -102,7 +103,75 @@ int main() {
     Pool.emit(Spec);
     Pool.clear();
     CHECK(!Pool.anyAlive());
+    CHECK(
+        Pool.update(0.0f)); // consume the final hide, even without a time step
     CHECK(!Pool.update(0.016f));
+    Pool.clear();
+    CHECK(!Pool.update(0.016f)); // an already-clean empty pool stays idle
+  }
+
+  TEST_CASE("same-frame-recycling");
+  {
+    System<3> Pool;
+    for (std::size_t Index = 0; Index < 12; ++Index)
+      CHECK(Pool.emit({}) == Index % 3);
+  }
+
+  TEST_CASE("split-frame-invariance");
+  {
+    Emission Spec;
+    Spec.Position = {10.0f, 20.0f};
+    Spec.Velocity = {26.0f, 30.0f};
+    Spec.Acceleration = {0.0f, 420.0f};
+    Spec.AngularVelocity = 300.0f;
+    System<1> Whole;
+    System<1> Split;
+    Whole.emit(Spec);
+    Split.emit(Spec);
+    Whole.update(0.5f);
+    for (int Index = 0; Index < 60; ++Index)
+      Split.update(1.0f / 120.0f);
+    CHECK_NEAR(Whole.at(0).Position.X, Split.at(0).Position.X, 0.001);
+    CHECK_NEAR(Whole.at(0).Position.Y, Split.at(0).Position.Y, 0.001);
+    CHECK_NEAR(Whole.at(0).Rotation, Split.at(0).Rotation, 0.001);
+  }
+
+  TEST_CASE("invalid-time-and-emission");
+  {
+    const float Nan = std::numeric_limits<float>::quiet_NaN();
+    const float Inf = std::numeric_limits<float>::infinity();
+    System<1> Pool;
+    Emission Spec;
+    Spec.Position = {Nan, Inf};
+    Spec.Velocity = {Inf, Nan};
+    Spec.Acceleration = {Nan, Inf};
+    Spec.Rotation = Nan;
+    Spec.AngularVelocity = Inf;
+    Spec.Lifetime = Inf;
+    Pool.emit(Spec);
+    CHECK(Pool.update(0.0f)); // a new emission still needs painting
+    for (float Delta : {Nan, Inf, -Inf, -0.5f}) {
+      CHECK(!Pool.update(Delta));
+      CHECK_NEAR(Pool.at(0).Age, 0.0f, 0.0);
+    }
+    CHECK(Pool.update(0.1f));
+    CHECK(std::isfinite(Pool.at(0).Position.X));
+    CHECK(std::isfinite(Pool.at(0).Position.Y));
+    CHECK(std::isfinite(Pool.at(0).Rotation));
+    CHECK_NEAR(Pool.at(0).Lifetime, 1.0f, 0.0);
+    CHECK(Pool.update(1.0f));
+    CHECK(!Pool.anyAlive());
+  }
+
+  TEST_CASE("numeric-overflow-expires");
+  {
+    System<1> Pool;
+    Emission Spec;
+    Spec.Position.X = std::numeric_limits<float>::max();
+    Spec.Velocity.X = std::numeric_limits<float>::max();
+    Pool.emit(Spec);
+    CHECK(Pool.update(0.5f));
+    CHECK(!Pool.anyAlive());
   }
 
   return abctest::finish("abc_ui_particle_system");

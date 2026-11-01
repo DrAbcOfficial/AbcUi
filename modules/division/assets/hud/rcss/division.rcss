@@ -38,6 +38,8 @@
 
 .bullet {
 	position: absolute;
+	left: 0;
+	top: 0;
 	display: none;
 	/* Same size and tint as the ammo icon: the round is a copy of it. The
 	   module overrides the size with the icon's laid-out pixels. */

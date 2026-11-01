@@ -258,6 +258,30 @@ int main() {
   }
 
   {
+    TEST_CASE("fade-out-cancels-composition-and-rejects-commits");
+    page.pump(framework::InteractiveDocument::kFadeInSeconds);
+    CHECK(focusById(context, page.document(), "text-field"));
+    Rml::ElementFormControl *field = focusControl(context);
+    field->SetValue("base");
+    const std::string before = valueOf(field);
+    rmlui::feedTextEditing("pending", 7);
+    CHECK(rmlui::textComposing());
+    page.hide();
+    CHECK(!rmlui::textComposing());
+    CHECK(focusControl(context) == nullptr);
+    CHECK(valueOf(field) == before);
+    rmlui::feedTextInput("late");
+    rmlui::feedTextEditing("late", 4);
+    CHECK(valueOf(field) == before);
+    CHECK(!rmlui::textComposing());
+    page.show();
+    page.pump(framework::InteractiveDocument::kFadeInSeconds);
+    CHECK(focusById(context, page.document(), "text-field"));
+    rmlui::feedTextInput("accepted");
+    CHECK(valueOf(field).find("accepted") != std::string::npos);
+  }
+
+  {
     TEST_CASE("shutdown-drops-state");
     CHECK(focusById(context, page.document(), "text-field"));
     rmlui::feedTextEditing("zz", 2);
