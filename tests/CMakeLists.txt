@@ -154,9 +154,29 @@ foreach(module IN ITEMS Ammo Flashlight HudEffects KillFeed Motd TextMenu)
 endforeach()
 
 # Weapon selector input ownership and empty-slot presentation.
+# Rename only the test-linked entry so both production modules can coexist.
+add_library(abcui_test_textmenu_entry OBJECT
+    "${PROJECT_SOURCE_DIR}/modules/textmenu/src/TextMenuModule.cpp")
+target_include_directories(abcui_test_textmenu_entry PRIVATE
+    "${PROJECT_SOURCE_DIR}/sdk")
+target_compile_features(abcui_test_textmenu_entry PRIVATE cxx_std_20)
+target_compile_definitions(abcui_test_textmenu_entry PRIVATE
+    AbcUiModule_Main=AbcUiTextMenu_Main)
+
 abcui_add_test(abc_ui_weaponchoose
     SOURCES WeaponChoose.cpp
-            "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp")
+            "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp"
+            "${SRC}/modsys/EventBus.cpp"
+            $<TARGET_OBJECTS:abcui_test_textmenu_entry>
+    LIBRARIES Abc::Core)
+
+abcui_add_test(abc_ui_weaponchoose_textmenu_first
+    SOURCES WeaponChoose.cpp
+            "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp"
+            "${SRC}/modsys/EventBus.cpp"
+            $<TARGET_OBJECTS:abcui_test_textmenu_entry>
+    DEFINITIONS ABCUI_TEST_TEXTMENU_FIRST
+    LIBRARIES Abc::Core)
 
 # The fixed-capacity particle system behind the HUD effects.
 abcui_add_test(abc_ui_particle_system

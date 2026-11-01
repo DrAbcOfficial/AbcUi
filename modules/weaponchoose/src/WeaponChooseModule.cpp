@@ -487,7 +487,9 @@ void onModuleLoad() {
 
   for (intptr_t i = 0; i < ABCUI_WEAPON_SLOT_COUNT; i++) {
     const std::string name = std::format("slot{}", i + 1);
-    Api->commands->subscribeCommand(name.c_str(), 0, &onSlotCommand,
+    // Check the menu gate before textmenu's priority-0 handler selects an
+    // item and clears it. Aggregate command dispatch still runs both sinks.
+    Api->commands->subscribeCommand(name.c_str(), 1, &onSlotCommand,
                                     reinterpret_cast<void *>(i));
   }
   Api->commands->subscribeCommand("invnext", 0, &onInvNext, nullptr);
