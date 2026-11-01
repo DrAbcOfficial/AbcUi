@@ -136,14 +136,14 @@ implemented rules the transition must keep:
   Sections: core, console, events, vfs, panels, documents, data, ui, commands,
   weapons, players, radar, shell, voice, score, input, menu, votemenu,
   playerlist, commandmenu, menuconfig, social, inventory, creategame,
-  consolepage, serverbrowser, connection, settings. Adding a function
+  consolepage, serverbrowser, connection, settings, modules. Adding a function
   means appending it to the section end (and its initializer in
   `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
   `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
   `ApiPlayerList.cpp` / `ApiCommandMenu.cpp` / `ApiMenuConfig.cpp` /
   `ApiSocial.cpp` / `ApiInventory.cpp` / `ApiCreateGame.cpp` /
   `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` / `ApiConnection.cpp` /
-  `ApiSettings.cpp` -
+  `ApiSettings.cpp` / `ApiModules.cpp` -
   a missing initializer is silently a null pointer; the table audit in
   `ApiTable::get` catches it at boot), and
   appending to snapshot structs means the writer must honor the caller's
@@ -166,6 +166,12 @@ implemented rules the transition must keep:
   onUnload` in load order (reverse order for shutdown). A failed module is
   skipped together with its dependents; the process keeps running. Modules
   must avoid static TLS (`__declspec(thread)`) and delayimp.
+- A package is disabled by renaming its `.zip` to `.disable`; the loader scans
+  only `.zip`. `abcui.gameui`'s Modules settings page lists both forms and
+  `ModuleManager::unloadAll` applies the process-local pending renames after
+  `ModuleVfs::unmountAll`; never rename while a package is mounted. The cache
+  is intentionally not persisted (an abnormal exit loses it) and a full process
+  restart is required. Do not add `FILE_SHARE_DELETE` or live module reloading.
 - Module panel descriptors are kept for the whole process and every
   HUD_Init cycle builds fresh wrappers: `PanelManager::shutdown` destroys the
   panel list on every HUD_Shutdown, so taking the wrappers once would lose

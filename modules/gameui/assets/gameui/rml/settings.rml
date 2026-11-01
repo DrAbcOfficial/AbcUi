@@ -156,6 +156,26 @@
 					<div id="voice-meter" aria-label="#abcui.gameui/Settings_MicLevel"><div id="voice-meter-fill"></div></div>
 				</div>
 			</div>
+			<div class="settings-widget" id="widget-modules">
+				<div id="module-summary"></div>
+				<div id="module-status"></div>
+				<div id="module-pending" class="module-pending">
+					<div id="module-pending-text"></div>
+					<div class="module-pending-actions">
+						<button id="module-quit" data-action="module-quit">#abcui.gameui/Settings_ModulesQuit</button>
+						<button id="module-later" data-action="modules-later">#abcui.gameui/Settings_ModulesLater</button>
+					</div>
+				</div>
+				<div id="module-toolbar">
+					<button id="module-filter-all" class="module-filter selected" data-action="modules-filter" data-filter="all">#abcui.gameui/Settings_ModulesFilterAll</button>
+					<button id="module-filter-loaded" class="module-filter" data-action="modules-filter" data-filter="loaded">#abcui.gameui/Settings_ModulesFilterLoaded</button>
+					<button id="module-filter-enabled" class="module-filter" data-action="modules-filter" data-filter="enabled">#abcui.gameui/Settings_ModulesFilterEnabled</button>
+					<button id="module-filter-disabled" class="module-filter" data-action="modules-filter" data-filter="disabled">#abcui.gameui/Settings_ModulesFilterDisabled</button>
+					<button id="module-filter-problems" class="module-filter" data-action="modules-filter" data-filter="problems">#abcui.gameui/Settings_ModulesFilterProblems</button>
+					<button id="module-rescan" data-action="modules-rescan">#abcui.gameui/Settings_ModulesRescan</button>
+				</div>
+				<div id="module-list"></div>
+			</div>
 		</div>
 	</div>
 	<div id="settings-actions">
@@ -214,6 +234,12 @@
 	<!-- I16 model picker favorite menu: opened by right-click on a picker
 	     row, anchored to the pointer like the console's copy menu (outside
 	     the scroll container, so it never scrolls away with the rows). -->
+	<div id="module-quit-confirm" class="settings-layer">
+		<h1 class="settings-layer-title">#abcui.gameui/Settings_ModulesQuitTitle</h1>
+		<p>#abcui.gameui/Settings_ModulesQuitText</p>
+		<button id="module-quit-yes" data-action="module-quit-yes">#abcui.gameui/Settings_ModulesQuitYes</button>
+		<button id="module-quit-no" data-action="module-quit-no" autofocus="autofocus">#abcui.gameui/Settings_Cancel</button>
+	</div>
 	<div id="model-picker-context-menu">
 		<div id="model-picker-context-fav" class="model-picker-context-item" data-action="model-picker-context-fav"></div>
 	</div>

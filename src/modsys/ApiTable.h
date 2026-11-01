@@ -114,4 +114,8 @@ bool consumeEscape();
 void bumpRevision();
 } // namespace SettingsApi
 
+namespace ModulesApi {
+const AbcUiModulesApi *get();
+} // namespace ModulesApi
+
 } // namespace framework

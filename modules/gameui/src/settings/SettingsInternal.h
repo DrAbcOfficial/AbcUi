@@ -59,6 +59,14 @@ constexpr const char *kActionModelPick = "model-picker-pick";
 constexpr const char *kActionModelFav = "model-picker-fav";
 constexpr const char *kActionModelFavOnly = "model-picker-favonly";
 constexpr const char *kActionModelContextFav = "model-picker-context-fav";
+constexpr const char *kActionModuleFilter = "modules-filter";
+constexpr const char *kActionModuleRescan = "modules-rescan";
+constexpr const char *kActionModuleDetail = "modules-detail";
+constexpr const char *kActionModuleToggle = "modules-toggle";
+constexpr const char *kActionModuleQuit = "module-quit";
+constexpr const char *kActionModuleQuitYes = "module-quit-yes";
+constexpr const char *kActionModuleQuitNo = "module-quit-no";
+constexpr const char *kActionModuleLater = "modules-later";
 
 // Page-internal layer DOM ids.
 constexpr const char *kLayerReset = "reset-confirm";
@@ -66,6 +74,7 @@ constexpr const char *kLayerLeave = "leave-confirm";
 constexpr const char *kLayerBindConflict = "bind-conflict";
 constexpr const char *kLayerBindReset = "bind-reset-confirm";
 constexpr const char *kLayerSprayFile = "spray-file";
+constexpr const char *kLayerModuleQuitConfirm = "module-quit-confirm";
 
 // The section components that own one singleton widget block in settings.rml:
 // component name -> block element id. Each claimed block is moved into the
@@ -88,6 +97,7 @@ constexpr WidgetBlock kWidgetBlocks[] = {
     {"bindings", "widget-bindings", false, false},
     {"video", "widget-video", false, false},
     {"voice", "widget-voice", false, false},
+    {"modules", "widget-modules", false, false},
 };
 constexpr int kWidgetBlockCount =
     static_cast<int>(sizeof(kWidgetBlocks) / sizeof(kWidgetBlocks[0]));
@@ -193,6 +203,14 @@ extern files::FileBrowser Browser;
 extern bool SprayOpen;
 extern std::string SpraySelected;
 
+// Module manager page state (the cache itself lives framework-side).
+extern std::string ModuleFilter;
+extern std::string ModuleDetailFile;
+extern std::string ModuleStatusText;
+extern bool ModuleQuitConfirmOpen;
+extern bool ModuleBannerDismissed;
+extern uint32_t ModuleRenderedRevision;
+
 extern PreviewPart PreviewCore[5];
 extern PreviewPart PreviewOutline[5];
 
@@ -251,6 +269,13 @@ void applyAndReport();
 void resetCurrentPage();
 bool requestLeave();
 void discardAndReturn();
+
+// --------------------------------------------------------------- modules --
+
+void modulesRefresh();
+void renderModules();
+bool handleModuleAction(const std::string &action, AbcUiElement *entry);
+void moduleReset();
 
 // ----------------------------------------------------------------- rows ----
 

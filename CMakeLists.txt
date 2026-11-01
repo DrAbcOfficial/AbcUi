@@ -198,6 +198,8 @@ add_library(AbcUi MODULE
     src/modsys/ApiServerBrowser.cpp
     src/modsys/ApiConnection.cpp
     src/modsys/ApiSettings.cpp
+    src/modsys/ApiModules.cpp
+    src/modsys/ModuleCatalog.cpp
     src/modsys/ModuleDocuments.cpp
     src/modsys/ModuleServices.cpp
     src/render/BackendHost.cpp

@@ -132,6 +132,14 @@ void onClick(AbcUiElement *target) {
   if (action.empty())
     return;
 
+  // Module manager actions are page-local: cache toggles, detail rows,
+  // filters and the batch-rename confirmation.
+  if (handleModuleAction(action, entry)) {
+    if (!InRender)
+      render();
+    return;
+  }
+
   // The model picker's intents come first - the list rows are generic
   // data-action nodes the chain below would drop. The context menu item acts
   // and closes the menu itself.

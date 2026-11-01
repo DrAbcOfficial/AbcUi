@@ -2056,6 +2056,150 @@ typedef struct AbcUiSettingsApi {
   int32_t(ABCUI_CALL *sprayPreviewUri)(char *out, uint32_t outSize);
 } AbcUiSettingsApi;
 
+// -------------------------------------------------------------- modules ----
+
+// The installed module packages, their dependency/conflict diagnostics and
+// the process-local pending rename cache. Toggles never touch the disk while
+// modules are mounted: they only update the cache; ModuleManager::unloadAll
+// applies the batch after every module and VFS mount is gone.
+#define ABCUI_MODULE_FILE_MAX 260
+#define ABCUI_MODULE_ID_MAX 96
+#define ABCUI_MODULE_NAME_MAX 128
+#define ABCUI_MODULE_VERSION_MAX 32
+#define ABCUI_MODULE_TEXT_MAX 512
+
+#define ABCUI_MODULE_STATE_LOADED 0
+#define ABCUI_MODULE_STATE_WILL_LOAD 1
+#define ABCUI_MODULE_STATE_DISABLED 2
+#define ABCUI_MODULE_STATE_SKIPPED 3
+#define ABCUI_MODULE_STATE_FAILED 4
+#define ABCUI_MODULE_STATE_INVALID 5
+
+#define ABCUI_MODULE_PENDING_NONE 0
+#define ABCUI_MODULE_PENDING_ENABLE 1
+#define ABCUI_MODULE_PENDING_DISABLE 2
+
+#define ABCUI_MODULE_FLAG_ENABLED 0x0001
+#define ABCUI_MODULE_FLAG_LOADED_NOW 0x0002
+#define ABCUI_MODULE_FLAG_PENDING 0x0004
+#define ABCUI_MODULE_FLAG_RESOURCES 0x0008
+#define ABCUI_MODULE_FLAG_PREVIEW 0x0010
+#define ABCUI_MODULE_FLAG_CHANGED 0x0020
+
+#define ABCUI_MODULE_REL_DEPENDENCY 0
+#define ABCUI_MODULE_REL_DEPENDENT 1
+#define ABCUI_MODULE_REL_CONFLICT 2
+
+#define ABCUI_MODULE_REL_OK 0
+#define ABCUI_MODULE_REL_DISABLED 1
+#define ABCUI_MODULE_REL_MISSING 2
+#define ABCUI_MODULE_REL_FAILED 3
+#define ABCUI_MODULE_REL_CYCLE 4
+#define ABCUI_MODULE_REL_ACTIVE 5
+
+#define ABCUI_MODULE_DIAG_ERROR 0
+#define ABCUI_MODULE_DIAG_WARNING 1
+#define ABCUI_MODULE_DIAG_INFO 2
+
+#define ABCUI_MODULE_DIAG_UNREADABLE 0
+#define ABCUI_MODULE_DIAG_MANIFEST_INVALID 1
+#define ABCUI_MODULE_DIAG_ABI_MISMATCH 2
+#define ABCUI_MODULE_DIAG_FRAMEWORK_TOO_OLD 3
+#define ABCUI_MODULE_DIAG_DUPLICATE_VERSION 4
+#define ABCUI_MODULE_DIAG_AMBIGUOUS_ID 5
+#define ABCUI_MODULE_DIAG_MISSING_DEPENDENCY 6
+#define ABCUI_MODULE_DIAG_DISABLED_DEPENDENCY 7
+#define ABCUI_MODULE_DIAG_FAILED_DEPENDENCY 8
+#define ABCUI_MODULE_DIAG_DEPENDENCY_CYCLE 9
+#define ABCUI_MODULE_DIAG_CONFLICT_ACTIVE 10
+#define ABCUI_MODULE_DIAG_CONFLICT_INACTIVE 11
+#define ABCUI_MODULE_DIAG_ENTRY_MISSING 12
+#define ABCUI_MODULE_DIAG_IMAGE_LOAD_FAILED 13
+#define ABCUI_MODULE_DIAG_INIT_FAILED 14
+#define ABCUI_MODULE_DIAG_FILE_CHANGED 15
+#define ABCUI_MODULE_DIAG_PENDING_INVALID 16
+
+#define ABCUI_MODULE_CACHE_OK 0
+#define ABCUI_MODULE_CACHE_INVALID 1
+#define ABCUI_MODULE_CACHE_NOT_FOUND 2
+#define ABCUI_MODULE_CACHE_EXISTS 3
+#define ABCUI_MODULE_CACHE_DENIED 4
+#define ABCUI_MODULE_CACHE_NO_CHANGE 5
+
+typedef struct AbcUiModuleInfo {
+  uint32_t structSize;
+  int32_t index;
+  int32_t state;        // current session/disk state
+  int32_t nextState;    // prediction with the pending cache
+  int32_t previewState; // prediction with previewToggle, else nextState
+  int32_t pending;      // ABCUI_MODULE_PENDING_*
+  int32_t flags;        // ABCUI_MODULE_FLAG_*
+  int32_t abi;
+  int32_t loadOrder; // -1 when not loaded
+  int32_t dependencyCount;
+  int32_t dependentCount;
+  int32_t conflictCount;
+  int32_t diagnosticCount;
+  uint64_t fileSize;
+  char file[ABCUI_MODULE_FILE_MAX];
+  char id[ABCUI_MODULE_ID_MAX];
+  char name[ABCUI_MODULE_NAME_MAX];
+  char description[ABCUI_MODULE_TEXT_MAX];
+  char author[ABCUI_MODULE_ID_MAX];
+  char version[ABCUI_MODULE_VERSION_MAX];
+  char minAbcUi[ABCUI_MODULE_VERSION_MAX];
+  char entry[ABCUI_MODULE_FILE_MAX];
+} AbcUiModuleInfo;
+
+typedef struct AbcUiModuleRelation {
+  uint32_t structSize;
+  int32_t kind;       // ABCUI_MODULE_REL_*
+  int32_t state;      // ABCUI_MODULE_REL_* state
+  int32_t declaredBy; // the current module declared the dependency/conflict
+  char id[ABCUI_MODULE_ID_MAX];
+  char name[ABCUI_MODULE_NAME_MAX];
+  char file[ABCUI_MODULE_FILE_MAX];
+} AbcUiModuleRelation;
+
+typedef struct AbcUiModuleDiagnostic {
+  uint32_t structSize;
+  int32_t severity;
+  int32_t code;
+  char subject[ABCUI_MODULE_ID_MAX];
+  char detail[ABCUI_MODULE_TEXT_MAX];
+} AbcUiModuleDiagnostic;
+
+typedef struct AbcUiModuleChange {
+  uint32_t structSize;
+  int32_t code;
+  int32_t pending;
+  int32_t restartRequired;
+  int32_t affectedCount;
+  char file[ABCUI_MODULE_FILE_MAX];
+  char targetFile[ABCUI_MODULE_FILE_MAX];
+} AbcUiModuleChange;
+
+typedef struct AbcUiModulesApi {
+  uint32_t structSize;
+  uint32_t(ABCUI_CALL *revision)(void);
+  int32_t(ABCUI_CALL *rescan)(void);
+  int32_t(ABCUI_CALL *count)(void);
+  int32_t(ABCUI_CALL *at)(int32_t index, AbcUiModuleInfo *out);
+  int32_t(ABCUI_CALL *find)(const char *file);
+  int32_t(ABCUI_CALL *relationAt)(int32_t index, int32_t relation,
+                                  AbcUiModuleRelation *out);
+  int32_t(ABCUI_CALL *diagnosticAt)(int32_t index, int32_t diagnostic,
+                                    AbcUiModuleDiagnostic *out);
+  // Dry run: sets previewState without changing the cache or the disk.
+  int32_t(ABCUI_CALL *previewToggle)(const char *file, int32_t enabled);
+  void(ABCUI_CALL *clearPreview)(void);
+  // Cache only. No file is renamed here.
+  int32_t(ABCUI_CALL *setPendingEnabled)(const char *file, int32_t enabled,
+                                         AbcUiModuleChange *out);
+  int32_t(ABCUI_CALL *pendingCount)(void);
+  int32_t(ABCUI_CALL *restartRequired)(void);
+} AbcUiModulesApi;
+
 // ------------------------------------------------- module descriptor ------
 
 typedef struct AbcUiModuleDescriptor {
@@ -2129,6 +2273,7 @@ typedef struct AbcUiModuleApi {
   const AbcUiSettingsApi *settings;
   const AbcUiTexturesApi *textures;
   const AbcUiAudioApi *audio;
+  const AbcUiModulesApi *modules;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

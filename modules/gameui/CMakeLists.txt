@@ -31,6 +31,7 @@ add_library(abcui_mod_gameui MODULE
             src/settings/SettingsSpray.cpp
             src/settings/SettingsEvents.cpp
             src/settings/SettingsPresentation.cpp
+            src/settings/SettingsModules.cpp
             src/settings/SettingsFileBrowser.cpp)
 target_include_directories(abcui_mod_gameui PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../../sdk")

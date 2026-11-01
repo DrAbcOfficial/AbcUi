@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "id": "modules",
+  "label": "#abcui.gameui/Settings_PageModules",
+  "description": "#abcui.gameui/Settings_ModulesHint",
+  "order": 95,
+  "components": [],
+  "sections": [
+    {
+      "id": "modules",
+      "label": "#abcui.gameui/Settings_SecModules",
+      "components": [
+        "modules"
+      ]
+    }
+  ],
+  "items": []
+}

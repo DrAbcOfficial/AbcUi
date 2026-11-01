@@ -17,6 +17,7 @@
 #include "EventBus.h"
 #include "FrameworkVersion.h"
 #include "MemoryDll.h"
+#include "ModuleCatalog.h"
 #include "ModuleDocuments.h"
 #include "ModuleManifest.h"
 #include "ModuleVfs.h"
@@ -31,6 +32,9 @@ constexpr const char *kEntrySymbol = "AbcUiModule_Main";
 
 struct LoadedModule {
   ModuleManifest manifest;
+  std::string packageFile;
+  std::string failure;
+  int loadOrder = -1;
   std::shared_ptr<MemoryDll> library;
   module_resources::OwnerHandle owner;
   bool initialized = false;
@@ -40,6 +44,23 @@ struct LoadedModule {
 std::vector<LoadedModule> &loaded() {
   static std::vector<LoadedModule> instance;
   return instance;
+}
+
+std::map<std::string, RuntimeModule> &packageFailures() {
+  static std::map<std::string, RuntimeModule> instance;
+  return instance;
+}
+
+void recordFailure(const LoadedModule &module, const std::string &reason) {
+  RuntimeModule record;
+  record.id = module.manifest.id;
+  record.file = module.packageFile;
+  record.version = module.manifest.version;
+  record.failed = true;
+  record.failure = reason;
+  record.loadOrder = module.loadOrder;
+  if (!record.file.empty())
+    packageFailures()[record.file] = std::move(record);
 }
 
 size_t loadedCount() {
@@ -85,6 +106,7 @@ bool loadModule(Candidate &candidate) {
   const std::string &id = candidate.manifest.id;
   LoadedModule module;
   module.manifest = candidate.manifest;
+  module.packageFile = candidate.path;
   module.owner = std::make_shared<module_resources::Owner>(id);
   module.owner->dependencies = candidate.manifest.dependencies;
   module.owner->initializing = true;
@@ -92,9 +114,11 @@ bool loadModule(Candidate &candidate) {
                         candidate.manifest.dependencies)) {
     abc::ConsoleWarn("[AbcUi] module \"%s\": package mount refused\n",
                      id.c_str());
+    recordFailure(module, "package mount refused");
     return false;
   }
   if (module.manifest.resourcesOnly) {
+    module.loadOrder = static_cast<int>(loaded().size());
     loaded().push_back(std::move(module));
     return true;
   }
@@ -107,6 +131,7 @@ bool loadModule(Candidate &candidate) {
       !module.library->load(entryDll.data, entryDll.size, &error)) {
     abc::ConsoleWarn("[AbcUi] module \"%s\": image load failed (%s)\n",
                      id.c_str(), error.c_str());
+    recordFailure(module, "image load failed: " + error);
     retire(module);
     return false;
   }
@@ -125,6 +150,7 @@ bool loadModule(Candidate &candidate) {
       std::string(descriptor.id) != id) {
     abc::ConsoleWarn("[AbcUi] module \"%s\": entry refused or mismatched\n",
                      id.c_str());
+    recordFailure(module, "entry refused or mismatched");
     retire(module);
     return false;
   }
@@ -135,11 +161,13 @@ bool loadModule(Candidate &candidate) {
       module_resources::attempt(module.owner, "onLoad", descriptor.onLoad);
   module.owner->loading = false;
   if (!loadSucceeded || module.owner->initializationFailed) {
+    recordFailure(module, "onLoad failed");
     retire(module);
     return false;
   }
   abc::ConsolePrint("[AbcUi] module \"%s\" loaded (%s)\n", id.c_str(),
                     candidate.manifest.version.c_str());
+  module.loadOrder = static_cast<int>(loaded().size());
   loaded().push_back(std::move(module));
   return true;
 }
@@ -370,6 +398,7 @@ void initAll() {
       abc::ConsoleWarn(
           "[AbcUi] module \"%s\": dependency initialization failed\n",
           module.manifest.id.c_str());
+      module.failure = "dependency initialization failed";
       retire(module);
       continue;
     }
@@ -378,6 +407,7 @@ void initAll() {
         module_resources::attempt(module.owner, "onInit",
                                   module.descriptor.onInit);
     if (!initialized || module.owner->initializationFailed) {
+      module.failure = "onInit failed";
       retire(module, true);
       continue;
     }
@@ -425,6 +455,9 @@ void unloadAll() {
   module_documents::unload();
   loaded().clear();
   ModuleVfs::unmountAll();
+  // Every module and package view is gone now; apply the manager's pending
+  // renames to the real files. Only a normal process exit reaches this path.
+  modulecatalog::ModuleCatalog::instance().applyPendingRenames();
 }
 
 bool acceptPanel(const AbcUiPanelDesc &desc) {
@@ -455,6 +488,36 @@ bool acceptPanel(const AbcUiPanelDesc &desc) {
   });
   pendingPanels().push_back(std::move(registration));
   return true;
+}
+
+std::vector<RuntimeModule> runtimeSnapshot() {
+  std::vector<RuntimeModule> result;
+  for (const LoadedModule &module : loaded()) {
+    RuntimeModule record;
+    record.id = module.manifest.id;
+    record.file = module.packageFile;
+    record.version = module.manifest.version;
+    record.initialized = module.initialized;
+    record.loaded =
+        module.initialized && module_resources::enabled(module.owner);
+    record.loadOrder = module.loadOrder;
+    record.failure = module.failure;
+    record.failed = !record.loaded;
+    if (record.failed && record.failure.empty()) {
+      const auto failure = packageFailures().find(record.file);
+      if (failure != packageFailures().end())
+        record.failure = failure->second.failure;
+    }
+    result.push_back(std::move(record));
+  }
+  for (const auto &[file, record] : packageFailures()) {
+    const bool present = std::any_of(
+        result.begin(), result.end(),
+        [&](const RuntimeModule &candidate) { return candidate.file == file; });
+    if (!present)
+      result.push_back(record);
+  }
+  return result;
 }
 
 std::vector<std::unique_ptr<HudPanel>> takePanels() {

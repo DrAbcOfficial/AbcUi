@@ -263,6 +263,8 @@ const char *safeFocusForLayer(const char *id) {
     return "bind-reset-no";
   if (std::string_view(id) == kLayerSprayFile)
     return "spray-file-cancel";
+  if (std::string_view(id) == kLayerModuleQuitConfirm)
+    return "module-quit-no";
   return "leave-stay";
 }
 
@@ -314,8 +316,9 @@ bool isDirty() {
 // -------------------------------------------------------------- layers ----
 
 void hideLayers() {
-  for (const char *id : {kLayerReset, kLayerLeave, kLayerBindConflict,
-                         kLayerBindReset, kLayerSprayFile}) {
+  for (const char *id :
+       {kLayerReset, kLayerLeave, kLayerBindConflict, kLayerBindReset,
+        kLayerSprayFile, kLayerModuleQuitConfirm}) {
     setDisplay(id, false);
   }
   ActiveLayer.clear();
@@ -345,6 +348,11 @@ void refocusDefault() {
     return;
   if (!ActiveLayer.empty()) {
     if (AbcUiElement *focus = node(safeFocusForLayer(ActiveLayer.c_str())))
+      Api->ui->elementFocus(focus);
+    return;
+  }
+  if (std::string_view(ActivePage) == "modules") {
+    if (AbcUiElement *focus = node("module-filter-all"))
       Api->ui->elementFocus(focus);
     return;
   }
@@ -450,7 +458,15 @@ void projectPage() {
                             : resolve("#abcui.gameui/Settings_Title"));
   setText("settings-description",
           havePage ? resolve(current.description) : std::string());
-  setDisplay("settings-reset", havePage && current.cvarCount > 0);
+  const bool modulesPage =
+      havePage && std::string_view(current.id) == "modules";
+  setDisplay("settings-reset",
+             havePage && current.cvarCount > 0 && !modulesPage);
+  setDisplay("settings-apply",
+             havePage && current.cvarCount > 0 && !modulesPage);
+  setDisplay("settings-status", !modulesPage);
+  if (modulesPage)
+    modulesRefresh();
   // The singleton widget blocks (bindings, video, voice, spray, previews)
   // live in the parking host until the active page claims them. Moving them
   // also has to happen on the first projection, so the bind card is not left
@@ -598,6 +614,10 @@ bool requestLeave() {
   // and keeps the page (the same single-layer contract as the picker menu).
   // Without this the menu layer navigates away and the overlay dies with it.
   if (layerVisible()) {
+    // Module layers are page-local state, not model flags; close them here
+    // so ESC does not immediately re-show the same layer.
+    if (ActiveLayer == kLayerModuleQuitConfirm)
+      ModuleQuitConfirmOpen = false;
     // The bind-conflict prompt projects from the model's pending flag:
     // hiding the DOM alone would re-show it on the next render, so resolve
     // it as "cancel" exactly like the dialog's own cancel button.
@@ -743,6 +763,8 @@ void render(const char *skipRow) {
     renderModelPicker();
   if (hasComponent(kColorPickerComponent))
     renderColorRows();
+  if (hasComponent("modules"))
+    renderModules();
   setStatusSummary();
   if (hasComponent("bindings"))
     setBindStatusSummary();
@@ -785,6 +807,7 @@ void onDocumentReady(void *) {
 void onDocumentHide(void *) {
   Presented = false;
   hideLayers();
+  moduleReset();
   closeModelContextMenu();
 }
 
@@ -818,6 +841,7 @@ void onDocumentClose(void *) {
   ModelContextModel.clear();
   SprayOpen = false;
   SpraySelected.clear();
+  moduleReset();
   VoiceVolumeSkip = nullptr;
   RenderedRevision = ~0u;
 }
@@ -885,6 +909,7 @@ void shutdown() {
   ModelContextModel.clear();
   SprayOpen = false;
   SpraySelected.clear();
+  moduleReset();
   VoiceVolumeSkip = nullptr;
   RenderedRevision = ~0u;
 }

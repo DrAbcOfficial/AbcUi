@@ -13,6 +13,7 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
 - **Media** — menu music, background movie and a media player for the game soundtrack.
 - **Voice mute** — per-player mute list shared by the player list and the scoreboard.
 - **Spectator bar** — mode, target and target health instead of the native bar.
+- **Modules** — view installed UI modules and enable or disable them from Settings; changes are saved when you exit the game.
 
 ## Install
 
@@ -104,6 +105,17 @@ Useful console commands and variables:
 | `abc_ui_menu_weapon_model` | Weapon held by the main menu character. |
 | `hud_division_follow` | `1` follows your character in third person (default); `0` keeps the readouts fixed. |
 | `hud_division_side` | `0` keeps the readouts on your character's left (default); `1` puts them on the right. |
+
+## Modules
+
+Settings > Modules lists the installed UI modules with their versions, authors,
+dependencies and conflicts. Disable a module by changing its package extension
+from `.zip` to `.disable`; enable it by changing the extension back.
+
+Changes are recorded during the session and written when you exit the game
+normally. They take effect after a full restart. A forced exit loses the pending
+changes. Disabling a module that others depend on can also disable those modules
+on the next launch. Disabling `abcui.gameui` removes the Modules page itself.
 
 ## Build the dist package
 

@@ -16,6 +16,7 @@
 // quiesces every module before reverse-order unload (after Rml shutdown).
 
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "ModulePanel.h"
@@ -39,6 +40,23 @@ void shutdownAll();
 // Process teardown: onUnload in reverse load order, then the images and the
 // VFS mounts go away.
 void unloadAll();
+
+// One loaded/retired package, for the module manager page. `file` is the
+// package file name as discovered at boot, not a path.
+struct RuntimeModule {
+  std::string id;
+  std::string file;
+  std::string version;
+  bool loaded = false;
+  bool initialized = false;
+  bool failed = false;
+  std::string failure;
+  int loadOrder = -1;
+};
+
+// Snapshot of the loader's runtime state. Safe after boot; the returned
+// records are copies.
+std::vector<RuntimeModule> runtimeSnapshot();
 
 // Panel registration during a module's onLoad (ApiTable forwards here).
 // Refused outside a load window or on a duplicate panel name.

@@ -76,7 +76,9 @@ void onMenuPaint(void *, const void *payload) {
   AbcUiVoiceFacts voice{};
   if (voiceFacts(voice) && voice.testing)
     renderVoiceSectionImpl();
-  if (Api->settings->revision() != RenderedRevision)
+  if (Api->settings->revision() != RenderedRevision ||
+      (hasComponent("modules") && Api->modules &&
+       Api->modules->revision() != ModuleRenderedRevision))
     render();
 }
 

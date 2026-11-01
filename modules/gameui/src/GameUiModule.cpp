@@ -262,7 +262,8 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
                             noteEscapeClaim) ||
       api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi) ||
       api->connection->structSize < sizeof(AbcUiConnectionApi) ||
-      api->settings->structSize < sizeof(AbcUiSettingsApi))
+      api->settings->structSize < sizeof(AbcUiSettingsApi) || !api->modules ||
+      api->modules->structSize < sizeof(AbcUiModulesApi))
     return 0;
   Api = api;
 
