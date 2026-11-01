@@ -153,6 +153,11 @@ foreach(module IN ITEMS Ammo Flashlight HudEffects KillFeed Motd TextMenu)
                     WIN32_LEAN_AND_MEAN)
 endforeach()
 
+# Weapon selector input ownership and empty-slot presentation.
+abcui_add_test(abc_ui_weaponchoose
+    SOURCES WeaponChoose.cpp
+            "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp")
+
 # The fixed-capacity particle system behind the HUD effects.
 abcui_add_test(abc_ui_particle_system
     SOURCES ParticleSystem.cpp

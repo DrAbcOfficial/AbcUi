@@ -5,6 +5,8 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
 ## Features
 
 - **HUD** — health, armor, ammo, flashlight, notices, damage numbers, kill feed, side text, text menus, player board, scoreboard, vote, MOTD, radar, crosshair and item highlight. Health, armor and magazine numbers briefly grow when they change.
+  Weapon slots open the selector even when empty. Left-click confirms a
+  highlighted weapon once; after it closes, left-click returns to firing.
 - **Chat** — new chat input and message log with full input method support.
   Enter sends or closes chat without activating its gameplay binding.
 - **Menu** — main menu, settings, server browser, create game, player list, vote creation, console, MOTD, inventory window, command menu, connect and loading screens, and quit confirmation. Pages fade in and out while preserving dimmed controls, and stop accepting input as soon as they start closing.

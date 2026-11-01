@@ -118,11 +118,6 @@ void rainbowShift(int counter, unsigned char &r, unsigned char &g,
   b = static_cast<unsigned char>((b2 + m) * 255.0f);
 }
 
-bool getWeapon(int slot, int slotPos, AbcUiWeaponInfo &out) {
-  out = AbcUiWeaponInfo{};
-  return Api->weapons->get(slot, slotPos, &out) != 0;
-}
-
 bool selectedWeapon(AbcUiWeaponInfo &out) {
   out = AbcUiWeaponInfo{};
   return Api->weapons->selected(&out) != 0;
@@ -202,7 +197,7 @@ void rebuild() {
 
   AbcUiWeaponInfo selected{};
   const bool hasSelected = selectedWeapon(selected);
-  const int activeSlot = hasSelected ? selected.slot : -1;
+  const int activeSlot = Api->weapons->selectedSlot();
 
   std::string rml;
   rml.reserve(4096);
@@ -384,10 +379,7 @@ void onChooseWeapon(void *, const void *payload) {
   // without input.
   if (!shouldDraw())
     return;
-  AbcUiWeaponInfo weapon{};
-  if (event->slot < 0 || !getWeapon(event->slot, event->slotPos, weapon) ||
-      !weapon.owned) {
-    // Highlight walked off an owned weapon: empty slot - close.
+  if (event->slot < 0 || event->slot >= ABCUI_WEAPON_SLOT_COUNT) {
     setVisible(false);
     return;
   }
@@ -436,28 +428,27 @@ void panelReset(void *) {
 int onSlotCommand(void *userdata, const void *) {
   if (!panelDocument())
     return 0;
-  // The old weaponres slot handler ran the selection walk and left the
-  // original engine slot command chained; the TextMenu owns the keys while
-  // its menu is open (left entirely to the textmenu module then).
+  // TextMenu owns the slot keys while open. Otherwise consume the command:
+  // chaining it would also arm the native HUD's hidden selection.
   if (Api->commands->textMenuOpen())
     return 0;
   const intptr_t slot = reinterpret_cast<intptr_t>(userdata);
   Api->weapons->selectSlot(static_cast<int>(slot), 1, 0);
-  return 0;
+  return 1;
 }
 
 int onInvNext(void *, const void *) {
   if (!panelDocument())
     return 0;
   Api->weapons->selectSlot(Api->weapons->selectedSlot(), 1, 1);
-  return 0;
+  return 1;
 }
 
 int onInvPrev(void *, const void *) {
   if (!panelDocument())
     return 0;
   Api->weapons->selectSlot(Api->weapons->selectedSlot(), -1, 1);
-  return 0;
+  return 1;
 }
 
 int onAttack(void *, const void *) {

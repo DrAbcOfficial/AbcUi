@@ -114,6 +114,7 @@ int selectedSlot();
 // invnext/invprev wheel walks slots and positions. Only owned+usable weapons
 // (ammo or SELECTONEMPTY) participate. With hud_fastswitch the weapon command
 // is sent directly; otherwise ChooseWeapon fires so the UI can highlight.
+// Empty slot keys clear the weapon highlight but keep the requested slot.
 // The TextMenu-open gate lives at the subscription site (panel assembly).
 void selectSlot(int slot, int advance, bool wheel);
 

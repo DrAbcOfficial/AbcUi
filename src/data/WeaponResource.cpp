@@ -137,13 +137,15 @@ std::vector<const Weapon *> allSelectableWeapons() {
 // Old SetSelectWeapon minus the TextMenu gate (lives at the subscription):
 // fastswitch runs the weapon command right away, otherwise the UI highlight
 // event fires and the panel drives the confirm.
-void applySelection(const Weapon *weapon) {
+void applySelection(const Weapon *weapon, int emptySlot = kInvalidWeaponSlot) {
   RegistryState.selected = weapon;
-  RegistryState.selectedSlotId = weapon ? weapon->slot : kInvalidWeaponSlot;
+  RegistryState.selectedSlotId = weapon ? weapon->slot : emptySlot;
   if (weapon && fastSwitchOn())
     FastSwitchWeapon(weapon);
   ChooseWeapon(weapon);
-  publishWeapon(ABCUI_CHANNEL_HUD_CHOOSE_WEAPON, weapon);
+  const AbcUiWeaponEvent event{RegistryState.selectedSlotId,
+                               weapon ? weapon->slotPos : -1};
+  framework::eventBus().publish(ABCUI_CHANNEL_HUD_CHOOSE_WEAPON, event);
 }
 
 // client_sprite_t* lookup by name + res (old GetSpriteList helper).
@@ -543,7 +545,7 @@ void selectSlot(int slot, int advance, bool wheel) {
   if (!hudstate::hasSuit())
     return;
   const std::vector<const Weapon *> pool = allSelectableWeapons();
-  if (pool.empty())
+  if (wheel && pool.empty())
     return;
   slot = std::clamp(slot, 0, static_cast<int>(kMaxWeaponSlot) - 1);
 
@@ -554,6 +556,10 @@ void selectSlot(int slot, int advance, bool wheel) {
   }
 
   std::vector<const Weapon *> inSlot = slotWeapons(slot);
+  if (!wheel && inSlot.empty()) {
+    applySelection(nullptr, slot);
+    return;
+  }
   if (!wheel && slot != RegistryState.selectedSlotId) {
     // Entering a different slot: first position (advance<0 walks in from
     // the end - the old GetLastPos semantics).

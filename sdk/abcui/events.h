@@ -108,7 +108,7 @@ typedef struct AbcUiIntEvent {
 // hud.chooseWeapon - the weapon-selection highlight moved (slot keys /
 // invnext / invprev). The payload is the registry identity (slot, slotPos);
 // slot < 0 means "nothing selected" (the highlight walked off the owned
-// list).
+// list). A valid slot with slotPos < 0 selects an empty slot without a weapon.
 #define ABCUI_CHANNEL_HUD_CHOOSE_WEAPON "hud.chooseWeapon"
 typedef struct AbcUiWeaponEvent {
   int32_t slot;
