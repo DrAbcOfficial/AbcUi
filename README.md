@@ -7,6 +7,7 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
 - **HUD** — health, armor, ammo, flashlight, notices, damage numbers, kill feed, side text, text menus, player board, scoreboard, vote, MOTD, radar, crosshair and item highlight. Health, armor and magazine numbers briefly grow when they change.
   Weapon slots open the selector even when empty. Left-click confirms a
   highlighted weapon once; after it closes, left-click returns to firing.
+  Weapons can be regrouped into other selector slots from the console.
   While a text menu is open, number keys 0–9 select menu items instead of weapons.
 - **Chat** — new chat input and message log with full input method support.
   Enter sends or closes chat without activating its gameplay binding.
@@ -109,6 +110,41 @@ Useful console commands and variables:
 | `abc_ui_menu_weapon_model` | Weapon held by the main menu character. |
 | `hud_division_follow` | `1` follows your character in third person (default); `0` keeps the readouts fixed. |
 | `hud_division_side` | `0` keeps the readouts on your character's left (default); `1` puts them on the right. |
+| `abc_ui_weapon_filter` | `1` applies your weapon selector slot rules; `0` shows the server layout. |
+
+## Weapon selector layout
+
+Weapons normally appear in the slots the server assigns. Set
+`abc_ui_weapon_filter 1` to use your own slot and position rules instead;
+`0` restores the server layout. The rules are stored in
+`svencoop/abc/abcui/config.json`:
+
+```json
+{
+  "module.abcui.weaponfilter.weapon_filter": {
+    "version": 1,
+    "weapons": [
+      { "name": "weapon_crowbar", "slot": 0, "position": 0 },
+      { "name": "weapon_ins2coach", "slot": 3, "position": 2 }
+    ]
+  }
+}
+```
+
+Edit the rules from the console; each change applies immediately and is
+saved:
+
+| Command | Description |
+|---|---|
+| `abc_ui_weapon_slot <weapon> <slot> <position>` | Places a weapon in a slot from 0 to 9 at a position from 0 to 255. |
+| `abc_ui_weapon_slot_remove <weapon>` | Removes a rule. |
+| `abc_ui_weapon_slot_list` | Lists the rules and whether the filter is on. |
+| `abc_ui_weapon_slot_clear` | Removes every rule. |
+| `abc_ui_weapon_slot_reload` | Re-reads the rules after editing the file. |
+
+The rules only change where the selector shows a weapon; the weapon you
+confirm is still the one that reaches the server. Disabling the Weapon Filter
+module in Settings > Modules restores the server layout as well.
 
 ## Modules
 
