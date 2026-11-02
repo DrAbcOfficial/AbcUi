@@ -133,17 +133,18 @@ implemented rules the transition must keep:
   one entry, `AbcUiModule_Main(abiVersion, api, outDescriptor)`; everything
   else crosses the boundary as C function pointers and POD payloads. Modules
   must not include RmlUi headers or link the framework's static libraries.
-  Sections: core, console, events, vfs, panels, documents, data, ui, commands,
-  weapons, players, radar, shell, voice, score, input, menu, votemenu,
-  playerlist, commandmenu, menuconfig, social, inventory, creategame,
-  consolepage, serverbrowser, connection, settings, modules. Adding a function
+  Sections: core, console, events, vfs, panels, documents, data, ui, weapons,
+  players, radar, shell, voice, score, input, menu, votemenu, playerlist,
+  commandmenu, menuconfig, social, inventory, creategame, consolepage,
+  serverbrowser, connection, settings, textures, audio, modules, claims,
+  facts. Adding a function
   means appending it to the section end (and its initializer in
   `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
   `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
   `ApiPlayerList.cpp` / `ApiCommandMenu.cpp` / `ApiMenuConfig.cpp` /
   `ApiSocial.cpp` / `ApiInventory.cpp` / `ApiCreateGame.cpp` /
   `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` / `ApiConnection.cpp` /
-  `ApiSettings.cpp` / `ApiModules.cpp` -
+  `ApiSettings.cpp` / `ApiModules.cpp` / `ApiClaims.cpp` -
   a missing initializer is silently a null pointer; the table audit in
   `ApiTable::get` catches it at boot), and
   appending to snapshot structs means the writer must honor the caller's
@@ -193,17 +194,28 @@ implemented rules the transition must keep:
   truth while the page is still on screen for ~0.1 s. An element that sets its
   own `opacity` does not inherit the ramp (the backdrop's dimmer therefore
   rides its background alpha, not its opacity).
-- Data exchange is event-bus based (`src/modsys/EventBus.h`): string channels,
-  each backed by priority buckets of `abc::CallbackList` (eventpp reused from
-  AbcCore). Priority > 0 runs before the framework default (interception and
-  rewriting), < 0 runs after (fallback); the same priority keeps registration
-  order, and registration order follows the deterministic load order, so
-  behaviour never depends on discovery order. Veto channels aggregate their
-  bool result in priority order. The chained-command bridge inverts that
-  result: `CChainedCommand` runs the engine's original only when every
-  subscriber returned true, while the bus reports "consumed" (any sink
-  returned nonzero), so `Commands.cpp` returns `!publishVetoAggregateRaw(...)`.
+- Engine entry points are owned through `framework::arbitration`
+  (`src/modsys/Arbitration.h`): one domain per command / user message / key
+  route / native-draw query, and claims with Owner, Fallback, Observer and
+  Gate roles. Predicates are pure and evaluated on a frozen pass before the
+  single winning handler runs, so no claim can observe another claim's
+  mid-dispatch state. Ties are resolved by explicit priority and the stable
+  owner id, never by registration order or module load order; equal-priority
+  Owner overlap is reported as a conflict. The command bridge
+  (`src/framework/Commands.cpp`) creates a bridge on the first claim and calls
+  the displaced predecessor only when nothing claimed the occurrence.
+- Observation is event-bus based (`src/modsys/EventBus.h`): data-only string
+  channels backed by priority buckets of `abc::CallbackList` (eventpp reused
+  from AbcCore). Priority only orders observers; it never decides ownership.
   Channels and payloads are documented in `sdk/abcui/events.h`.
+- Framework facts (`src/modsys/Facts.h`) are read-only for modules: the
+  framework derives them from the wire (the text-menu fact from ShowMenu), so
+  a missing or failed renderer never changes input ownership. Modules never
+  write a framework fact.
+- Hook contention is observable: `src/modsys/HookRegistry.h` records each
+  broken command/message entry's installed thunk, predecessor, generation and
+  dispatch counters; `abc_ui_hooks` prints the table and the claim list.
+  A foreign thunk above ours is reported, never displaced.
 - Transition rules: each migrated feature moves its sources, assets and cvars
   into `modules/<id>/` in one commit and registers through the new ABI, and
   the built-in copy is deleted in that same commit (the framework must not

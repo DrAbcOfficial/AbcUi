@@ -1,7 +1,6 @@
 // framework::hooks implementation - see HookRegistry.h.
 #include "HookRegistry.h"
 
-#include <format>
 #include <map>
 #include <sstream>
 #include <utility>

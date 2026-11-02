@@ -166,14 +166,16 @@ void addItem(const char *victim, const char *attacker, const char *inflictor) {
 
 // ---- event sinks ----
 
-int onKillFeed(void *, const void *payload) {
-  if (!panelDocument())
-    return 0;
+int canKillFeed(void *, const void *) {
+  return panelDocument() != nullptr;
+}
+
+int32_t onKillFeed(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiKillFeedEvent *>(payload);
   addItem(event->victim ? event->victim : "",
           event->attacker ? event->attacker : "",
           event->inflictor ? event->inflictor : "");
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 void onHideToken(void *, const void *payload) {
@@ -253,8 +255,13 @@ void onModuleLoad() {
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
 
-  Api->events->subscribeVeto(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, 0, &onKillFeed,
-                             nullptr);
+  AbcUiClaimDesc feed{};
+  feed.structSize = sizeof(feed);
+  feed.role = ABCUI_CLAIM_OWNER;
+  feed.canHandle = &canKillFeed;
+  feed.handle = &onKillFeed;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, &feed))
+    Api->core->warn("killfeed: cannot claim the kill feed");
   Api->events->subscribe(ABCUI_CHANNEL_HUD_HIDE_TOKEN, 0, &onHideToken,
                          nullptr);
 }
@@ -286,7 +293,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->data)
+      !api->events || !api->ui || !api->console || !api->data || !api->claims)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi))
@@ -295,7 +302,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.killfeed";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

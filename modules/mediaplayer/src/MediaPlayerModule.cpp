@@ -854,7 +854,11 @@ void ABCUI_CALL onInitHud(void *, const void *) {
 // The chained MediaPlayer command. A page that is not loaded cannot replace
 // anything: the command declines (once, with a console note) and the native
 // window opens.
-int ABCUI_CALL onMediaPlayerCommand(void *, const void *) {
+int ownsMediaPlayer(void *, const void *) {
+  return 1;
+}
+
+int32_t onMediaPlayerCommand(void *, const void *) {
   if (!Page || !Api->documents->loaded(Page)) {
     static bool Declined = false;
     if (!Declined) {
@@ -862,22 +866,10 @@ int ABCUI_CALL onMediaPlayerCommand(void *, const void *) {
       Api->core->print("mediaplayer: replacement page is not loaded; the "
                        "native window stays\n");
     }
-    return 0;
+    return ABCUI_DECISION_NONE;
   }
   togglePage();
-  return 1;
-}
-
-bool CommandHooked = false;
-
-// The engine's MediaPlayer command is registered by the client DLL, which
-// can happen after this module's onLoad; subscribeCommand refuses a name it
-// cannot find, so the hook is retried every frame until it sticks.
-void tryHookCommand() {
-  if (CommandHooked)
-    return;
-  CommandHooked = Api->commands->subscribeCommand(
-                      "MediaPlayer", 0, &onMediaPlayerCommand, nullptr) != 0;
+  return ABCUI_DECISION_HANDLED;
 }
 
 void ABCUI_CALL onModuleLoad() {
@@ -898,7 +890,16 @@ void ABCUI_CALL onModuleLoad() {
                                                  &onMenuState, nullptr);
   InitHudSubscription = Api->events->subscribe(ABCUI_CHANNEL_NETMSG_INIT_HUD, 0,
                                                &onInitHud, nullptr);
-  tryHookCommand();
+  // The client registers MediaPlayer after module load: the claim is live
+  // immediately and the host pump installs the bridge when the command
+  // appears.
+  AbcUiClaimDesc media{};
+  media.structSize = sizeof(media);
+  media.role = ABCUI_CLAIM_OWNER;
+  media.canHandle = &ownsMediaPlayer;
+  media.handle = &onMediaPlayerCommand;
+  if (!Api->claims->claimCommand("MediaPlayer", &media))
+    Api->core->warn("mediaplayer: cannot claim the MediaPlayer command");
 }
 
 void ABCUI_CALL onModuleInit() {
@@ -906,7 +907,6 @@ void ABCUI_CALL onModuleInit() {
 }
 
 void ABCUI_CALL onModuleFrame(double frameTime) {
-  tryHookCommand();
   if (frameTime <= 0.0)
     return;
   if (State == Transport::kPlaying) {
@@ -949,7 +949,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->console ||
-      !api->events || !api->vfs || !api->ui || !api->commands ||
+      !api->events || !api->vfs || !api->ui || !api->claims ||
       !api->documents || !api->input)
     return 0;
   if (api->console->structSize < sizeof(AbcUiConsoleApi) ||
@@ -962,7 +962,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.mediaplayer";
-  out->version = "1.0.0";
+  out->version = "2.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

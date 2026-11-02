@@ -151,8 +151,14 @@ void onModuleFrame(double) {
   }
 }
 
-int onMenuCommand(void *userdata, const void *) {
-  return Api->menu->dispatchCommand(static_cast<const char *>(userdata));
+int ownsMenuCommand(void *, const void *) {
+  return 1;
+}
+
+int32_t onMenuCommand(void *userdata, const void *) {
+  return Api->menu->dispatchCommand(static_cast<const char *>(userdata))
+             ? ABCUI_DECISION_HANDLED
+             : ABCUI_DECISION_NONE;
 }
 
 void onModuleLoad() {
@@ -170,9 +176,14 @@ void onModuleLoad() {
                                          "-commandmenu", "inventory",
                                          "+inventory",   "-inventory"};
   for (const char *name : commands) {
-    if (!Api->commands->subscribeCommand(name, 0, onMenuCommand,
-                                         const_cast<char *>(name))) {
-      Api->core->failInitialization("native menu command hook unavailable");
+    AbcUiClaimDesc desc{};
+    desc.structSize = sizeof(desc);
+    desc.role = ABCUI_CLAIM_OWNER;
+    desc.canHandle = &ownsMenuCommand;
+    desc.handle = &onMenuCommand;
+    desc.userdata = const_cast<char *>(name);
+    if (!Api->claims->claimCommand(name, &desc)) {
+      Api->core->failInitialization("native menu command claim unavailable");
       return;
     }
   }
@@ -242,7 +253,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !api->votemenu || !api->playerlist || !api->commandmenu ||
       !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
       !api->consolepage || !api->input || !api->shell || !api->serverbrowser ||
-      !api->connection || !api->settings || !api->commands || !api->audio ||
+      !api->connection || !api->settings || !api->claims || !api->audio ||
       !api->players)
     return 0;
   if (!ABCUI_API_HAS_MEMBER(AbcUiMenuApi, api->menu, dispatchCommand) ||
@@ -269,7 +280,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.gameui";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

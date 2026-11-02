@@ -70,7 +70,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
     return 0;
   Api = api;
   out->id = "abcui.recovery";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = onLoad;
   return 1;
 }

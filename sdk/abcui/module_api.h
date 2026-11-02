@@ -37,8 +37,6 @@ typedef uint64_t AbcUiSubscription; // 0 is never issued.
 
 // Data-channel sink: the payload pointer is only valid for the call.
 typedef void(ABCUI_CALL *AbcUiEventSink)(void *userdata, const void *payload);
-// Veto-channel sink: returning nonzero vetoes and stops the dispatch here.
-typedef int(ABCUI_CALL *AbcUiEventVeto)(void *userdata, const void *payload);
 
 // Console command callback (no arguments; use engine argv through the
 // console api when needed).
@@ -154,31 +152,24 @@ typedef struct AbcUiConsoleApi {
 
 // Channels are lowercase dotted strings owned by the publishing subsystem
 // (see sdk/abcui/events.h for the constants and their payload structs).
-// Priority > 0 intercepts before the publisher's default 0, < 0 runs after;
-// the same priority keeps subscription order. Subscribe from onLoad or
-// onDocumentReady. Explicit cleanup is allowed; the framework also revokes
-// remaining subscriptions on module failure/final unload, not HUD_Shutdown
-// (requires minAbcUi >= 0.8.1 when relying on automatic reclamation).
+// Priority > 0 runs before the publisher's default 0, < 0 runs after; the
+// same priority keeps subscription order. Data channels never decide
+// ownership. Subscribe from onLoad or onDocumentReady. Explicit cleanup is
+// allowed; the framework also revokes remaining subscriptions on module
+// failure/final unload, not HUD_Shutdown (requires minAbcUi >= 0.8.1 when
+// relying on automatic reclamation).
 typedef struct AbcUiEventsApi {
   uint32_t structSize;
+  // Observation-only data channel. Entry ownership (commands, messages,
+  // keys, native-draw queries) is declared through the claims table.
   AbcUiSubscription(ABCUI_CALL *subscribe)(const char *channel, int priority,
                                            AbcUiEventSink sink, void *userdata);
-  AbcUiSubscription(ABCUI_CALL *subscribeVeto)(const char *channel,
-                                               int priority,
-                                               AbcUiEventVeto sink,
-                                               void *userdata);
   void(ABCUI_CALL *unsubscribe)(AbcUiSubscription subscription);
-  // Aggregate veto variant: every sink runs in priority order regardless of
-  // the other sinks' results; the return of any sink consumes the event.
-  AbcUiSubscription(ABCUI_CALL *subscribeVetoAggregate)(const char *channel,
-                                                        int priority,
-                                                        AbcUiEventVeto sink,
-                                                        void *userdata);
   // AbcUi >= 0.8.5: synchronous data publication on
   // module.<publishing-manifest-id>.<name>. Local name [a-z0-9_]+, 1..64.
   // Sinks receive AbcUiModuleEvent (events.h), not the raw bytes. Version >0,
   // payload <=1 MiB, depth <=16. 1 accepted, 0 invalid/retiring/depth limit.
-  // Does not publish engine channels or veto channels. Copy borrowed data.
+  // Does not publish entry-point domains. Copy borrowed data.
   int32_t(ABCUI_CALL *publish)(const char *name, uint32_t schemaVersion,
                                const void *payload, uint32_t payloadSize);
 } AbcUiEventsApi;
@@ -602,32 +593,6 @@ typedef struct AbcUiUiApi {
   int32_t(ABCUI_CALL *elementAppendChild)(AbcUiElement *parent,
                                           AbcUiElement *child);
 } AbcUiUiApi;
-
-// ------------------------------------------------------------- commands ----
-
-typedef struct AbcUiCommandsApi {
-  uint32_t structSize;
-  // Dynamically hooks any existing callback-backed engine command. AbcUi
-  // >= 0.8.4 has no whitelist, fixed slot count or init-only restriction.
-  // ASCII case variants share one bridge; punctuation/non-ASCII names work.
-  // Supply one command token (no arguments, whitespace, quotes or semicolons).
-  // Returns 0 for invalid/missing names, null native callbacks or unavailable
-  // engine seams. Aliases, cvars and server-only verbs have no callback to
-  // hook; register a new client command via console->registerCommand first if
-  // needed. Every sink runs in priority order; nonzero skips the original.
-  // Revoke via events->unsubscribe (also automatic on module failure/unload).
-  // Changes during dispatch are safe: removed sinks are skipped; new sinks join
-  // the next dispatch. Empty bridges remain process-owned native pass-throughs
-  // so another plugin may safely retain the dispatcher as its predecessor.
-  AbcUiSubscription(ABCUI_CALL *subscribeCommand)(const char *name,
-                                                  int priority,
-                                                  AbcUiEventVeto sink,
-                                                  void *userdata);
-  // The shared number-menu-open flag: the text-menu module writes it, other
-  // modules and the framework gate on it.
-  int(ABCUI_CALL *textMenuOpen)(void);
-  void(ABCUI_CALL *setTextMenuOpen)(int open);
-} AbcUiCommandsApi;
 
 // -------------------------------------------------------------- claims ----
 
@@ -1170,8 +1135,9 @@ typedef struct AbcUiMenuApi {
   // failure/unload revokes it. Does not hook commands.
   int32_t(ABCUI_CALL *setNativeTakeover)(int32_t enabled);
   // Runs a replacement menu flow for votemenu, +/-commandmenu and
-  // inventory/+inventory/-inventory. Call from a subscribeCommand handler.
-  // 0 means unavailable/unknown, so the handler should allow the native path.
+  // inventory/+inventory/-inventory. Call from the claim handler for the
+  // matching command domain. 0 means unavailable/unknown, so the handler
+  // returns ABCUI_DECISION_NONE and the native path runs.
   int32_t(ABCUI_CALL *dispatchCommand)(const char *name);
   // AbcUi >= 0.8.5: confirmed exit, independent of the quit-dialog resources.
   void(ABCUI_CALL *quitNow)(void);
@@ -2336,7 +2302,6 @@ typedef struct AbcUiModuleApi {
   const AbcUiPanelsApi *panels;
   const AbcUiDataApi *data;
   const AbcUiUiApi *ui;
-  const AbcUiCommandsApi *commands;
   const AbcUiWeaponsApi *weapons;
   const AbcUiPlayersApi *players;
   const AbcUiRadarApi *radar;

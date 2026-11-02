@@ -134,9 +134,9 @@ std::vector<const Weapon *> allSelectableWeapons() {
   return result;
 }
 
-// Old SetSelectWeapon minus the TextMenu gate (lives at the subscription):
-// fastswitch runs the weapon command right away, otherwise the UI highlight
-// event fires and the panel drives the confirm.
+// Old SetSelectWeapon minus the menu gate (owned by the weaponchoose command
+// claim): fastswitch runs the weapon command right away, otherwise the UI
+// highlight event fires and the panel drives the confirm.
 void applySelection(const Weapon *weapon, int emptySlot = kInvalidWeaponSlot) {
   RegistryState.selected = weapon;
   RegistryState.selectedSlotId = weapon ? weapon->slot : emptySlot;
@@ -540,8 +540,8 @@ int selectedSlot() {
 }
 
 void selectSlot(int slot, int advance, bool wheel) {
-  // Old SelectSlot entry gates: TextMenu-first (subscription site) and the
-  // HEV suit (no suit, no weapons to walk).
+  // Old SelectSlot entry gates: the menu claim runs first and the HEV suit
+  // (no suit, no weapons to walk).
   if (!hudstate::hasSuit())
     return;
   const std::vector<const Weapon *> pool = allSelectableWeapons();

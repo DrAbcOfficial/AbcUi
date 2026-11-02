@@ -11,7 +11,7 @@
 
 #include <abcui/events.h>
 
-#include "../modsys/EventBus.h"
+#include "../modsys/Arbitration.h"
 #include "../services/GameUiBridge.h"
 
 #include <Windows.h>
@@ -91,7 +91,7 @@ void __fastcall H_PaintTraverse(void *pthis, int dummy, vgui::VPANEL vguiPanel,
   // returns zero while its replacement document is unavailable).
   if (nativeSpectatorPanel(vguiPanel)) {
     const AbcUiNativeHudEvent event{ABCUI_NATIVE_HUD_SPECTATOR};
-    if (framework::eventBus().publishVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW, event))
+    if (framework::arbitration::gate(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &event))
       return;
   }
   const char *module = Panel ? Panel->GetModuleName(vguiPanel) : nullptr;

@@ -153,7 +153,7 @@ extern uint64_t MouseDownBinding;
 extern uint64_t ConfirmClickBinding;
 extern AbcUiSubscription StateSubscription;
 extern AbcUiSubscription PaintSubscription;
-extern AbcUiSubscription EscapeSubscription;
+extern AbcUiClaim EscapeSubscription;
 
 // Page structure: the navigation and the row skeletons are built once per
 // document (a rebuild drops hover/focus), then only re-projected.

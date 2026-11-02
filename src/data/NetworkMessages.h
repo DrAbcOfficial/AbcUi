@@ -7,8 +7,8 @@
 // falls back to the original handler, matching the old CHECK_MSG_OK shape.
 //
 // Registration is HUD_Init-time only (plan 08 §4.9), through init() from the
-// hook spine. ShowMenu/TextMsg can swallow the vanilla handler the same way
-// the old hooks did (return-1 semantics).
+// hook spine. Entry claims decide whether the native handler is skipped; the
+// parse layer itself only publishes observation events and dispatch facts.
 
 #include <string>
 #include <vector>
@@ -30,12 +30,6 @@ struct WeaponListData {
   int id = 0;
   int flags = 0;
 };
-
-// TextMsg: subscribers return false to swallow the vanilla handler (killfeed
-// and notice lines are consumed by the panels); all-true chains it through.
-using TextMsgCallback = bool(int target, const char *msg, const char *param1,
-                             const char *param2, const char *param3,
-                             const char *param4);
 
 // Damage UserMsg payload (old g_EventDamage tuple, value-semantic): armor and
 // damage taken, the DMG_* tile bits for DmgTiles, and the world-space hit
@@ -84,29 +78,8 @@ extern abc::CallbackList<void(int)> Health;
 // isAdmin)
 extern abc::CallbackList<void(int, float, int, float, float, int, int, int)>
     ScoreInfo;
-extern abc::CallbackList<void(int, int, int, const std::string &)>
-    ShowMenu; // (validSlots, displaySeconds, bits, text)
 extern abc::CallbackList<void(int)> FlashBat;         // flashlight battery
 extern abc::CallbackList<void(bool, int)> Flashlight; // (on, battery)
-extern abc::CallbackList<TextMsgCallback> TextMsg;
-// SayText: one chat line (issue 13). `client` is the sender's entity index
-// (0 = server console); `text` is the line the server composed, which may
-// still carry the engine's colour control bytes (0x01 normal / 0x02
-// use-old-colours / 0x03 player name / 0x04 location) and positional
-// `%s`/`%sN` placeholders whose substitution strings ride in `params`
-// (empty when the server sent none - Sven Co-op composes the whole line
-// itself and ships only the two fields).
-struct SayTextData {
-  int client = 0;
-  std::string text;
-  std::string params[4];
-};
-
-// Subscribers return false to swallow the vanilla CHudSayText draw: exactly
-// one chat log may be on screen. All-true chains the native handler, which
-// is also what keeps chat alive while the RmlUi chat panel is disabled.
-using SayTextCallback = bool(const SayTextData &);
-extern abc::CallbackList<SayTextCallback> SayText;
 extern abc::CallbackList<void(const DamageData &)> Damage;
 extern abc::CallbackList<void(const PopNumData &)> PopNum;
 // Batch C additions.
@@ -135,7 +108,6 @@ extern abc::CallbackList<void(const char *)> ServerName;
 extern abc::CallbackList<void(const char *)> NextMap;
 extern abc::CallbackList<void(int)> TimeEnd;            // seconds
 extern abc::CallbackList<void(int, const char *)> Motd; // (code, text chunk)
-extern abc::CallbackList<void(const VoteMenuData &)> VoteMenu;
 extern abc::CallbackList<void()> EndVote;
 extern abc::CallbackList<void(const MapListData &)> MapList;
 extern abc::CallbackList<void()> ClExtrasInfo;
@@ -166,6 +138,13 @@ extern abc::CallbackList<void(const InvItemData &)> InvAdd;
 // InvRemove: (item id, force). id 0 removes every unlocked item; force != 0
 // also removes items whose removeLocked flag is set (native removal rule).
 extern abc::CallbackList<void(int, int)> InvRemove;
+
+// Parses one ShowMenu chunk, updates the framework menu fact, publishes the
+// observation event and dispatches the netmsg.showmenu claim domain. Returns
+// true when a claim handled it (the native handler must be skipped). The
+// usermsg hook and the debug injector share this one entry.
+bool dispatchShowMenu(int validSlots, int displaySeconds, int bits,
+                      const char *text);
 
 // HUD_Init: installs the HookUserMsg chain once per process. Repeated HUD
 // cycles keep the existing chain (re-hooking every cycle would make two

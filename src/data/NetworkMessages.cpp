@@ -4,6 +4,7 @@
 #include <metahook.h>
 
 #include "NetworkMessages.h"
+#include "TextFeed.h"
 #include <cmath>
 
 #include <abc/NetMsg.h>
@@ -12,7 +13,10 @@
 
 #include <abcui/events.h>
 
+#include "../modsys/Arbitration.h"
 #include "../modsys/EventBus.h"
+#include "../modsys/Facts.h"
+#include "../modsys/HookRegistry.h"
 
 #include <cstdint>
 
@@ -37,11 +41,8 @@ abc::CallbackList<void(const char *)> ItemPickup;
 abc::CallbackList<void(int)> Battery;
 abc::CallbackList<void(int)> Health;
 abc::CallbackList<void(int, float, int, float, float, int, int, int)> ScoreInfo;
-abc::CallbackList<void(int, int, int, const std::string &)> ShowMenu;
 abc::CallbackList<void(int)> FlashBat;
 abc::CallbackList<void(bool, int)> Flashlight;
-abc::CallbackList<TextMsgCallback> TextMsg;
-abc::CallbackList<SayTextCallback> SayText;
 abc::CallbackList<void(const DamageData &)> Damage;
 abc::CallbackList<void(const PopNumData &)> PopNum;
 // Batch C additions.
@@ -50,7 +51,6 @@ abc::CallbackList<void(const char *)> ServerName;
 abc::CallbackList<void(const char *)> NextMap;
 abc::CallbackList<void(int)> TimeEnd;
 abc::CallbackList<void(int, const char *)> Motd;
-abc::CallbackList<void(const VoteMenuData &)> VoteMenu;
 abc::CallbackList<void()> EndVote;
 abc::CallbackList<void(const MapListData &)> MapList;
 abc::CallbackList<void()> ClExtrasInfo;
@@ -143,6 +143,7 @@ int __MsgFunc_WeaponList(const char *pszName, int iSize, void *pbuf) {
 }
 
 int __MsgFunc_InitHUD(const char *pszName, int iSize, void *pbuf) {
+  framework::facts::clearMenu();
   InitHud();
   framework::eventBus().publishRaw(ABCUI_CHANNEL_NETMSG_INIT_HUD, nullptr);
   return original_InitHUD(pszName, iSize, pbuf);
@@ -286,6 +287,26 @@ int __MsgFunc_ScoreInfo(const char *pszName, int iSize, void *pbuf) {
   return original_ScoreInfo(pszName, iSize, pbuf);
 }
 
+bool dispatchShowMenu(int validSlots, int displaySeconds, int bits,
+                      const char *text) {
+  // The input fact is framework-owned and updated from the wire before any
+  // renderer gets a say: a missing/failed text-menu module never changes
+  // whether the number keys belong to a menu.
+  const int needMore = bits & 0x7F;
+  if (validSlots == 0)
+    framework::facts::clearMenu();
+  else if (needMore == 0)
+    framework::facts::openMenu(validSlots, displaySeconds, bits,
+                               gEngfuncs.GetClientTime());
+  const AbcUiShowMenuEvent event{validSlots, displaySeconds, bits, text};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, event);
+  const framework::arbitration::Decision decision =
+      framework::arbitration::dispatch(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &event);
+  framework::hooks::note(framework::hooks::Kind::kMessage, "ShowMenu",
+                         decision.handled);
+  return decision.handled;
+}
+
 int __MsgFunc_ShowMenu(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
   int validSlots = msg.readShort();
@@ -294,12 +315,7 @@ int __MsgFunc_ShowMenu(const char *pszName, int iSize, void *pbuf) {
   std::string text = msg.readString();
   if (!msg.ok())
     return original_ShowMenu(pszName, iSize, pbuf);
-  ShowMenu(validSlots, displaySeconds, bits, text);
-  const AbcUiShowMenuEvent moduleEvent{validSlots, displaySeconds, bits,
-                                       text.c_str()};
-  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, moduleEvent);
-  return framework::eventBus().publishVeto(ABCUI_CHANNEL_NETMSG_SHOW_MENU,
-                                           moduleEvent)
+  return dispatchShowMenu(validSlots, displaySeconds, bits, text.c_str())
              ? 1
              : original_ShowMenu(pszName, iSize, pbuf);
 }
@@ -337,31 +353,26 @@ int __MsgFunc_TextMsg(const char *pszName, int iSize, void *pbuf) {
   std::string param4 = msg.remaining() > 0 ? msg.readString() : std::string();
   if (!msg.ok())
     return original_TextMsg(pszName, iSize, pbuf);
-  // Every subscriber runs; a single false swallows the vanilla handler
-  // (old g_EventTextMsg forEach with ret &=).
-  bool chain = true;
-  TextMsg.forEach(
-      [&](const abc::CallbackList<TextMsgCallback>::Handle &,
-          const abc::CallbackList<TextMsgCallback>::Callback &callback) {
-        chain &= callback(target, info.c_str(), param1.c_str(), param2.c_str(),
-                          param3.c_str(), param4.c_str());
-      });
+  const char *texts[4] = {param1.c_str(), param2.c_str(), param3.c_str(),
+                          param4.c_str()};
+  bool handled = false;
   // HUD_PRINTTALK is the server console's own chat wire (`say` typed into the
   // dedicated-server console; CaptionMod draws this wire into its log). The
   // client byte is 0 - no player sender - and the run parser handles the
   // text the same way as SayText, so the owning chat log draws it once.
   if (target == 3) {
     const AbcUiSayTextEvent chatEvent{
-        0,
-        info.c_str(),
-        {param1.c_str(), param2.c_str(), param3.c_str(), param4.c_str()}};
-    if (framework::eventBus().publishVeto(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT,
-                                          chatEvent))
-      return 1;
+        0, info.c_str(), {texts[0], texts[1], texts[2], texts[3]}};
+    framework::eventBus().publish(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, chatEvent);
+    handled = framework::arbitration::dispatch(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT,
+                                               &chatEvent)
+                  .handled;
+  } else {
+    handled = textfeed::route(target, info.c_str(), texts[0], texts[1],
+                              texts[2], texts[3]);
   }
-  // An unconsumed line falls back to the original handler (a plugin ahead in
-  // the chain that declines has already forwarded into this frame).
-  return chain ? original_TextMsg(pszName, iSize, pbuf) : 1;
+  framework::hooks::note(framework::hooks::Kind::kMessage, "TextMsg", handled);
+  return handled ? 1 : original_TextMsg(pszName, iSize, pbuf);
 }
 
 // SayText (issue 13): sender index + one composed line. Sven Co-op ships
@@ -370,31 +381,23 @@ int __MsgFunc_TextMsg(const char *pszName, int iSize, void *pbuf) {
 // message still parses (no field is required past the line itself).
 int __MsgFunc_SayText(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
-  SayTextData data;
-  data.client = msg.readByte();
-  data.text = msg.readString();
+  const int client = msg.readByte();
+  std::string text = msg.readString();
   if (!msg.ok())
     return original_SayText(pszName, iSize, pbuf);
+  std::string params[4];
   for (int i = 0; i < 4 && msg.remaining() > 0; i++)
-    data.params[i] = msg.readString();
-  // A subscriber that cannot draw the line must not eat it: `chain` mirrors
-  // the TextMsg rule, so the native CHudSayText stays the fallback.
-  bool chain = true;
-  SayText.forEach(
-      [&](const abc::CallbackList<SayTextCallback>::Handle &,
-          const abc::CallbackList<SayTextCallback>::Callback &callback) {
-        chain &= callback(data);
-      });
-  // Module-facing mirror: the same veto semantics (nonzero = the module drew
-  // the line, the native handler is skipped).
-  const AbcUiSayTextEvent moduleEvent{
-      data.client,
-      data.text.c_str(),
-      {data.params[0].c_str(), data.params[1].c_str(), data.params[2].c_str(),
-       data.params[3].c_str()}};
-  const bool moduleConsumed = framework::eventBus().publishVeto(
-      ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, moduleEvent);
-  if (!chain || moduleConsumed)
+    params[i] = msg.readString();
+  const AbcUiSayTextEvent event{client,
+                                text.c_str(),
+                                {params[0].c_str(), params[1].c_str(),
+                                 params[2].c_str(), params[3].c_str()}};
+  framework::eventBus().publish(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, event);
+  const bool handled =
+      framework::arbitration::dispatch(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, &event)
+          .handled;
+  framework::hooks::note(framework::hooks::Kind::kMessage, "SayText", handled);
+  if (handled)
     return 1;
   return original_SayText ? original_SayText(pszName, iSize, pbuf) : 1;
 }
@@ -490,14 +493,14 @@ int __MsgFunc_VoteMenu(const char *pszName, int iSize, void *pbuf) {
   data.no = msg.readString();
   if (!msg.ok())
     return original_VoteMenu(pszName, iSize, pbuf);
-  VoteMenu(data);
   const AbcUiVoteMenuEvent moduleEvent{data.type, data.content.c_str(),
                                        data.yes.c_str(), data.no.c_str()};
   framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_VOTE_MENU, moduleEvent);
-  return framework::eventBus().publishVeto(ABCUI_CHANNEL_NETMSG_VOTE_MENU,
-                                           moduleEvent)
-             ? 1
-             : original_VoteMenu(pszName, iSize, pbuf);
+  const bool handled = framework::arbitration::dispatch(
+                           ABCUI_CHANNEL_NETMSG_VOTE_MENU, &moduleEvent)
+                           .handled;
+  framework::hooks::note(framework::hooks::Kind::kMessage, "VoteMenu", handled);
+  return handled ? 1 : original_VoteMenu(pszName, iSize, pbuf);
 }
 
 int __MsgFunc_EndVote(const char *pszName, int iSize, void *pbuf) {
@@ -648,6 +651,9 @@ void installHook(const char *name, pfnUserMsgHook hook,
   pfnUserMsgHook previous = g_pMetaHookAPI->HookUserMsg(name, hook);
   if (previous && previous != hook)
     original = previous;
+  framework::hooks::add(framework::hooks::Kind::kMessage, name,
+                        reinterpret_cast<void *>(hook),
+                        reinterpret_cast<void *>(original));
 }
 
 // True when the address is a function inside the loaded client image. Used to
@@ -701,6 +707,17 @@ void registerUserMsgHooks() {
   // native panel is still suppressed by the command hook).
   installHook("InvAdd", __MsgFunc_InvAdd, original_InvAdd);
   installHook("InvRemove", __MsgFunc_InvRemove, original_InvRemove);
+  // Claim domains print their head state through abc_ui_hooks; a foreign
+  // plugin above one of these messages is visible without being displaced.
+  const auto noteHead = [](const char *name, pfnUserMsgHook hook) {
+    usermsg_t *entry = g_pMetaHookAPI->FindUserMsgHook(name);
+    framework::hooks::setHead(framework::hooks::Kind::kMessage, name,
+                              entry && entry->function == hook);
+  };
+  noteHead("ShowMenu", __MsgFunc_ShowMenu);
+  noteHead("TextMsg", __MsgFunc_TextMsg);
+  noteHead("SayText", __MsgFunc_SayText);
+  noteHead("VoteMenu", __MsgFunc_VoteMenu);
   static bool warnedMissingInventory = false;
   if ((!original_InvAdd || !original_InvRemove) && !warnedMissingInventory) {
     warnedMissingInventory = true;

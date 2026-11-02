@@ -60,7 +60,7 @@ uint64_t MouseDownBinding = 0;
 uint64_t ConfirmClickBinding = 0;
 AbcUiSubscription StateSubscription = 0;
 AbcUiSubscription PaintSubscription = 0;
-AbcUiSubscription EscapeSubscription = 0;
+AbcUiClaim EscapeSubscription = 0;
 
 // Page structure: the navigation and the row skeletons are built once per
 // document (a rebuild drops hover/focus), then only re-projected.
@@ -846,13 +846,29 @@ void onDocumentClose(void *) {
   RenderedRevision = ~0u;
 }
 
+int canEscape(void *, const void *) {
+  return Page != nullptr;
+}
+
+int32_t handleEscape(void *, const void *payload) {
+  return onEscape(nullptr, payload) ? ABCUI_DECISION_HANDLED
+                                    : ABCUI_DECISION_NONE;
+}
+
 void load() {
   StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
                                              &onMenuState, nullptr);
   PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
                                              &onMenuPaint, nullptr);
-  EscapeSubscription = Api->events->subscribeVeto(ABCUI_CHANNEL_SETTINGS_ESCAPE,
-                                                  0, &onEscape, nullptr);
+  AbcUiClaimDesc escape{};
+  escape.structSize = sizeof(escape);
+  escape.role = ABCUI_CLAIM_OWNER;
+  escape.canHandle = &canEscape;
+  escape.handle = &handleEscape;
+  EscapeSubscription =
+      Api->claims->claimDomain(ABCUI_CHANNEL_SETTINGS_ESCAPE, &escape);
+  if (!EscapeSubscription)
+    Api->core->warn("settings: cannot claim the routed ESC");
 
   AbcUiDocumentDesc desc{};
   desc.structSize = sizeof(desc);
@@ -924,7 +940,7 @@ void unload() {
     PaintSubscription = 0;
   }
   if (EscapeSubscription) {
-    Api->events->unsubscribe(EscapeSubscription);
+    Api->claims->release(EscapeSubscription);
     EscapeSubscription = 0;
   }
   Page = nullptr;

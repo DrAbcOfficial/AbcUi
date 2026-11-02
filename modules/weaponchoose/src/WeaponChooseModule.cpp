@@ -4,8 +4,8 @@
 //
 // Slot icons across the top; owned weapons under each slot; the selected slot
 // expands and the bucket frame marks the highlight. Selection rides the
-// weapons api's selectSlot (slot keys / invnext / invprev through the
-// command bus, TextMenu-open gated here); +attack confirms the highlighted
+// weapons api's selectSlot (slot keys / invnext / invprev through command
+// claims gated on the framework menu fact); +attack confirms the highlighted
 // pick (the old vgui mouse-press confirm - normal play has no vgui cursor, so
 // the attack key is the honest equivalent; D-17 note).
 //
@@ -56,6 +56,15 @@ int RainbowCounter = 0;
 
 AbcUiDocument *panelDocument() {
   return Api->ui->panelDocument(kPanelName);
+}
+
+// The framework menu fact is the single input-ownership authority: a text
+// menu (ours or the game's own fallback) always takes the number keys.
+bool menuVisible() {
+  AbcUiMenuFacts menu{};
+  menu.structSize = sizeof(menu);
+  return Api->facts->get(ABCUI_FACT_MENU, &menu, sizeof(menu)) &&
+         menu.visible != 0;
 }
 
 void setVisible(bool visible) {
@@ -425,36 +434,32 @@ void panelReset(void *) {
 
 // ---- lifecycle ----
 
-int onSlotCommand(void *userdata, const void *) {
-  if (!panelDocument())
-    return 0;
-  // TextMenu owns the slot keys while open. Otherwise consume the command:
-  // chaining it would also arm the native HUD's hidden selection.
-  if (Api->commands->textMenuOpen())
-    return 0;
+int ownsSlotKey(void *, const void *) {
+  return panelDocument() != nullptr && !menuVisible();
+}
+
+int32_t onSlotCommand(void *userdata, const void *) {
   const intptr_t slot = reinterpret_cast<intptr_t>(userdata);
   Api->weapons->selectSlot(static_cast<int>(slot), 1, 0);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
-int onInvNext(void *, const void *) {
-  if (!panelDocument())
-    return 0;
+int32_t onInvNext(void *, const void *) {
   Api->weapons->selectSlot(Api->weapons->selectedSlot(), 1, 1);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
-int onInvPrev(void *, const void *) {
-  if (!panelDocument())
-    return 0;
+int32_t onInvPrev(void *, const void *) {
   Api->weapons->selectSlot(Api->weapons->selectedSlot(), -1, 1);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
-int onAttack(void *, const void *) {
-  if (!panelDocument())
-    return 0;
-  return attackConfirm();
+int ownsAttack(void *, const void *) {
+  return panelDocument() != nullptr && Visible && !menuVisible();
+}
+
+int32_t onAttack(void *, const void *) {
+  return attackConfirm() ? ABCUI_DECISION_HANDLED : ABCUI_DECISION_NONE;
 }
 
 int onNativeHudDraw(void *, const void *payload) {
@@ -463,8 +468,12 @@ int onNativeHudDraw(void *, const void *payload) {
 }
 
 void onModuleLoad() {
-  Api->events->subscribeVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW, 0, &onNativeHudDraw,
-                             nullptr);
+  AbcUiClaimDesc native{};
+  native.structSize = sizeof(native);
+  native.role = ABCUI_CLAIM_GATE;
+  native.canHandle = &onNativeHudDraw;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
+    Api->core->warn("weaponchoose: cannot claim the native HUD draw");
   Panel.structSize = sizeof(Panel);
   Panel.name = kPanelName;
   Panel.documentPath = kDocumentPath;
@@ -486,15 +495,34 @@ void onModuleLoad() {
                          nullptr);
 
   for (intptr_t i = 0; i < ABCUI_WEAPON_SLOT_COUNT; i++) {
+    AbcUiClaimDesc desc{};
+    desc.structSize = sizeof(desc);
+    desc.role = ABCUI_CLAIM_OWNER;
+    desc.canHandle = &ownsSlotKey;
+    desc.handle = &onSlotCommand;
+    desc.userdata = reinterpret_cast<void *>(i);
     const std::string name = std::format("slot{}", i + 1);
-    // Check the menu gate before textmenu's priority-0 handler selects an
-    // item and clears it. Aggregate command dispatch still runs both sinks.
-    Api->commands->subscribeCommand(name.c_str(), 1, &onSlotCommand,
-                                    reinterpret_cast<void *>(i));
+    if (!Api->claims->claimCommand(name.c_str(), &desc))
+      Api->core->warn("weaponchoose: cannot claim command %s", name.c_str());
   }
-  Api->commands->subscribeCommand("invnext", 0, &onInvNext, nullptr);
-  Api->commands->subscribeCommand("invprev", 0, &onInvPrev, nullptr);
-  Api->commands->subscribeCommand("+attack", 0, &onAttack, nullptr);
+  AbcUiClaimDesc next{};
+  next.structSize = sizeof(next);
+  next.role = ABCUI_CLAIM_OWNER;
+  next.canHandle = &ownsSlotKey;
+  next.handle = &onInvNext;
+  Api->claims->claimCommand("invnext", &next);
+  AbcUiClaimDesc prev{};
+  prev.structSize = sizeof(prev);
+  prev.role = ABCUI_CLAIM_OWNER;
+  prev.canHandle = &ownsSlotKey;
+  prev.handle = &onInvPrev;
+  Api->claims->claimCommand("invprev", &prev);
+  AbcUiClaimDesc attack{};
+  attack.structSize = sizeof(attack);
+  attack.role = ABCUI_CLAIM_OWNER;
+  attack.canHandle = &ownsAttack;
+  attack.handle = &onAttack;
+  Api->claims->claimCommand("+attack", &attack);
 }
 
 void onModuleInit() {
@@ -521,8 +549,8 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->data ||
-      !api->commands || !api->weapons)
+      !api->events || !api->ui || !api->console || !api->data || !api->claims ||
+      !api->facts || !api->weapons)
     return 0;
   // The ui/console/weapons sections grew for this module; refuse a framework
   // whose tables are shorter than the members used below.
@@ -534,7 +562,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.weaponchoose";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

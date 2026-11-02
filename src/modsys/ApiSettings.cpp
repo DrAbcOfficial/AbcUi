@@ -14,7 +14,7 @@
 #include "../services/settings/SettingsPageService.h"
 #include "../services/uiconfig/UiDefinitions.h"
 
-#include "EventBus.h"
+#include "Arbitration.h"
 
 namespace framework {
 namespace SettingsApi {
@@ -918,7 +918,7 @@ bool consumeEscape() {
   AbcUiKeyEvent event{};
   event.down = 1;
   event.keynum = ABCUI_KEY_ESCAPE;
-  return eventBus().publishVetoRaw(ABCUI_CHANNEL_SETTINGS_ESCAPE, &event);
+  return arbitration::dispatch(ABCUI_CHANNEL_SETTINGS_ESCAPE, &event).handled;
 }
 
 void bumpRevision() {

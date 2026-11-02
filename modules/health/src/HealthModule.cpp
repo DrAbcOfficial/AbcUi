@@ -303,8 +303,12 @@ int onNativeHudDraw(void *, const void *payload) {
 }
 
 void onModuleLoad() {
-  Api->events->subscribeVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW, 0, &onNativeHudDraw,
-                             nullptr);
+  AbcUiClaimDesc native{};
+  native.structSize = sizeof(native);
+  native.role = ABCUI_CLAIM_GATE;
+  native.canHandle = &onNativeHudDraw;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
+    Api->core->warn("health: cannot claim the native HUD draw");
   Panel.structSize = sizeof(Panel);
   Panel.name = kPanelName;
   Panel.documentPath = kDocumentPath;
@@ -345,7 +349,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->data)
+      !api->events || !api->ui || !api->console || !api->data || !api->claims)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi))
@@ -354,7 +358,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.health";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

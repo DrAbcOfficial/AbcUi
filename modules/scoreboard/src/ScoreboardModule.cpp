@@ -738,9 +738,11 @@ void onPointer(void *, const void *payload) {
 
 // ---- commands ----
 
+int ownsScores(void *, const void *) {
+  return panelDocument() != nullptr;
+}
+
 int32_t onShowScores(void *, const void *) {
-  if (!panelDocument())
-    return 0;
   if (!Api->score->intermission()) {
     setVisible(true);
     // Old Viewport m_bInScore: the button state the usercmd stream reports
@@ -748,18 +750,16 @@ int32_t onShowScores(void *, const void *) {
     // hold the scoreboard.
     Api->score->setHeld(1);
   }
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 int32_t onHideScores(void *, const void *) {
-  if (!panelDocument())
-    return 0;
   if (!Api->score->intermission()) {
     setVisible(false);
     Api->score->setPointerMode(0);
   }
   Api->score->setHeld(0);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 // ---- panel callbacks ----
@@ -901,8 +901,18 @@ void onModuleLoad() {
                          nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_HUD_SCORE_POINTER, 0, &onPointer,
                          nullptr);
-  Api->commands->subscribeCommand("+showscores", 0, &onShowScores, nullptr);
-  Api->commands->subscribeCommand("-showscores", 0, &onHideScores, nullptr);
+  AbcUiClaimDesc show{};
+  show.structSize = sizeof(show);
+  show.role = ABCUI_CLAIM_OWNER;
+  show.canHandle = &ownsScores;
+  show.handle = &onShowScores;
+  Api->claims->claimCommand("+showscores", &show);
+  AbcUiClaimDesc hide{};
+  hide.structSize = sizeof(hide);
+  hide.role = ABCUI_CLAIM_OWNER;
+  hide.canHandle = &ownsScores;
+  hide.handle = &onHideScores;
+  Api->claims->claimCommand("-showscores", &hide);
 }
 
 void onModuleInit() {
@@ -954,7 +964,8 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
       !api->events || !api->ui || !api->console || !api->data ||
-      !api->players || !api->score || !api->shell || !api->voice)
+      !api->players || !api->score || !api->shell || !api->voice ||
+      !api->claims)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi) ||
@@ -966,7 +977,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.scoreboard";
-  out->version = "2.1.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

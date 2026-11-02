@@ -2,10 +2,9 @@
 // from src/panels/textmenu (old ABCEnchance textmenu.*): chunked ShowMenu
 // accumulation (bits&0x7f = more-chunks pending, bit7 = ammo-selection
 // menu), shutoff countdown, the inline colour stream repaint and the
-// slot1..10 key interception - while the menu is open the chained slot
-// commands turn into menuselect and the engine weapon-slot path only runs
-// while the menu is closed. The shared number-menu-open flag rides the
-// commands api (the weaponchoose module gates on it).
+// slot1..10 key claims - while this module renders the menu it owns the slot
+// commands and turns them into menuselect; the framework menu fact gates the
+// other consumers (the weaponchoose module yields while it is visible).
 #include "../../common/OpacityMotion.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -34,13 +33,12 @@ double ShutoffTime = -1.0;
 double HideAtTime = -1.0;
 double ClientTimeNow = 0.0;
 moduleui::opacity::Ramp Fade;
+// True while this module owns the displayed menu. The framework menu fact is
+// the authority for input ownership; this is the renderer's own state.
+bool Displayed = false;
 
 void fadeTo(bool state) {
   Fade.retarget(state ? 1.0f : 0.0f, kFadeSeconds);
-}
-
-void setMenuOpen(bool open) {
-  Api->commands->setTextMenuOpen(open ? 1 : 0);
 }
 
 // Old TextImageEx::Paint inline colour stream (SC 5.26 menu text): \w \d \y
@@ -184,28 +182,30 @@ void showMenu(int validSlots, int displaySeconds, int bits, const char *text) {
       setMenuInnerRml(rml.c_str());
       fadeTo(true);
       Api->ui->documentShow(Api->ui->panelDocument("textmenu"));
-      setMenuOpen(true);
+      Displayed = true;
       // A fresh menu cancels a pending fade-out-hide: the server's answer
       // to a menuselect usually lands inside the 0.2s window, and letting
       // the stale deadline fire would close the just-opened submenu.
       HideAtTime = -1.0;
     }
   } else {
-    setMenuOpen(false);
+    Displayed = false;
     closeForFade();
   }
   WaitingForMore = needMore != 0;
 }
 
 // Old SelectMenuItem: valid slot -> menuselect/as_menuselect + fade out.
-void selectMenuItem(int slot) {
+bool selectMenuItem(int slot) {
   if (slot > 0 && (ValidSlots & (1 << (slot - 1)))) {
     const std::string command =
         std::format("{} {}\n", IsASMenu ? "as_menuselect" : "menuselect", slot);
     Api->console->engineCommand(command.c_str());
-    setMenuOpen(false);
+    Displayed = false;
     closeForFade();
+    return true;
   }
+  return false;
 }
 
 void panelDocumentReady(void *) {
@@ -222,7 +222,7 @@ void panelOnData(void *, double frameTime) {
   // Old OnThink shutoff.
   bool fadeStarted = false;
   if (ShutoffTime >= 0.0 && ClientTimeNow >= ShutoffTime) {
-    setMenuOpen(false);
+    Displayed = false;
     closeForFade();
     ShutoffTime = -1.0;
     fadeStarted = true;
@@ -250,7 +250,7 @@ void panelReset(void *) {
   WaitingForMore = false;
   IsASMenu = false;
   ValidSlots = 0;
-  setMenuOpen(false);
+  Displayed = false;
   HideAtTime = -1.0;
   setMenuInnerRml("");
   Fade.reset();
@@ -261,27 +261,38 @@ void panelReset(void *) {
 
 // ---- event sinks ----
 
-int onShowMenu(void *, const void *payload) {
-  if (!Api->ui->panelDocument("textmenu"))
-    return 0;
+int canShowMenu(void *, const void *) {
+  return Api->ui->panelDocument("textmenu") != nullptr;
+}
+
+int32_t onShowMenu(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiShowMenuEvent *>(payload);
   showMenu(event->validSlots, event->displaySeconds, event->bits, event->text);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 void onInitHud(void *, const void *) {
   panelReset(nullptr);
 }
 
-// Old g_EventCmdSlot handler: the menu eats slot keys while open; the
-// weapon-slot chain only runs when it is closed (each subscriber decides
-// independently - the aggregate veto keeps that shape).
-int onSlotCommand(void *userdata, const void *) {
-  const intptr_t slot = reinterpret_cast<intptr_t>(userdata);
-  if (!Api->commands->textMenuOpen())
+// The menu owns a number key only while it is the displayed renderer and the
+// framework says a menu is up. The pure predicate runs before any handler, so
+// no other module can observe a mid-dispatch change.
+int slotOwned(void *, const void *) {
+  if (!Displayed || !Api->ui->panelDocument("textmenu"))
     return 0;
-  selectMenuItem(static_cast<int>(slot) + 1);
-  return 1;
+  AbcUiMenuFacts menu{};
+  menu.structSize = sizeof(menu);
+  return Api->facts->get(ABCUI_FACT_MENU, &menu, sizeof(menu)) &&
+         menu.visible != 0;
+}
+
+int32_t onSlotCommand(void *userdata, const void *) {
+  const intptr_t slot = reinterpret_cast<intptr_t>(userdata);
+  const int32_t close = selectMenuItem(static_cast<int>(slot) + 1)
+                            ? ABCUI_DECISION_CLOSE_MENU
+                            : ABCUI_DECISION_NONE;
+  return ABCUI_DECISION_HANDLED | close;
 }
 
 // ---- lifecycle ----
@@ -298,20 +309,29 @@ void onModuleLoad() {
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
 
-  Api->events->subscribeVeto(ABCUI_CHANNEL_NETMSG_SHOW_MENU, 0, &onShowMenu,
-                             nullptr);
+  AbcUiClaimDesc menu{};
+  menu.structSize = sizeof(menu);
+  menu.role = ABCUI_CLAIM_OWNER;
+  menu.canHandle = &canShowMenu;
+  menu.handle = &onShowMenu;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &menu))
+    Api->core->warn("textmenu: cannot claim the ShowMenu message");
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_INIT_HUD, 0, &onInitHud, nullptr);
   for (intptr_t i = 0; i < 10; i++) {
+    AbcUiClaimDesc desc{};
+    desc.structSize = sizeof(desc);
+    desc.role = ABCUI_CLAIM_OWNER;
+    desc.canHandle = &slotOwned;
+    desc.handle = &onSlotCommand;
+    desc.userdata = reinterpret_cast<void *>(i);
     const std::string name = std::format("slot{}", i + 1);
-    Api->commands->subscribeCommand(name.c_str(), 0, &onSlotCommand,
-                                    reinterpret_cast<void *>(i));
+    if (!Api->claims->claimCommand(name.c_str(), &desc))
+      Api->core->warn("textmenu: cannot claim command %s", name.c_str());
   }
 }
 
 void onModuleShutdown() {
-  // The panel dtor ran setTextMenuOpen(false); with the document gone the
-  // flag must not stay set into the next cycle.
-  setMenuOpen(false);
+  Displayed = false;
   Fade.reset();
 }
 
@@ -328,13 +348,13 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->commands || !api->console)
+      !api->events || !api->ui || !api->claims || !api->facts || !api->console)
     return 0;
   Api = api;
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.textmenu";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = nullptr;
   out->onContextReady = nullptr;

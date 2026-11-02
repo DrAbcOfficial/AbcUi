@@ -3,7 +3,7 @@
 
 #include <abcui/events.h>
 
-#include "../../../modsys/EventBus.h"
+#include "../../../modsys/Arbitration.h"
 #include "../../../services/GameUiBridge.h"
 #include "rmlui/VGUI2ExtensionImport.h"
 
@@ -107,8 +107,9 @@ bool InventoryFlow::handleKey(int keynum) {
   AbcUiKeyEvent event{};
   event.down = 1;
   event.keynum = keynum;
-  return framework::eventBus().publishVetoAggregate(
-      ABCUI_CHANNEL_MENU_COMMAND_KEY, event);
+  return framework::arbitration::dispatch(ABCUI_CHANNEL_MENU_COMMAND_KEY,
+                                          &event)
+      .handled;
 }
 
 } // namespace gameui

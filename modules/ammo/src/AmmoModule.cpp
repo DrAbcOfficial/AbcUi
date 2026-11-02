@@ -704,8 +704,12 @@ int onNativeHudDraw(void *, const void *payload) {
 }
 
 void onModuleLoad() {
-  Api->events->subscribeVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW, 0, &onNativeHudDraw,
-                             nullptr);
+  AbcUiClaimDesc native{};
+  native.structSize = sizeof(native);
+  native.role = ABCUI_CLAIM_GATE;
+  native.canHandle = &onNativeHudDraw;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
+    Api->core->warn("ammo: cannot claim the native HUD draw");
   AmmoStack.panelName = kAmmoStackPanel;
   AmmoStack.maxItems = 200 / 20; // tall 200 / item_tall 20
   WeaponStack.panelName = kWeaponStackPanel;
@@ -767,7 +771,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
       !api->textures || !api->events || !api->ui || !api->console ||
-      !api->data || !api->weapons)
+      !api->data || !api->weapons || !api->claims)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi) ||
@@ -777,7 +781,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.ammo";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = nullptr;
   out->onContextReady = nullptr;

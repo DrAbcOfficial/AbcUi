@@ -4,6 +4,8 @@
 #include <abcui/module_api.h>
 
 #include "framework/TestHarness.h"
+#include "modsys/Arbitration.h"
+#include "modsys/Facts.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -14,6 +16,10 @@
 #include <string>
 #include <string_view>
 #include <vector>
+
+namespace framework::module_resources {
+void reportException(const char *, const char *) {}
+} // namespace framework::module_resources
 
 extern "C" int ABCUI_CALL AbcUiModule_Main(uint32_t, const AbcUiModuleApi *,
                                            AbcUiModuleDescriptor *);
@@ -35,7 +41,6 @@ struct Document {
 struct Subscription {
   std::string channel;
   AbcUiEventSink sink = nullptr;
-  AbcUiEventVeto veto = nullptr;
   void *userdata = nullptr;
 };
 
@@ -45,17 +50,16 @@ struct RecordingUi {
   std::map<std::string, float> cvars;
   std::vector<Subscription> subscriptions;
   std::vector<std::unique_ptr<Element>> rows;
-  bool textMenuOpen = false;
 
   void publish(const char *channel, const void *payload) {
     for (const auto &entry : subscriptions) {
-      if (entry.channel != channel)
-        continue;
-      if (entry.sink)
+      if (entry.channel == channel && entry.sink)
         entry.sink(entry.userdata, payload);
-      else
-        entry.veto(entry.userdata, payload);
     }
+  }
+
+  bool dispatch(const char *domain, const void *payload) {
+    return framework::arbitration::dispatch(domain, payload).handled;
   }
 
   void frame(const char *name, double seconds) {
@@ -68,6 +72,18 @@ struct RecordingUi {
 RecordingUi &recording() {
   static RecordingUi instance;
   return instance;
+}
+
+const char *fakeCommandDomain(const char *name) {
+  static std::map<std::string, std::string> domains;
+  auto found = domains.find(name);
+  if (found == domains.end())
+    found = domains.emplace(name, std::string("command.") + name).first;
+  return found->second.c_str();
+}
+
+bool fakeCommandBridge(const char *) {
+  return true;
 }
 
 Element *element(AbcUiElement *handle) {
@@ -104,9 +120,13 @@ AbcUiCvarHandle registerCvar(const char *name, const char *value, int) {
 
 int main() {
   auto &state = recording();
+  framework::arbitration::setCommandProvider(&fakeCommandDomain,
+                                             &fakeCommandBridge);
   AbcUiCoreApi core{};
   core.structSize = sizeof(core);
   core.print = &print;
+  core.warn = &print;
+  core.error = &print;
   AbcUiPanelsApi panels{};
   panels.structSize = sizeof(panels);
   panels.registerPanel = [](const AbcUiPanelDesc *panel) {
@@ -118,12 +138,7 @@ int main() {
   events.structSize = sizeof(events);
   events.subscribe = [](const char *channel, int, AbcUiEventSink sink,
                         void *userdata) -> AbcUiSubscription {
-    recording().subscriptions.push_back({channel, sink, nullptr, userdata});
-    return recording().subscriptions.size();
-  };
-  events.subscribeVeto = [](const char *channel, int, AbcUiEventVeto sink,
-                            void *userdata) -> AbcUiSubscription {
-    recording().subscriptions.push_back({channel, nullptr, sink, userdata});
+    recording().subscriptions.push_back({channel, sink, userdata});
     return recording().subscriptions.size();
   };
   AbcUiConsoleApi console{};
@@ -137,15 +152,31 @@ int main() {
     return handle ? *static_cast<float *>(handle) : fallback;
   };
   console.findCvar = [](const char *) -> AbcUiCvarHandle { return nullptr; };
-  AbcUiCommandsApi commands{};
-  commands.structSize = sizeof(commands);
-  commands.subscribeCommand = [](const char *, int, AbcUiEventVeto,
-                                 void *) -> AbcUiSubscription { return 1; };
-  commands.setTextMenuOpen = [](int32_t open) {
-    recording().textMenuOpen = open != 0;
+  AbcUiClaimsApi claims{};
+  claims.structSize = sizeof(claims);
+  claims.claimCommand = [](const char *name, const AbcUiClaimDesc *desc) {
+    return framework::arbitration::claimCommand(
+        name, static_cast<framework::arbitration::Role>(desc->role),
+        desc->priority, desc->canHandle, desc->handle, desc->userdata);
   };
-  commands.textMenuOpen = []() -> int32_t {
-    return recording().textMenuOpen ? 1 : 0;
+  claims.claimDomain = [](const char *domain, const AbcUiClaimDesc *desc) {
+    return framework::arbitration::claim(
+        domain, static_cast<framework::arbitration::Role>(desc->role),
+        desc->priority, desc->canHandle, desc->handle, desc->userdata);
+  };
+  claims.release = [](AbcUiClaim claim) {
+    framework::arbitration::release(claim);
+  };
+  claims.setActive = [](AbcUiClaim claim, int32_t active) {
+    framework::arbitration::setActive(claim, active != 0);
+  };
+  AbcUiFactsApi facts{};
+  facts.structSize = sizeof(facts);
+  facts.get = [](const char *name, void *out, uint32_t size) {
+    return framework::facts::get(name, out, size) ? 1 : 0;
+  };
+  facts.generation = [](const char *name) {
+    return framework::facts::generation(name);
   };
   AbcUiDataApi data{};
   data.structSize = sizeof(data);
@@ -220,7 +251,8 @@ int main() {
   api.panels = &panels;
   api.events = &events;
   api.console = &console;
-  api.commands = &commands;
+  api.claims = &claims;
+  api.facts = &facts;
   api.data = &data;
   api.ui = &ui;
   api.vfs = &vfs;
@@ -244,13 +276,16 @@ int main() {
     if (kind == "textmenu") {
       TEST_CASE("textmenu-fades-and-hides");
       const AbcUiShowMenuEvent show{1, 5, 0, "Menu"};
-      state.publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &show);
+      framework::facts::openMenu(show.validSlots, show.displaySeconds,
+                                 show.bits, 0.0);
+      CHECK(state.dispatch(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &show));
       state.frame("textmenu", 0.05);
       CHECK_NEAR(opacity(state.documents.at("textmenu").root), 0.25, 0.001);
       state.frame("textmenu", 0.05);
       CHECK_NEAR(opacity(state.documents.at("textmenu").root), 0.5, 0.001);
       const AbcUiShowMenuEvent hide{0, 0, 0, ""};
-      state.publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &hide);
+      framework::facts::clearMenu();
+      CHECK(state.dispatch(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &hide));
       state.frame("textmenu", 0.05);
       CHECK_NEAR(opacity(state.documents.at("textmenu").root), 0.375, 0.001);
       state.frame("textmenu", 0.2);
@@ -258,7 +293,7 @@ int main() {
     } else if (kind == "killfeed") {
       TEST_CASE("killfeed-fades-before-removal");
       const AbcUiKillFeedEvent event{"victim", "attacker", "weapon"};
-      state.publish(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, &event);
+      CHECK(state.dispatch(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, &event));
       CHECK(state.rows.size() == 1);
       state.frame("deadmsg", 6.0);
       state.frame("deadmsg", 0.25);
@@ -271,7 +306,7 @@ int main() {
       const AbcUiMotdEvent content{1, "Message"};
       state.publish(ABCUI_CHANNEL_NETMSG_MOTD, &content);
       const AbcUiVguiMenuEvent show{5};
-      state.publish(ABCUI_CHANNEL_MENU_VGUI_MENU, &show);
+      CHECK(state.dispatch(ABCUI_CHANNEL_MENU_VGUI_MENU, &show));
       for (int frame = 0; frame < 10; ++frame)
         state.frame("motd", 0.5);
       state.frame("motd", 0.25);

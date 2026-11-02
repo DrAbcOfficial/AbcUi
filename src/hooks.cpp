@@ -20,12 +20,13 @@
 #include "data/NetworkMessages.h"
 #include "data/PlayerResource.h"
 #include "data/PlayerTrace.h"
-#include "data/TextFeed.h"
 #include "data/WeaponResource.h"
 #include "framework/Commands.h"
 #include "framework/PanelManager.h"
 #include "framework/ScoreSeat.h"
+#include "modsys/Arbitration.h"
 #include "modsys/EventBus.h"
+#include "modsys/Facts.h"
 #include "modsys/ModuleManager.h"
 #include "modules/Module.h"
 #include "render/BackendHost.h"
@@ -49,7 +50,8 @@ namespace {
 //
 // The supported Sven client initializes these list entries in this order:
 // health, battery, ammo, train, flashlight, crosshair. Never hide the train.
-// Suppression is a module veto and the visible bit is restored after redraw;
+// Suppression is a collective claim and the visible bit is restored after
+// redraw;
 // removing a claim cannot leave a native element permanently disabled.
 uint32_t VanillaHudFlagsOffset = 0;
 constexpr int32_t kVanillaHudElements[] = {
@@ -92,8 +94,7 @@ public:
       if (kVanillaHudElements[i] < 0 || !VanillaHudPanels[i])
         continue;
       const AbcUiNativeHudEvent event{kVanillaHudElements[i]};
-      if (!framework::eventBus().publishVeto(ABCUI_CHANNEL_HUD_NATIVE_DRAW,
-                                             event))
+      if (!framework::arbitration::gate(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &event))
         continue;
       auto *flags = reinterpret_cast<DWORD *>(VanillaHudPanels[i] +
                                               VanillaHudFlagsOffset);
@@ -117,6 +118,9 @@ private:
 
 static void H_HUD_Init() {
   gExportfuncs.HUD_Init();
+  // The arbitration command provider and the diagnostics command are
+  // process-scoped; modules claim commands from their onLoad below.
+  commands::init();
   // HUD_Init/HUD_Shutdown can repeat within one engine process (the client
   // is reloaded on some map-change/reconnect paths). Everything that
   // HUD_Shutdown tears down must be re-armed here.
@@ -132,6 +136,7 @@ static void H_HUD_Init() {
   // Module packages boot once per process, before the panel install, so
   // module-registered panels join the first HUD_Init cycle.
   framework::modmanager::boot();
+  commands::refreshAfterClientLoad();
   if (framework::PanelManager::panels().empty())
     framework::PanelManager::installPanels(framework::modmanager::takePanels());
   // Process-scoped registration (cvars/commands survive HUD_Shutdown).
@@ -142,7 +147,6 @@ static void H_HUD_Init() {
     hudstate::init();
     weaponres::init();
     playerres::init();
-    textfeed::init();
     rmlui::registerCommands();
     // Backend diagnostics are process-scoped, like the module commands.
     abc::render::registerCommands();
@@ -166,6 +170,8 @@ static int H_HUD_VidInit() {
 
 static void H_HUD_Frame(double frametime) {
   gExportfuncs.HUD_Frame(frametime);
+  commands::pump();
+  framework::facts::expire(gEngfuncs.GetClientTime());
   // Old exportfuncs HUD_Frame tail: the player traces refresh once per
   // frame; render-phase consumers (crosshair third-person centre) read the
   // cache later in the frame. The level gate is the trace's world
@@ -256,14 +262,15 @@ static void H_HUD_TxferPredictionData(struct entity_state_s *ps,
 namespace {
 
 // Wheel claims that are NOT ownership (T06): an open module document (the
-// motd) scrolls without holding UI input. Modules claim through the
-// input.wheel veto channel. Owner-backed wheel claims (scoreboard pointer
+// motd) scrolls without holding UI input. Modules claim the input.wheel
+// domain. Owner-backed wheel claims (scoreboard pointer
 // mode, menu pages) ride the router's wheelClaimed() inside rmlui::routeKey.
 bool moduleWheelClaim(int down, int keynum) {
   if (!down || (keynum != K_MWHEELUP && keynum != K_MWHEELDOWN))
     return false;
   const AbcUiKeyEvent event{1, keynum};
-  return framework::eventBus().publishVeto(ABCUI_CHANNEL_INPUT_WHEEL, event);
+  return framework::arbitration::dispatch(ABCUI_CHANNEL_INPUT_WHEEL, &event)
+      .handled;
 }
 
 } // namespace
@@ -271,14 +278,15 @@ bool moduleWheelClaim(int down, int keynum) {
 static int H_HUD_Key_Event(int down, int keynum,
                            const char *pszCurrentBinding) {
   // Static interactive-HUD consumers stay the P6-proven pre-stage (the
-  // module input.key veto channel - vote answers -, scoreboard pointer
+  // module input.key claim domain - vote answers -, scoreboard pointer
   // enter). routeKey is then the single physical injection point: the
   // router decides UI feeds and the engine-consume flag (keydown/up
   // pairing, auto-repeat dedup, pre-held passthrough and focus-loss cleanup
   // live there - T06).
   const AbcUiKeyEvent keyEvent{down ? 1 : 0, keynum};
   const bool consumed =
-      framework::eventBus().publishVeto(ABCUI_CHANNEL_INPUT_KEY, keyEvent) ||
+      framework::arbitration::dispatch(ABCUI_CHANNEL_INPUT_KEY, &keyEvent)
+          .handled ||
       framework::scoreseat::onKeyEvent(down, keynum);
 #ifndef NDEBUG
   if (keynum >= K_MOUSE2 || keynum == K_MWHEELUP || keynum == K_MWHEELDOWN)
@@ -309,6 +317,7 @@ H_HUD_GetStudioModelInterface(int version,
 
 static void H_HUD_Shutdown() {
   VanillaHudPanelCount = 0;
+  framework::facts::reset();
   services::voice::status().shutdown();
   rmlui::onHudShutdown();
   gExportfuncs.HUD_Shutdown();
@@ -408,7 +417,7 @@ namespace {
 // Native viewport menu route (from: ABCEnchance exportfuncs.cpp
 // TFV_ShowVGUIMenu). The SC client opens every built-in viewport window
 // through CTeamFortressViewport::ShowVGUIMenu(id); the hook republishes each
-// request on the menu.vguimenu veto channel so the owning module decides
+// request on the menu.vguimenu claim domain so the owning module decides
 // (the motd module suppresses the vanilla mission brief (4) and, while
 // hud_motd is non-zero, the vanilla MOTD window (5)). An unconsumed request
 // chains untouched.
@@ -419,7 +428,8 @@ hook_t *ShowVguiMenuHook = nullptr;
 
 static void __fastcall H_TFV_ShowVGUIMenu(void *pthis, int dummy, int menu) {
   const AbcUiVguiMenuEvent event{menu};
-  if (framework::eventBus().publishVeto(ABCUI_CHANNEL_MENU_VGUI_MENU, event))
+  if (framework::arbitration::dispatch(ABCUI_CHANNEL_MENU_VGUI_MENU, &event)
+          .handled)
     return; // consumed: the vanilla window must not open
   if (OriginalShowVguiMenu)
     OriginalShowVguiMenu(pthis, dummy, menu);

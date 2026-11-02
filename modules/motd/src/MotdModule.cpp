@@ -255,26 +255,42 @@ void onMotd(void *, const void *payload) {
     finishSend();
 }
 
-int onVguiMenu(void *, const void *payload) {
+int canVguiMenu(void *, const void *payload) {
   if (!panelDocument())
     return 0;
   const auto *event = static_cast<const AbcUiVguiMenuEvent *>(payload);
-  // The vanilla mission brief never opens: the missionbriefing command chain
+  // The vanilla mission brief never opens: the missionbriefing command claim
   // feeds this panel instead.
   if (event->menu == kMenuMissionBrief)
     return 1;
-  if (event->menu == kMenuMotd && blocksVanillaWindow()) {
-    showMotd();
-    return 1;
-  }
-  return 0;
+  return event->menu == kMenuMotd && blocksVanillaWindow() ? 1 : 0;
 }
 
-int onWheel(void *, const void *) {
-  // The open motd scrolls (the old per-page auto-advance died with the
-  // pagination); claiming routes the pulse into the Rml context.
+int32_t onVguiMenu(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiVguiMenuEvent *>(payload);
+  if (event->menu == kMenuMotd)
+    showMotd();
+  return ABCUI_DECISION_HANDLED;
+}
+
+int canWheel(void *, const void *) {
   AbcUiDocument *doc = panelDocument();
   return doc && Api->ui->documentVisible(doc) ? 1 : 0;
+}
+
+int32_t onWheel(void *, const void *) {
+  // The open motd scrolls (the old per-page auto-advance died with the
+  // pagination); claiming routes the pulse into the Rml context.
+  return ABCUI_DECISION_HANDLED;
+}
+
+int ownsMissionBriefing(void *, const void *) {
+  return panelDocument() != nullptr;
+}
+
+int32_t onMissionBriefing(void *, const void *) {
+  showMotd();
+  return ABCUI_DECISION_HANDLED;
 }
 
 // ---- cvar watch ----
@@ -358,21 +374,29 @@ void onModuleLoad() {
   Api->panels->registerPanel(&Panel);
 
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_MOTD, 0, &onMotd, nullptr);
-  Api->events->subscribeVeto(ABCUI_CHANNEL_MENU_VGUI_MENU, 0, &onVguiMenu,
-                             nullptr);
-  Api->events->subscribeVeto(ABCUI_CHANNEL_INPUT_WHEEL, 0, &onWheel, nullptr);
+  AbcUiClaimDesc vgui{};
+  vgui.structSize = sizeof(vgui);
+  vgui.role = ABCUI_CLAIM_OWNER;
+  vgui.canHandle = &canVguiMenu;
+  vgui.handle = &onVguiMenu;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_MENU_VGUI_MENU, &vgui))
+    Api->core->warn("motd: cannot claim the viewport menu route");
+  AbcUiClaimDesc wheel{};
+  wheel.structSize = sizeof(wheel);
+  wheel.role = ABCUI_CLAIM_OWNER;
+  wheel.canHandle = &canWheel;
+  wheel.handle = &onWheel;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_INPUT_WHEEL, &wheel))
+    Api->core->warn("motd: cannot claim the wheel");
   // Old g_EventCmdMissionBrief: the chained command always swallowed the
-  // original (the vanilla SC briefing window must not open on top of ours),
-  // so the sink always consumes.
-  Api->commands->subscribeCommand(
-      "missionbriefing", 0,
-      [](void *, const void *) -> int {
-        if (!panelDocument())
-          return 0;
-        showMotd();
-        return 1;
-      },
-      nullptr);
+  // original (the vanilla SC briefing window must not open on top of ours).
+  AbcUiClaimDesc briefing{};
+  briefing.structSize = sizeof(briefing);
+  briefing.role = ABCUI_CLAIM_OWNER;
+  briefing.canHandle = &ownsMissionBriefing;
+  briefing.handle = &onMissionBriefing;
+  if (!Api->claims->claimCommand("missionbriefing", &briefing))
+    Api->core->warn("motd: cannot claim missionbriefing");
 }
 
 void onModuleInit() {
@@ -407,7 +431,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
       !api->events || !api->ui || !api->console || !api->data || !api->vfs ||
-      !api->commands)
+      !api->claims)
     return 0;
   // The console/vfs/data/ui sections grew for this module; refuse a framework
   // whose tables are shorter than the members used below.
@@ -420,7 +444,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.motd";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

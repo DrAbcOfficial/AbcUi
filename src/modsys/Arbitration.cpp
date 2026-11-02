@@ -5,6 +5,8 @@
 #include <limits>
 #include <utility>
 
+#include <abcui/events.h>
+
 namespace framework::arbitration {
 namespace {
 
@@ -43,6 +45,26 @@ Registry &registry() {
 
 CommandDomain CommandDomainFn = nullptr;
 CommandBridge CommandBridgeFn = nullptr;
+
+// Entry-point domains the framework owns. Commands are dynamic and created by
+// the host provider; these are static and documented in events.h.
+void ensureBuiltinDomains() {
+  static const bool once = [] {
+    registerDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, DomainMode::kCollective);
+    registerDomain(ABCUI_CHANNEL_NETMSG_SHOW_MENU, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_NETMSG_VOTE_MENU, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_TEXTFEED_NOTICE, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_MENU_VGUI_MENU, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_MENU_COMMAND_KEY, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_SETTINGS_ESCAPE, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_INPUT_KEY, DomainMode::kExclusive);
+    registerDomain(ABCUI_CHANNEL_INPUT_WHEEL, DomainMode::kExclusive);
+    return true;
+  }();
+  (void)once;
+}
 
 bool roleValid(DomainMode mode, Role role) {
   if (mode == DomainMode::kCollective)
@@ -163,11 +185,13 @@ bool registerDomain(const char *domain, DomainMode mode) {
 }
 
 bool hasDomain(const char *domain) {
+  ensureBuiltinDomains();
   return domain && registry().domains.contains(domain);
 }
 
 Claim claim(const char *domain, Role role, int priority, Predicate canHandle,
             Handler handle, void *userdata) {
+  ensureBuiltinDomains();
   if (!domain || !*domain || !module_resources::accepting())
     return 0;
   Registry &state = registry();
@@ -225,6 +249,7 @@ void setActive(Claim claimId, bool active) {
 }
 
 Decision dispatch(const char *domain, const void *event) {
+  ensureBuiltinDomains();
   if (!domain)
     return {};
   const auto found = registry().domains.find(domain);
@@ -257,6 +282,7 @@ Decision dispatch(const char *domain, const void *event) {
 }
 
 bool gate(const char *domain, const void *event) {
+  ensureBuiltinDomains();
   if (!domain)
     return false;
   const auto found = registry().domains.find(domain);
@@ -309,6 +335,7 @@ std::vector<ClaimInfo> claims() {
 }
 
 std::string domainList() {
+  ensureBuiltinDomains();
   std::string result;
   for (const auto &[name, domain] : registry().domains) {
     if (!result.empty())

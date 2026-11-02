@@ -1,8 +1,6 @@
 // framework::EventBus implementation - see EventBus.h.
 #include "EventBus.h"
 
-#include <vector>
-
 namespace framework {
 namespace {
 
@@ -41,58 +39,7 @@ EventSubscription EventBus::subscribe(const char *channel,
   Record &record = Records[token];
   record.channel = channel;
   record.priority = priority;
-  record.mode = kModeData;
   record.dataHandle = handle;
-  record.lifetime.track([this, token] { unsubscribe(token); });
-  return token;
-}
-
-EventSubscription EventBus::subscribeVeto(const char *channel,
-                                          EventPriority priority,
-                                          EventVetoFn sink, void *userdata) {
-  if (!channel || !sink || !module_resources::accepting())
-    return kNoSubscription;
-  Channel &target = Channels[channel];
-  VetoList &list = target.veto[priority];
-  const auto owner = module_resources::current();
-  const auto handle = list.append([sink, userdata, owner](const void *payload) {
-    return module_resources::invoke(owner, "veto event", sink, userdata,
-                                    payload) != 0;
-  });
-  ++target.count;
-  const EventSubscription token = NextToken++;
-  Record &record = Records[token];
-  record.channel = channel;
-  record.priority = priority;
-  record.mode = kModeVeto;
-  record.vetoHandle = handle;
-  record.lifetime.track([this, token] { unsubscribe(token); });
-  return token;
-}
-
-EventSubscription EventBus::subscribeVetoAggregate(const char *channel,
-                                                   EventPriority priority,
-                                                   EventVetoFn sink,
-                                                   void *userdata) {
-  if (!channel || !sink || !module_resources::accepting())
-    return kNoSubscription;
-  Channel &target = Channels[channel];
-  VetoList &list = target.vetoAggregate[priority];
-  const auto owner = module_resources::current();
-  const EventSubscription token = NextToken++;
-  const auto handle =
-      list.append([this, token, sink, userdata, owner](const void *payload) {
-        if (!Records.contains(token))
-          return false;
-        return module_resources::invoke(owner, "aggregate veto event", sink,
-                                        userdata, payload) != 0;
-      });
-  ++target.count;
-  Record &record = Records[token];
-  record.channel = channel;
-  record.priority = priority;
-  record.mode = kModeVetoAggregate;
-  record.vetoAggregateHandle = handle;
   record.lifetime.track([this, token] { unsubscribe(token); });
   return token;
 }
@@ -106,26 +53,9 @@ void EventBus::unsubscribe(EventSubscription subscription) {
   Record &record = it->second;
   if (Channel *target = find(record.channel.c_str())) {
     --target->count;
-    switch (record.mode) {
-    case kModeVeto: {
-      const auto bucket = target->veto.find(record.priority);
-      if (bucket != target->veto.end())
-        bucket->second.remove(record.vetoHandle);
-      break;
-    }
-    case kModeVetoAggregate: {
-      const auto bucket = target->vetoAggregate.find(record.priority);
-      if (bucket != target->vetoAggregate.end())
-        bucket->second.remove(record.vetoAggregateHandle);
-      break;
-    }
-    default: {
-      const auto bucket = target->data.find(record.priority);
-      if (bucket != target->data.end())
-        bucket->second.remove(record.dataHandle);
-      break;
-    }
-    }
+    const auto bucket = target->data.find(record.priority);
+    if (bucket != target->data.end())
+      bucket->second.remove(record.dataHandle);
   }
   Records.erase(it);
 }
@@ -149,49 +79,6 @@ void EventBus::publishRaw(const char *channel, const void *payload) {
           callback(payload);
         });
   }
-}
-
-bool EventBus::publishVetoRaw(const char *channel, const void *payload) {
-  const Channel *target = find(channel);
-  if (!target)
-    return false;
-  bool vetoed = false;
-  for (const auto &bucket : target->veto) {
-    if (vetoed)
-      break;
-    const VetoList &list = bucket.second;
-    list.forEachIf(
-        [&](const VetoList::Handle &, const VetoList::Callback &callback) {
-          if (callback(payload)) {
-            vetoed = true;
-            return false;
-          }
-          return true;
-        });
-  }
-  return vetoed;
-}
-
-bool EventBus::publishVetoAggregateRaw(const char *channel,
-                                       const void *payload) {
-  const Channel *target = find(channel);
-  if (!target)
-    return false;
-  // Copy before calling module code so hooks may change during dispatch.
-  // New handlers join the next dispatch; revoked tokens are skipped.
-  std::vector<VetoList::Callback> callbacks;
-  for (const auto &bucket : target->vetoAggregate) {
-    const VetoList &list = bucket.second;
-    list.forEach(
-        [&](const VetoList::Handle &, const VetoList::Callback &callback) {
-          callbacks.push_back(callback);
-        });
-  }
-  bool vetoed = false;
-  for (const auto &callback : callbacks)
-    if (callback(payload))
-      vetoed = true;
-  return vetoed;
 }
 
 size_t EventBus::subscriberCount(const char *channel) const {

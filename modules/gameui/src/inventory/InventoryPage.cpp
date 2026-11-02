@@ -10,7 +10,7 @@
 // selected item's detail card on the right, and the action row at the
 // bottom. No full-window menu backdrop: the world stays visible through
 // the scrim. The keyboard policy (arrows/enter/delete, ESC, the bound
-// key's close rule framework-side) answers the menu.commandkey veto feed;
+// key's close rule framework-side) answers the menu.commandkey claim domain;
 // actions execute framework-side (the window closes, then the client
 // command runs) and the read-through rule keeps the list truthful.
 #include "../shared/PageShared.h"
@@ -30,7 +30,7 @@ AbcUiElement *BoundRoot = nullptr;
 uint64_t ClickBinding = 0;
 AbcUiSubscription StateSubscription = 0;
 AbcUiSubscription PaintSubscription = 0;
-AbcUiSubscription KeySubscription = 0;
+AbcUiClaim KeySubscription = 0;
 // Model revision of the last projection; ~0 forces the next render.
 uint32_t RenderedRevision = ~0u;
 
@@ -361,13 +361,30 @@ void onDocumentClose(void *) {
 
 } // namespace
 
+int canPageKey(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiKeyEvent *>(payload);
+  return Page && event && event->down != 0 && Api->documents->visible(Page) ? 1
+                                                                            : 0;
+}
+
+int32_t handlePageKey(void *, const void *payload) {
+  return onKey(nullptr, payload) ? ABCUI_DECISION_HANDLED : ABCUI_DECISION_NONE;
+}
+
 void load() {
   StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
                                              &onMenuState, nullptr);
   PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
                                              &onMenuPaint, nullptr);
-  KeySubscription = Api->events->subscribeVetoAggregate(
-      ABCUI_CHANNEL_MENU_COMMAND_KEY, 0, &onKey, nullptr);
+  AbcUiClaimDesc keys{};
+  keys.structSize = sizeof(keys);
+  keys.role = ABCUI_CLAIM_OWNER;
+  keys.canHandle = &canPageKey;
+  keys.handle = &handlePageKey;
+  KeySubscription =
+      Api->claims->claimDomain(ABCUI_CHANNEL_MENU_COMMAND_KEY, &keys);
+  if (!KeySubscription)
+    Api->core->warn("inventory: cannot claim the page keys");
 
   AbcUiDocumentDesc desc{};
   desc.structSize = sizeof(desc);
@@ -401,7 +418,7 @@ void unload() {
     PaintSubscription = 0;
   }
   if (KeySubscription) {
-    Api->events->unsubscribe(KeySubscription);
+    Api->claims->release(KeySubscription);
     KeySubscription = 0;
   }
   Page = nullptr;

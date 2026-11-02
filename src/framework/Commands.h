@@ -1,30 +1,25 @@
 #pragma once
 
-// Process-owned engine command bridges, installed on explicit module request.
-// Module subscriptions and callback ownership live in EventBus. Bridges remain
-// inert pass-throughs after their handlers are revoked, so other plugins may
-// safely retain a bridge thunk as their predecessor.
-
-#include <abcui/module_api.h>
-
-namespace commands {
-
-// Main-thread, module-owned subscription to any existing callback-backed
-// engine command. No name whitelist, fixed slot count or init-only restriction.
-// Returns zero on refusal. Revoke through events->unsubscribe.
-AbcUiSubscription subscribe(const char *name, int priority, AbcUiEventVeto sink,
-                            void *userdata);
-
-// abc_ui_mediaplayer diagnostics for one bridge: whether it exists, whether
-// the engine table entry still points at it, and its dispatch counters
-// (last: 1 consumed, 0 chained to the original, -1 never ran).
-bool debugBridge(const char *name, unsigned &dispatches, unsigned &consumed,
-                 int &last, bool &engineHeadOurs);
-
-} // namespace commands
+// Process-owned engine command bridges. A bridge exists only for a command a
+// module claimed through the arbitration API; the bridge dispatches the
+// command.<name> domain and calls the displaced predecessor only when no
+// claim handled the occurrence. Bridges remain inert pass-throughs after
+// their last claim is revoked, so another plugin may safely retain the thunk
+// as its predecessor.
 
 namespace commands {
-// Main-thread interaction state; does not depend on a concrete panel header.
-bool textMenuOpen();
-void setTextMenuOpen(bool open);
+
+// Installs the arbitration command provider and the process-scoped hook
+// diagnostics command. Call once from HUD_Init before modules load.
+void init();
+
+// Retries bridges whose engine command did not exist yet (the client
+// registers MediaPlayer after module load). Cheap while no bridge is pending.
+void pump();
+
+// Re-validates every bridge against the engine command table and re-hooks a
+// bridge the client restored; a foreign thunk is reported as shadowed and is
+// never displaced.
+void refreshAfterClientLoad();
+
 } // namespace commands

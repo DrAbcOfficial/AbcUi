@@ -149,6 +149,8 @@ foreach(module IN ITEMS Ammo Flashlight HudEffects KillFeed Motd TextMenu)
     abcui_add_test("abc_ui_${module_id}_opacity"
         SOURCES HudOpacity.cpp
                 "${PROJECT_SOURCE_DIR}/modules/${module_id}/src/${module}Module.cpp"
+                "${SRC}/modsys/Arbitration.cpp"
+                "${SRC}/modsys/Facts.cpp"
         DEFINITIONS "ABCUI_TEST_MODULE=\"${module_id}\"" NOMINMAX
                     WIN32_LEAN_AND_MEAN)
 endforeach()
@@ -166,17 +168,33 @@ target_compile_definitions(abcui_test_textmenu_entry PRIVATE
 abcui_add_test(abc_ui_weaponchoose
     SOURCES WeaponChoose.cpp
             "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp"
-            "${SRC}/modsys/EventBus.cpp"
-            $<TARGET_OBJECTS:abcui_test_textmenu_entry>
-    LIBRARIES Abc::Core)
+            "${SRC}/modsys/Arbitration.cpp"
+            "${SRC}/modsys/Facts.cpp"
+            $<TARGET_OBJECTS:abcui_test_textmenu_entry>)
 
 abcui_add_test(abc_ui_weaponchoose_textmenu_first
     SOURCES WeaponChoose.cpp
             "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp"
-            "${SRC}/modsys/EventBus.cpp"
+            "${SRC}/modsys/Arbitration.cpp"
+            "${SRC}/modsys/Facts.cpp"
             $<TARGET_OBJECTS:abcui_test_textmenu_entry>
-    DEFINITIONS ABCUI_TEST_TEXTMENU_FIRST
-    LIBRARIES Abc::Core)
+    DEFINITIONS ABCUI_TEST_TEXTMENU_FIRST)
+
+# The native text-menu fallback: no textmenu renderer, the menu fact still
+# gates the weapon selector and the slot command reaches the engine original.
+abcui_add_test(abc_ui_weaponchoose_native
+    SOURCES WeaponChoose.cpp
+            "${PROJECT_SOURCE_DIR}/modules/weaponchoose/src/WeaponChooseModule.cpp"
+            "${SRC}/modsys/Arbitration.cpp"
+            "${SRC}/modsys/Facts.cpp"
+            $<TARGET_OBJECTS:abcui_test_textmenu_entry>
+    DEFINITIONS ABCUI_TEST_TEXTMENU_ABSENT)
+
+# Entry ownership: order independence, fallback/observer roles, gates, facts.
+abcui_add_test(abc_ui_arbitration
+    SOURCES Arbitration.cpp
+            "${SRC}/modsys/Arbitration.cpp"
+            "${SRC}/modsys/Facts.cpp")
 
 # The fixed-capacity particle system behind the HUD effects.
 abcui_add_test(abc_ui_particle_system

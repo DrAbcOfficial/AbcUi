@@ -2,7 +2,7 @@
 // src/panels/chat (old ChatPanel, CaptionMod sources src/chatdialog.cpp).
 //
 // SayText is parsed here and the native CHudSayText draw is swallowed
-// through the textfeed.saytext veto, so exactly one log is on screen; the
+// through the textfeed.saytext claim, so exactly one log is on screen; the
 // input line owns the keyboard through the framework input seat (the same
 // token keeps the player standing still while typing), the IME candidate
 // window stays framework-owned and this module only shows the language tag.
@@ -278,8 +278,8 @@ void followTail(double frameTime, bool snap) {
   if (!log)
     return;
   const float top = Api->ui->elementScrollTop(log);
-  const float tail = Api->ui->elementScrollHeight(log) -
-                     Api->ui->elementClientHeight(log);
+  const float tail =
+      Api->ui->elementScrollHeight(log) - Api->ui->elementClientHeight(log);
   if (tail - top <= kFollowEpsilonDp)
     return; // the log fits its window (or is already parked on the tail)
   float next = tail;
@@ -602,15 +602,17 @@ void closeInput() {
 
 // ---- event sinks ----
 
+int canSayText(void *, const void *) {
+  return chatVisible() ? 1 : 0;
+}
+
 int32_t onSayText(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiSayTextEvent *>(payload);
-  if (!chatVisible())
-    return 0; // stay out of the way: the native handler keeps drawing
   // Voice-muted senders are dropped, but the line is still consumed so the
   // native log cannot show it either.
   if (cvarInt(SayTextBlockMuted, 0) != 0 && event->client > 0 &&
       Api->voice->isBlocked(event->client))
-    return 1;
+    return ABCUI_DECISION_HANDLED;
 
   AbcUiPlayerInfo sender{};
   sender.structSize = sizeof(sender);
@@ -631,22 +633,24 @@ int32_t onSayText(void *, const void *payload) {
     Api->core->print("%s", plain.c_str());
   if (!runs.empty())
     appendNode(runs, playerColorCss(event->client));
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 // ---- commands ----
 
+int ownsMessageMode(void *, const void *) {
+  return chatEnabled() ? 1 : 0;
+}
+
 int32_t onMessageMode(void *userdata, const void *) {
   const bool team = reinterpret_cast<intptr_t>(userdata) != 0;
   // A bare invocation opens the Rml input; an argumented one ("say text")
-  // keeps the engine's own path. The command bridge does not carry argv, so
+  // keeps the engine's own path. The command event does not carry argv, so
   // an argumented invocation is indistinguishable here - consumed like the
   // bare one (documented deviation: "messagemode hello" now opens the line
   // with the text instead of sending it directly).
-  if (!chatEnabled())
-    return 0;
   openInput(team ? Mode::kTeam : Mode::kSay);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 // ---- panel callbacks ----
@@ -713,11 +717,28 @@ void onModuleLoad() {
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
 
-  Api->events->subscribeVeto(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, 0, &onSayText,
-                             nullptr);
-  Api->commands->subscribeCommand("messagemode", 0, &onMessageMode, nullptr);
-  Api->commands->subscribeCommand("messagemode2", 0, &onMessageMode,
-                                  reinterpret_cast<void *>(1));
+  AbcUiClaimDesc sayText{};
+  sayText.structSize = sizeof(sayText);
+  sayText.role = ABCUI_CLAIM_OWNER;
+  sayText.canHandle = &canSayText;
+  sayText.handle = &onSayText;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_TEXTFEED_SAY_TEXT, &sayText))
+    Api->core->warn("chat: cannot claim the SayText feed");
+  AbcUiClaimDesc say{};
+  say.structSize = sizeof(say);
+  say.role = ABCUI_CLAIM_OWNER;
+  say.canHandle = &ownsMessageMode;
+  say.handle = &onMessageMode;
+  if (!Api->claims->claimCommand("messagemode", &say))
+    Api->core->warn("chat: cannot claim messagemode");
+  AbcUiClaimDesc team{};
+  team.structSize = sizeof(team);
+  team.role = ABCUI_CLAIM_OWNER;
+  team.canHandle = &ownsMessageMode;
+  team.handle = &onMessageMode;
+  team.userdata = reinterpret_cast<void *>(1);
+  if (!Api->claims->claimCommand("messagemode2", &team))
+    Api->core->warn("chat: cannot claim messagemode2");
 }
 
 void onModuleInit() {
@@ -760,7 +781,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
       !api->events || !api->ui || !api->console || !api->data ||
       !api->documents || !api->players || !api->input || !api->voice ||
-      !api->commands)
+      !api->claims)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi) ||
@@ -772,7 +793,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.chat";
-  out->version = "2.1.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

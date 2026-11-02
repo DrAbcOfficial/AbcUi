@@ -16,9 +16,8 @@
 
 #include <abcui/events.h>
 
-#include "NetworkMessages.h"
-
 #include "../framework/Localization.h"
+#include "../modsys/Arbitration.h"
 #include "../modsys/EventBus.h"
 
 // Windows.h min/max macros fight std::min (old repo precedent).
@@ -48,13 +47,16 @@ std::string matchPrefix(const std::smatch &match) {
   return match.prefix().str();
 }
 
-// Module-facing mirror of the typed kill feed; strings are dispatch-scoped.
+// Module-facing kill feed mirror; strings are dispatch-scoped. The return is
+// the arbitration decision: true means a module owns the line and the native
+// message may be swallowed.
 bool publishKillFeed(const char *victim, const char *attacker,
                      const char *inflictor) {
   const AbcUiKillFeedEvent event{victim, attacker, inflictor};
   framework::eventBus().publish(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, event);
-  return framework::eventBus().publishVeto(ABCUI_CHANNEL_TEXTFEED_KILL_FEED,
-                                           event);
+  return framework::arbitration::dispatch(ABCUI_CHANNEL_TEXTFEED_KILL_FEED,
+                                          &event)
+      .handled;
 }
 
 // Leading-# tokens resolve through the plugin language table (the table keys
@@ -143,18 +145,18 @@ std::string formatNotice(std::string msg, std::string params[4]) {
   return out;
 }
 
-int onTextMsg(int target, const char *msg, const char *param1,
-              const char *param2, const char *param3, const char *param4) {
+bool route(int target, const char *msg, const char *param1, const char *param2,
+           const char *param3, const char *param4) {
   // Unknown game tokens stay with the native handler (safe game-table
   // fallback).
   if (msg && msg[0] == '#') {
     std::string translated;
     if (!framework::Localization::translate(translated, std::string(msg + 1)))
-      return true;
+      return false;
   }
   if (target == kPrintNotify) {
     if (msg[0] == '\0')
-      return true;
+      return false;
     const std::string text = msg;
     std::smatch match;
     const auto localized = [](const char *token) {
@@ -165,8 +167,7 @@ int onTextMsg(int target, const char *msg, const char *param1,
     if (std::regex_search(text, match, suicidePattern())) {
       const std::string victim = matchPrefix(match);
       const std::string inflictor = localized("DeathMsg_Suicide");
-      KillFeed(victim.c_str(), "", inflictor.c_str());
-      return !publishKillFeed(victim.c_str(), "", inflictor.c_str());
+      return publishKillFeed(victim.c_str(), "", inflictor.c_str());
     }
     if (std::regex_search(text, match, killedPattern())) {
       const std::string victim = matchPrefix(match);
@@ -177,9 +178,7 @@ int onTextMsg(int target, const char *msg, const char *param1,
       if (killer.size() >= 2)
         killer.erase(killer.size() - 2);
       const std::string inflictor = localized("DeathMsg_MonsterKill");
-      KillFeed(victim.c_str(), killer.c_str(), inflictor.c_str());
-      return !publishKillFeed(victim.c_str(), killer.c_str(),
-                              inflictor.c_str());
+      return publishKillFeed(victim.c_str(), killer.c_str(), inflictor.c_str());
     }
     if (std::regex_search(text, match, playerPattern())) {
       // Old: inflictor = the " : X : " in-between group, attacker =
@@ -187,39 +186,23 @@ int onTextMsg(int target, const char *msg, const char *param1,
       const std::string victim = match.suffix().str();
       const std::string attacker = matchPrefix(match);
       const std::string inflictor = match[1].str();
-      KillFeed(victim.c_str(), attacker.c_str(), inflictor.c_str());
-      return !publishKillFeed(victim.c_str(), attacker.c_str(),
-                              inflictor.c_str());
+      return publishKillFeed(victim.c_str(), attacker.c_str(),
+                             inflictor.c_str());
     }
   }
 
   if (target != kPrintNotify && target != kPrintCenter)
-    return true;
+    return false;
 
   std::string params[4] = {param1, param2, param3, param4};
   const std::string formatted = formatNotice(msg, params);
   if (formatted.empty())
-    return true;
-  Notice(target, formatted.c_str());
+    return false;
   const AbcUiNoticeEvent notice{target, formatted.c_str()};
   framework::eventBus().publish(ABCUI_CHANNEL_TEXTFEED_NOTICE, notice);
-  return !framework::eventBus().publishVeto(ABCUI_CHANNEL_TEXTFEED_NOTICE,
-                                            notice);
-}
-
-} // namespace
-
-abc::CallbackList<void(const char *, const char *, const char *)> KillFeed;
-abc::CallbackList<void(int, const char *)> Notice;
-
-void init() {
-  static bool registered = false;
-  if (registered)
-    return;
-  registered = true;
-  KillFeed = {};
-  Notice = {};
-  netmsg::TextMsg.append(onTextMsg);
+  return framework::arbitration::dispatch(ABCUI_CHANNEL_TEXTFEED_NOTICE,
+                                          &notice)
+      .handled;
 }
 
 } // namespace textfeed

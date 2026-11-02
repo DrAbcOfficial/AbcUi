@@ -3,9 +3,9 @@
   "name": "Crosshair",
   "description": "Dynamic crosshair with punch drift plus the per-weapon sprite crosshair (moved from the built-in HUD).",
   "author": "DrAbc",
-  "version": "2.0.0",
-  "abi": 2,
-  "minAbcUi": "0.9.0",
+  "version": "3.0.0",
+  "abi": 3,
+  "minAbcUi": "0.10.0",
   "entry": "entry/abcui_crosshair.dll",
   "dependencies": [
     "abcui.base"

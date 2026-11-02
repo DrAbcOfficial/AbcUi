@@ -115,7 +115,7 @@ int selectedSlot();
 // (ammo or SELECTONEMPTY) participate. With hud_fastswitch the weapon command
 // is sent directly; otherwise ChooseWeapon fires so the UI can highlight.
 // Empty slot keys clear the weapon highlight but keep the requested slot.
-// The TextMenu-open gate lives at the subscription site (panel assembly).
+// The menu-open gate lives in the weaponchoose command claim.
 void selectSlot(int slot, int advance, bool wheel);
 
 // Selection/ownership feeds for the WeaponChoose UI.

@@ -1,7 +1,7 @@
 // The in-game command menu page (moved from panels::commandmenu). Projects
 // the framework's commandmenu model through the sdk commandmenu section as
 // a translucent, left-anchored stack of at most three columns, and answers
-// the menu.commandkey veto feed with the navigation policy (arrows, enter,
+// the menu.commandkey claim domain with the navigation policy (arrows, enter,
 // back, escape, one-based digit shortcuts). The definition JSON, its parser
 // and the map filter stay in the framework; activations execute there too
 // (a command closes the menu first and then runs the engine command), so
@@ -23,7 +23,7 @@ AbcUiElement *BoundRoot = nullptr;
 uint64_t ClickBinding = 0;
 AbcUiSubscription StateSubscription = 0;
 AbcUiSubscription PaintSubscription = 0;
-AbcUiSubscription KeySubscription = 0;
+AbcUiClaim KeySubscription = 0;
 // Model revision of the last projection; ~0 forces the next render.
 uint32_t RenderedRevision = ~0u;
 
@@ -329,13 +329,30 @@ void onDocumentClose(void *) {
 
 } // namespace
 
+int canPageKey(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiKeyEvent *>(payload);
+  return Page && event && event->down != 0 && Api->documents->visible(Page) ? 1
+                                                                            : 0;
+}
+
+int32_t handlePageKey(void *, const void *payload) {
+  return onKey(nullptr, payload) ? ABCUI_DECISION_HANDLED : ABCUI_DECISION_NONE;
+}
+
 void load() {
   StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
                                              &onMenuState, nullptr);
   PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
                                              &onMenuPaint, nullptr);
-  KeySubscription = Api->events->subscribeVetoAggregate(
-      ABCUI_CHANNEL_MENU_COMMAND_KEY, 0, &onKey, nullptr);
+  AbcUiClaimDesc keys{};
+  keys.structSize = sizeof(keys);
+  keys.role = ABCUI_CLAIM_OWNER;
+  keys.canHandle = &canPageKey;
+  keys.handle = &handlePageKey;
+  KeySubscription =
+      Api->claims->claimDomain(ABCUI_CHANNEL_MENU_COMMAND_KEY, &keys);
+  if (!KeySubscription)
+    Api->core->warn("commandmenu: cannot claim the page keys");
 
   AbcUiDocumentDesc desc{};
   desc.structSize = sizeof(desc);
@@ -369,7 +386,7 @@ void unload() {
     PaintSubscription = 0;
   }
   if (KeySubscription) {
-    Api->events->unsubscribe(KeySubscription);
+    Api->claims->release(KeySubscription);
     KeySubscription = 0;
   }
   Page = nullptr;

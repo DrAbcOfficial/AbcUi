@@ -2,10 +2,14 @@
 #include <abcui/module_api.h>
 
 #include "framework/TestHarness.h"
-#include "modsys/EventBus.h"
+#include "modsys/Arbitration.h"
+#include "modsys/Facts.h"
 
+#include <charconv>
 #include <cstring>
+#include <map>
 #include <string>
+#include <string_view>
 #include <vector>
 
 extern "C" int ABCUI_CALL AbcUiModule_Main(uint32_t, const AbcUiModuleApi *,
@@ -20,14 +24,15 @@ void reportException(const char *, const char *) {
 } // namespace framework::module_resources
 
 namespace {
+
+using framework::arbitration::Role;
+
 struct Recording {
   AbcUiPanelDesc panel{};
   AbcUiPanelDesc textPanel{};
   AbcUiEventSink choose = nullptr;
   void *chooseData = nullptr;
   bool visible = false;
-  bool textMenu = false;
-  bool fastSwitch = false;
   bool document = true;
   bool textVisible = false;
   int textDocument = 0;
@@ -45,24 +50,94 @@ Recording &recording() {
   return value;
 }
 
+const char *fakeCommandDomain(const char *name) {
+  static std::map<std::string, std::string> domains;
+  auto found = domains.find(name);
+  if (found == domains.end())
+    found = domains.emplace(name, std::string("command.") + name).first;
+  return found->second.c_str();
+}
+
+bool fakeCommandBridge(const char *) {
+  return true;
+}
+
+void noPrint(const char *, ...) {}
+
+int slotIndexOf(std::string_view name) {
+  if (!name.starts_with("slot"))
+    return -1;
+  int value = 0;
+  const std::string_view digits = name.substr(4);
+  const auto [end, error] =
+      std::from_chars(digits.data(), digits.data() + digits.size(), value);
+  if (error != std::errc{} || end != digits.data() + digits.size())
+    return -1;
+  return value >= 1 && value <= 10 ? value - 1 : -1;
+}
+
 int command(const char *name) {
   auto &state = recording();
-  const int consumed = framework::eventBus().publishVetoAggregateRaw(
-      (std::string("command.") + name).c_str(), nullptr);
-  if (!consumed) {
-    if (std::strcmp(name, "+attack") == 0)
-      ++state.nativeAttacks;
-    else
-      ++state.nativeSelections;
+  const AbcUiCommandEvent event{name};
+  const std::string domain = std::string("command.") + name;
+  const auto decision =
+      framework::arbitration::dispatch(domain.c_str(), &event);
+  if (decision.handled) {
+    if ((decision.flags & framework::arbitration::kDecisionCloseMenu) != 0)
+      framework::facts::clearMenu();
+    return 1;
   }
-  return consumed;
+  if (std::strcmp(name, "+attack") == 0) {
+    ++state.nativeAttacks;
+    return 0;
+  }
+  ++state.nativeSelections;
+  // The host closes the framework menu fact when the native slot path handled
+  // a valid item; mirror that for the following checks.
+  const int slot = slotIndexOf(name);
+  const auto &menu = framework::facts::menu();
+  if (slot >= 0 && menu.visible && (menu.validSlots & (1 << slot)) != 0)
+    framework::facts::clearMenu();
+  return 0;
 }
+
+bool showMenu(int validSlots, int bits = 0) {
+  if (validSlots == 0)
+    framework::facts::clearMenu();
+  else if ((bits & 0x7F) == 0)
+    framework::facts::openMenu(validSlots, 15, bits, 0.0);
+  const AbcUiShowMenuEvent event{validSlots, 15, bits, "Choose an item"};
+  return framework::arbitration::dispatch(ABCUI_CHANNEL_NETMSG_SHOW_MENU,
+                                          &event)
+      .handled;
+}
+
+AbcUiClaim claimCommand(const char *name, const AbcUiClaimDesc *desc) {
+  return framework::arbitration::claimCommand(
+      name, static_cast<Role>(desc->role), desc->priority, desc->canHandle,
+      desc->handle, desc->userdata);
+}
+
+AbcUiClaim claimDomain(const char *domain, const AbcUiClaimDesc *desc) {
+  return framework::arbitration::claim(domain, static_cast<Role>(desc->role),
+                                       desc->priority, desc->canHandle,
+                                       desc->handle, desc->userdata);
+}
+
 } // namespace
 
 int main() {
   auto &state = recording();
+  framework::arbitration::setCommandProvider(&fakeCommandDomain,
+                                             &fakeCommandBridge);
+
   AbcUiCoreApi core{};
+  core.structSize = sizeof(core);
+  core.print = &noPrint;
+  core.warn = &noPrint;
+  core.error = &noPrint;
   AbcUiPanelsApi panels{};
+  panels.structSize = sizeof(panels);
   panels.registerPanel = [](const AbcUiPanelDesc *panel) {
     if (std::strcmp(panel->name, "textmenu") == 0)
       recording().textPanel = *panel;
@@ -71,6 +146,7 @@ int main() {
     return 1;
   };
   AbcUiEventsApi events{};
+  events.structSize = sizeof(events);
   events.subscribe = [](const char *name, int, AbcUiEventSink sink,
                         void *data) -> AbcUiSubscription {
     if (std::strcmp(name, ABCUI_CHANNEL_HUD_CHOOSE_WEAPON) == 0) {
@@ -79,9 +155,9 @@ int main() {
     }
     return 1;
   };
-  events.subscribeVeto = [](const char *name, int priority, AbcUiEventVeto sink,
-                            void *userdata) -> AbcUiSubscription {
-    return framework::eventBus().subscribeVeto(name, priority, sink, userdata);
+  events.unsubscribe = [](AbcUiSubscription) {};
+  events.publish = [](const char *, uint32_t, const void *, uint32_t) {
+    return 1;
   };
   AbcUiConsoleApi console{};
   console.structSize = sizeof(console);
@@ -95,16 +171,26 @@ int main() {
   console.engineCommand = [](const char *text) {
     recording().menuCommands.emplace_back(text);
   };
-  AbcUiCommandsApi commands{};
-  commands.subscribeCommand = [](const char *name, int priority,
-                                 AbcUiEventVeto sink,
-                                 void *data) -> AbcUiSubscription {
-    return framework::eventBus().subscribeVetoAggregate(
-        (std::string("command.") + name).c_str(), priority, sink, data);
+  AbcUiClaimsApi claims{};
+  claims.structSize = sizeof(claims);
+  claims.claimCommand = &claimCommand;
+  claims.claimDomain = &claimDomain;
+  claims.release = [](AbcUiClaim claim) {
+    framework::arbitration::release(claim);
   };
-  commands.textMenuOpen = [] { return recording().textMenu ? 1 : 0; };
-  commands.setTextMenuOpen = [](int open) { recording().textMenu = open != 0; };
+  claims.setActive = [](AbcUiClaim claim, int32_t active) {
+    framework::arbitration::setActive(claim, active != 0);
+  };
+  AbcUiFactsApi facts{};
+  facts.structSize = sizeof(facts);
+  facts.get = [](const char *name, void *out, uint32_t size) {
+    return framework::facts::get(name, out, size) ? 1 : 0;
+  };
+  facts.generation = [](const char *name) {
+    return framework::facts::generation(name);
+  };
   AbcUiDataApi data{};
+  data.structSize = sizeof(data);
   data.hudState = [](AbcUiHudState *out) {
     out->suit = 1;
     out->health = 100;
@@ -140,7 +226,7 @@ int main() {
   };
   AbcUiWeaponsApi weapons{};
   weapons.structSize = sizeof(weapons);
-  weapons.fastSwitch = [] { return recording().fastSwitch ? 1 : 0; };
+  weapons.fastSwitch = [] { return 0; };
   weapons.selectedSlot = [] { return recording().selectedSlot; };
   weapons.selected = [](AbcUiWeaponInfo *out) {
     if (recording().selectedSlot != 0)
@@ -172,7 +258,8 @@ int main() {
   api.panels = &panels;
   api.events = &events;
   api.console = &console;
-  api.commands = &commands;
+  api.claims = &claims;
+  api.facts = &facts;
   api.data = &data;
   api.ui = &ui;
   api.weapons = &weapons;
@@ -181,6 +268,7 @@ int main() {
   CHECK(AbcUiModule_Main(ABCUI_ABI_VERSION, &api, &module));
   if (!module.onLoad)
     return abctest::finish("weaponchoose");
+#ifndef ABCUI_TEST_TEXTMENU_ABSENT
   AbcUiModuleDescriptor textModule{};
   textModule.structSize = sizeof(textModule);
   CHECK(AbcUiTextMenu_Main(ABCUI_ABI_VERSION, &api, &textModule));
@@ -189,9 +277,12 @@ int main() {
 #ifdef ABCUI_TEST_TEXTMENU_FIRST
   textModule.onLoad();
 #endif
+#endif
   module.onLoad();
+#ifndef ABCUI_TEST_TEXTMENU_ABSENT
 #ifndef ABCUI_TEST_TEXTMENU_FIRST
   textModule.onLoad();
+#endif
 #endif
   module.onInit();
 
@@ -237,31 +328,33 @@ int main() {
   CHECK(command("invprev") == 0);
   state.document = true;
 
-  TEST_CASE("fast switch keeps selector closed");
-  state.fastSwitch = true;
-  CHECK(command("slot1") == 1);
-  CHECK(!state.visible);
-  CHECK(command("+attack") == 0);
-  state.fastSwitch = false;
-
+#ifdef ABCUI_TEST_TEXTMENU_ABSENT
+  TEST_CASE("a menu without a renderer keeps the native slot path");
+  CHECK(!showMenu(1023));
+  CHECK(framework::facts::menu().visible);
+  const int selections = state.weaponSelections;
+  const int native = state.nativeSelections;
+  CHECK(command("slot1") == 0);
+  CHECK(state.weaponSelections == selections);
+  CHECK(state.nativeSelections == native + 1);
+  CHECK(!framework::facts::menu().visible);
+#else
   TEST_CASE("all number keys select text menu items without selecting weapons");
   for (int slot = 1; slot <= 10; ++slot) {
     for (int bits : {0, 128}) {
-      const AbcUiShowMenuEvent menu{1023, -1, bits, "Choose an item"};
-      CHECK(framework::eventBus().publishVeto(ABCUI_CHANNEL_NETMSG_SHOW_MENU,
-                                              menu));
-      CHECK(state.textMenu);
+      CHECK(showMenu(1023, bits));
+      CHECK(framework::facts::menu().visible);
       const int selections = state.weaponSelections;
-      const int nativeSelections = state.nativeSelections;
+      const int native = state.nativeSelections;
       const size_t sent = state.menuCommands.size();
       CHECK(command(("slot" + std::to_string(slot)).c_str()) == 1);
       CHECK(state.menuCommands.size() == sent + 1);
       CHECK(state.menuCommands.back() ==
             std::string(bits ? "as_menuselect " : "menuselect ") +
                 std::to_string(slot) + "\n");
-      CHECK(!state.textMenu);
+      CHECK(!framework::facts::menu().visible);
       CHECK(state.weaponSelections == selections);
-      CHECK(state.nativeSelections == nativeSelections);
+      CHECK(state.nativeSelections == native);
       CHECK(!state.visible);
       state.textPanel.onData(nullptr, 0.25);
       CHECK(!state.textVisible);
@@ -269,14 +362,12 @@ int main() {
   }
 
   TEST_CASE("invalid menu choices remain menu input");
-  const AbcUiShowMenuEvent menu{1, -1, 0, "Only the first item"};
-  CHECK(
-      framework::eventBus().publishVeto(ABCUI_CHANNEL_NETMSG_SHOW_MENU, menu));
+  CHECK(showMenu(1));
   const int selections = state.weaponSelections;
   const size_t sent = state.menuCommands.size();
   for (int slot = 2; slot <= 10; ++slot)
     CHECK(command(("slot" + std::to_string(slot)).c_str()) == 1);
-  CHECK(state.textMenu);
+  CHECK(framework::facts::menu().visible);
   CHECK(state.menuCommands.size() == sent);
   CHECK(state.weaponSelections == selections);
   CHECK(command("slot1") == 1);
@@ -285,8 +376,12 @@ int main() {
   CHECK(state.visible);
   CHECK(command("+attack") == 1);
   CHECK(!state.visible);
+#endif
+
+#ifndef ABCUI_TEST_TEXTMENU_ABSENT
   textModule.onShutdown();
   textModule.onUnload();
+#endif
   module.onShutdown();
   module.onUnload();
   return abctest::finish("weaponchoose");

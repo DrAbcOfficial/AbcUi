@@ -3,9 +3,9 @@
   "name": "Default shared styles",
   "description": "Shared resources for the default UI modules; no executable code.",
   "author": "DrAbc",
-  "version": "2.0.0",
-  "abi": 2,
-  "minAbcUi": "0.9.0",
+  "version": "3.0.0",
+  "abi": 3,
+  "minAbcUi": "0.10.0",
   "type": "resources",
   "dependencies": [],
   "conflicts": []

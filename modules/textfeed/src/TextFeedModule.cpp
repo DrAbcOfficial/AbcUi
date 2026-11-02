@@ -78,15 +78,24 @@ void updateHidden(NoticeState &state) {
 
 // ---- event sinks ----
 
-int onNotice(void *, const void *payload) {
+NoticeState *noticeState(const AbcUiNoticeEvent *event) {
+  if (event->target == Notify.target)
+    return &Notify;
+  if (event->target == Center.target)
+    return &Center;
+  return nullptr;
+}
+
+int canNotice(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiNoticeEvent *>(payload);
-  NoticeState *state = event->target == Notify.target   ? &Notify
-                       : event->target == Center.target ? &Center
-                                                        : nullptr;
-  if (!state || !Api->ui->panelDocument(state->Panel.name))
-    return 0;
-  showMessage(*state, event->text);
-  return 1;
+  NoticeState *state = noticeState(event);
+  return state && Api->ui->panelDocument(state->Panel.name) ? 1 : 0;
+}
+
+int32_t onNotice(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiNoticeEvent *>(payload);
+  showMessage(*noticeState(event), event->text);
+  return ABCUI_DECISION_HANDLED;
 }
 
 void onHideToken(void *, const void *payload) {
@@ -143,8 +152,13 @@ void onModuleLoad() {
   Notify.hideAll = (state.hideBits & ABCUI_HIDEBIT_ALL) != 0;
   Center.hideAll = Notify.hideAll;
 
-  Api->events->subscribeVeto(ABCUI_CHANNEL_TEXTFEED_NOTICE, 0, &onNotice,
-                             nullptr);
+  AbcUiClaimDesc notice{};
+  notice.structSize = sizeof(notice);
+  notice.role = ABCUI_CLAIM_OWNER;
+  notice.canHandle = &canNotice;
+  notice.handle = &onNotice;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_TEXTFEED_NOTICE, &notice))
+    Api->core->warn("textfeed: cannot claim the notice feed");
   Api->events->subscribe(ABCUI_CHANNEL_HUD_HIDE_TOKEN, 0, &onHideToken,
                          nullptr);
 }
@@ -169,7 +183,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->data)
+      !api->events || !api->ui || !api->console || !api->data || !api->claims)
     return 0;
   if (api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->console->structSize < sizeof(AbcUiConsoleApi))
@@ -178,7 +192,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.textfeed";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = nullptr;
   out->onContextReady = nullptr;

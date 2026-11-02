@@ -17,7 +17,6 @@
 #include <abc/CvarCmd.h>
 
 #include "../data/NetworkMessages.h"
-#include "../framework/Commands.h"
 #include "../render/RadarRender.h"
 #include "../framework/ResourceFile.h"
 #include "EventBus.h"
@@ -306,25 +305,15 @@ AbcUiSubscription apiSubscribe(const char *channel, int priority,
   return eventBus().subscribe(channel, priority, sink, userdata);
 }
 
-AbcUiSubscription apiSubscribeVeto(const char *channel, int priority,
-                                   AbcUiEventVeto sink, void *userdata) {
-  return eventBus().subscribeVeto(channel, priority, sink, userdata);
-}
-
-AbcUiSubscription apiSubscribeVetoAggregate(const char *channel, int priority,
-                                            AbcUiEventVeto sink,
-                                            void *userdata) {
-  return eventBus().subscribeVetoAggregate(channel, priority, sink, userdata);
-}
-
 void apiUnsubscribe(AbcUiSubscription subscription) {
   eventBus().unsubscribe(subscription);
 }
 
 const AbcUiEventsApi kEventsApi = {
-    sizeof(AbcUiEventsApi),    apiSubscribe,
-    apiSubscribeVeto,          apiUnsubscribe,
-    apiSubscribeVetoAggregate, module_services::publish,
+    sizeof(AbcUiEventsApi),
+    apiSubscribe,
+    apiUnsubscribe,
+    module_services::publish,
 };
 
 // ----------------------------------------------------------------- vfs ----
@@ -472,28 +461,6 @@ const AbcUiRadarApi kRadarApi = {
     apiRadarSetActive,     apiRadarSetMask, apiRadarSetZoom,
 };
 
-// ------------------------------------------------------------- commands ----
-
-AbcUiSubscription apiSubscribeCommand(const char *name, int priority,
-                                      AbcUiEventVeto sink, void *userdata) {
-  return ::commands::subscribe(name, priority, sink, userdata);
-}
-
-int apiTextMenuOpen() {
-  return ::commands::textMenuOpen() ? 1 : 0;
-}
-
-void apiSetTextMenuOpen(int open) {
-  ::commands::setTextMenuOpen(open != 0);
-}
-
-const AbcUiCommandsApi kCommandsApi = {
-    sizeof(AbcUiCommandsApi),
-    apiSubscribeCommand,
-    apiTextMenuOpen,
-    apiSetTextMenuOpen,
-};
-
 } // namespace
 
 namespace ApiTable {
@@ -521,13 +488,13 @@ template <typename Table> bool allMembersSet(const Table &table) {
 // per-section check below cannot see that, so check the wiring explicitly.
 bool tableComplete(const AbcUiModuleApi &api) {
   return api.core && api.console && api.events && api.vfs && api.panels &&
-         api.data && api.ui && api.commands && api.weapons && api.players &&
-         api.radar && api.shell && api.voice && api.score && api.input &&
-         api.documents && api.menu && api.votemenu && api.playerlist &&
-         api.commandmenu && api.menuconfig && api.social && api.inventory &&
-         api.creategame && api.consolepage && api.serverbrowser &&
-         api.connection && api.settings && api.textures && api.audio &&
-         api.modules && api.claims && api.facts;
+         api.data && api.ui && api.weapons && api.players && api.radar &&
+         api.shell && api.voice && api.score && api.input && api.documents &&
+         api.menu && api.votemenu && api.playerlist && api.commandmenu &&
+         api.menuconfig && api.social && api.inventory && api.creategame &&
+         api.consolepage && api.serverbrowser && api.connection &&
+         api.settings && api.textures && api.audio && api.modules &&
+         api.claims && api.facts;
 }
 
 void verifySections() {
@@ -542,13 +509,13 @@ void verifySections() {
   const bool complete =
       kCoreApi.failInitialization && allMembersSet(kConsoleApi) &&
       allMembersSet(kEventsApi) && allMembersSet(kVfsApi) &&
-      allMembersSet(kPanelsApi) && allMembersSet(kCommandsApi) &&
-      allMembersSet(kRadarApi) && allMembersSet(*DataApi::get()) &&
-      allMembersSet(*UiApi::get()) && allMembersSet(*WeaponsApi::get()) &&
-      allMembersSet(*PlayersApi::get()) && allMembersSet(*ScoreApi::get()) &&
-      allMembersSet(*InputApi::get()) && allMembersSet(*ShellApi::get()) &&
-      allMembersSet(*VoiceApi::get()) && allMembersSet(*DocumentsApi::get()) &&
-      allMembersSet(*MenuApi::get()) && allMembersSet(*VoteMenuApi::get()) &&
+      allMembersSet(kPanelsApi) && allMembersSet(kRadarApi) &&
+      allMembersSet(*DataApi::get()) && allMembersSet(*UiApi::get()) &&
+      allMembersSet(*WeaponsApi::get()) && allMembersSet(*PlayersApi::get()) &&
+      allMembersSet(*ScoreApi::get()) && allMembersSet(*InputApi::get()) &&
+      allMembersSet(*ShellApi::get()) && allMembersSet(*VoiceApi::get()) &&
+      allMembersSet(*DocumentsApi::get()) && allMembersSet(*MenuApi::get()) &&
+      allMembersSet(*VoteMenuApi::get()) &&
       allMembersSet(*PlayerListApi::get()) &&
       allMembersSet(*CommandMenuApi::get()) &&
       allMembersSet(*MenuConfigApi::get()) &&
@@ -580,7 +547,6 @@ const AbcUiModuleApi *get() {
       &kPanelsApi,
       DataApi::get(),
       UiApi::get(),
-      &kCommandsApi,
       WeaponsApi::get(),
       PlayersApi::get(),
       &kRadarApi,

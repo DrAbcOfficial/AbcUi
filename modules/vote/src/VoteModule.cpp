@@ -3,7 +3,7 @@
 // usermsg feeds the panel while the hud_vote gate is on (the framework's
 // netmsg consumer passes the message through untouched when it is off), the
 // bound yes/no keys (hud_votekey_yes/no, engine keynums) answer through the
-// input.key veto channel and send voteyes/voteno, and EndVote hides the
+// input.key claim domain and send voteyes/voteno, and EndVote hides the
 // callout.
 //
 // The old StartVote rebuilt typed votes (kill/kick/ban/map) through English
@@ -128,21 +128,28 @@ void startVote([[maybe_unused]] int type, const char *content, const char *yes,
 
 // ---- event sinks ----
 
-int onVoteMenu(void *, const void *payload) {
-  if (!panelDocument())
-    return 0;
+int canVoteMenu(void *, const void *) {
+  return panelDocument() != nullptr;
+}
+
+int32_t onVoteMenu(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiVoteMenuEvent *>(payload);
   startVote(event->type, event->content, event->yes, event->no);
-  return 1;
+  return ABCUI_DECISION_HANDLED;
 }
 
 void onEndVote(void *, const void *) {
   setVisible(false);
 }
 
-int onKeyEvent(void *, const void *payload) {
+int canAnswerKey(void *, const void *) {
+  return Visible && panelDocument() != nullptr ? 1 : 0;
+}
+
+int32_t onKeyEvent(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiKeyEvent *>(payload);
-  return answerKey(event->down, event->keynum);
+  return answerKey(event->down, event->keynum) ? ABCUI_DECISION_HANDLED
+                                               : ABCUI_DECISION_NONE;
 }
 
 // ---- panel callbacks ----
@@ -181,10 +188,21 @@ void onModuleLoad() {
   Panel.reset = &panelReset;
   Api->panels->registerPanel(&Panel);
 
-  Api->events->subscribeVeto(ABCUI_CHANNEL_NETMSG_VOTE_MENU, 0, &onVoteMenu,
-                             nullptr);
+  AbcUiClaimDesc voteMenu{};
+  voteMenu.structSize = sizeof(voteMenu);
+  voteMenu.role = ABCUI_CLAIM_OWNER;
+  voteMenu.canHandle = &canVoteMenu;
+  voteMenu.handle = &onVoteMenu;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_NETMSG_VOTE_MENU, &voteMenu))
+    Api->core->warn("vote: cannot claim the VoteMenu message");
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_END_VOTE, 0, &onEndVote, nullptr);
-  Api->events->subscribeVeto(ABCUI_CHANNEL_INPUT_KEY, 0, &onKeyEvent, nullptr);
+  AbcUiClaimDesc answer{};
+  answer.structSize = sizeof(answer);
+  answer.role = ABCUI_CLAIM_OWNER;
+  answer.canHandle = &canAnswerKey;
+  answer.handle = &onKeyEvent;
+  if (!Api->claims->claimDomain(ABCUI_CHANNEL_INPUT_KEY, &answer))
+    Api->core->warn("vote: cannot claim the answer keys");
 }
 
 void onModuleInit() {
@@ -215,7 +233,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console)
+      !api->events || !api->ui || !api->console || !api->claims)
     return 0;
   // The ui/console sections grew for this module; refuse a framework whose
   // tables are shorter than the members used below.
@@ -226,7 +244,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.vote";
-  out->version = "2.0.0";
+  out->version = "3.0.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

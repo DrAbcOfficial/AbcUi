@@ -16,21 +16,22 @@
 //   client.<event>    - engine client lifecycle pumps (frame, redraw, ...)
 //   menu.<event>      - native GameUI/BaseUI takeover events
 //
-// Veto channels (documented per constant) stop at the first sink returning
-// nonzero - a higher-priority interception hides the event from everything
-// below it.
+// Entry-point domains (documented per constant) are claimed through the
+// claims table: one owner handles, observers only observe. Data channels
+// remain observation-only.
 
 #include "module_api.h"
 
 #pragma pack(push, 8)
 
-// hud.native.draw - veto, queried before the native HUD redraw and before the
-// native viewport overlays paint. Nonzero hides only this native element for
-// this redraw/frame. Modules must return zero while their replacement
-// document is unavailable. No claim = native. These are whole client
-// elements: AMMO includes its weapon-selection UI; HEALTH includes damage
-// indicators; SPECTATOR is the viewport's observer bottom bar (mode, target,
-// health and armor). TRAIN is intentionally not claimable.
+// hud.native.draw - collective gate domain, queried before the native HUD
+// redraw and before the native viewport overlays paint. A true predicate
+// hides only this native element for this redraw/frame. Modules must return
+// false while their replacement document is unavailable. No gate = native.
+// These are whole client elements: AMMO includes its weapon-selection UI;
+// HEALTH includes damage indicators; SPECTATOR is the viewport's observer
+// bottom bar (mode, target, health and armor). TRAIN is intentionally not
+// claimable.
 #define ABCUI_CHANNEL_HUD_NATIVE_DRAW "hud.native.draw"
 #define ABCUI_NATIVE_HUD_HEALTH 0
 #define ABCUI_NATIVE_HUD_BATTERY 1
@@ -139,8 +140,8 @@ typedef struct AbcUiRedrawEvent {
 // dispatch-scoped pointer: copy before the sink returns. Chunked menus
 // arrive as several events (bits & 0x7f = more chunks pending, bit 7 =
 // ammo-selection menu).
-// Data subscribers observe only; subscribeVeto explicitly consumes the native
-// message when a replacement can handle it. No veto = original handler.
+// Data subscribers observe only. The netmsg.showmenu claim domain owns the
+// message: a handled claim skips the original handler, no claim = native.
 #define ABCUI_CHANNEL_NETMSG_SHOW_MENU "netmsg.showmenu"
 typedef struct AbcUiShowMenuEvent {
   int32_t validSlots;
@@ -156,8 +157,8 @@ typedef struct AbcUiShowMenuEvent {
 // vote enum (1 kill, 2 kick, 3 ban, 4 map, ...). The three strings are
 // dispatch-scoped pointers: copy before the sink returns. The message is
 // only routed while the hud_vote gate is on (console->setVoteGate).
-// Data subscribers observe only; subscribeVeto explicitly consumes the native
-// message when a replacement can handle it. No veto = original handler.
+// Data subscribers observe only. The netmsg.votemenu claim domain owns the
+// message: a handled claim skips the original handler, no claim = native.
 #define ABCUI_CHANNEL_NETMSG_VOTE_MENU "netmsg.votemenu"
 typedef struct AbcUiVoteMenuEvent {
   int32_t type;
@@ -180,7 +181,7 @@ typedef struct AbcUiMotdEvent {
 
 // menu.vguimenu - the client asked for a native viewport window
 // (CTeamFortressViewport::ShowVGUIMenu ids: 4 mission brief, 5 MOTD, ...).
-// Veto channel: nonzero suppresses the vanilla window.
+// Claim domain: a handled owner suppresses the vanilla window.
 #define ABCUI_CHANNEL_MENU_VGUI_MENU "menu.vguimenu"
 typedef struct AbcUiVguiMenuEvent {
   int32_t menu;
@@ -215,16 +216,16 @@ typedef struct AbcUiVguiMenuEvent {
 #define ABCUI_KEY_MWHEELUP 240
 
 // menu.commandkey - one key edge the menu layer claimed while a keyboard
-// window page is on top (the command menu, the inventory window). Veto
-// channel (aggregate): a sink returning nonzero consumed the edge (it
-// performed the navigation). Payload is AbcUiKeyEvent with `down` always 1
+// window page is on top (the command menu, the inventory window). Claim
+// domain: the visible page owns the edge; it returns handled when it
+// performed the navigation. Payload is AbcUiKeyEvent with `down` always 1
 // (the menu owner sees key-down edges only); `keynum` uses the engine
 // numbering above plus the printable ASCII codes for letters/digits and
 // the HLSDK numpad block (K_KP_HOME 160..K_KP_PLUS 174).
 #define ABCUI_CHANNEL_MENU_COMMAND_KEY "menu.commandkey"
 
 // settings.escape - one ESC press the menu layer routed while the settings
-// page is on top. Veto channel: the page returns nonzero when it consumed
+// page is on top. Claim domain: the page returns handled when it consumed
 // the press on one of its own layers (the unsaved-changes prompt, the spray
 // picker, the model picker's menu) and the menu owner then re-syncs instead
 // of popping the page. Payload is AbcUiKeyEvent (down 1, keynum
@@ -239,19 +240,19 @@ typedef struct AbcUiCommandEvent {
   const char *name;
 } AbcUiCommandEvent;
 
-// input.key - one HUD key event. Veto channel: a sink returning nonzero
-// consumes the press so the engine binding chain never sees it (the vote
-// keys answer the vote instead of running their binding).
+// input.key - one HUD key event. Claim domain: a handled owner consumes the
+// press so the engine binding chain never sees it (the vote keys answer the
+// vote instead of running their binding).
 #define ABCUI_CHANNEL_INPUT_KEY "input.key"
 typedef struct AbcUiKeyEvent {
   int32_t down;   // 1 key down, 0 key up
   int32_t keynum; // engine key number
 } AbcUiKeyEvent;
 
-// input.wheel - one mouse-wheel pulse (AbcUiKeyEvent payload). Veto channel
-// with claim semantics: nonzero routes the pulse into the Rml context (the
-// open document scrolls) without taking input ownership; zero leaves it to
-// the engine bindings (weapon switch).
+// input.wheel - one mouse-wheel pulse (AbcUiKeyEvent payload). Claim domain:
+// a handled owner routes the pulse into the Rml context (the open document
+// scrolls) without taking input ownership; no claim leaves it to the engine
+// bindings (weapon switch).
 #define ABCUI_CHANNEL_INPUT_WHEEL "input.wheel"
 
 // netmsg.curweapon - the client switched/holstered its weapon; `state`
@@ -335,9 +336,9 @@ typedef struct AbcUiAddEntityEvent {
 
 // textfeed.saytext - one chat line (SayText usermsg, plus the server
 // console's own TextMsg/HUD_PRINTTALK lines re-published with client 0).
-// Veto channel: a sink returning nonzero swallows the native draw, which is
-// how exactly one chat log stays on screen (every sink passes = the native
-// handler chains, keeping chat alive while the Rml log is disabled).
+// Claim domain: a handled owner swallows the native draw, which is how
+// exactly one chat log stays on screen (no owner = the native handler runs,
+// keeping chat alive while the Rml log is disabled).
 // `text` and the four parameters are dispatch-scoped pointers.
 #define ABCUI_CHANNEL_TEXTFEED_SAY_TEXT "textfeed.saytext"
 typedef struct AbcUiSayTextEvent {
@@ -349,8 +350,8 @@ typedef struct AbcUiSayTextEvent {
 // textfeed.killfeed - one routed kill line. All three strings are
 // dispatch-scoped pointers; `attacker` is empty for a suicide. `inflictor`
 // is the localized weapon phrase (the old kill feed's bracket text).
-// Data subscribers observe only; subscribeVeto explicitly consumes the native
-// message when a replacement can handle it. No veto = original handler.
+// Data subscribers observe only. The textfeed.killfeed claim domain owns the
+// line: a handled claim swallows the native message, no claim = original.
 #define ABCUI_CHANNEL_TEXTFEED_KILL_FEED "textfeed.killfeed"
 typedef struct AbcUiKillFeedEvent {
   const char *victim;
@@ -361,8 +362,8 @@ typedef struct AbcUiKillFeedEvent {
 // textfeed.notice - one routed centerprint/notify line. `text` is a
 // dispatch-scoped pointer; `target` is the old HUDNOTICE value (1 notify,
 // 4 center).
-// Data subscribers observe only; subscribeVeto explicitly consumes the native
-// message when a replacement can handle it. No veto = original handler.
+// Data subscribers observe only. The textfeed.notice claim domain owns the
+// line: a handled claim swallows the native message, no claim = original.
 #define ABCUI_CHANNEL_TEXTFEED_NOTICE "textfeed.notice"
 typedef struct AbcUiNoticeEvent {
   int32_t target;

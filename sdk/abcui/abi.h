@@ -11,10 +11,11 @@
 // entry. Modules never include RmlUi headers and never link the framework's
 // static libraries.
 //
-// ABI 2 deliberately breaks the old resource/array APIs. There is no ABI-1
-// adapter. Tables and snapshots retain size headers for capacity validation;
-// array APIs take explicit byte strides. Initialize snapshot structSize to
-// sizeof the caller's record. Breaking changes require another ABI bump.
+// ABI 3 replaces the command subscription table and the veto event API with
+// entry-point claims plus framework facts; there is no adapter. Tables and
+// snapshots retain size headers for capacity validation; array APIs take
+// explicit byte strides. Initialize snapshot structSize to sizeof the
+// caller's record. Breaking changes require another ABI bump.
 // ABCUI_API_HAS_MEMBER is a table-validation helper, not a legacy fallback.
 //
 // Module build constraints (MemoryDll): Win32 x86 DLL, dynamic CRT (/MD),
@@ -23,7 +24,7 @@
 // table, so no import library is needed.
 
 // Bumped on any breaking change to the structs below.
-#define ABCUI_ABI_VERSION 2
+#define ABCUI_ABI_VERSION 3
 
 // All entries, callbacks and service pointers use x86 cdecl, independently
 // of the consumer's /Gd, /Gz or /Gr default. Annotate callback definitions too.

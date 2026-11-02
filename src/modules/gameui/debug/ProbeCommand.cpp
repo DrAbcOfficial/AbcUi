@@ -16,8 +16,8 @@
 #include <abc/Math.h>
 
 #include "../../../data/HudState.h"
-#include "../../../framework/Commands.h"
 #include "../../../framework/PanelManager.h"
+#include "../../../modsys/HookRegistry.h"
 #include "../../../modsys/ModuleVfs.h"
 #include "../../../framework/HudPanel.h"
 #include "../../../framework/ScoreSeat.h"
@@ -43,6 +43,7 @@
 #include "../../../services/console/ConsoleBackend.h"
 #include "../../../services/console/ConsoleBuffer.h"
 
+#include <optional>
 #include <string_view>
 #include <vector>
 namespace panels::scoreboard {}
@@ -499,24 +500,26 @@ void probeCommand() {
   }
 }
 
-// ShowMenu injector for the acceptance driver: fires the exact event the
-// wire parser emits (netmsg::ShowMenu), so a session without a live server
-// menu stream can still exercise the real downstream chain - TextMenu
-// open/fade, the slot1..10 chained-command gate, the menuselect emission
-// and the re-show-cancels-pending-hide path. The canned text carries the
-// TextImageEx colour stream the panel must translate.
+// ShowMenu injector for the acceptance driver: runs the exact parser path
+// the wire uses (fact update, observation event, claim dispatch), so a
+// session without a live server menu stream can still exercise the real
+// downstream chain - TextMenu open/fade, the menu fact gate, the menuselect
+// emission and the re-show-cancels-pending-hide path. The canned text
+// carries the TextImageEx colour stream the panel must translate.
 void menuCommand() {
   Rml::Context *context = rmlui::context();
   if (!context)
     return;
-  netmsg::ShowMenu(0x7, 15, 0,
-                   "\\r[AbcUi]\\w Menu probe\n"
-                   "\n"
-                   "\\y1. Alpha option\n"
-                   "\\w2. Beta option\n"
-                   "\\d3. Gamma disabled\n");
+  const bool handled = netmsg::dispatchShowMenu(0x7, 15, 0,
+                                                "\\r[AbcUi]\\w Menu probe\n"
+                                                "\n"
+                                                "\\y1. Alpha option\n"
+                                                "\\w2. Beta option\n"
+                                                "\\d3. Gamma disabled\n");
   abc::ConsolePrint(
-      "[AbcUi] menu: injected ShowMenu (slots 1-3, 15s, plain menuselect)\n");
+      "[AbcUi] menu: injected ShowMenu (slots 1-3, 15s, plain menuselect) "
+      "handled=%d\n",
+      handled ? 1 : 0);
 }
 
 // Batch B feedback injector: fires the wire-parser events the feedback
@@ -934,7 +937,7 @@ void boardRowCommand() {
   }
 }
 
-// MediaPlayer acceptance (issue 11): did typing the chained command open the
+// MediaPlayer acceptance (issue 11): did typing the hooked command open the
 // module window? The bridge counters say whether the hook installed, ran and
 // consumed; the document lines say whether the replacement page is loaded
 // and visible. Decision tree: bridge=0 -> subscribe found no engine command;
@@ -943,15 +946,19 @@ void boardRowCommand() {
 // the document is not loaded); last=1 with doc visible=0 -> the module's
 // show path.
 void mediaPlayerCommand() {
-  unsigned dispatches = 0, consumed = 0;
-  int last = -1;
-  bool headOurs = false;
-  const bool bridge = commands::debugBridge("MediaPlayer", dispatches, consumed,
-                                            last, headOurs);
+  std::optional<framework::hooks::Entry> record;
+  for (const auto &entry : framework::hooks::snapshot()) {
+    if (entry.kind == framework::hooks::Kind::kCommand &&
+        entry.name == "MediaPlayer") {
+      record = entry;
+      break;
+    }
+  }
   abc::ConsolePrint(
       "[AbcUi] mediaplayer bridge=%d engine-head-ours=%d dispatches=%u "
-      "consumed=%u last=%d\n",
-      bridge ? 1 : 0, headOurs ? 1 : 0, dispatches, consumed, last);
+      "handled=%u\n",
+      record ? 1 : 0, record && record->head ? 1 : 0,
+      record ? record->dispatches : 0u, record ? record->handled : 0u);
   // A mounted package is a module that passed validation and entry; an
   // absent id means the module never loaded (boot warnings name the reason).
   const auto mounted = framework::ModuleVfs::mountedIds();
