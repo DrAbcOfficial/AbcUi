@@ -89,12 +89,12 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `netmsg::refreshAfterClientLoad()` after a client DLL reload (detected via a
   Ui-exclusive message); re-hooking every cycle would make AbcEssential's and
   this plugin's hooks point at each other and recurse forever.
-- GameUiModule's engine-event subscriptions (`votemenu`, command menu,
-  inventory commands, InvAdd/InvRemove, MapList) are installed once in
-  `onInit` and guarded by `*Bound` flags. The module object and the event
-  buses are process-lifetime, so they are deliberately not unsubscribed in
-  `onShutdown`; never re-append an unguarded `[this]` subscription from a
-  per-cycle callback.
+- GameUiModule's data subscriptions (InvAdd/InvRemove, MapList) are installed
+  once in `onInit` and guarded by `*Bound` flags; the votemenu/command-menu/
+  inventory commands are process-lifetime arbitration claims owned by the
+  module. The module object and the buses are process-lifetime, so they are
+  deliberately not unsubscribed in `onShutdown`; never re-append an unguarded
+  `[this]` subscription from a per-cycle callback.
 - Server weapon names are untrusted. They may enter the weapon registry only
   as `[A-Za-z0-9_]` identifiers, and only a `weapon_*` token may be sent to
   `pfnServerCmd` (`ResourceLimits::weaponCommandName`). A bare identifier is
