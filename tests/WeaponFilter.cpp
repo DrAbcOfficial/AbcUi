@@ -4,6 +4,7 @@
 // engine and no registry.
 #include "data/WeaponSlotLayout.h"
 #include "framework/TestHarness.h"
+#include "weaponfilter/src/WeaponFilterModel.h"
 
 #include <cstddef>
 #include <string>
@@ -63,6 +64,16 @@ void checkPlacement(const std::vector<Entry> &entries, std::string_view name,
   const LayoutResult result = resultOf(entries, results, name);
   if (result.slot != slot || result.pos != pos)
     ::abctest::fail(__LINE__, "weapon placed on the expected slot/position");
+}
+
+std::string ruleJson(std::string_view name, int slot, int position) {
+  return "{\"name\":\"" + std::string(name) +
+         "\",\"slot\":" + std::to_string(slot) +
+         ",\"position\":" + std::to_string(position) + "}";
+}
+
+std::string sectionJson(std::string_view weapons) {
+  return "{\"version\":1,\"weapons\":[" + std::string(weapons) + "]}";
 }
 
 } // namespace
@@ -172,6 +183,97 @@ int main() {
       CHECK(result.pos <= kLayoutMaxPosition);
     }
   }
+
+  TEST_CASE("model-validation");
+  CHECK(weaponfilter::validName("weapon_crowbar"));
+  CHECK(
+      weaponfilter::validName(std::string(weaponfilter::kMaxNameLength, 'a')));
+  CHECK(!weaponfilter::validName(""));
+  CHECK(!weaponfilter::validName(
+      std::string(weaponfilter::kMaxNameLength + 1, 'a')));
+  CHECK(!weaponfilter::validName("weapon crowbar"));
+  CHECK(!weaponfilter::validName("weapon-crowbar"));
+  CHECK(!weaponfilter::validName("weapon.crowbar"));
+  CHECK(weaponfilter::validSlot(0));
+  CHECK(weaponfilter::validSlot(9));
+  CHECK(!weaponfilter::validSlot(-1));
+  CHECK(!weaponfilter::validSlot(10));
+  CHECK(weaponfilter::validPosition(0));
+  CHECK(weaponfilter::validPosition(255));
+  CHECK(!weaponfilter::validPosition(-1));
+  CHECK(!weaponfilter::validPosition(256));
+
+  TEST_CASE("model-parse");
+  weaponfilter::Model model;
+  std::string error;
+  CHECK(model.parse(sectionJson(ruleJson("weapon_crowbar", 0, 0)), error));
+  CHECK(model.rules().size() == 1);
+  const weaponfilter::Rule *crowbar = model.find("weapon_crowbar");
+  CHECK(crowbar != nullptr);
+  if (crowbar) {
+    CHECK(crowbar->slot == 0);
+    CHECK(crowbar->position == 0);
+  }
+  // Unknown fields inside the section and inside a rule are ignored.
+  CHECK(model.parse("{\"version\":1,\"note\":\"x\",\"weapons\":"
+                    "[{\"name\":\"weapon_x\",\"slot\":1,"
+                    "\"position\":2,\"note\":3}]}",
+                    error));
+  // A duplicate name keeps the last rule.
+  CHECK(model.parse(sectionJson(ruleJson("weapon_a", 1, 1) + "," +
+                                ruleJson("weapon_a", 2, 3)),
+                    error));
+  const weaponfilter::Rule *duplicate = model.find("weapon_a");
+  CHECK(duplicate != nullptr);
+  if (duplicate) {
+    CHECK(duplicate->slot == 2);
+    CHECK(duplicate->position == 3);
+  }
+  // A damaged section leaves the model unchanged.
+  CHECK(!model.parse("{not json", error));
+  CHECK(model.rules().size() == 1);
+  CHECK(!model.parse("[]", error));
+  CHECK(!model.parse("{\"weapons\":[]}", error));
+  CHECK(!model.parse("{\"version\":2,\"weapons\":[]}", error));
+  CHECK(!model.parse("{\"version\":1}", error));
+  CHECK(!model.parse("{\"version\":1,\"weapons\":{}}", error));
+  CHECK(!model.parse(sectionJson(ruleJson("weapon-a", 0, 0)), error));
+  CHECK(!model.parse(sectionJson(ruleJson("weapon_a", 10, 0)), error));
+  CHECK(!model.parse(sectionJson(ruleJson("weapon_a", 0, 256)), error));
+  CHECK(!model.parse(sectionJson("{\"name\":\"weapon_a\",\"slot\":0}"), error));
+  CHECK(model.rules().size() == 1);
+
+  TEST_CASE("model-serialize");
+  weaponfilter::Model ordered;
+  CHECK(ordered.set(weaponfilter::Rule{"weapon_beta", 3, 2}, error));
+  CHECK(ordered.set(weaponfilter::Rule{"weapon_alpha", 0, 1}, error));
+  std::string json;
+  CHECK(ordered.serialize(json, error));
+  CHECK(json.find("weapon_alpha") < json.find("weapon_beta"));
+  CHECK(json.find("\"version\":1") != std::string::npos);
+  weaponfilter::Model roundTrip;
+  CHECK(roundTrip.parse(json, error));
+  CHECK(roundTrip.rules() == ordered.rules());
+
+  TEST_CASE("model-limit");
+  weaponfilter::Model limited;
+  for (int i = 0; i < 256; ++i) {
+    const weaponfilter::Rule rule{"weapon_" + std::to_string(i), 0, i};
+    CHECK(limited.set(rule, error));
+  }
+  CHECK(limited.rules().size() == weaponfilter::kMaxRules);
+  CHECK(!limited.set(weaponfilter::Rule{"weapon_extra", 0, 0}, error));
+  // Replacing an existing rule is allowed at the cap.
+  CHECK(limited.set(weaponfilter::Rule{"weapon_0", 3, 4}, error));
+  const weaponfilter::Rule *replaced = limited.find("weapon_0");
+  CHECK(replaced != nullptr);
+  if (replaced)
+    CHECK(replaced->slot == 3);
+  CHECK(!limited.erase("weapon_missing"));
+  CHECK(limited.erase("weapon_0"));
+  CHECK(limited.set(weaponfilter::Rule{"weapon_extra", 0, 0}, error));
+  limited.clear();
+  CHECK(limited.rules().empty());
 
   return abctest::finish("abc_ui_weapon_filter");
 }

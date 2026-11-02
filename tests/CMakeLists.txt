@@ -96,10 +96,25 @@ abcui_add_test(abc_ui_text_encoding
 abcui_add_test(abc_ui_keybind_model
     SOURCES KeyBindModel.cpp "${SRC}/services/settings/KeyBindModel.cpp")
 
-# The weapon selector layout: override precedence, collision shifting inside
-# the slot, clamping and registration-order independence (pure, no engine).
+# The weapon selector layout and the module's rule model: override
+# precedence, collision shifting inside the slot, clamping,
+# registration-order independence, JSON validation and the serialization
+# round trip (pure, no engine).
 abcui_add_test(abc_ui_weapon_filter
-    SOURCES WeaponFilter.cpp "${SRC}/data/WeaponSlotLayout.cpp")
+    SOURCES WeaponFilter.cpp
+            "${SRC}/data/WeaponSlotLayout.cpp"
+            "${PROJECT_SOURCE_DIR}/modules/weaponfilter/src/WeaponFilterModel.cpp"
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
+# The abcui.weaponfilter module driven through recording config, console and
+# weapons seams: cvar watch, the five commands, reload and the read-only
+# damaged-file session.
+abcui_add_test(abc_ui_weapon_filter_module
+    SOURCES WeaponFilterModule.cpp
+            "${PROJECT_SOURCE_DIR}/modules/weaponfilter/src/WeaponFilterModule.cpp"
+            "${PROJECT_SOURCE_DIR}/modules/weaponfilter/src/WeaponFilterModel.cpp"
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules"
+    DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
 
 # Module-scoped config keys: the local-name grammar, key composition and the
 # section bound the config ABI enforces.

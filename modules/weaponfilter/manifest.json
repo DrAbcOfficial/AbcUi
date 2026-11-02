@@ -1,0 +1,12 @@
+{
+  "id": "abcui.weaponfilter",
+  "name": "Weapon Filter",
+  "description": "Client-side weapon selector slot and position overrides.",
+  "author": "DrAbc",
+  "version": "3.0.0",
+  "abi": 3,
+  "minAbcUi": "0.11.0",
+  "entry": "entry/abcui_weaponfilter.dll",
+  "dependencies": [],
+  "conflicts": []
+}
