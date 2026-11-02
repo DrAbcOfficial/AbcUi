@@ -275,6 +275,16 @@ void apiSetCvarValue(AbcUiCvarHandle cvar, float value) {
     target->value = value;
 }
 
+int32_t apiArgc() {
+  return gEngfuncs.Cmd_Argc ? gEngfuncs.Cmd_Argc() : 0;
+}
+
+const char *apiArgv(int32_t index) {
+  if (!gEngfuncs.Cmd_Argv || index < 0 || index >= apiArgc())
+    return nullptr;
+  return gEngfuncs.Cmd_Argv(index);
+}
+
 int32_t apiKeyBinding(const char *name, char *out, uint32_t outSize) {
   const char *binding =
       (name && *name) ? gEngfuncs.Key_LookupBinding(name) : nullptr;
@@ -295,7 +305,7 @@ const AbcUiConsoleApi kConsoleApi = {
     sizeof(AbcUiConsoleApi), apiRegisterCvar,  apiCvarValue,     apiCvarString,
     apiRegisterCommand,      apiEngineCommand, apiServerCommand, apiSetVoteGate,
     apiRegisterCvarWatch,    apiPlaySound,     apiFindCvar,      apiKeyBinding,
-    apiSetCvarValue,
+    apiSetCvarValue,         apiArgc,          apiArgv,
 };
 
 // -------------------------------------------------------------- events ----
@@ -494,7 +504,7 @@ bool tableComplete(const AbcUiModuleApi &api) {
          api.menuconfig && api.social && api.inventory && api.creategame &&
          api.consolepage && api.serverbrowser && api.connection &&
          api.settings && api.textures && api.audio && api.modules &&
-         api.claims && api.facts;
+         api.claims && api.facts && api.config;
 }
 
 void verifySections() {
@@ -527,7 +537,7 @@ void verifySections() {
       allMembersSet(*SettingsApi::get()) &&
       allMembersSet(*TexturesApi::get()) && allMembersSet(*AudioApi::get()) &&
       allMembersSet(*ModulesApi::get()) && allMembersSet(*ClaimsApi::get()) &&
-      allMembersSet(*FactsApi::get());
+      allMembersSet(*FactsApi::get()) && allMembersSet(*ConfigApi::get());
   if (!complete) {
     abc::ConsoleError("[AbcUi] module api table has null section members");
   }
@@ -572,6 +582,7 @@ const AbcUiModuleApi *get() {
       ModulesApi::get(),
       ClaimsApi::get(),
       FactsApi::get(),
+      ConfigApi::get(),
   };
   static const bool complete = tableComplete(kApi);
   if (!complete)

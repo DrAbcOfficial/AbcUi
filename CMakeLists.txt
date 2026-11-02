@@ -206,6 +206,8 @@ add_library(AbcUi MODULE
     src/modsys/ModuleCatalog.cpp
     src/modsys/ModuleDocuments.cpp
     src/modsys/ModuleServices.cpp
+    src/modsys/ApiConfig.cpp
+    src/services/userconfig/ModuleConfig.cpp
     src/render/BackendHost.cpp
     src/render/RadarRender.cpp
     src/render/StandaloneView.cpp

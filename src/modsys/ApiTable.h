@@ -126,4 +126,8 @@ namespace FactsApi {
 const AbcUiFactsApi *get();
 } // namespace FactsApi
 
+namespace ConfigApi {
+const AbcUiConfigApi *get();
+} // namespace ConfigApi
+
 } // namespace framework

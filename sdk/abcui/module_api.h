@@ -38,8 +38,8 @@ typedef uint64_t AbcUiSubscription; // 0 is never issued.
 // Data-channel sink: the payload pointer is only valid for the call.
 typedef void(ABCUI_CALL *AbcUiEventSink)(void *userdata, const void *payload);
 
-// Console command callback (no arguments; use engine argv through the
-// console api when needed).
+// Console command callback (no arguments; read the engine argv through the
+// console api's argc/argv while the callback runs).
 typedef void(ABCUI_CALL *AbcUiCommandFn)(void *userdata);
 
 // Synchronous module service handler. Requests/responses are byte buffers;
@@ -146,6 +146,12 @@ typedef struct AbcUiConsoleApi {
   // Writes a cvar's float value (the old clamp-style cvar callbacks did this
   // directly; registerCvarWatch's callback has no cvar argument).
   void(ABCUI_CALL *setCvarValue)(AbcUiCvarHandle cvar, float value);
+  // Engine argv of the command occurrence being dispatched (AbcUi >= 0.11.0).
+  // argc counts the command name at index 0; argv returns null for a negative
+  // or out-of-range index. Both are valid only while the command callback
+  // runs, and the strings are borrowed (never freed by the module).
+  int32_t(ABCUI_CALL *argc)(void);
+  const char *(ABCUI_CALL *argv)(int32_t index);
 } AbcUiConsoleApi;
 
 // -------------------------------------------------------------- events ----
@@ -671,6 +677,34 @@ typedef struct AbcUiFactsApi {
   // Monotonic change counter (0 for an unknown fact).
   uint32_t(ABCUI_CALL *generation)(const char *name);
 } AbcUiFactsApi;
+
+// --------------------------------------------------------------- config ----
+
+// Module-scoped config.json sections. The host stores a module section under
+// "module.<calling-module-id>.<name>", so a module can only reach its own
+// keys: another module's section and the top-level fields (render_backend,
+// ...) are unreachable. Calls are main-thread-only and legal only inside a
+// module scope. A section is a JSON object of at most 64 KiB; the userconfig
+// store preserves every other section and unknown top-level fields.
+typedef struct AbcUiConfigApi {
+  uint32_t structSize;
+  // Reads the calling module's section. The name is [a-z0-9_]{1,32}. Returns
+  // ABCUI_OK, ABCUI_ERROR_NOT_FOUND (section absent), ABCUI_ERROR_LIMIT (the
+  // stored section exceeds 64 KiB, or outSize is too small), UNAVAILABLE (the
+  // config file is unreadable) or FORBIDDEN (outside a module scope).
+  // *required receives the capacity in bytes (JSON plus terminator) on
+  // ABCUI_OK and ABCUI_ERROR_LIMIT and 0 otherwise; pass out == null (or
+  // outSize 0) to measure first.
+  int32_t(ABCUI_CALL *readSection)(const char *name, char *out,
+                                   uint32_t outSize, uint32_t *required);
+  // Writes the calling module's section. json must be a JSON object, jsonSize
+  // its byte count (terminator excluded) and at most 64 KiB. Returns
+  // ABCUI_OK, ABCUI_ERROR_INVALID (bad name, empty payload or non-object
+  // JSON), ABCUI_ERROR_LIMIT, ABCUI_ERROR_UNAVAILABLE (the config file is
+  // unwritable; a damaged file is never overwritten) or ABCUI_ERROR_FORBIDDEN.
+  int32_t(ABCUI_CALL *writeSection)(const char *name, const char *json,
+                                    uint32_t jsonSize);
+} AbcUiConfigApi;
 
 // -------------------------------------------------------------- weapons ----
 
@@ -2328,6 +2362,8 @@ typedef struct AbcUiModuleApi {
   // Entry-point ownership and framework facts (ABI 2 additive tail).
   const AbcUiClaimsApi *claims;
   const AbcUiFactsApi *facts;
+  // Module-scoped config.json sections (appended in AbcUi 0.11.0).
+  const AbcUiConfigApi *config;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

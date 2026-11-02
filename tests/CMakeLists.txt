@@ -96,6 +96,12 @@ abcui_add_test(abc_ui_text_encoding
 abcui_add_test(abc_ui_keybind_model
     SOURCES KeyBindModel.cpp "${SRC}/services/settings/KeyBindModel.cpp")
 
+# Module-scoped config keys: the local-name grammar, key composition and the
+# section bound the config ABI enforces.
+abcui_add_test(abc_ui_module_config
+    SOURCES ModuleConfig.cpp
+            "${SRC}/services/userconfig/ModuleConfig.cpp")
+
 abcui_add_test(abc_ui_video_mode
     SOURCES VideoModeModel.cpp "${SRC}/services/settings/VideoModeModel.cpp"
     LIBRARIES Abc::Core)

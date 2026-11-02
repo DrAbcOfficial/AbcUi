@@ -137,18 +137,24 @@ implemented rules the transition must keep:
   players, radar, shell, voice, score, input, menu, votemenu, playerlist,
   commandmenu, menuconfig, social, inventory, creategame, consolepage,
   serverbrowser, connection, settings, textures, audio, modules, claims,
-  facts. Adding a function
-  means appending it to the section end (and its initializer in
-  `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` / `ApiPlayers.cpp` /
-  `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
+  facts, config. Adding a function means appending it to the section end (and
+  its initializer in `ApiTable.cpp` / `ApiSections.cpp` / `ApiWeapons.cpp` /
+  `ApiPlayers.cpp` / `ApiDocuments.cpp` / `ApiMenu.cpp` / `ApiVoteMenu.cpp` /
   `ApiPlayerList.cpp` / `ApiCommandMenu.cpp` / `ApiMenuConfig.cpp` /
   `ApiSocial.cpp` / `ApiInventory.cpp` / `ApiCreateGame.cpp` /
   `ApiConsolePage.cpp` / `ApiServerBrowser.cpp` / `ApiConnection.cpp` /
-  `ApiSettings.cpp` / `ApiModules.cpp` / `ApiClaims.cpp` -
+  `ApiSettings.cpp` / `ApiModules.cpp` / `ApiClaims.cpp` / `ApiConfig.cpp` -
   a missing initializer is silently a null pointer; the table audit in
-  `ApiTable::get` catches it at boot), and
-  appending to snapshot structs means the writer must honor the caller's
-  `structSize`.
+  `ApiTable::get` catches it at boot), and appending to snapshot structs means
+  the writer must honor the caller's `structSize`.
+- Module config lives in `abc/abcui/config.json` under
+  `module.<manifest-id>.<local-name>` and is reached only through the
+  `config` section: local names are `[a-z0-9_]{1,32}` and the host composes
+  the key, so a module can never read or write another module's section or a
+  top-level field. Sections are JSON objects of at most 64 KiB; `userconfig`
+  preserves other sections and unknown top-level fields and never overwrites a
+  damaged file. The pure key helpers live in
+  `src/services/userconfig/ModuleConfig.*`.
 - Module packages are zip files at `svencoop/abc/abcui/modules/` (real files,
   never inside a VPK): `manifest.json`, the entry DLL and the module's
   rml / rcss / img / lang trees. Manifest fields: `id`, `name`, `description`,
