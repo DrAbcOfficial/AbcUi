@@ -49,14 +49,14 @@ constexpr const char *kDocumentPath =
     "mod://abcui.division/hud/rml/division.rml";
 
 // Persisted cvar contract shared with the classic HUD modules.
-constexpr const char *kFollowCvar = "hud_division_follow";
-constexpr const char *kSideCvar = "hud_division_side";
-// hud_division_side values: 0 = left of the character, 1 = right.
+constexpr const char *kFollowCvar = "abc_ui_division_follow";
+constexpr const char *kSideCvar = "abc_ui_division_side";
+// abc_ui_division_side values: 0 = left of the character, 1 = right.
 constexpr int kSideLeft = 0;
 constexpr const char *kDangerHealth = "hud_danger_health";
 constexpr const char *kDangerArmor = "hud_danger_armor";
 constexpr int kDefaultDanger = 45;
-// hud_division_follow values: 0 fixed, 1 follow in third person, 2 force.
+// abc_ui_division_follow values: 0 fixed, 1 follow in third person, 2 force.
 constexpr int kFollowAuto = 1;
 constexpr int kFollowForce = 2;
 
@@ -564,7 +564,7 @@ struct AnchorState {
   // from the camera axis (-1..1); 0 keeps the plate flat.
   float Tilt = 0.0f;
   bool TiltApplied = false;
-  // hud_division_side: whether the plate currently floats right of the model.
+  // abc_ui_division_side: whether the plate floats right of the model.
   bool SideRight = false;
 };
 
@@ -745,7 +745,7 @@ void panelOnRedraw(void *, double frameTime) {
 
   const bool followNow = Anchor.Armed && projected;
 
-  // hud_division_side picks the side the plate floats on. Flipping it
+  // abc_ui_division_side picks the side the plate floats on. Flipping it
   // re-pivots the lean at the other edge and snaps the plate, so it never
   // slides through the character on the way over.
   const bool rightSide = cvarInt(SideCvar, kSideLeft) != kSideLeft;
