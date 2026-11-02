@@ -629,6 +629,84 @@ typedef struct AbcUiCommandsApi {
   void(ABCUI_CALL *setTextMenuOpen)(int open);
 } AbcUiCommandsApi;
 
+// -------------------------------------------------------------- claims ----
+
+typedef uint64_t AbcUiClaim; // 0 is never issued.
+
+// A domain has exactly one dispatch decision. Owner claims run in priority
+// order; the first matching owner handles the occurrence and the engine path
+// does not run. Fallback claims run only when no owner matched. Observers run
+// after the decision and never change it. Gate claims belong to collective
+// domains (the native HUD draw query): any true hides the queried element.
+typedef enum AbcUiClaimRole {
+  ABCUI_CLAIM_OWNER = 0,
+  ABCUI_CLAIM_FALLBACK = 1,
+  ABCUI_CLAIM_OBSERVER = 2,
+  ABCUI_CLAIM_GATE = 3
+} AbcUiClaimRole;
+
+// Handler result bits. ABCUI_DECISION_HANDLED owns the occurrence;
+// ABCUI_DECISION_CLOSE_MENU asks the host to close the framework menu fact;
+// ABCUI_DECISION_CHAIN asks the host to run the native path as well.
+#define ABCUI_DECISION_NONE 0
+#define ABCUI_DECISION_HANDLED (1 << 0)
+#define ABCUI_DECISION_CLOSE_MENU (1 << 1)
+#define ABCUI_DECISION_CHAIN (1 << 2)
+
+// Claims are declared in onLoad/onInit. canHandle is a pure predicate: it
+// runs on a frozen pass before any handler executes, so it must not write
+// state, publish events or open documents. handle runs only for the winner
+// (and for observers after the decision).
+typedef struct AbcUiClaimDesc {
+  uint32_t structSize;
+  int32_t priority; // higher first; equal-priority owner overlap is diagnosed
+  int32_t role;     // AbcUiClaimRole
+  int(ABCUI_CALL *canHandle)(void *userdata, const void *event);
+  int32_t(ABCUI_CALL *handle)(void *userdata, const void *event);
+  void *userdata;
+} AbcUiClaimDesc;
+
+// Domains use the channel constant names from events.h (for example
+// "netmsg.showmenu", "input.key", "hud.native.draw") and command.<name>.
+// The command bridge is created lazily on the first claim; a command the
+// client registers later (MediaPlayer) is picked up by the host pump.
+typedef struct AbcUiClaimsApi {
+  uint32_t structSize;
+  AbcUiClaim(ABCUI_CALL *claimCommand)(const char *name,
+                                       const AbcUiClaimDesc *desc);
+  AbcUiClaim(ABCUI_CALL *claimDomain)(const char *domain,
+                                      const AbcUiClaimDesc *desc);
+  void(ABCUI_CALL *release)(AbcUiClaim claim);
+  // Declarative activation for page claims. Safe inside a dispatch; it
+  // affects the next dispatch, never one already in progress.
+  void(ABCUI_CALL *setActive)(AbcUiClaim claim, int32_t active);
+} AbcUiClaimsApi;
+
+// --------------------------------------------------------------- facts ----
+
+// Framework facts are read-only for modules and derived by the framework
+// from the wire/host state, so a missing renderer never changes ownership.
+#define ABCUI_FACT_MENU "menu"
+
+// The text-menu input fact. visible is true from a complete ShowMenu until
+// the selection, the close message, the deadline or a session reset.
+typedef struct AbcUiMenuFacts {
+  uint32_t structSize;
+  int32_t visible;
+  int32_t validSlots; // ShowMenu bitmask, bit 0 = item 1
+  int32_t ammoMenu;   // ShowMenu bit 7
+  uint32_t generation;
+} AbcUiMenuFacts;
+
+typedef struct AbcUiFactsApi {
+  uint32_t structSize;
+  // Copies the named fact into a caller record; 1 on success, 0 for an
+  // unknown name or a record smaller than the fact struct.
+  int32_t(ABCUI_CALL *get)(const char *name, void *out, uint32_t outSize);
+  // Monotonic change counter (0 for an unknown fact).
+  uint32_t(ABCUI_CALL *generation)(const char *name);
+} AbcUiFactsApi;
+
 // -------------------------------------------------------------- weapons ----
 
 #define ABCUI_WEAPON_NAME_MAX 64
@@ -2282,6 +2360,9 @@ typedef struct AbcUiModuleApi {
   const AbcUiTexturesApi *textures;
   const AbcUiAudioApi *audio;
   const AbcUiModulesApi *modules;
+  // Entry-point ownership and framework facts (ABI 2 additive tail).
+  const AbcUiClaimsApi *claims;
+  const AbcUiFactsApi *facts;
 } AbcUiModuleApi;
 
 #ifdef __cplusplus

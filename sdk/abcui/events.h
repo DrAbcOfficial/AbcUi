@@ -231,6 +231,14 @@ typedef struct AbcUiVguiMenuEvent {
 // ABCUI_KEY_ESCAPE).
 #define ABCUI_CHANNEL_SETTINGS_ESCAPE "settings.escape"
 
+// command.<name> - one hooked engine command occurrence (arbitration domain;
+// Owner/Fallback/Observer roles). `name` is the engine spelling and is valid
+// for the dispatch only. A claim's userdata carries its own per-slot
+// identity; the engine original runs only when nothing handles the command.
+typedef struct AbcUiCommandEvent {
+  const char *name;
+} AbcUiCommandEvent;
+
 // input.key - one HUD key event. Veto channel: a sink returning nonzero
 // consumes the press so the engine binding chain never sees it (the vote
 // keys answer the vote instead of running their binding).

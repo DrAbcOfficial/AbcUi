@@ -118,4 +118,12 @@ namespace ModulesApi {
 const AbcUiModulesApi *get();
 } // namespace ModulesApi
 
+namespace ClaimsApi {
+const AbcUiClaimsApi *get();
+} // namespace ClaimsApi
+
+namespace FactsApi {
+const AbcUiFactsApi *get();
+} // namespace FactsApi
+
 } // namespace framework

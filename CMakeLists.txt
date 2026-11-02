@@ -169,6 +169,10 @@ add_library(AbcUi MODULE
     src/hooks.cpp
     src/modsys/EventBus.cpp
     src/modsys/ModuleResources.cpp
+    src/modsys/Arbitration.cpp
+    src/modsys/Facts.cpp
+    src/modsys/HookRegistry.cpp
+    src/modsys/ApiClaims.cpp
     src/modsys/PackageFile.cpp
     src/modsys/PackageImage.cpp
     src/modsys/ModuleVfs.cpp
