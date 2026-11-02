@@ -1,7 +1,7 @@
 {
   "id": "abcui.killfeed",
   "name": "Kill Feed",
-  "description": "Kill feed rows with the fade-out countdown (moved from the built-in HUD).",
+  "description": "Kill feed rows with the fade-out countdown.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

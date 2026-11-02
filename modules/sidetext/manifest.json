@@ -1,7 +1,7 @@
 {
   "id": "abcui.sidetext",
   "name": "Side Text",
-  "description": "Left-side score/speed readout (moved from the built-in HUD).",
+  "description": "Left-side score/speed readout.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

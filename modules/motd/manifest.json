@@ -1,7 +1,7 @@
 {
   "id": "abcui.motd",
   "name": "MOTD",
-  "description": "Mission briefing and server MOTD window (moved from the built-in HUD).",
+  "description": "Mission briefing and server MOTD window.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

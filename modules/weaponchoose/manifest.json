@@ -1,7 +1,7 @@
 {
   "id": "abcui.weaponchoose",
   "name": "Weapon Choose",
-  "description": "Ecco-style weapon selection bar with slot icons, ammo bars and the confirm-key pick (moved from the built-in HUD).",
+  "description": "Ecco-style weapon selection bar with slot icons, ammo bars and the confirm-key pick.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

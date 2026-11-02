@@ -1,7 +1,7 @@
 {
   "id": "abcui.hudeffects",
   "name": "HUD Effects",
-  "description": "Danger vignette and water overlays with the splash animations (moved from the built-in HUD).",
+  "description": "Danger vignette and water overlays with the splash animations.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

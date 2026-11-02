@@ -1,7 +1,7 @@
 {
   "id": "abcui.chat",
   "name": "Chat",
-  "description": "Chat log and the IME-aware message-mode input line (moved from the built-in HUD).",
+  "description": "Chat log and the IME-aware message-mode input line.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

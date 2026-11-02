@@ -1,7 +1,7 @@
 {
   "id": "abcui.playerboard",
   "name": "Player Board",
-  "description": "Overhead teammate name/health/armor tiles (moved from the built-in HUD).",
+  "description": "Overhead teammate name/health/armor tiles.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

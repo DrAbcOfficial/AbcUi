@@ -1,7 +1,7 @@
 {
   "id": "abcui.crosshair",
   "name": "Crosshair",
-  "description": "Dynamic crosshair with punch drift plus the per-weapon sprite crosshair (moved from the built-in HUD).",
+  "description": "Dynamic crosshair with punch drift plus the per-weapon sprite crosshair.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

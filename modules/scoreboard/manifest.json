@@ -1,7 +1,7 @@
 {
   "id": "abcui.scoreboard",
   "name": "Scoreboard",
-  "description": "The +showscores table with team sections, avatars and the pointer context menu (moved from the built-in HUD).",
+  "description": "The +showscores table with team sections, avatars and the pointer context menu.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

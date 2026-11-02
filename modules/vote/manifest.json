@@ -1,7 +1,7 @@
 {
   "id": "abcui.vote",
   "name": "Vote",
-  "description": "Yes/no vote callout with the bound answer keys (moved from the built-in HUD).",
+  "description": "Yes/no vote callout with the bound answer keys.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

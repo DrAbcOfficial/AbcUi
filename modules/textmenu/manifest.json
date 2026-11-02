@@ -1,7 +1,7 @@
 {
   "id": "abcui.textmenu",
   "name": "Text Menu",
-  "description": "Vanilla ShowMenu replacement: number-key menus with the slot-key interception (moved from the built-in HUD).",
+  "description": "Vanilla ShowMenu replacement: number-key menus with the slot-key interception.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

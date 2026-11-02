@@ -1,7 +1,7 @@
 {
   "id": "abcui.ammo",
   "name": "Ammo",
-  "description": "Ammo pool readout plus the ammo, weapon and item pickup stacks (moved from the built-in HUD).",
+  "description": "Ammo pool readout plus the ammo, weapon and item pickup stacks.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

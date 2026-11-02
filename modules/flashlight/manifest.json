@@ -1,7 +1,7 @@
 {
   "id": "abcui.flashlight",
   "name": "Flashlight",
-  "description": "Flashlight icon and battery readout with the amber hue drain (moved from the built-in HUD).",
+  "description": "Flashlight icon and battery readout with the amber hue drain.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

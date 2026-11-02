@@ -1,7 +1,7 @@
 {
   "id": "abcui.damage",
   "name": "Damage Feedback",
-  "description": "Damage-type tiles, the directional pain indicator, floating damage numbers and the grenade marker (moved from the built-in HUD).",
+  "description": "Damage-type tiles, the directional pain indicator, floating damage numbers and the grenade marker.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

@@ -1,7 +1,7 @@
 {
   "id": "abcui.itemhighlight",
   "name": "Item Highlight",
-  "description": "World-item name markers and the pickup prompt (moved from the built-in HUD).",
+  "description": "World-item name markers and the pickup prompt.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,

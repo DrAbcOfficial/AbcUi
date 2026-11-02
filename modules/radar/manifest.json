@@ -1,7 +1,7 @@
 {
   "id": "abcui.radar",
   "name": "Radar",
-  "description": "FBO minimap plate with teammate avatars and the north mark (moved from the built-in HUD).",
+  "description": "FBO minimap plate with teammate avatars and the north mark.",
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,
