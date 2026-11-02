@@ -52,8 +52,13 @@ int32_t apiReadSection(const char *name, char *out, uint32_t outSize,
     return ABCUI_ERROR_UNAVAILABLE;
   }
 
-  if (!fitsSection(json))
+  // An oversized stored section reports the same LIMIT as a short buffer, so
+  // the caller can tell "allocate more" from "the section is over the bound".
+  if (!fitsSection(json)) {
+    if (required)
+      *required = static_cast<uint32_t>(json.size() + 1);
     return ABCUI_ERROR_LIMIT;
+  }
   const uint32_t capacity = static_cast<uint32_t>(json.size()) + 1;
   if (required)
     *required = capacity;
