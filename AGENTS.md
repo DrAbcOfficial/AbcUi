@@ -99,6 +99,17 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   as `[A-Za-z0-9_]` identifiers, and only a `weapon_*` token may be sent to
   `pfnServerCmd` (`ResourceLimits::weaponCommandName`). A bare identifier is
   not enough: `kill` is a legal identifier and a real console command.
+- The weapon registry keeps the raw server placement
+  (`Weapon.serverSlot`/`serverSlotPos`) apart from the effective selector
+  placement (`slot`/`slotPos`); every snapshot and the selection walk read
+  the effective pair. `weaponres::rebuildSlots` applies the client rules
+  through the pure `src/data/WeaponSlotLayout.*` unit and publishes
+  `hud.weaponLayout`. The rule map is process-lifetime (a map transition
+  clears the registry, not the rules), capped at 256 rules, keyed by
+  `[A-Za-z0-9_]{1,64}` names and never sent to the server. Collisions place
+  overrides first, then server entries, then by name, and shift the later
+  weapon to the next free position inside the same slot; the filter's
+  enabled state only selects which placement is applied.
 - Custom Rml elements that are downcast after lookup declare
   `RMLUI_RTTI_DeclareWithParent`/`RMLUI_RTTI_Define` and are reached through
   `rmlui_dynamic_cast`; raw `static_cast` between element types is not

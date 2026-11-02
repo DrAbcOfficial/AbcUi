@@ -4,6 +4,7 @@
 #include <metahook.h>
 
 #include "WeaponResource.h"
+#include "WeaponSlotLayout.h"
 #include "../framework/ResourceLimits.h"
 
 #include <cdll_int.h>
@@ -11,6 +12,7 @@
 #include <weaponinfo.h>
 
 #include <algorithm>
+#include <functional>
 #include <map>
 #include <set>
 #include <vector>
@@ -100,6 +102,29 @@ struct Registry {
 
 Registry RegistryState;
 cvar_t *cvar_fastswitch = nullptr;
+
+struct LayoutOverride {
+  int slot = 0;
+  int position = 0;
+};
+
+// Client selector rules. Process-lifetime: a map transition clears the
+// registry, not the rules, so the next WeaponList lays out the same way.
+std::map<std::string, LayoutOverride, std::less<>> LayoutOverrides;
+bool LayoutOverridesEnabled = false;
+
+constexpr size_t kMaxLayoutOverrides = 256;
+constexpr size_t kMaxLayoutName = 64;
+
+// Rule names are client input and reach this map only as identifiers.
+bool validLayoutName(std::string_view name) {
+  if (name.empty() || name.size() > kMaxLayoutName)
+    return false;
+  return std::all_of(name.begin(), name.end(), [](unsigned char c) {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+           (c >= '0' && c <= '9') || c == '_';
+  });
+}
 
 // Weapon usable for selection: owned and (ammo or SELECTONEMPTY).
 bool selectable(const Weapon &weapon) {
@@ -218,12 +243,66 @@ void loadWeaponSprites(Weapon &weapon, const char *customSpr) {
   load("ammo2", weapon.ammo2);
 }
 
-// Old WeaponList::Add - duplicate ids rejected, position collisions bump the
-// slot position persistently (same as the old in-place mutation).
+// Recomputes every weapon's effective placement from the raw server values
+// and the enabled client rules, then rebuilds the slot maps. The inputs are
+// built in id order so equal-target weapons keep a stable precedence.
+void rebuildSlots() {
+  std::vector<int> ids;
+  ids.reserve(RegistryState.byId.size());
+  for (const auto &entry : RegistryState.byId)
+    ids.push_back(entry.first);
+  std::sort(ids.begin(), ids.end());
+
+  std::vector<Weapon *> weapons;
+  std::vector<LayoutInput> inputs;
+  weapons.reserve(ids.size());
+  inputs.reserve(ids.size());
+  for (const int id : ids) {
+    Weapon &weapon = RegistryState.byId[id];
+    LayoutInput input{};
+    input.name = weapon.name;
+    input.serverSlot = weapon.serverSlot;
+    input.serverPos = weapon.serverSlotPos;
+    if (LayoutOverridesEnabled) {
+      const auto rule = LayoutOverrides.find(weapon.name);
+      if (rule != LayoutOverrides.end()) {
+        input.hasOverride = true;
+        input.overrideSlot = rule->second.slot;
+        input.overridePos = rule->second.position;
+      }
+    }
+    weapons.push_back(&weapon);
+    inputs.push_back(input);
+  }
+
+  const std::vector<LayoutResult> layout = layoutWeapons(inputs);
+
+  for (auto &slot : RegistryState.slots) {
+    slot.positions.clear();
+    slot.minPos = slot.maxPos = 0;
+  }
+  for (size_t i = 0; i < weapons.size(); ++i) {
+    Weapon &weapon = *weapons[i];
+    weapon.slot = layout[i].slot;
+    weapon.slotPos = layout[i].pos;
+    // A slot that ran out of positions pins the last weapons at 255; the
+    // first occupant keeps the addressable position.
+    RegistryState.slots[weapon.slot].positions.emplace(weapon.slotPos,
+                                                       weapon.id);
+  }
+  for (auto &slot : RegistryState.slots)
+    slot.updateMinMax();
+  if (RegistryState.selected)
+    RegistryState.selectedSlotId = RegistryState.selected->slot;
+  framework::eventBus().publishRaw(ABCUI_CHANNEL_HUD_WEAPON_LAYOUT, nullptr);
+}
+
+// Old WeaponList::Add - duplicate ids rejected; the effective placement comes
+// from rebuildSlots() so collisions follow the deterministic layout rule.
 void addWeapon(Weapon &&incoming) {
   const int id = incoming.id;
-  if (id <= 0 || incoming.slot < 0 ||
-      incoming.slot >= static_cast<int>(kMaxWeaponSlot))
+  if (id <= 0 || incoming.serverSlot < 0 ||
+      incoming.serverSlot >= static_cast<int>(kMaxWeaponSlot))
     return;
   if (RegistryState.byId.count(id))
     return;
@@ -231,13 +310,8 @@ void addWeapon(Weapon &&incoming) {
 
   Weapon &weapon = RegistryState.byId[id] = std::move(incoming);
   RegistryState.byName[weapon.name] = id;
-
-  SlotData &slot = RegistryState.slots[weapon.slot];
-  while (slot.positions.count(weapon.slotPos))
-    weapon.slotPos++;
-  slot.positions[weapon.slotPos] = id;
-  slot.updateMinMax();
   loadWeaponSprites(weapon, nullptr);
+  rebuildSlots();
   if (wasOwned) {
     PickupWeapon(&weapon);
     publishWeapon(ABCUI_CHANNEL_HUD_PICKUP_WEAPON, &weapon);
@@ -295,30 +369,21 @@ void onWeaponList(const netmsg::WeaponListData &data) {
     updated.max1 = data.max1;
     updated.ammo2Type = data.ammo2Type;
     updated.max2 = data.max2;
-    updated.slot = data.slot;
-    updated.slotPos = data.slotPos;
+    updated.serverSlot = data.slot;
+    updated.serverSlotPos = data.slotPos;
     updated.id = data.id;
     updated.flags = data.flags;
     Weapon &weapon = itor->second;
     updated.clip = weapon.clip;
     updated.clip2 = weapon.clip2;
     updated.state = weapon.state;
-    auto oldName = RegistryState.byName.find(weapon.name);
+    const auto oldName = RegistryState.byName.find(weapon.name);
     if (oldName != RegistryState.byName.end() && oldName->second == weapon.id)
       RegistryState.byName.erase(oldName);
-    auto &oldSlot = RegistryState.slots[weapon.slot];
-    oldSlot.positions.erase(weapon.slotPos);
-    oldSlot.updateMinMax();
     weapon = std::move(updated);
     RegistryState.byName[weapon.name] = weapon.id;
-    auto &newSlot = RegistryState.slots[weapon.slot];
-    while (newSlot.positions.count(weapon.slotPos))
-      ++weapon.slotPos;
-    newSlot.positions[weapon.slotPos] = weapon.id;
-    newSlot.updateMinMax();
-    if (RegistryState.selected == &weapon)
-      RegistryState.selectedSlotId = weapon.slot;
     loadWeaponSprites(weapon, nullptr);
+    rebuildSlots();
     return;
   }
 
@@ -329,8 +394,8 @@ void onWeaponList(const netmsg::WeaponListData &data) {
   created.max1 = data.max1;
   created.ammo2Type = data.ammo2Type;
   created.max2 = data.max2;
-  created.slot = data.slot;
-  created.slotPos = data.slotPos;
+  created.serverSlot = data.slot;
+  created.serverSlotPos = data.slotPos;
   created.id = data.id;
   created.flags = data.flags;
   created.clip = 0;
@@ -614,6 +679,45 @@ void selectSlot(int slot, int advance, bool wheel) {
       return;
     }
   }
+}
+
+int32_t setLayoutOverride(const char *name, int slot, int position) {
+  if (!name || !validLayoutName(name) || slot < 0 || slot >= kLayoutSlotCount ||
+      position < 0 || position > kLayoutMaxPosition)
+    return ABCUI_ERROR_INVALID;
+  const auto existing = LayoutOverrides.find(std::string_view(name));
+  if (existing == LayoutOverrides.end() &&
+      LayoutOverrides.size() >= kMaxLayoutOverrides)
+    return ABCUI_ERROR_LIMIT;
+  if (existing != LayoutOverrides.end() && existing->second.slot == slot &&
+      existing->second.position == position)
+    return ABCUI_OK;
+  LayoutOverrides[std::string(name)] = LayoutOverride{slot, position};
+  rebuildSlots();
+  return ABCUI_OK;
+}
+
+bool clearLayoutOverride(const char *name) {
+  if (!name || !validLayoutName(name))
+    return false;
+  if (LayoutOverrides.erase(std::string(name)) == 0)
+    return false;
+  rebuildSlots();
+  return true;
+}
+
+void clearLayoutOverrides() {
+  if (LayoutOverrides.empty())
+    return;
+  LayoutOverrides.clear();
+  rebuildSlots();
+}
+
+void setLayoutOverridesEnabled(bool enabled) {
+  if (LayoutOverridesEnabled == enabled)
+    return;
+  LayoutOverridesEnabled = enabled;
+  rebuildSlots();
 }
 
 } // namespace weaponres

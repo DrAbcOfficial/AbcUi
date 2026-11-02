@@ -17,6 +17,7 @@
 // rect stored per slot; panels build spricon:// URIs through data::sprites.
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -52,6 +53,11 @@ struct Weapon {
   int ammo2Type = -1;
   int max1 = -1;
   int max2 = -1;
+  // Raw server WeaponList placement. Never rewritten by the client filter.
+  int serverSlot = 0;
+  int serverSlotPos = 0;
+  // Effective selector placement: the server values, or the enabled client
+  // override. Selection and every module snapshot read these.
   int slot = 0;
   int slotPos = 0;
   int flags = 0;
@@ -79,8 +85,23 @@ struct Weapon {
 
 // HUD_Init-time: subscribes the netmsg weapon feed. Idempotent.
 void init();
-// Map transition (HUD_VidInit chain): registry starts from scratch.
+// Map transition (HUD_VidInit chain): registry starts from scratch. The
+// client layout overrides survive (the next WeaponList lays out the same way).
 void reset();
+
+// Client-side selector layout override. The map is process-lifetime, capped
+// at 256 rules and keyed by one canonical weapon name. Rules rebuild the
+// effective layout and publish ABCUI_CHANNEL_HUD_WEAPON_LAYOUT immediately; a
+// rule for a weapon that has not arrived yet applies when it is registered.
+// Names are [A-Za-z0-9_]{1,64}; slot 0..9; position 0..255.
+// Returns ABCUI_OK, ABCUI_ERROR_INVALID or ABCUI_ERROR_LIMIT.
+int32_t setLayoutOverride(const char *name, int slot, int position);
+// Removes one rule and rebuilds; false when there was no such rule.
+bool clearLayoutOverride(const char *name);
+// Removes every rule and restores the server layout.
+void clearLayoutOverrides();
+// Disabling keeps the rules and restores the server layout.
+void setLayoutOverridesEnabled(bool enabled);
 // Prediction sync (HUD_TxferPredictionData chain): ownership + clip diff.
 void onTxferPredictionData(const weapon_data_s *weaponDataArray);
 

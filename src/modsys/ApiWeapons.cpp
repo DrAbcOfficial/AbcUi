@@ -1,5 +1,6 @@
-// framework::WeaponsApi - the sdk weapons section (registry snapshots and the
-// selection action). See ApiTable.h for how it joins the module table.
+// framework::WeaponsApi - the sdk weapons section (registry snapshots, the
+// selection action and the client selector layout override). See ApiTable.h
+// for how it joins the module table.
 #include "ApiTable.h"
 #include "ApiSnapshot.h"
 
@@ -162,6 +163,23 @@ int32_t apiAmmoIcon(int32_t ammoType, AbcUiWeaponSprite *out) {
   return out->status;
 }
 
+int32_t apiSetLayoutOverride(const char *name, int32_t slot, int32_t position) {
+  return weaponres::setLayoutOverride(name, slot, position);
+}
+
+int32_t apiClearLayoutOverride(const char *name) {
+  return weaponres::clearLayoutOverride(name) ? ABCUI_OK
+                                              : ABCUI_ERROR_NOT_FOUND;
+}
+
+void apiClearLayoutOverrides() {
+  weaponres::clearLayoutOverrides();
+}
+
+void apiSetLayoutOverridesEnabled(int32_t enabled) {
+  weaponres::setLayoutOverridesEnabled(enabled != 0);
+}
+
 // One initializer per member, in declaration order (see the console table
 // note: a missing entry becomes a null pointer, not a compile error).
 const AbcUiWeaponsApi kWeaponsApi = {
@@ -177,6 +195,10 @@ const AbcUiWeaponsApi kWeaponsApi = {
     apiCurrent,
     apiGetById,
     apiAmmoIcon,
+    apiSetLayoutOverride,
+    apiClearLayoutOverride,
+    apiClearLayoutOverrides,
+    apiSetLayoutOverridesEnabled,
 };
 
 } // namespace

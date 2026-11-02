@@ -121,6 +121,12 @@ typedef struct AbcUiWeaponEvent {
 #define ABCUI_CHANNEL_HUD_PICKUP_WEAPON "hud.pickupWeapon"
 #define ABCUI_CHANNEL_HUD_DROP_WEAPON "hud.dropWeapon"
 
+// hud.weaponLayout - the client-side selector layout changed: a rule was
+// edited, the filter was toggled, or a WeaponList registration recomputed it.
+// Data channel; the payload is null. Consumers re-read weapons->list /
+// selected when they are on screen.
+#define ABCUI_CHANNEL_HUD_WEAPON_LAYOUT "hud.weaponLayout"
+
 // hud.dropAllWeapons - every owned weapon went away (payload is null).
 #define ABCUI_CHANNEL_HUD_DROP_ALL_WEAPONS "hud.dropAllWeapons"
 

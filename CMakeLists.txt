@@ -272,6 +272,7 @@ add_library(AbcUi MODULE
     src/data/TextFeed.cpp
     src/data/TeamResource.cpp
     src/data/WeaponResource.cpp
+    src/data/WeaponSlotLayout.cpp
     src/modules/UiModuleRegistry.cpp
     src/modules/gameui/GameUiModule.cpp
     src/modules/gameui/lifecycle/Frame.cpp

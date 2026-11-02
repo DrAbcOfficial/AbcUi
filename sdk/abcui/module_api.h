@@ -726,9 +726,11 @@ typedef struct AbcUiWeaponSprite {
   int32_t rect[4]; // left, top, right, bottom
 } AbcUiWeaponSprite;
 
-// Point-in-time snapshot of one registry weapon. Identity is (slot, slotPos):
-// the server's WeaponList assigns both and the registry keeps them stable.
-// Array snapshots use caller-provided byte strides.
+// Point-in-time snapshot of one registry weapon. Identity is (slot, slotPos)
+// in the client-effective selector layout: normally the server's WeaponList
+// placement, or the client override while the weapon filter is enabled. The
+// raw server placement is not exposed. Array snapshots use caller-provided
+// byte strides.
 typedef struct AbcUiWeaponInfo {
   uint32_t structSize;
   int32_t slot;
@@ -782,6 +784,23 @@ typedef struct AbcUiWeaponsApi {
   int32_t(ABCUI_CALL *getById)(int32_t id, AbcUiWeaponInfo *out);
   // Icon of an ammo type, taken from a registered weapon; resource result.
   int32_t(ABCUI_CALL *ammoIcon)(int32_t ammoType, AbcUiWeaponSprite *out);
+  // Client-side selector layout override (appended in AbcUi 0.11.0). The name
+  // is [A-Za-z0-9_]{1,64}, slot 0..9 and position 0..255 (0-based, used only
+  // as the within-slot ordering key). A rule applies immediately to the
+  // effective slot/slotPos of the registered weapons, publishes
+  // hud.weaponLayout, and is remembered for weapons that arrive later; it is
+  // never sent to the server. The map is process-lifetime: a map transition
+  // keeps it. Returns ABCUI_OK, ABCUI_ERROR_INVALID or ABCUI_ERROR_LIMIT
+  // (256 rules).
+  int32_t(ABCUI_CALL *setLayoutOverride)(const char *name, int32_t slot,
+                                         int32_t position);
+  // Removes one rule, rebuilds and publishes. Returns ABCUI_OK,
+  // ABCUI_ERROR_INVALID or ABCUI_ERROR_NOT_FOUND (no such rule).
+  int32_t(ABCUI_CALL *clearLayoutOverride)(const char *name);
+  // Removes every rule, restores the server layout and publishes.
+  void(ABCUI_CALL *clearLayoutOverrides)(void);
+  // 0 restores the server layout without discarding the rules.
+  void(ABCUI_CALL *setLayoutOverridesEnabled)(int32_t enabled);
 } AbcUiWeaponsApi;
 
 // -------------------------------------------------------------- players ----
