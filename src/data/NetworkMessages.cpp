@@ -287,26 +287,6 @@ int __MsgFunc_ScoreInfo(const char *pszName, int iSize, void *pbuf) {
   return original_ScoreInfo(pszName, iSize, pbuf);
 }
 
-bool dispatchShowMenu(int validSlots, int displaySeconds, int bits,
-                      const char *text) {
-  // The input fact is framework-owned and updated from the wire before any
-  // renderer gets a say: a missing/failed text-menu module never changes
-  // whether the number keys belong to a menu.
-  const int needMore = bits & 0x7F;
-  if (validSlots == 0)
-    framework::facts::clearMenu();
-  else if (needMore == 0)
-    framework::facts::openMenu(validSlots, displaySeconds, bits,
-                               gEngfuncs.GetClientTime());
-  const AbcUiShowMenuEvent event{validSlots, displaySeconds, bits, text};
-  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, event);
-  const framework::arbitration::Decision decision =
-      framework::arbitration::dispatch(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &event);
-  framework::hooks::note(framework::hooks::Kind::kMessage, "ShowMenu",
-                         decision.handled);
-  return decision.handled;
-}
-
 int __MsgFunc_ShowMenu(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
   int validSlots = msg.readShort();
@@ -728,6 +708,26 @@ void registerUserMsgHooks() {
 }
 
 } // namespace
+
+bool dispatchShowMenu(int validSlots, int displaySeconds, int bits,
+                      const char *text) {
+  // The input fact is framework-owned and updated from the wire before any
+  // renderer gets a say: a missing/failed text-menu module never changes
+  // whether the number keys belong to a menu.
+  const int needMore = bits & 0x7F;
+  if (validSlots == 0)
+    framework::facts::clearMenu();
+  else if (needMore == 0)
+    framework::facts::openMenu(validSlots, displaySeconds, bits,
+                               gEngfuncs.GetClientTime());
+  const AbcUiShowMenuEvent event{validSlots, displaySeconds, bits, text};
+  framework::eventBus().publish(ABCUI_CHANNEL_NETMSG_SHOW_MENU, event);
+  const framework::arbitration::Decision decision =
+      framework::arbitration::dispatch(ABCUI_CHANNEL_NETMSG_SHOW_MENU, &event);
+  framework::hooks::note(framework::hooks::Kind::kMessage, "ShowMenu",
+                         decision.handled);
+  return decision.handled;
+}
 
 void init() {
   // Installed once per process. HUD_Init can repeat (map cycles), but the

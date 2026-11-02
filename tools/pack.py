@@ -26,7 +26,9 @@ import re
 import sys
 import zipfile
 
-ABCUI_ABI_VERSION = 2
+# Resolved from sdk/abcui/abi.h in main(); the manifest ABI must match the
+# framework the packages are built against.
+ABCUI_ABI_VERSION = 0
 REQUIRED_FIELDS = (
     "id",
     "name",
@@ -40,6 +42,16 @@ REQUIRED_FIELDS = (
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 # The SDK example is opt-in, never a release UI feature.
 EXAMPLE_MODULES = {"demo"}
+
+
+def read_sdk_abi_version(source_dir):
+    path = os.path.join(source_dir, "sdk", "abcui", "abi.h")
+    with open(path, "r", encoding="utf-8") as handle:
+        text = handle.read()
+    match = re.search(r"#define\s+ABCUI_ABI_VERSION\s+([0-9]+)", text)
+    if match is None:
+        raise ValueError("%s: ABCUI_ABI_VERSION not found" % path)
+    return int(match.group(1))
 
 
 def fail(message):
@@ -78,14 +90,6 @@ def load_manifest(module_dir):
                 re.fullmatch(id_pattern, value) is None for value in values):
             raise ValueError("%s: '%s' must be an array of module ids" %
                              (path, field))
-    # Optional HUD group (issue #15): modules without one are shared by every
-    # group. The selected group is packed, or every group with
-    # --hud-group all so the module manager can switch between the
-    # implementations at runtime.
-    group = manifest.get("hudGroup", "any")
-    if not isinstance(group, str) or re.fullmatch(r"[a-z][a-z0-9]*", group) is None:
-        raise ValueError("%s: 'hudGroup' must be a lowercase group name" % path)
-    manifest["hudGroup"] = group
     kind = manifest.get("type", "module")
     if kind not in ("module", "resources"):
         raise ValueError("invalid package type")
@@ -160,35 +164,24 @@ def pack_module(module_dir, manifest, build_dir, config, out_dir):
     return True
 
 
-def collect_modules(module_dirs, hud_group, explicit):
-    """Loads manifests and drops modules belonging to another HUD group.
+def collect_modules(module_dirs):
+    """Loads every discovered manifest.
 
-    An explicit --module keeps every named module (the caller asked for that
-    set); the default discovery applies the group filter. --hud-group all
-    keeps every group, shipping both implementations for the module manager.
+    The release archive always carries the full module set; mutually
+    exclusive implementations are selected at runtime in Settings > Modules
+    through the manifest conflicts, not at pack time.
     """
-    selected = []
-    packing_all = hud_group == "all"
-    for module_dir in module_dirs:
-        manifest = load_manifest(module_dir)
-        group = manifest["hudGroup"]
-        if (not explicit and not packing_all and group != "any"
-                and group != hud_group):
-            print("pack: skip %s (hud group '%s', packing '%s')" %
-                  (manifest["id"], group, hud_group))
-            continue
-        selected.append((module_dir, manifest))
-    return selected
+    return [(module_dir, load_manifest(module_dir))
+            for module_dir in module_dirs]
 
 
-def validate_set(selected, check_dependencies, check_conflicts=True):
-    """No two packed modules conflict; the default pack is self-contained.
+def validate_set(selected, check_dependencies):
+    """The default pack must contain every dependency.
 
-    An explicit --module set is an ad-hoc pack (a single module for a test),
-    so only the conflict rule applies there; the default discovery must pack
-    every dependency or the archive would not load at runtime. --hud-group all
-    intentionally packs conflicting groups: the loader resolves them at boot
-    and the module manager switches the active set.
+    Conflicts are a runtime module-manager decision: the full archive carries
+    both implementations and the loader settles the active set at boot. An
+    explicit --module set is an ad-hoc pack for a test, so its dependencies
+    are not required either.
     """
     ids = {manifest["id"] for _, manifest in selected}
     problems = []
@@ -198,11 +191,6 @@ def validate_set(selected, check_dependencies, check_conflicts=True):
                 if dependency not in ids:
                     problems.append("module '%s' needs '%s', which is not in "
                                     "this pack" % (manifest["id"], dependency))
-        if check_conflicts:
-            for conflict in manifest.get("conflicts", []):
-                if conflict in ids:
-                    problems.append("module '%s' conflicts with '%s' in this "
-                                    "pack" % (manifest["id"], conflict))
     return problems
 
 
@@ -214,10 +202,14 @@ def main(argv):
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--module", action="append", default=[],
                         help="module directory name (repeatable); default release modules")
-    parser.add_argument("--hud-group", default="classic",
-                        help="HUD group to pack: classic, division or all "
-                             "(default classic)")
     args = parser.parse_args(argv)
+
+    global ABCUI_ABI_VERSION
+    try:
+        ABCUI_ABI_VERSION = read_sdk_abi_version(args.source_dir)
+    except (OSError, ValueError) as error:
+        fail(str(error))
+        return 1
 
     modules_root = os.path.join(args.source_dir, "modules")
     if args.module:
@@ -231,13 +223,11 @@ def main(argv):
                                                       "manifest.json"))]
 
     try:
-        selected = collect_modules(module_dirs, args.hud_group,
-                                   bool(args.module))
+        selected = collect_modules(module_dirs)
     except (OSError, ValueError, json.JSONDecodeError) as error:
         fail(str(error))
         return 1
-    problems = validate_set(selected, not args.module,
-                            args.hud_group != "all")
+    problems = validate_set(selected, not args.module)
     if problems:
         for problem in problems:
             fail(problem)

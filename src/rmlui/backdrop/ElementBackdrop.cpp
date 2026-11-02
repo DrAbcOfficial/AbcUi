@@ -169,8 +169,7 @@ bool ElementBackdrop::sync() {
     // framework/InteractiveDocument.h), and a local opacity value here would
     // freeze the dim at full strength while the page dissolves. The inherited
     // opacity multiplies this colour, so a closed menu takes its dim with it.
-    const long alpha =
-        std::lround(std::clamp(Dim, 0.0f, 1.0f) * 255.0f);
+    const long alpha = std::lround(std::clamp(Dim, 0.0f, 1.0f) * 255.0f);
     Dimmer->SetProperty("background-color",
                         std::format("rgba(0, 0, 0, {})", alpha));
   }

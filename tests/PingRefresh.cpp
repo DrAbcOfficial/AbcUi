@@ -22,6 +22,7 @@
 
 #include "data/NetworkMessages.h"
 #include "data/PlayerResource.h"
+#include "data/TextFeed.h"
 #include "hooks.h"
 #include "services/steam/SteamAPI.h"
 
@@ -48,6 +49,15 @@ DWORD g_dwClientSize = 0;
 namespace framework::module_resources {
 void reportException(const char *, const char *) {}
 } // namespace framework::module_resources
+
+// The production TextMsg parser is linked here, but its text-feed claims are
+// outside this test's contract; keep the router inert.
+namespace textfeed {
+bool route(int, const char *, const char *, const char *, const char *,
+           const char *) {
+  return false;
+}
+} // namespace textfeed
 
 namespace hooks {
 engine_studio_api_t *EngineStudioApi = &StudioApi;

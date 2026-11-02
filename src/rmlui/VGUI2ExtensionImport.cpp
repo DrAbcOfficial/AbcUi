@@ -195,8 +195,7 @@ public:
       // Unclaimed ESC keeps the menu and no-map console paths below.
       notePhysicalEscUpFromEvent(pevent);
       if (routeHudEscapeFromEvent(pevent)) {
-        CallbackContext->Result =
-            VGUI2Extension_Result::SUPERCEDE_SKIP_PLUGINS;
+        CallbackContext->Result = VGUI2Extension_Result::SUPERCEDE_SKIP_PLUGINS;
         return;
       }
       notePhysicalEscDownFromEvent(pevent);

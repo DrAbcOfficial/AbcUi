@@ -145,6 +145,8 @@ std::string formatNotice(std::string msg, std::string params[4]) {
   return out;
 }
 
+} // namespace
+
 bool route(int target, const char *msg, const char *param1, const char *param2,
            const char *param3, const char *param4) {
   // Unknown game tokens stay with the native handler (safe game-table

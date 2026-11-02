@@ -60,12 +60,12 @@ automatically extracted when it loads. No separate model installation is needed.
 
 ## Third-person HUD
 
-A build can ship the classic HUD, the third-person HUD group, or both. The
+The archive ships both the classic HUD and the third-person HUD group. The
 third-person group keeps the health, armor, ammo and flashlight readouts on
 your character in third person and returns them to a fixed bottom row in first
 person; every other element stays where it is. It replaces the classic health,
 ammo and flashlight readouts, so enable one of the two sets in Settings >
-Modules when both are installed.
+Modules.
 
 ## Settings
 
@@ -134,10 +134,9 @@ cmake --preset win32-release
 cmake --build --preset win32-release --target dist
 ```
 
-The archive is written to `build/win32-release/dist/AbcUi-<version>.zip`.
-The default archive ships the classic HUD group; configure with
-`-DABCUI_HUD_GROUP=division` to build the third-person HUD group instead, or
-`-DABCUI_HUD_GROUP=all` to ship both sets for the Modules page.
+The archive is written to `build/win32-release/dist/AbcUi-<version>.zip` and
+ships the full module set, including both the classic and third-person HUD
+groups. Enable one of the two sets in Settings > Modules.
 
 If AbcCore is checked out elsewhere, pass `-DABC_CORE_DIR=<path>` when configuring. The Renderer redirect is needed because AbcUi uses a Renderer version from the DrAbcOfficial fork.
 

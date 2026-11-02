@@ -7,7 +7,6 @@
   "abi": 3,
   "minAbcUi": "0.10.0",
   "entry": "entry/abcui_flashlight.dll",
-  "hudGroup": "classic",
   "dependencies": [
     "abcui.base"
   ],

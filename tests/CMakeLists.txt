@@ -238,6 +238,9 @@ abcui_add_test(abc_ui_ping_refresh
     SOURCES PingRefresh.cpp
             "${SRC}/data/PlayerResource.cpp"
             "${SRC}/data/NetworkMessages.cpp"
+            "${SRC}/modsys/Arbitration.cpp"
+            "${SRC}/modsys/Facts.cpp"
+            "${SRC}/modsys/HookRegistry.cpp"
             "${SRC}/modsys/EventBus.cpp"
     LIBRARIES Abc::Core)
 
