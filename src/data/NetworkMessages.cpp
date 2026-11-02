@@ -652,8 +652,8 @@ void installHook(const char *name, pfnUserMsgHook hook,
   if (previous && previous != hook)
     original = previous;
   framework::hooks::add(framework::hooks::Kind::kMessage, name,
-                        reinterpret_cast<void *>(hook),
-                        reinterpret_cast<void *>(original));
+                        reinterpret_cast<std::uintptr_t>(hook),
+                        reinterpret_cast<std::uintptr_t>(original));
 }
 
 // True when the address is a function inside the loaded client image. Used to

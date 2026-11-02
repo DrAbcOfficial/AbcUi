@@ -2,6 +2,7 @@
 #include "Commands.h"
 
 #include <charconv>
+#include <cstdint>
 #include <format>
 #include <map>
 #include <set>
@@ -158,8 +159,8 @@ bool ensureBridge(const char *name) {
   entry.hooked = true;
   registry().pending.erase(key);
   framework::hooks::add(framework::hooks::Kind::kCommand, entry.name.c_str(),
-                        reinterpret_cast<void *>(&commandThunk),
-                        reinterpret_cast<void *>(previous));
+                        reinterpret_cast<std::uintptr_t>(&commandThunk),
+                        reinterpret_cast<std::uintptr_t>(previous));
   return true;
 }
 
@@ -271,8 +272,8 @@ void refreshAfterClientLoad() {
         entry.original = previous;
         framework::hooks::add(framework::hooks::Kind::kCommand,
                               entry.name.c_str(),
-                              reinterpret_cast<void *>(&commandThunk),
-                              reinterpret_cast<void *>(previous));
+                              reinterpret_cast<std::uintptr_t>(&commandThunk),
+                              reinterpret_cast<std::uintptr_t>(previous));
       }
       continue;
     }

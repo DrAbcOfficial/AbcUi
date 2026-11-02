@@ -19,7 +19,8 @@ std::uint64_t NextDispatch = 1;
 
 } // namespace
 
-void add(Kind kind, const char *name, void *installed, void *predecessor) {
+void add(Kind kind, const char *name, std::uintptr_t installed,
+         std::uintptr_t predecessor) {
   if (!name || !*name)
     return;
   Key key{kind, name};

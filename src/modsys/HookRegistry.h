@@ -21,8 +21,8 @@ enum class Kind : int {
 struct Entry {
   Kind kind = Kind::kCommand;
   std::string name;
-  void *installed = nullptr;
-  void *predecessor = nullptr;
+  std::uintptr_t installed = 0;
+  std::uintptr_t predecessor = 0;
   std::uint64_t generation = 0;
   std::uint32_t dispatches = 0;
   std::uint32_t handled = 0;
@@ -31,7 +31,8 @@ struct Entry {
 };
 
 // Registers or re-registers one entry. Re-registration bumps generation.
-void add(Kind kind, const char *name, void *installed, void *predecessor);
+void add(Kind kind, const char *name, std::uintptr_t installed,
+         std::uintptr_t predecessor);
 void note(Kind kind, const char *name, bool handled);
 void setHead(Kind kind, const char *name, bool head);
 void remove(Kind kind, const char *name);
