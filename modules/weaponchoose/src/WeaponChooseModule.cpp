@@ -413,6 +413,13 @@ void onOwnershipChanged(void *, const void *) {
     rebuild();
 }
 
+// A layout rule edit or the filter toggle recomputed the effective slots and
+// positions; the open bar re-groups without opening or closing itself.
+void onLayoutChanged(void *, const void *) {
+  if (Visible)
+    rebuild();
+}
+
 // ---- panel callbacks ----
 
 void panelOnData(void *, double frameTime) {
@@ -493,6 +500,8 @@ void onModuleLoad() {
                          &onOwnershipChanged, nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_HUD_DROP_WEAPON, 0, &onOwnershipChanged,
                          nullptr);
+  Api->events->subscribe(ABCUI_CHANNEL_HUD_WEAPON_LAYOUT, 0, &onLayoutChanged,
+                         nullptr);
 
   for (intptr_t i = 0; i < ABCUI_WEAPON_SLOT_COUNT; i++) {
     AbcUiClaimDesc desc{};
@@ -562,7 +571,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.weaponchoose";
-  out->version = "3.0.0";
+  out->version = "3.1.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

@@ -3,9 +3,9 @@
   "name": "Weapon Choose",
   "description": "Ecco-style weapon selection bar with slot icons, ammo bars and the confirm-key pick.",
   "author": "DrAbc",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "abi": 3,
-  "minAbcUi": "0.10.0",
+  "minAbcUi": "0.11.0",
   "entry": "entry/abcui_weaponchoose.dll",
   "dependencies": [
     "abcui.base"
