@@ -22,6 +22,8 @@
 #include <string_view>
 #include <vector>
 
+#include <abcui/abi.h>
+
 #include "ModuleResources.h"
 
 namespace framework::arbitration {
@@ -39,8 +41,8 @@ enum class DomainMode : int {
 };
 
 using Claim = std::uint64_t; // 0 is never issued.
-using Predicate = int (*)(void *userdata, const void *event);
-using Handler = std::int32_t (*)(void *userdata, const void *event);
+using Predicate = int(ABCUI_CALL *)(void *userdata, const void *event);
+using Handler = std::int32_t(ABCUI_CALL *)(void *userdata, const void *event);
 
 // Handler result bits. A handler that returns kHandled owns the event; the
 // host applies kCloseMenu to the framework menu fact. kChain asks the host to
