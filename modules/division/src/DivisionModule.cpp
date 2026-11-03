@@ -28,6 +28,7 @@
 #include "../../common/BulletFx.h"
 #include "../../common/BulletLayer.h"
 #include "../../common/FollowAnchor.h"
+#include "../../common/Lean.h"
 #include "../../common/SegmentBar.h"
 #include "../../common/ValueBounce.h"
 
@@ -733,10 +734,13 @@ void panelOnRedraw(void *, double frameTime) {
   float hipX = 0.0f;
   float hipY = 0.0f;
   if (Anchor.Armed && player.index != 0) {
-    // The player origin is the hull centre, i.e. hip height: the plate's
-    // vertical centre rides it, its right edge keeps a fixed gap to the model.
+    // The render origin is the hull centre the engine actually draws the
+    // model at every frame (renderMotion: interpolation/prediction output,
+    // not the packet-cadence network sample - a sparse server stream would
+    // otherwise step the anchor). The plate's vertical centre rides it, its
+    // right edge keeps a fixed gap to the model.
     float screen[2] = {};
-    if (Api->ui->project(player.origin, screen) == 0) {
+    if (Api->ui->project(player.renderMotion.origin, screen) == 0) {
       projected = true;
       hipX = screen[0];
       hipY = screen[1];
@@ -769,14 +773,25 @@ void panelOnRedraw(void *, double frameTime) {
   }
 
   // Third person only: the plate leans like a world-anchored panel. The lean
-  // follows the player's horizontal offset from the camera axis, so the panel
-  // reads as attached to the character; first person keeps it flat. The
-  // projection's perspective gives the parallelogram its depth, the skew
-  // supplies the parallelogram itself.
+  // reads the hip x rebuilt from the applied plate position (post follow
+  // solver, post viewport clamp), so the plate and its lean share one
+  // smoothed trajectory and the lean moves exactly as fast as the plate
+  // does; first person keeps it flat. The projection's perspective gives the
+  // parallelogram its depth, the skew supplies the parallelogram itself.
+  const bool snap = Anchor.SnapNext || followNow != Anchor.FollowWas;
+  float position[2] = {};
+  moduleui::follow::step(Anchor.Follow, targetX, targetY, clusterWidth,
+                         clusterHeight, limits, static_cast<float>(frameTime),
+                         snap, position);
+  Anchor.SnapNext = false;
+  Anchor.FollowWas = followNow;
+
   float tilt = 0.0f;
   if (followNow) {
-    const float halfWidth = static_cast<float>(width) * 0.5f;
-    tilt = std::clamp((hipX - halfWidth) / halfWidth, -1.0f, 1.0f);
+    tilt = moduleui::lean::amount(
+        moduleui::lean::hipXFromApplied(position[0], clusterWidth,
+                                        kHipOffsetDp * scale, rightSide),
+        static_cast<float>(width));
   }
   if (!Anchor.TiltApplied || std::fabs(tilt - Anchor.Tilt) > 0.02f) {
     // The far edge is the one away from the character, so the lean mirrors
@@ -790,14 +805,6 @@ void panelOnRedraw(void *, double frameTime) {
     Anchor.Tilt = tilt;
     Anchor.TiltApplied = true;
   }
-
-  const bool snap = Anchor.SnapNext || followNow != Anchor.FollowWas;
-  float position[2] = {};
-  moduleui::follow::step(Anchor.Follow, targetX, targetY, clusterWidth,
-                         clusterHeight, limits, static_cast<float>(frameTime),
-                         snap, position);
-  Anchor.SnapNext = false;
-  Anchor.FollowWas = followNow;
 
   if (!Anchor.Applied ||
       std::fabs(position[0] - Anchor.AppliedX) >= kDeadbandPx ||
