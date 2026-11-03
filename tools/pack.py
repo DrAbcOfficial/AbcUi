@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Pack first-party UI module packages.
 
-Every release directory under modules/ carrying a manifest.json becomes one zip
-package at <out-dir>/<id>-<version>.zip:
+Every release directory under modules/ carrying a manifest.json becomes one
+package at <out-dir>/<id>-<version>.zip. Ids listed in DEFAULT_DISABLED_MODULES
+ship as <id>-<version>.disable instead: the same archive in the loader's
+disabled form, inactive until the user enables it in Settings > Modules.
 
     manifest.json            (archive root)
     entry/<abcui_id>.dll     (manifest "entry" path, STORED)
@@ -42,6 +44,11 @@ REQUIRED_FIELDS = (
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 # The SDK example is opt-in, never a release UI feature.
 EXAMPLE_MODULES = {"demo"}
+# Packages that ship inactive: written under the loader's disabled extension
+# (".disable", the module manager's own rename pair), so the user opts in
+# through Settings > Modules. Add a manifest id here to ship another package
+# disabled by default.
+DEFAULT_DISABLED_MODULES = {"abcui.division"}
 
 
 def read_sdk_abi_version(source_dir):
@@ -157,8 +164,13 @@ def pack_module(module_dir, manifest, build_dir, config, out_dir):
         raise FileNotFoundError("missing entry DLL: %s (build the module "
                                 "target for config %s first)" % (dll, config))
     assets = asset_entries(module_dir, config)
-    out_path = os.path.join(out_dir, "%s-%s.zip" % (manifest["id"],
-                                                    manifest["version"]))
+    # The loader reads ".zip" as enabled and ".disable" as the same archive
+    # disabled, so a default-disabled id ships directly in the latter form.
+    extension = (".disable"
+                 if manifest["id"] in DEFAULT_DISABLED_MODULES else ".zip")
+    out_path = os.path.join(out_dir, "%s-%s%s" % (manifest["id"],
+                                                  manifest["version"],
+                                                  extension))
     write_package(out_path, manifest, dll, assets)
     print("packed %s (%d asset(s))" % (out_path, len(assets)))
     return True

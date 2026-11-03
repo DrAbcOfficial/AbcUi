@@ -174,7 +174,8 @@ cmake --build --preset win32-release --target dist
 
 The archive is written to `build/win32-release/dist/AbcUi-<version>.zip` and
 ships the full module set, including both the classic and third-person HUD
-groups. Enable one of the two sets in Settings > Modules.
+groups. The third-person group ships disabled; enable it in Settings >
+Modules.
 
 If AbcCore is checked out elsewhere, pass `-DABC_CORE_DIR=<path>` when configuring. The Renderer redirect is needed because AbcUi uses a Renderer version from the DrAbcOfficial fork.
 

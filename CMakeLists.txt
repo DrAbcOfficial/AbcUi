@@ -520,7 +520,7 @@ endif()
 # extracted directly into the Sven Co-op directory:
 #   svencoop/metahook/plugins/AbcUi.dll
 #   svencoop/abc/abcui/render_backend/abcui_render_renderer.dll
-#   svencoop/abc/abcui/modules/*.zip (all UI resources)
+#   svencoop/abc/abcui/modules/*.zip and *.disable (all UI resources)
 #   svencoop/metahook/gamedata/abc/abcui-layout/ (UI-owned engine layouts)
 #   README.md
 # The target is named `dist` because `package` is reserved by the CPack
