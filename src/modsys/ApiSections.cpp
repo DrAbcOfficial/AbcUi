@@ -964,6 +964,21 @@ void apiPlayerState(AbcUiPlayerState *out) {
     state.origin[2] = local->curstate.origin[2];
     state.messageNum = local->curstate.messagenum;
     gEngfuncs.GetViewAngles(state.angles);
+    // Motion snapshots: the network state verbatim (no avelocity on the
+    // delta stream), and the engine's per-frame render state (see
+    // cl_entity.h: the "actual render position" the plate-class consumers
+    // track). The reserved speed fields stay zero until a ref_params chain
+    // supplies them.
+    std::memcpy(state.motion.origin, local->curstate.origin,
+                sizeof(state.motion.origin));
+    std::memcpy(state.motion.angles, local->curstate.angles,
+                sizeof(state.motion.angles));
+    std::memcpy(state.motion.velocity, local->curstate.velocity,
+                sizeof(state.motion.velocity));
+    std::memcpy(state.renderMotion.origin, local->origin,
+                sizeof(state.renderMotion.origin));
+    std::memcpy(state.renderMotion.angles, local->angles,
+                sizeof(state.renderMotion.angles));
   }
   abi::copySnapshot(out, state);
 }

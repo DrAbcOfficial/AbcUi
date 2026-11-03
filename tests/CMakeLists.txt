@@ -143,6 +143,11 @@ abcui_add_test(abc_ui_follow_anchor
     SOURCES DivisionFollow.cpp
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
 
+# The third-person lean rebuilt from the applied plate (header-only).
+abcui_add_test(abc_ui_lean
+    SOURCES DivisionLean.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
 # The 10-point cell arithmetic behind the group's segmented bars.
 abcui_add_test(abc_ui_segment_bar
     SOURCES SegmentBar.cpp

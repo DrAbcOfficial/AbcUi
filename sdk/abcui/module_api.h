@@ -294,6 +294,30 @@ typedef struct AbcUiHudState {
   int32_t spectateTarget;
 } AbcUiHudState;
 
+// Local player motion snapshot mirrored from the last received network state
+// (entity_state_t; field order follows the engine definition). avelocity is
+// not part of the delta stream (only the server-side entvars carry it), so it
+// is a reserved field and always zero. Appended in AbcUi 0.11.1.
+typedef struct AbcUiPlayerMotion {
+  float origin[3];
+  float angles[3];
+  float velocity[3];
+  float avelocity[3]; // reserved: always zero
+} AbcUiPlayerMotion;
+
+// Motion snapshot the engine is actually rendering this frame (cl_entity_t
+// origin/angles - the "actual render position": interpolation/extrapolation/
+// prediction output, valid every frame). The engine exposes no render-side
+// velocity, so both speed fields are reserved zeros; a future ref_params_t
+// chain (V_CalcRefdef simorg/simvel) would only change the filling, never
+// this layout. Appended in AbcUi 0.11.1.
+typedef struct AbcUiPlayerRenderMotion {
+  float origin[3];
+  float angles[3];
+  float velocity[3];  // reserved: always zero
+  float avelocity[3]; // reserved: always zero
+} AbcUiPlayerRenderMotion;
+
 // Local player readout (data->playerState): copied out, never a pointer.
 typedef struct AbcUiPlayerState {
   uint32_t structSize;
@@ -303,6 +327,10 @@ typedef struct AbcUiPlayerState {
   float origin[3];    // local player origin (grenade range / projection)
   float angles[3];    // local view angles (gEngfuncs.GetViewAngles)
   int32_t messageNum; // entity message generation (stale-entity gate)
+  // Motion snapshots (both copied in the same playerState call); appended in
+  // AbcUi 0.11.1 - an older host simply leaves them zero-initialised.
+  AbcUiPlayerMotion motion;
+  AbcUiPlayerRenderMotion renderMotion;
 } AbcUiPlayerState;
 
 // PlayerTrace types shared with data->traceEndPos.
