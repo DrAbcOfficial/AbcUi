@@ -4,6 +4,11 @@
 	<link type="text/rcss" href="../rcss/deadmsg.rcss"/>
 </head>
 <body id="deadmsg">
-	<div id="feed"></div>
+	<!-- The scroll viewport (#feed) and the bottom-packed row stack (#stack)
+	     it glides over the tail of; see deadmsg.rcss and followTail in
+	     KillFeedModule.cpp. Rows are appended into the stack by the panel. -->
+	<div id="feed">
+		<div id="stack"></div>
+	</div>
 </body>
 </rml>

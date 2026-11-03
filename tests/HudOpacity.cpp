@@ -8,6 +8,7 @@
 #include "modsys/Facts.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -30,6 +31,11 @@ struct Element {
   std::map<std::string, std::string> properties;
   std::vector<Element *> children;
   bool removed = false;
+  // Scroll metrics as the layout engine would report them; the killfeed's
+  // tail glide reads them and writes scrollTop back.
+  float scrollTop = 0.0f;
+  float scrollHeight = 0.0f;
+  float clientHeight = 0.0f;
 };
 
 struct Document {
@@ -220,6 +226,18 @@ int main() {
   ui.elementRemove = [](AbcUiElement *target) {
     element(target)->removed = true;
   };
+  ui.elementScrollTop = [](AbcUiElement *target) {
+    return element(target)->scrollTop;
+  };
+  ui.elementSetScrollTop = [](AbcUiElement *target, float top) {
+    element(target)->scrollTop = top;
+  };
+  ui.elementScrollHeight = [](AbcUiElement *target) {
+    return element(target)->scrollHeight;
+  };
+  ui.elementClientHeight = [](AbcUiElement *target) {
+    return element(target)->clientHeight;
+  };
   ui.elementChild = [](AbcUiElement *parent, int32_t index) {
     auto &children = element(parent)->children;
     return index >= 0 && static_cast<size_t>(index) < children.size()
@@ -295,6 +313,17 @@ int main() {
       const AbcUiKillFeedEvent event{"victim", "attacker", "weapon"};
       CHECK(state.dispatch(ABCUI_CHANNEL_TEXTFEED_KILL_FEED, &event));
       CHECK(state.rows.size() == 1);
+      // The arrival glide: the layout pass behind the append grows the
+      // viewport's scrollable overflow (written straight onto the viewport
+      // element here) and the panel eases toward the tail instead of letting
+      // the reflow jump. One row over the 60dp viewport = 15dp of tail.
+      Element &feed = state.documents.at("deadmsg").elements["feed"];
+      feed.scrollHeight = 75.0f;
+      feed.clientHeight = 60.0f;
+      state.frame("deadmsg", 0.1);
+      CHECK_NEAR(feed.scrollTop, 15.0f * (1.0f - std::exp(-0.1 / 0.075)), 0.01);
+      state.frame("deadmsg", 1.0);
+      CHECK_NEAR(feed.scrollTop, 15.0f, 0.01);
       state.frame("deadmsg", 6.0);
       state.frame("deadmsg", 0.25);
       CHECK_NEAR(opacity(*state.rows.back()), 0.5, 0.001);

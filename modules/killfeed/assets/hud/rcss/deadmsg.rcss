@@ -4,10 +4,21 @@
    reverse-iterate PerformLayout bottom-anchored the rows inside the
    60dp-tall box); each row: attacker | [inflictor] | victim, right-packed.
    Colours are the old scheme DeathMsgPanel.* values.
-   Note: the old code sized box/rows in proportional units (60u box, row
-   height = box/count); the Rml rows are content-sized, so a full 6-row
-   feed clips the oldest row's top few dp against the 60dp box - rows
-   fade out long before the feed regularly fills that deep. */
+
+   Motion (the chat log's arrival, chat.rcss): a new row rises 7dp from
+   under its slot while it fades in, and the feed glides its viewport to
+   the tail instead of letting the reflow jump the rows one height up -
+   see followTail in KillFeedModule.cpp.
+
+   The feed is therefore two shells. #feed is the scroll viewport: it
+   stays 60dp tall and scrolls programmatically only (RmlUi computes the
+   scrollable overflow for `hidden` but builds no scrollbar widgets, and
+   the panel document is pointer-transparent, so nothing can scroll it by
+   hand). #stack is the bottom-packed row stack: `min-height` keeps the
+   rows hugging the viewport's bottom while the rows are shallower than
+   the box, and past capacity the stack grows out of the viewport's
+   bottom-right scrollable overflow instead of spilling out of its top,
+   which is what gives the glide a range to cover. */
 
 #deadmsg {
 	position: absolute;
@@ -24,9 +35,31 @@
 	top: 0dp;
 	width: 200dp;
 	height: 100%;
+	overflow: hidden;
+}
+
+#deadmsg #stack {
 	display: flex;
 	flex-flow: column;
 	justify-content: flex-end;
+	min-height: 100%;
+}
+
+/* New-row entrance: a row rises from just under its slot while it fades
+   in, so a burst reads as kills stacking up from the feed's bottom edge
+   instead of blinking on. RmlUi (re)starts an animation whenever the
+   computed `animation` value changes, and the panel never touches that
+   property after a row is appended, so every row plays this exactly
+   once. */
+@keyframes deadmsg-row-enter {
+	from {
+		transform: translateY(7dp);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0dp);
+		opacity: 1;
+	}
 }
 
 #deadmsg .row {
@@ -44,6 +77,7 @@
 	border-radius: 4dp;
 	padding: 1dp 2dp;
 	margin-bottom: 1dp;
+	animation: deadmsg-row-enter 0.18s cubic-out;
 }
 
 #deadmsg .attacker {

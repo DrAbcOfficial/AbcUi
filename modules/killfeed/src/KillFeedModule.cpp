@@ -4,6 +4,11 @@
 // by hud_deathnotice_count, rows fading out after hud_deathnotice_time
 // (0.5s fade); hud_deathnotice toggles the whole feed (persisted contract).
 //
+// Motion: a new row plays the stylesheet's entrance animation (rise + fade,
+// see deadmsg.rcss) while the panel glides the feed's viewport to the tail
+// (followTail below, the chat log's arrival scroll), so a burst reads as one
+// upward slide instead of the reflow jumping the rows a height per kill.
+//
 // Port note kept from the built-in copy: the old AddItem console print built
 // its printf with transposed Q_snprintf arguments (the victim name landed in
 // the format slot); the port prints the localized "DeathMsg_ConsolePrint"
@@ -15,6 +20,7 @@
 #include <abcui/module_api.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <string>
 #include <vector>
@@ -116,9 +122,6 @@ void addItem(const char *victim, const char *attacker, const char *inflictor) {
   AbcUiDocument *doc = panelDocument();
   if (!doc)
     return;
-  AbcUiElement *feed = Api->ui->querySelector(doc, "feed");
-  if (!feed)
-    return;
 
   // A killfeed during a hide-all token still appends the row (it renders
   // with the document's next show), but must not un-hide the panel.
@@ -129,6 +132,8 @@ void addItem(const char *victim, const char *attacker, const char *inflictor) {
     setVisible(true);
 
   // Server-derived names are escaped through the shared helper (D-17 #3).
+  // Rows land in the bottom-packed stack behind the scroll viewport (the
+  // stack's growth is what opens the range the tail glide covers).
   const std::string rml = "<div class=\"attacker font-default\">" +
                           escapeText(attacker) +
                           "</div>"
@@ -137,7 +142,10 @@ void addItem(const char *victim, const char *attacker, const char *inflictor) {
                           "]</div>"
                           "<div class=\"victim font-default\">" +
                           escapeText(victim) + "</div>";
-  AbcUiElement *row = Api->ui->elementAppendRml(feed, rml.c_str(), "row");
+  AbcUiElement *stack = Api->ui->querySelector(doc, "stack");
+  if (!stack)
+    return;
+  AbcUiElement *row = Api->ui->elementAppendRml(stack, rml.c_str(), "row");
   if (!row)
     return;
 
@@ -192,6 +200,46 @@ void onHideToken(void *, const void *payload) {
     setVisible(true);
 }
 
+// ---- tail glide ----
+
+// The "scroll up" half of the new-row motion (the chat log's followTail,
+// ChatModule.cpp): appending a row re-anchors the bottom-packed stack one row
+// height higher and grows the viewport's scrollable overflow by the same
+// distance at the tail end, and this per-frame ease moves the viewport down
+// to the tail instead of letting the reflow jump. The target is re-read every
+// frame, so a burst of kills merges into one glide, and a frame the layout
+// pass has not caught up in simply finds no distance to cover. Unlike the
+// chat there is no reader side - the HUD document is pointer-transparent, so
+// the follow is never disarmed and the viewport writes need no own-scroll
+// guard; the clamp that lands the viewport after a fade-out trim dispatches
+// nothing and leaves it parked on the tail.
+constexpr double kFollowSeconds = 0.075;
+constexpr float kFollowEpsilonDp = 0.5f;
+
+void followTail(double frameTime) {
+  AbcUiDocument *doc = panelDocument();
+  if (!doc)
+    return;
+  AbcUiElement *feed = Api->ui->querySelector(doc, "feed");
+  if (!feed)
+    return;
+  const float top = Api->ui->elementScrollTop(feed);
+  const float tail =
+      Api->ui->elementScrollHeight(feed) - Api->ui->elementClientHeight(feed);
+  if (tail - top <= kFollowEpsilonDp)
+    return; // the stack fits its viewport (or is parked on the tail)
+  float next = tail;
+  if (frameTime > 0.0) {
+    // Frame-time independent ease-out: the first frames carry most of the
+    // distance, which is what makes a one-row arrival read as a glide.
+    const double ease = 1.0 - std::exp(-frameTime / kFollowSeconds);
+    next = top + (tail - top) * static_cast<float>(ease);
+    if (tail - next < kFollowEpsilonDp)
+      next = tail;
+  }
+  Api->ui->elementSetScrollTop(feed, next);
+}
+
 // ---- panel callbacks ----
 
 void panelOnData(void *, double frameTime) {
@@ -232,6 +280,10 @@ void panelOnData(void *, double frameTime) {
     }
     ++itor;
   }
+  // The appended row is measured by the next layout pass: until then the
+  // scroll range is stale and the ease finds nothing to cover (the chat's
+  // snap step has no equivalent here - no input line, no viewport resize).
+  followTail(frameTime);
   if (Rows.empty())
     Api->ui->documentHide(doc);
 }
