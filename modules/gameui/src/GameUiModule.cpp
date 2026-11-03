@@ -261,7 +261,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       api->ui->structSize < sizeof(AbcUiUiApi) ||
       api->documents->structSize <
           offsetof(AbcUiDocumentsApi, registerRecovery) ||
-      api->menu->structSize < offsetof(AbcUiMenuApi, quitNow) ||
+      api->menu->structSize < offsetof(AbcUiMenuApi, restartNow) ||
       api->votemenu->structSize < sizeof(AbcUiVoteMenuApi) ||
       api->playerlist->structSize < sizeof(AbcUiPlayerListApi) ||
       api->commandmenu->structSize < sizeof(AbcUiCommandMenuApi) ||

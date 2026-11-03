@@ -1235,6 +1235,11 @@ colorpicker {
 	border-color: #e08a6a;
 }
 
+.module-conflict {
+	color: #d7b56a;
+	border-color: #d7b56a;
+}
+
 .module-toggle {
 	flex: 0 0 auto;
 	margin-left: 8dp;

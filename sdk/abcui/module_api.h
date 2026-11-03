@@ -1222,6 +1222,11 @@ typedef struct AbcUiMenuApi {
   int32_t(ABCUI_CALL *dispatchCommand)(const char *name);
   // AbcUi >= 0.8.5: confirmed exit, independent of the quit-dialog resources.
   void(ABCUI_CALL *quitNow)(void);
+  // AbcUi >= 0.11.2: relaunch the game through a fresh process of the same
+  // executable and command line, then confirmed exit (the normal teardown
+  // applies the module rename batch before the next instance reads it).
+  // Falls back to the plain exit when the relaunch is refused.
+  void(ABCUI_CALL *restartNow)(void);
 } AbcUiMenuApi;
 
 // ------------------------------------------------------------- votemenu ----

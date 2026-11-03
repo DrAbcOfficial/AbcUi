@@ -5,7 +5,7 @@
   "author": "DrAbc",
   "version": "3.0.0",
   "abi": 3,
-  "minAbcUi": "0.10.0",
+  "minAbcUi": "0.11.2",
   "entry": "entry/abcui_gameui.dll",
   "dependencies": [
     "abcui.base"

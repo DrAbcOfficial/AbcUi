@@ -174,6 +174,28 @@ bool moduleHasProblem(const AbcUiModuleInfo &info) {
   return false;
 }
 
+// One side of a live conflict pair: ok reads from the side that loaded
+// past the conflict, active from the excluded side; both need the partner
+// enabled, so either means the pair is live for this module.
+bool moduleInLiveConflict(const AbcUiModuleInfo &info) {
+  const AbcUiModulesApi *api = modulesApi();
+  if (!api)
+    return false;
+  const int32_t relationCount =
+      info.dependencyCount + info.dependentCount + info.conflictCount;
+  for (int32_t i = 0; i < relationCount; ++i) {
+    AbcUiModuleRelation relation{};
+    relation.structSize = sizeof(relation);
+    if (!api->relationAt(info.index, i, &relation))
+      break;
+    if (relation.kind == ABCUI_MODULE_REL_CONFLICT &&
+        (relation.state == ABCUI_MODULE_REL_ACTIVE ||
+         relation.state == ABCUI_MODULE_REL_OK))
+      return true;
+  }
+  return false;
+}
+
 bool moduleMatchesFilter(const AbcUiModuleInfo &info,
                          const std::string &filter) {
   if (filter == "loaded")
@@ -326,6 +348,9 @@ std::string moduleRowMarkup(const AbcUiModuleInfo &info) {
       info.state == ABCUI_MODULE_STATE_INVALID)
     markup += moduleBadge(resolve("#abcui.gameui/Settings_ModulesProblem"),
                           "module-problem");
+  if (moduleInLiveConflict(info))
+    markup += moduleBadge(resolve("#abcui.gameui/Settings_ModulesConflict"),
+                          "module-conflict");
   markup += "</div>";
   const bool targetEnable = info.pending != ABCUI_MODULE_PENDING_NONE
                                 ? (info.flags & ABCUI_MODULE_FLAG_ENABLED) != 0
@@ -404,7 +429,7 @@ std::string lowerAscii(std::string text) {
 std::string ModuleFilter = "all";
 std::string ModuleDetailFile;
 std::string ModuleStatusText;
-bool ModuleQuitConfirmOpen = false;
+bool ModuleRestartConfirmOpen = false;
 bool ModuleBannerDismissed = false;
 uint32_t ModuleRenderedRevision = 0;
 
@@ -424,7 +449,7 @@ void modulesRefresh() {
 void moduleReset() {
   ModuleDetailFile.clear();
   ModuleStatusText.clear();
-  ModuleQuitConfirmOpen = false;
+  ModuleRestartConfirmOpen = false;
   ModuleBannerDismissed = false;
   if (modulesApi())
     modulesApi()->clearPreview();
@@ -481,7 +506,7 @@ void renderModules() {
   setText("module-status", ModuleStatusText);
   setDisplay("module-status", !ModuleStatusText.empty());
 
-  setDisplay("module-quit-confirm", ModuleQuitConfirmOpen);
+  setDisplay("module-restart-confirm", ModuleRestartConfirmOpen);
   ModuleRenderedRevision = api->revision();
 }
 
@@ -521,19 +546,19 @@ bool handleModuleAction(const std::string &action, AbcUiElement *entry) {
     }
     return true;
   }
-  if (action == kActionModuleQuit) {
-    ModuleQuitConfirmOpen = true;
-    showLayer(kLayerModuleQuitConfirm);
+  if (action == kActionModuleRestart) {
+    ModuleRestartConfirmOpen = true;
+    showLayer(kLayerModuleRestartConfirm);
     return true;
   }
-  if (action == kActionModuleQuitYes) {
-    ModuleQuitConfirmOpen = false;
+  if (action == kActionModuleRestartYes) {
+    ModuleRestartConfirmOpen = false;
     hideLayers();
-    Api->menu->quitNow();
+    Api->menu->restartNow();
     return true;
   }
-  if (action == kActionModuleQuitNo) {
-    ModuleQuitConfirmOpen = false;
+  if (action == kActionModuleRestartNo) {
+    ModuleRestartConfirmOpen = false;
     hideLayers();
     return true;
   }

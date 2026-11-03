@@ -515,6 +515,10 @@ void ModuleCatalog::resolve(std::vector<Entry> &entries,
 
   std::set<std::string> loaded;
   std::set<std::string> failed;
+  // A conflict pair reports from both sides: when a package is excluded
+  // because its partner loaded first, the loaded side records the exclusion
+  // so the manager page shows the whole pair without deriving it itself.
+  std::vector<std::pair<int32_t, std::string>> conflictExclusions;
   bool progress = true;
   while (progress) {
     progress = false;
@@ -573,6 +577,8 @@ void ModuleCatalog::resolve(std::vector<Entry> &entries,
         entry.nextState = kSkipped;
         if (!preview)
           addDiagnostic(entry, severity, code, subject, {});
+        if (code == kDiagConflictActive)
+          conflictExclusions.emplace_back(selected.at(subject), id);
         progress = true;
         continue;
       }
@@ -594,6 +600,15 @@ void ModuleCatalog::resolve(std::vector<Entry> &entries,
                     "dependency cycle prevents this module from loading");
     }
   }
+
+  // The loaded side of every excluded pair reports the exclusion as an
+  // informational note (it loaded fine, so this is never a problem badge).
+  for (const auto &[winnerIndex, loserId] : conflictExclusions) {
+    if (!preview)
+      addDiagnostic(entries[static_cast<size_t>(winnerIndex)], kInfo,
+                    kDiagConflictInactive, loserId,
+                    "the conflicting package was excluded");
+  }
 }
 
 void ModuleCatalog::buildRelations(std::vector<Entry> &entries) const {
@@ -608,6 +623,31 @@ void ModuleCatalog::buildRelations(std::vector<Entry> &entries) const {
         fallback = &entry;
     }
     return fallback;
+  };
+  // The index twin of findById for the mirror pass, which appends the
+  // reciprocal edge onto the target entry.
+  const auto findIdIndex = [&](const std::string &id) -> int32_t {
+    int32_t fallback = -1;
+    for (size_t i = 0; i < entries.size(); ++i) {
+      const Entry &candidate = entries[i];
+      if (candidate.id != id)
+        continue;
+      if (candidate.effectiveEnabled && candidate.nextState == kWillLoad)
+        return static_cast<int32_t>(i);
+      if (fallback < 0)
+        fallback = static_cast<int32_t>(i);
+    }
+    return fallback;
+  };
+
+  // A declared conflict is live only while both sides are enabled, and the
+  // state reads from the observing side: the side that loads reports the
+  // pair as resolved (ok), the excluded side reports it as blocking
+  // (active).
+  const auto conflictState = [](const Entry &from, const Entry &to) {
+    if (!from.effectiveEnabled || !to.effectiveEnabled)
+      return kRelationDisabled;
+    return from.nextState == kWillLoad ? kRelationOk : kRelationActive;
   };
 
   for (Entry &entry : entries) {
@@ -664,15 +704,36 @@ void ModuleCatalog::buildRelations(std::vector<Entry> &entries) const {
       } else {
         relation.name = target->name;
         relation.file = target->file;
-        if (!target->effectiveEnabled) {
-          relation.state = kRelationDisabled;
-        } else if (entry.effectiveEnabled) {
-          relation.state = kRelationActive;
-        } else {
-          relation.state = kRelationDisabled;
-        }
+        relation.state = conflictState(entry, *target);
       }
       entry.relations.push_back(std::move(relation));
+    }
+  }
+
+  // The mirror edge: a module whose conflict partner declares the pair
+  // against it shows the same edge, so both sides of a conflict tell the
+  // story no matter which package declared it. A package that declares the
+  // pair itself already owns its edge from the loop above.
+  for (size_t i = 0; i < entries.size(); ++i) {
+    const Entry &entry = entries[i];
+    for (const std::string &id : entry.conflicts) {
+      const int32_t targetIndex = findIdIndex(id);
+      if (targetIndex < 0 ||
+          entries[static_cast<size_t>(targetIndex)].file == entry.file)
+        continue;
+      const Entry &target = entries[static_cast<size_t>(targetIndex)];
+      if (std::find(target.conflicts.begin(), target.conflicts.end(),
+                    entry.id) != target.conflicts.end())
+        continue;
+      Relation relation;
+      relation.kind = kConflict;
+      relation.declaredBy = false;
+      relation.id = entry.id;
+      relation.name = entry.name;
+      relation.file = entry.file;
+      relation.state = conflictState(target, entry);
+      entries[static_cast<size_t>(targetIndex)].relations.push_back(
+          std::move(relation));
     }
   }
 }

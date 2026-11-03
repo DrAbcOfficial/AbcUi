@@ -153,9 +153,11 @@ dependencies and conflicts. Disable a module by changing its package extension
 from `.zip` to `.disable`; enable it by changing the extension back.
 
 Changes are recorded during the session and written when you exit the game
-normally. They take effect after a full restart. A forced exit loses the pending
-changes. Disabling a module that others depend on can also disable those modules
-on the next launch. Disabling `abcui.gameui` removes the Modules page itself.
+normally. They take effect after a full restart. The Modules page offers a
+restart button that exits and relaunches the game so the pending changes
+apply right away. A forced exit loses the pending changes. Disabling a module
+that others depend on can also disable those modules on the next launch.
+Disabling `abcui.gameui` removes the Modules page itself.
 
 ## Build the dist package
 

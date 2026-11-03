@@ -263,8 +263,8 @@ const char *safeFocusForLayer(const char *id) {
     return "bind-reset-no";
   if (std::string_view(id) == kLayerSprayFile)
     return "spray-file-cancel";
-  if (std::string_view(id) == kLayerModuleQuitConfirm)
-    return "module-quit-no";
+  if (std::string_view(id) == kLayerModuleRestartConfirm)
+    return "module-restart-no";
   return "leave-stay";
 }
 
@@ -318,7 +318,7 @@ bool isDirty() {
 void hideLayers() {
   for (const char *id :
        {kLayerReset, kLayerLeave, kLayerBindConflict, kLayerBindReset,
-        kLayerSprayFile, kLayerModuleQuitConfirm}) {
+        kLayerSprayFile, kLayerModuleRestartConfirm}) {
     setDisplay(id, false);
   }
   ActiveLayer.clear();
@@ -616,8 +616,8 @@ bool requestLeave() {
   if (layerVisible()) {
     // Module layers are page-local state, not model flags; close them here
     // so ESC does not immediately re-show the same layer.
-    if (ActiveLayer == kLayerModuleQuitConfirm)
-      ModuleQuitConfirmOpen = false;
+    if (ActiveLayer == kLayerModuleRestartConfirm)
+      ModuleRestartConfirmOpen = false;
     // The bind-conflict prompt projects from the model's pending flag:
     // hiding the DOM alone would re-show it on the next render, so resolve
     // it as "cancel" exactly like the dialog's own cancel button.

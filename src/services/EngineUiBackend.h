@@ -107,6 +107,12 @@ public:
   void quitGame() override;
   void resumeGame() override;
 
+  // Extension beside the frozen contract: relaunch the process with the
+  // same executable, command line and working directory, then run the
+  // confirmed quit. Degenerates to quitGame() when the relaunch is refused;
+  // shares quitGame's once latch.
+  void restartGame();
+
   // Single-player pause parity (not part of the T04 interface on purpose:
   // the frozen contract predates the T09 pause decision). The module calls
   // these on the controller's in-game menu transitions.

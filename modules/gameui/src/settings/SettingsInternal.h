@@ -63,9 +63,9 @@ constexpr const char *kActionModuleFilter = "modules-filter";
 constexpr const char *kActionModuleRescan = "modules-rescan";
 constexpr const char *kActionModuleDetail = "modules-detail";
 constexpr const char *kActionModuleToggle = "modules-toggle";
-constexpr const char *kActionModuleQuit = "module-quit";
-constexpr const char *kActionModuleQuitYes = "module-quit-yes";
-constexpr const char *kActionModuleQuitNo = "module-quit-no";
+constexpr const char *kActionModuleRestart = "module-restart";
+constexpr const char *kActionModuleRestartYes = "module-restart-yes";
+constexpr const char *kActionModuleRestartNo = "module-restart-no";
 constexpr const char *kActionModuleLater = "modules-later";
 
 // Page-internal layer DOM ids.
@@ -74,7 +74,7 @@ constexpr const char *kLayerLeave = "leave-confirm";
 constexpr const char *kLayerBindConflict = "bind-conflict";
 constexpr const char *kLayerBindReset = "bind-reset-confirm";
 constexpr const char *kLayerSprayFile = "spray-file";
-constexpr const char *kLayerModuleQuitConfirm = "module-quit-confirm";
+constexpr const char *kLayerModuleRestartConfirm = "module-restart-confirm";
 
 // The section components that own one singleton widget block in settings.rml:
 // component name -> block element id. Each claimed block is moved into the
@@ -207,7 +207,7 @@ extern std::string SpraySelected;
 extern std::string ModuleFilter;
 extern std::string ModuleDetailFile;
 extern std::string ModuleStatusText;
-extern bool ModuleQuitConfirmOpen;
+extern bool ModuleRestartConfirmOpen;
 extern bool ModuleBannerDismissed;
 extern uint32_t ModuleRenderedRevision;
 

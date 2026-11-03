@@ -57,6 +57,9 @@ struct Host {
   // Confirmed exit without the dialog (the emergency page's Quit button: a
   // fault-time exit must not depend on a page that may be the broken one).
   std::function<void()> quitNow;
+  // Relaunch + confirmed exit (the module manager's restart button; the
+  // pending module renames apply on the normal-exit teardown).
+  std::function<void()> restartNow;
   std::function<int32_t(const char *)> dispatchCommand;
 };
 

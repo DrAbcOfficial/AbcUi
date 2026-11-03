@@ -5,6 +5,8 @@
 
 #include <abc/Console.h>
 
+#include <windows.h>
+
 #include <cstdio>
 #include <cstring>
 
@@ -118,6 +120,31 @@ void EngineUiBackend::quitGame() {
   QuitIssued = true;
   // The confirmed branch of the original Quit flow (QuitNoConfirm).
   clientCmd("quit\n");
+}
+
+void EngineUiBackend::restartGame() {
+  if (QuitIssued)
+    return;
+  // The relaunch runs before the confirmed quit: the fresh process spends
+  // seconds booting while this one walks the normal-exit teardown, so the
+  // pending module renames (applied there) settle before the next instance
+  // scans the module directory. The full command line (the engine path
+  // included) and the working directory ride along; a refused relaunch
+  // degrades to the plain exit.
+  STARTUPINFOA startup{};
+  startup.cb = sizeof(startup);
+  PROCESS_INFORMATION process{};
+  if (!CreateProcessA(nullptr, GetCommandLineA(), nullptr, nullptr, FALSE, 0,
+                      nullptr, nullptr, &startup, &process)) {
+    abc::ConsoleWarn("[AbcUi] restart degraded to quit: relaunch failed "
+                     "(%lu)\n",
+                     GetLastError());
+    quitGame();
+    return;
+  }
+  CloseHandle(process.hThread);
+  CloseHandle(process.hProcess);
+  quitGame();
 }
 
 void EngineUiBackend::resumeGame() {

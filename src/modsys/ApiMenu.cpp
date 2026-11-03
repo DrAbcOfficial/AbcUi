@@ -79,6 +79,12 @@ void apiQuitNow() {
     seam.quitNow();
 }
 
+void apiRestartNow() {
+  const auto &seam = services::menu::host();
+  if (seam.restartNow)
+    seam.restartNow();
+}
+
 module_resources::Registration &takeoverLifetime() {
   static module_resources::Registration lifetime;
   return lifetime;
@@ -123,6 +129,7 @@ const AbcUiMenuApi kMenuApi = {
     apiSetNativeTakeover,
     apiDispatchCommand,
     apiQuitNow,
+    apiRestartNow,
 };
 
 } // namespace

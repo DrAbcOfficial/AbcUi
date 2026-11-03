@@ -342,6 +342,7 @@ GameUiModule::GameUiModule()
     finishDispatch();
   };
   menuHost.quitNow = [this] { menuBackend().quitGame(); };
+  menuHost.restartNow = [this] { menuBackend().restartGame(); };
   menuHost.dispatchCommand = [this](const char *name) -> int32_t {
     if (!Context || !services::nativeUiBridge().armed())
       return 0;
