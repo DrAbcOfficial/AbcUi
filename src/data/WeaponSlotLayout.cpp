@@ -1,8 +1,9 @@
 #include "WeaponSlotLayout.h"
 
 #include <algorithm>
-#include <array>
 #include <numeric>
+#include <set>
+#include <vector>
 
 namespace weaponres {
 namespace {
@@ -16,10 +17,6 @@ int clampSlot(int slot) {
   return std::clamp(slot, 0, kLayoutSlotCount - 1);
 }
 
-int clampPosition(int position) {
-  return std::clamp(position, 0, kLayoutMaxPosition);
-}
-
 } // namespace
 
 std::vector<LayoutResult> layoutWeapons(std::span<const LayoutInput> weapons) {
@@ -29,8 +26,8 @@ std::vector<LayoutResult> layoutWeapons(std::span<const LayoutInput> weapons) {
     const LayoutInput &input = weapons[i];
     targets[i].slot =
         clampSlot(input.hasOverride ? input.overrideSlot : input.serverSlot);
-    targets[i].pos =
-        clampPosition(input.hasOverride ? input.overridePos : input.serverPos);
+    // Positions are unbounded ordering keys; they pass through as-is.
+    targets[i].pos = input.hasOverride ? input.overridePos : input.serverPos;
   }
 
   std::vector<size_t> order(weapons.size());
@@ -51,15 +48,15 @@ std::vector<LayoutResult> layoutWeapons(std::span<const LayoutInput> weapons) {
     return a < b;
   });
 
-  std::array<std::array<bool, kLayoutMaxPosition + 1>, kLayoutSlotCount> used{};
+  // Next-free-position scan per slot, unbounded upward (the old
+  // WeaponList::Add `while (positions.count(pos)) pos++` shift).
+  std::vector<std::set<int>> used(kLayoutSlotCount);
   for (const size_t index : order) {
     const Target target = targets[index];
     int pos = target.pos;
-    while (pos <= kLayoutMaxPosition && used[target.slot][pos])
+    while (used[target.slot].count(pos) > 0)
       ++pos;
-    if (pos > kLayoutMaxPosition)
-      pos = kLayoutMaxPosition;
-    used[target.slot][pos] = true;
+    used[target.slot].insert(pos);
     results[index] = LayoutResult{target.slot, pos};
   }
   return results;

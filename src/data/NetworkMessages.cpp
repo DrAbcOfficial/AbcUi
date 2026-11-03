@@ -132,7 +132,7 @@ int __MsgFunc_WeaponList(const char *pszName, int iSize, void *pbuf) {
   if (data.max2 == 255)
     data.max2 = -1;
   data.slot = msg.readChar();
-  data.slotPos = msg.readChar();
+  data.slotPos = msg.readByte();
   data.id = msg.readShort();
   data.flags = msg.readByte();
   if (!msg.ok())

@@ -50,10 +50,6 @@ void publishWeapon(const char *channel, const Weapon *weapon) {
 constexpr int kMaxWeaponName = 128;
 constexpr int kMaxAmmoTypes =
     256; // AmmoX byte domain; -1 is the no-ammo sentinel.
-// Dense prediction-array capacity, not the weapon-id domain. Sven plugin
-// weapons use ids beyond this; their ownership arrives through CurWeapon /
-// WeapPickup instead of being read out of the fixed array.
-constexpr int kPredictionWeaponSlots = 64;
 
 struct SlotData {
   std::map<int, int> positions; // slotPos -> weapon id
@@ -115,6 +111,10 @@ bool LayoutOverridesEnabled = false;
 
 constexpr size_t kMaxLayoutOverrides = 256;
 constexpr size_t kMaxLayoutName = 64;
+// Client rule grammar ceiling for one override position (mirrors the
+// weaponfilter module's validPosition). Server placements and the collision
+// shifts are unbounded ordering keys - never clamped on this side.
+constexpr int kMaxOverridePosition = 255;
 
 // Rule names are client input and reach this map only as identifiers.
 bool validLayoutName(std::string_view name) {
@@ -285,10 +285,9 @@ void rebuildSlots() {
     Weapon &weapon = *weapons[i];
     weapon.slot = layout[i].slot;
     weapon.slotPos = layout[i].pos;
-    // A slot that ran out of positions pins the last weapons at 255; the
-    // first occupant keeps the addressable position.
-    RegistryState.slots[weapon.slot].positions.emplace(weapon.slotPos,
-                                                       weapon.id);
+    // The layout assigned unique positions; plain assignment keeps the map
+    // authoritative even when a weapon re-registers onto the same key.
+    RegistryState.slots[weapon.slot].positions[weapon.slotPos] = weapon.id;
   }
   for (auto &slot : RegistryState.slots)
     slot.updateMinMax();
@@ -329,10 +328,10 @@ void dropAllWeapons() {
   framework::eventBus().publishRaw(ABCUI_CHANNEL_HUD_DROP_ALL_WEAPONS, nullptr);
 }
 
-// Ownership signals for ids outside the dense prediction array. WeapPickup
-// and CurWeapon arrive for plugin weapons even when weaponDataArray cannot
-// represent their id; keep the id in owned so a later WeaponList registration
-// and the weapon menu see it.
+// Ownership complements to the prediction diff: WeapPickup and CurWeapon
+// carry pickups the engine hands out directly, and keep ids owned even while
+// their WeaponList has not arrived yet so a later registration and the
+// weapon menu see them.
 void markOwned(int id) {
   if (id <= 0 || !RegistryState.owned.insert(id).second)
     return;
@@ -356,7 +355,7 @@ void onWeaponList(const netmsg::WeaponListData &data) {
   // base name. Accept only a command-safe identifier (AbcEssential applies
   // the same rule to its signal feed).
   if (data.id <= 0 || data.slot < 0 ||
-      data.slot >= static_cast<int>(kMaxWeaponSlot) || data.slotPos < 0 ||
+      data.slot >= static_cast<int>(kMaxWeaponSlot) ||
       !framework::ResourceLimits::identifierName(data.name))
     return;
   if (const auto itor = RegistryState.byId.find(data.id);
@@ -471,14 +470,20 @@ void onTxferPredictionData(const weapon_data_s *weaponDataArray) {
   // Ownership diff against the prediction array. Only m_iId/m_iClip are
   // consumed: the old sync also copied a "m_iClip2" that lived past the
   // real weapon_data_t layout (fabricated WeaponData struct) - not ported.
+  //
+  // Ownership on the wire is weapon_data[weaponId].m_iId, and the array is
+  // indexed by the full engine id domain. Sven Co-op 5.x (server.so
+  // GetWeaponData) zeroes 256 entries and writes weapon_data[iId].m_iId for
+  // every owned weapon; the shipped client (CHudAmmo::UpdateWeaponList) reads
+  // weapon_data[ri->iId] with no bound. This loop mirrors that authoritative
+  // consumer: every registered id indexes the array.
+  // DO NOT add a capacity bound, clamp or "defensive" range check on the id
+  // here. A cap silently drops plugin weapons (ids past the cap never become
+  // owned) and the selector collapses to the one weapon CurWeapon reported -
+  // the regression this file once shipped as kPredictionWeaponSlots = 64.
   std::vector<const Weapon *> pickedUp;
   std::vector<const Weapon *> dropped;
   for (const auto &[id, weapon] : RegistryState.byId) {
-    // The prediction array is dense and has no id table. Plugin weapon ids
-    // above its capacity are owned through CurWeapon/WeapPickup below; do
-    // not index past the array for them.
-    if (id >= kPredictionWeaponSlots)
-      continue;
     const weapon_data_s &data = weaponDataArray[id];
     if (data.m_iId <= 0) {
       if (RegistryState.owned.erase(id))
@@ -683,7 +688,7 @@ void selectSlot(int slot, int advance, bool wheel) {
 
 int32_t setLayoutOverride(const char *name, int slot, int position) {
   if (!name || !validLayoutName(name) || slot < 0 || slot >= kLayoutSlotCount ||
-      position < 0 || position > kLayoutMaxPosition)
+      position < 0 || position > kMaxOverridePosition)
     return ABCUI_ERROR_INVALID;
   const auto existing = LayoutOverrides.find(std::string_view(name));
   if (existing == LayoutOverrides.end() &&

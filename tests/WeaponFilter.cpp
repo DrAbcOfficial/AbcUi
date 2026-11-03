@@ -1,5 +1,5 @@
 // abc_ui_weapon_filter - the client-side weapon selector layout: override
-// precedence, collision shifting inside the slot, clamping, order
+// precedence, collision shifting inside the slot, slot clamping, order
 // independence and the server-layout fallback. Pure placement rules, no
 // engine and no registry.
 #include "data/WeaponSlotLayout.h"
@@ -156,31 +156,35 @@ int main() {
 
   TEST_CASE("clamped");
   {
+    // The slot is the engine's 0..9 selector domain and clamps; positions
+    // are unbounded ordering keys and pass through untouched.
     const std::vector<Entry> entries = {
         {"weapon_low", -3, -7}, {"weapon_high", 42, 999, true, 99, 1000}};
-    checkPlacement(entries, "weapon_low", 0, 0);
-    checkPlacement(entries, "weapon_high", kLayoutSlotCount - 1,
-                   kLayoutMaxPosition);
+    checkPlacement(entries, "weapon_low", 0, -7);
+    checkPlacement(entries, "weapon_high", kLayoutSlotCount - 1, 1000);
   }
 
-  TEST_CASE("full-slot-stays");
+  TEST_CASE("full-slot-overflows");
   {
-    // A rule takes the first position of a completely full slot; the displaced
-    // weapon stays in that slot at position 255 instead of moving elsewhere.
+    // A rule takes the first position of a slot already holding 0..255; the
+    // displaced weapons shift upward without bound, so position 256 exists.
+    // DO NOT pin overflow at a last-addressable position: a ceiling stacks
+    // the overflow weapons on one unaddressable key (the old 255 pin).
     std::vector<Entry> entries;
     entries.reserve(257);
-    for (int pos = 0; pos <= kLayoutMaxPosition; ++pos) {
+    for (int pos = 0; pos <= 255; ++pos) {
       entries.push_back(Entry{"weapon_" + std::to_string(pos), 0, pos});
     }
     entries.push_back(Entry{"weapon_rule", 0, 0, true, 0, 0});
     const std::vector<LayoutResult> results = layoutOf(entries);
     checkPlacement(entries, "weapon_rule", 0, 0);
     checkPlacement(entries, "weapon_0", 0, 1);
-    checkPlacement(entries, "weapon_255", 0, kLayoutMaxPosition);
+    checkPlacement(entries, "weapon_254", 0, 255);
+    checkPlacement(entries, "weapon_255", 0, 256);
     for (const LayoutResult &result : results) {
       CHECK(result.slot == 0);
       CHECK(result.pos >= 0);
-      CHECK(result.pos <= kLayoutMaxPosition);
+      CHECK(result.pos <= 256);
     }
   }
 

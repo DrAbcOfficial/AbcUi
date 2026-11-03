@@ -15,8 +15,6 @@ namespace weaponres {
 
 // Selector slot domain (the old MAX_WEAPON_SLOT).
 inline constexpr int kLayoutSlotCount = 10;
-// Highest selector position inside one slot.
-inline constexpr int kLayoutMaxPosition = 255;
 
 // One weapon's placement input. hasOverride means "a rule exists and the
 // client filter is enabled"; the raw server values are always supplied so a
@@ -39,13 +37,16 @@ struct LayoutResult {
 // order:
 //
 // 1. The target is the override when present, the server placement otherwise;
-//    the slot is clamped to 0..9 and the position to 0..255.
+//    the slot is clamped to 0..9. Positions are pure ordering keys and pass
+//    through unclamped - the server byte domain, the rule grammar and the
+//    shifted results all stay addressable.
 // 2. Weapons are placed by (slot, position), overrides before server entries
 //    at the same target, then by name, then by input order, so the result does
 //    not depend on registration order.
 // 3. A taken target moves the later weapon to the next free position inside
-//    the same slot. When no later position is free it keeps position 255: a
-//    rule never moves a weapon out of the slot the user chose.
+//    the same slot, without bound (the old WeaponList::Add shift). DO NOT
+//    clamp, cap or pin the position here: a ceiling stacks every overflow
+//    weapon on one unaddressable key and the selector loses them.
 std::vector<LayoutResult> layoutWeapons(std::span<const LayoutInput> weapons);
 
 } // namespace weaponres

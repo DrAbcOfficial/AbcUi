@@ -109,7 +109,12 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `[A-Za-z0-9_]{1,64}` names and never sent to the server. Collisions place
   overrides first, then server entries, then by name, and shift the later
   weapon to the next free position inside the same slot; the filter's
-  enabled state only selects which placement is applied.
+  enabled state only selects which placement is applied. Server weapon ids
+  span the engine's full id domain (Sven Co-op 5.x: `ItemInfoArray` and the
+  `weapon_data[]` prediction array hold 256 entries; the shipped client
+  indexes `weapon_data` by weapon id unbounded), so prediction sync must
+  mirror that - never add a client-side capacity gate on the weapon id, and
+  never pin shifted positions at a ceiling.
 - Custom Rml elements that are downcast after lookup declare
   `RMLUI_RTTI_DeclareWithParent`/`RMLUI_RTTI_Define` and are reached through
   `rmlui_dynamic_cast`; raw `static_cast` between element types is not

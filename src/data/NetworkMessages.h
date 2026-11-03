@@ -18,7 +18,9 @@
 namespace netmsg {
 
 // WeaponList payload: the fields as they arrive on the wire (max ammo 255
-// means unlimited, decoded to -1 like the old parser).
+// means unlimited, decoded to -1 like the old parser). Slot is the signed
+// engine selector domain 0..9, position the unsigned byte domain 0..255 and
+// id the positive short domain - none of them is clamped on this side.
 struct WeaponListData {
   std::string name;
   int ammoType = -1;
