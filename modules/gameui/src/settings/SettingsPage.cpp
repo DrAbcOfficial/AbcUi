@@ -701,7 +701,9 @@ void ensureSkeleton() {
   if (!Page || !Api->settings)
     return;
   const int rowsNow = Api->settings->rowCount();
-  const int bindsNow = Api->settings->bindRowCount();
+  // The key-code rows ride the bind list, so they are part of its skeleton
+  // count too (they load with the settings table, not the bind file).
+  const int bindsNow = Api->settings->bindRowCount() + keyRowCount();
   const int pagesNow = pageCount();
   if (rowsNow == BuiltRowCount && bindsNow == BuiltBindCount &&
       pagesNow == BuiltPageCount)
@@ -738,14 +740,18 @@ void render(const char *skipRow) {
         continue;
       renderRow(row, skipRow && std::string_view(row.cvar) == skipRow);
     }
-    const int32_t bindCount =
-        hasComponent("bindings") ? Api->settings->bindRowCount() : 0;
+    const bool bindings = hasComponent("bindings");
+    const int32_t bindCount = bindings ? Api->settings->bindRowCount() : 0;
     for (int32_t index = 0; index < bindCount; ++index) {
       AbcUiBindAction row{};
       row.structSize = sizeof(row);
       if (Api->settings->bindRowAt(index, &row) && !row.header)
         renderBindRow(row);
     }
+    // The key-code rows (the vote answer keys) live in the same list; their
+    // projection is the settings row's draft, so they re-render with it.
+    if (bindings)
+      forEachKeyRow([](const AbcUiSettingRow &row) { renderKeyBindRow(row); });
     renderBindConflict();
   }
   // Always projected: with no model the sections render their fail-closed
@@ -797,7 +803,11 @@ void onDocumentReady(void *) {
   buildNavigation();
   BuiltPageCount = pageCount();
   BuiltRowCount = Api->settings ? Api->settings->rowCount() : 0;
-  BuiltBindCount = Api->settings ? Api->settings->bindRowCount() : 0;
+  // The key-code rows are part of the bind list's skeleton (see
+  // ensureSkeleton): counting only the engine actions here would make the
+  // first paint rebuild the list forever.
+  BuiltBindCount =
+      Api->settings ? Api->settings->bindRowCount() + keyRowCount() : 0;
   // The legacy all-in-one projection has no cards to claim the widgets: show
   // the parking host so the bind list and the hardware blocks stay reachable.
   if (pageCount() == 0)
@@ -806,6 +816,14 @@ void onDocumentReady(void *) {
 
 void onDocumentHide(void *) {
   Presented = false;
+  // A capture session cannot outlive the page that shows its prompt: the
+  // session's token would keep swallowing keys for a hidden page.
+  if (Api->settings) {
+    char capture[ABCUI_SETTINGS_CVAR_MAX];
+    capture[0] = '\0';
+    if (Api->settings->keyCaptureCvar(capture, sizeof(capture)))
+      Api->settings->keyCaptureCancel();
+  }
   hideLayers();
   moduleReset();
   closeModelContextMenu();

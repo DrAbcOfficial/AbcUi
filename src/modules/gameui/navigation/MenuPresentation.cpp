@@ -65,7 +65,9 @@ void GameUiModule::dismissMenu() {
   // the controller, hide the documents, release ownership. No unpause
   // here - the simulation only resumes on a decided close
   // (EngineUiBackend::resumeGame), never on a force-release.
-  // A running capture session ends with it (draft-free, clamp off).
+  // A running capture session ends with it (draft-free, clamp off); the
+  // key-code row session shares the token, so its cvar target goes too.
+  KeyCaptureCvar.clear();
   endKeyCapture();
   BindModel.cancelCapture();
   Command->cancelPending();

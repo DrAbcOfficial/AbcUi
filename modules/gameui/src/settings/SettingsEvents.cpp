@@ -230,6 +230,18 @@ void onClick(AbcUiElement *target) {
   } else if (action == kActionAdopt && !rowKey.empty()) {
     Api->settings->adopt(rowKey.c_str());
     render();
+  } else if (action == kActionKeyCapture && !rowKey.empty()) {
+    // Key-code row (the vote answer keys): the framework takes the input
+    // token and the next physical edge lands in the row's draft. A second
+    // click cannot reach here while the session is live - the capture clamp
+    // swallows the input - so the key itself or ESC ends it.
+    Api->settings->keyCaptureBegin(rowKey.c_str());
+    render();
+  } else if (action == kActionKeyClear && !rowKey.empty()) {
+    // Clear = the unbound key number (0): the vote panel then shows no key
+    // for that answer. A draft like every other edit - Apply writes the cvar.
+    Api->settings->setDraftText(rowKey.c_str(), "0");
+    render();
   } else if (action == kActionBindCapture && !rowKey.empty()) {
     // Start a capture session: the model takes the row, the framework takes
     // the router token (kCapture tier) and the input clamp. A click on an
@@ -255,6 +267,9 @@ void onClick(AbcUiElement *target) {
       showLayer(kLayerBindReset);
   } else if (action == kActionBindResetYes) {
     Api->settings->bindResetDefaults();
+    // The key-code rows in the same list are cvar-backed: their defaults come
+    // from the page table, so this confirmation stages both halves.
+    resetKeyRowDefaults();
     hideLayers();
     render();
     refocusDefault();

@@ -96,6 +96,14 @@ abcui_add_test(abc_ui_text_encoding
 abcui_add_test(abc_ui_keybind_model
     SOURCES KeyBindModel.cpp "${SRC}/services/settings/KeyBindModel.cpp")
 
+# The key-code rows (the vote answer keys): the schema's float-only "key"
+# flag and the plain float transaction that persists the captured key number.
+abcui_add_test(abc_ui_settings_key_row
+    SOURCES SettingsKeyRow.cpp
+            "${SRC}/services/uiconfig/UiDefinitions.cpp"
+            "${SRC}/services/settings/SettingsModel.cpp"
+    LIBRARIES Abc::Core)
+
 # The settings.scr SERVER_OPTIONS document the create-game page reads and
 # writes back: the shipped grammar, the four typed rows, the writer's
 # normalization/header and a parse -> serialize -> parse round trip.

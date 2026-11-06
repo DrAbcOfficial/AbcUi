@@ -85,6 +85,16 @@ void onMenuPaint(void *, const void *payload) {
 int32_t onEscape(void *, const void *) {
   if (!Page || !Api->documents->visible(Page))
     return 0;
+  // A live key-code capture is the top-most surface: ESC ends it without
+  // touching the draft instead of raising the unsaved-changes prompt.
+  char capture[ABCUI_SETTINGS_CVAR_MAX];
+  capture[0] = '\0';
+  if (Api->settings &&
+      Api->settings->keyCaptureCvar(capture, sizeof(capture))) {
+    Api->settings->keyCaptureCancel();
+    render();
+    return 1;
+  }
   return requestLeave() ? 1 : 0;
 }
 

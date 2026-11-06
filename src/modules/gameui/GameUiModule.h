@@ -61,6 +61,11 @@ private:
   void endKeyCapture();
   void onCapturedKeyEdge(int keynum);
   void onKeyCaptureForceLost();
+  // The key-code row session (the vote answer keys): one Cvar row, the
+  // captured edge lands in its draft; the same input token as the bind
+  // capture, never both at once.
+  bool beginRowKeyCapture(const std::string &cvar);
+  void cancelRowKeyCapture();
   void onNativeMenuShow() override;
   void onNativeMenuHide() override;
   void onNativeConsoleOpen() override;
@@ -170,6 +175,9 @@ private:
   framework::uiinput::Token PageToken;
   KeyCaptureOwner CaptureOwner;
   framework::uiinput::Token CaptureToken;
+  // The key-code row whose capture session is live ("" when none); the
+  // bind model owns its own capturing row, so the two cannot both run.
+  std::string KeyCaptureCvar;
   bool MenuPresented = false;
   uint32_t NextPhaseSession = 1;
 };

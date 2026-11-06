@@ -71,6 +71,15 @@ int boundKey(AbcUiCvarHandle cvar, int fallback) {
               : fallback;
 }
 
+// The key name shown in front of an answer caption. A cleared key (0, the
+// settings page's "clear") binds nothing, so the caption stands alone.
+std::string keyPrefix(AbcUiCvarHandle cvar, int fallback) {
+  const int keynum = boundKey(cvar, fallback);
+  if (keynum <= 0)
+    return {};
+  return keyName(keynum) + " ";
+}
+
 void setVisible(bool visible) {
   if (visible == Visible)
     return;
@@ -114,10 +123,8 @@ void startVote([[maybe_unused]] int type, const char *content, const char *yes,
       yes && *yes ? std::string(yes) : defaultCaption("Vote_DefaultYes", "Yes");
   const std::string noCaption =
       no && *no ? std::string(no) : defaultCaption("Vote_DefaultNo", "No");
-  const std::string yesLabel =
-      keyName(boundKey(KeyYes, kDefaultYesKey)) + " " + yesCaption;
-  const std::string noLabel =
-      keyName(boundKey(KeyNo, kDefaultNoKey)) + " " + noCaption;
+  const std::string yesLabel = keyPrefix(KeyYes, kDefaultYesKey) + yesCaption;
+  const std::string noLabel = keyPrefix(KeyNo, kDefaultNoKey) + noCaption;
   const std::string escapedYes = escapeText(yesLabel.c_str());
   const std::string escapedNo = escapeText(noLabel.c_str());
   setInnerRml("yes-text", escapedYes.c_str());

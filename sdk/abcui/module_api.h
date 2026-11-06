@@ -1932,6 +1932,7 @@ typedef struct AbcUiConnectionApi {
 #define ABCUI_SET_ROW_REQUIRE_ENABLED 0x20
 #define ABCUI_SET_ROW_MISSING 0x40  // the cvar is not registered
 #define ABCUI_SET_ROW_EDITABLE 0x80 // editable(cvar) right now
+#define ABCUI_SET_ROW_KEY 0x100     // the value is an engine key number
 
 // One projected row. The static LIST options (optionCount/optionAt) and the
 // scanned string choices (choiceCount/choiceAt) are read through the section
@@ -2198,6 +2199,20 @@ typedef struct AbcUiSettingsApi {
   // The Rml source of the preview texture of the spray just made (empty
   // clears the preview).
   int32_t(ABCUI_CALL *sprayPreviewUri)(char *out, uint32_t outSize);
+
+  // --- key-code rows (ABCUI_SET_ROW_KEY) -------------------------------
+  // A key-code row is a float cvar holding an engine key number (the vote
+  // answer keys): the page shows the key name and binds it by pressing a
+  // key instead of typing the number. The session owns the input token and
+  // the input clamp; the next physical edge lands in the row's DRAFT, so
+  // the write still waits for the page's Apply like every other row.
+  // The cvar whose capture session is live; 0 when none is.
+  int32_t(ABCUI_CALL *keyCaptureCvar)(char *out, uint32_t outSize);
+  // Starts a session on one key-code row; 0 when refused (unknown row, not
+  // a key row, unavailable, or another capture/bind session owns the input).
+  int32_t(ABCUI_CALL *keyCaptureBegin)(const char *cvar);
+  // Ends the live session without touching the draft (ESC path).
+  void(ABCUI_CALL *keyCaptureCancel)(void);
 } AbcUiSettingsApi;
 
 // -------------------------------------------------------------- modules ----

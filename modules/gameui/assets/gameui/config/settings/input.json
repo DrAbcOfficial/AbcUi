@@ -11,7 +11,29 @@
       "components": [
         "bindings"
       ]
+    },
+    {
+      "id": "vote-keys",
+      "label": "#abcui.gameui/Settings_SecVoteKeys",
+      "components": []
     }
   ],
-  "items": []
+  "items": [
+    {
+      "cvar": "hud_votekey_yes",
+      "label": "#abcui.gameui/Settings_ABC_hud_votekey_yes",
+      "section": "vote-keys",
+      "kind": "float",
+      "key": true,
+      "default": 92.0
+    },
+    {
+      "cvar": "hud_votekey_no",
+      "label": "#abcui.gameui/Settings_ABC_hud_votekey_no",
+      "section": "vote-keys",
+      "kind": "float",
+      "key": true,
+      "default": 93.0
+    }
+  ]
 }

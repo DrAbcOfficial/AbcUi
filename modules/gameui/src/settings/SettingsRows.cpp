@@ -155,6 +155,9 @@ void buildRows() {
       AbcUiSettingRow row{};
       if (!rowById(index, row))
         continue;
+      // Key-code rows live in the bind list, never in a row card.
+      if (row.flags & ABCUI_SET_ROW_KEY)
+        continue;
       if (row.section[0] && lastSection != row.section) {
         lastSection = row.section;
         if (open)
@@ -207,6 +210,10 @@ void buildRows() {
           }
         }
         const auto visibleRow = [&](const AbcUiSettingRow &row) {
+          // Key-code rows are listed by the bind list (their section only
+          // names the group header there), so no card carries them.
+          if (row.flags & ABCUI_SET_ROW_KEY)
+            return false;
           if (declared.id[0] && std::string_view(row.section) != declared.id)
             return false;
           if (std::find(cvars.begin(), cvars.end(), row.cvar) == cvars.end())

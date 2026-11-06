@@ -113,6 +113,10 @@
 				</div>
 			</div>
 			<div class="settings-widget" id="widget-bindings">
+				<!-- The engine's kb_act list, and the key-code rows (the vote
+				     answer keys) as a final group in the same list: the same
+				     row markup, buttons and status vocabulary, with the draft
+				     living in the settings table instead of the bind table. -->
 				<div id="bind-status"></div>
 				<div id="bindrows"></div>
 			</div>

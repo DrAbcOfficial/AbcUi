@@ -63,6 +63,9 @@ struct SettingDefinition {
   // The value is a player-palette hue (topcolor / bottomcolor): the page
   // shows the represented colour on the slider thumb.
   bool HueSwatch = false;
+  // The value is an engine key number (the vote answer keys): the page shows
+  // the key name and binds it by pressing a key.
+  bool KeyCodeRow = false;
   // The string-enum scan yields FILE paths (menu video / music): the page
   // labels the dropdown with the file stem and the write validation accepts
   // a relative path.

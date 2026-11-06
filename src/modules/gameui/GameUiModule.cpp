@@ -140,11 +140,23 @@ GameUiModule::GameUiModule()
     return true;
   };
   pageAccess.beginBindCapture = [this](int32_t actionIndex) {
+    // One capture session at a time: a live key-code row session owns the
+    // input token and the clamp.
+    if (!KeyCaptureCvar.empty())
+      return false;
     if (!BindModel.beginCapture(static_cast<int>(actionIndex)))
       return false;
     startKeyCapture();
     return BindModel.capturing();
   };
+  // The key-code rows (the vote answer keys) need the same token and clamp,
+  // but the captured number lands in the settings row's draft instead of the
+  // bind model - the row's Apply then writes the cvar.
+  pageAccess.beginKeyCapture = [this](const std::string &cvar) {
+    return beginRowKeyCapture(cvar);
+  };
+  pageAccess.cancelKeyCapture = [this] { cancelRowKeyCapture(); };
+  pageAccess.keyCaptureCvar = [this] { return KeyCaptureCvar; };
   services::settings::setPageAccess(pageAccess);
   // T19: the create-game launcher (typed cvar writes + the shipped
   // command sequence) and its backend relay. The thunk reaches the
@@ -792,6 +804,10 @@ void GameUiModule::onShutdown() {
   // down (the pairing guarantee covers the shutdown path too).
   VoiceModel.stopTest();
   Spray->shutdown();
+  // No capture target survives a teardown: the token release below is a
+  // stale no-op when the router already reset, but the row target is plain
+  // state the next cycle must not inherit.
+  KeyCaptureCvar.clear();
   CaptureToken.release();
   PageToken.release();
   // Stop callbacks and release queries before any observing document dies.

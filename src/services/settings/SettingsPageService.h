@@ -67,6 +67,13 @@ struct PageAccess {
   // the framework owns (the router's kCapture tier). True when the session is
   // live afterwards.
   std::function<bool(int32_t actionIndex)> beginBindCapture;
+  // The key-code row counterpart (the vote answer keys): one Cvar row instead
+  // of an engine action, the same input token and clamp. The captured key
+  // number lands in the row's draft through the composition root.
+  std::function<bool(const std::string &cvar)> beginKeyCapture;
+  std::function<void()> cancelKeyCapture;
+  // The cvar whose key-code capture session is live, empty when none.
+  std::function<std::string()> keyCaptureCvar;
 };
 
 void setPageAccess(const PageAccess &access);

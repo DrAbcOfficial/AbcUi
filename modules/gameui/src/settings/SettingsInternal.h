@@ -38,6 +38,11 @@ constexpr const char *kActionLeaveStay = "leave-stay";
 constexpr const char *kActionToggle = "toggle";
 constexpr const char *kActionAdopt = "adopt";
 constexpr const char *kActionBindCapture = "bind-capture";
+// The key-code rows (the vote answer keys) ride the bind list: the same
+// capture/clear intents, backed by the row's cvar draft instead of the
+// engine command table.
+constexpr const char *kActionKeyCapture = "key-capture";
+constexpr const char *kActionKeyClear = "key-clear";
 constexpr const char *kActionBindClear = "bind-clear";
 constexpr const char *kActionBindRemove = "bind-remove";
 constexpr const char *kActionBindReset = "bind-reset-defaults";
@@ -238,6 +243,19 @@ const char *safeFocusForLayer(const char *id);
 bool layerVisible();
 bool rowFound(const char *cvar, AbcUiSettingRow &out);
 bool rowById(int32_t index, AbcUiSettingRow &out);
+// The key-code rows (the vote answer keys) as one iteration: the bind list,
+// the skeleton count, the status summary and the reset all walk the settings
+// table the same way.
+template <typename Fn> void forEachKeyRow(Fn &&visit) {
+  if (!Api->settings)
+    return;
+  const int32_t rows = Api->settings->rowCount();
+  for (int32_t index = 0; index < rows; ++index) {
+    AbcUiSettingRow row{};
+    if (rowById(index, row) && (row.flags & ABCUI_SET_ROW_KEY))
+      visit(row);
+  }
+}
 bool videoFacts(AbcUiVideoFacts &out);
 bool voiceFacts(AbcUiVoiceFacts &out);
 bool currentVideoStaged();
@@ -303,6 +321,19 @@ void handleColorChange(const char *elementId, const char *value);
 bool bindHeaderIsRule(const AbcUiBindAction &row);
 std::string bindLabelText(const std::string &label);
 std::string bindActionLabel(const AbcUiBindAction &row);
+// Key-code rows in the same list: the group header takes its declared
+// section's label, the row/status vocabulary is the bind list's.
+std::string sectionLabelById(const std::string &id);
+int keyRowCount();
+void appendKeyBindRows(std::string &markup);
+void renderKeyBindRow(const AbcUiSettingRow &row);
+void resetKeyRowDefaults();
+// Shared bind-list skeleton/projection (engine actions and key-code rows).
+void AppendBindRowMarkup(std::string &markup, const std::string &id,
+                         const char *captureAction, const char *clearAction);
+void renderBindRowParts(const std::string &id, const std::string &label,
+                        const std::string &keys, bool capturing, bool enabled,
+                        int bindState);
 void buildBindRows();
 void renderBindRow(const AbcUiBindAction &row);
 void renderBindConflict();

@@ -129,6 +129,8 @@ bool fillRow(const services::settings::RowView &view, AbcUiSettingRow &full) {
     full.flags |= ABCUI_SET_ROW_HUE_SWATCH;
   if (view.row->FileChoices)
     full.flags |= ABCUI_SET_ROW_FILE_CHOICES;
+  if (view.row->KeyCodeRow)
+    full.flags |= ABCUI_SET_ROW_KEY;
   if (view.row->HasDefault)
     full.flags |= ABCUI_SET_ROW_HAS_DEFAULT;
   if (view.row->RequireEnabled)
@@ -835,6 +837,35 @@ int32_t apiSprayPreviewUri(char *out, uint32_t outSize) {
   return 1;
 }
 
+// --------------------------------------------------------- key-code rows ----
+
+int32_t apiKeyCaptureCvar(char *out, uint32_t outSize) {
+  const services::settings::PageAccess &seam = services::settings::pageAccess();
+  if (!seam.keyCaptureCvar)
+    return 0;
+  const std::string cvar = seam.keyCaptureCvar();
+  if (cvar.empty())
+    return 0;
+  copyText(cvar, out, outSize);
+  return 1;
+}
+
+int32_t apiKeyCaptureBegin(const char *cvar) {
+  const services::settings::PageAccess &seam = services::settings::pageAccess();
+  if (!seam.beginKeyCapture || !cvar || !*cvar)
+    return 0;
+  const int32_t result = seam.beginKeyCapture(cvar) ? 1 : 0;
+  bump();
+  return result;
+}
+
+void apiKeyCaptureCancel(void) {
+  const services::settings::PageAccess &seam = services::settings::pageAccess();
+  if (seam.cancelKeyCapture)
+    seam.cancelKeyCapture();
+  bump();
+}
+
 const AbcUiSettingsApi kSettingsApi = {
     sizeof(AbcUiSettingsApi),
     apiRevision,
@@ -906,6 +937,9 @@ const AbcUiSettingsApi kSettingsApi = {
     apiSprayMake,
     apiSprayStatus,
     apiSprayPreviewUri,
+    apiKeyCaptureCvar,
+    apiKeyCaptureBegin,
+    apiKeyCaptureCancel,
 };
 
 } // namespace

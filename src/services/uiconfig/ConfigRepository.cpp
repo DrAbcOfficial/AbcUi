@@ -109,6 +109,7 @@ void ConfigRepository::load(const std::string &Root, Reader reader,
           Existing->HueSwatch =
               Existing->Kind == settings::SettingKind::kFloat &&
               Existing->Bounded && Presentation.HueSwatch;
+          Existing->KeyCodeRow = Presentation.KeyCodeRow;
         } else {
           // Appended script rows land in the page's declared
           // script section, never in an undeclared group.
@@ -176,6 +177,7 @@ void ConfigRepository::buildRows() {
       Row.RequireEnabled = Item.RequireEnabled;
       Row.HasDefault = Item.HasDefault;
       Row.HueSwatch = Item.HueSwatch;
+      Row.KeyCodeRow = Item.KeyCodeRow;
       Row.FileChoices = Item.FileChoices;
       Row.AllowEmpty = Item.AllowEmpty;
       if (Item.Kind == settings::SettingKind::kCommandToggle) {

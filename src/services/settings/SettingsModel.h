@@ -121,6 +121,11 @@ struct SettingRow {
   // them with the file stem, and the write validation accepts a relative
   // path (no traversal) instead of the bare enum-token charset.
   bool FileChoices = false;
+  // The value is an engine key number (the vote answer keys): the page shows
+  // the key name and starts a capture session instead of a numeric field.
+  // Purely presentational - the row stays a float cvar with the same write
+  // path, so the key number is persisted like any other value.
+  bool KeyCodeRow = false;
   // Optional text fields (for example a weapon path: empty means no weapon).
   bool AllowEmpty = false;
 };

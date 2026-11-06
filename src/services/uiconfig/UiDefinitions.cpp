@@ -123,7 +123,7 @@ SettingDefinition setting(const Value &Item, const std::string &P) {
   fields(Item,
          {"cvar", "label", "section", "kind", "min", "max", "step", "default",
           "options", "source", "requires", "requiresEnabled", "readOnly", "hue",
-          "allowEmpty"},
+          "allowEmpty", "key"},
          P);
   SettingDefinition Row;
   Row.Cvar = text(Item, "cvar", P);
@@ -140,6 +140,10 @@ SettingDefinition setting(const Value &Item, const std::string &P) {
   if (Item.HasMember("hue")) {
     require(Item["hue"].IsBool(), P + ".hue", "expected boolean");
     Row.HueSwatch = Item["hue"].GetBool();
+  }
+  if (Item.HasMember("key")) {
+    require(Item["key"].IsBool(), P + ".key", "expected boolean");
+    Row.KeyCodeRow = Item["key"].GetBool();
   }
   Row.RequireEnabled =
       Item.HasMember("requiresEnabled") && Item["requiresEnabled"].GetBool();
@@ -215,6 +219,10 @@ SettingDefinition setting(const Value &Item, const std::string &P) {
   // for.
   require(!Row.HueSwatch || (Row.Kind == K::kFloat && Row.Bounded), P + ".hue",
           "hue requires a bounded float row");
+  // A key-code row is a float cvar holding an engine key number: the page
+  // draws the key name and a capture button instead of a numeric field.
+  require(!Row.KeyCodeRow || Row.Kind == K::kFloat, P + ".key",
+          "key requires a float row");
   if (Row.Kind == K::kCommandToggle)
     require(Row.Cvar == "in_mlook" || Row.Cvar == "in_jlook", P + ".cvar",
             "unregistered command-toggle adapter");

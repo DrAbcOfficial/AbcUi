@@ -5,12 +5,18 @@
 #include <keydefs.h>
 #include "rmlui/InputBridge.h"
 #include "rmlui/TextInput.h"
+#include <string>
 namespace gameui {
 void GameUiModule::startKeyCapture() {
-  if (!BindModel.capturing() || CaptureToken.held())
+  // The bind model's session and the key-code row session share one token
+  // and one clamp; either one being live starts it.
+  if (CaptureToken.held())
+    return;
+  if (!BindModel.capturing() && KeyCaptureCvar.empty())
     return;
 #ifndef NDEBUG
-  abc::ConsolePrint("[AbcUi] capture start row=%d\n", BindModel.captureRow());
+  abc::ConsolePrint("[AbcUi] capture start row=%d cvar=%s\n",
+                    BindModel.captureRow(), KeyCaptureCvar.c_str());
 #endif
   rmlui::setKeyCaptureClamp(true);
   CaptureToken = rmlui::uiRouter().acquire(
@@ -18,9 +24,40 @@ void GameUiModule::startKeyCapture() {
   if (!CaptureToken.held()) {
     // Unrepresentable depth (8 owners): fail closed - no session.
     BindModel.cancelCapture();
+    KeyCaptureCvar.clear();
     rmlui::setKeyCaptureClamp(false);
     abc::ConsoleWarn("[AbcUi] capture token unavailable (router full)\n");
   }
+}
+
+// One key-code row (the vote answer keys): the row's draft receives the
+// captured key number, so the write still waits for the page's Apply.
+bool GameUiModule::beginRowKeyCapture(const std::string &cvar) {
+  if (cvar.empty() || CaptureToken.held() || !KeyCaptureCvar.empty())
+    return false;
+  // One session at a time: the bind capture owns the model and the token.
+  if (BindModel.capturing())
+    return false;
+  const auto view = SettingsModel.find(cvar.c_str());
+  if (!view || !view->row || !view->row->KeyCodeRow || view->missing ||
+      !SettingsModel.editable(cvar.c_str()))
+    return false;
+  KeyCaptureCvar = cvar;
+  startKeyCapture();
+  if (!CaptureToken.held()) {
+    KeyCaptureCvar.clear(); // startKeyCapture already warned and clamped off
+    return false;
+  }
+  return true;
+}
+
+void GameUiModule::cancelRowKeyCapture() {
+  if (KeyCaptureCvar.empty())
+    return;
+  KeyCaptureCvar.clear();
+  // The bind model owns the shared token when its own session is live.
+  if (!BindModel.capturing())
+    endKeyCapture();
 }
 
 void GameUiModule::endKeyCapture() {
@@ -29,6 +66,26 @@ void GameUiModule::endKeyCapture() {
 }
 
 void GameUiModule::onCapturedKeyEdge(int keynum) {
+  if (!BindModel.capturing()) {
+    // The key-code row session: the edge becomes the row's draft value. ESC
+    // closes the session without touching the draft, exactly like a
+    // cancelled bind capture; the page then re-projects from the published
+    // generation.
+    const std::string cvar = KeyCaptureCvar;
+    KeyCaptureCvar.clear();
+    // ESC cancels; a non-key code (negative/zero) is never persisted as a
+    // binding.
+    const bool rejected = keynum <= 0 || keynum == K_ESCAPE;
+    if (!cvar.empty() && !rejected)
+      SettingsModel.setDraftText(cvar.c_str(), std::to_string(keynum).c_str());
+    endKeyCapture(); // exactly one edge per session, whatever it was
+#ifndef NDEBUG
+    abc::ConsolePrint("[AbcUi] key capture cvar=%s key=%d accepted=%d\n",
+                      cvar.c_str(), keynum, !rejected);
+#endif
+    framework::SettingsApi::bumpRevision();
+    return;
+  }
   // Only the Debug trace reads the result.
   [[maybe_unused]] const auto result = BindModel.captureKey(keynum);
 #ifndef NDEBUG
@@ -43,6 +100,7 @@ void GameUiModule::onCapturedKeyEdge(int keynum) {
 
 void GameUiModule::onKeyCaptureForceLost() {
   BindModel.cancelCapture();
+  KeyCaptureCvar.clear();
   rmlui::setKeyCaptureClamp(false);
 }
 

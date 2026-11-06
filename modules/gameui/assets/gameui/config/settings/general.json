@@ -511,20 +511,6 @@
       "default": 1.0
     },
     {
-      "cvar": "hud_votekey_yes",
-      "label": "#abcui.gameui/Settings_ABC_hud_votekey_yes",
-      "section": "hud_notify",
-      "kind": "float",
-      "default": 92.0
-    },
-    {
-      "cvar": "hud_votekey_no",
-      "label": "#abcui.gameui/Settings_ABC_hud_votekey_no",
-      "section": "hud_notify",
-      "kind": "float",
-      "default": 93.0
-    },
-    {
       "cvar": "hud_rainbow_menu",
       "label": "#abcui.gameui/Settings_ABC_hud_rainbow_menu",
       "section": "hud_notify",
