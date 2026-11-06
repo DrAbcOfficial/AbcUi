@@ -303,7 +303,9 @@ CreateGameModel::Launch CreateGameModel::launch(const Request &request) {
   // 1. disconnect: leave any current game (the shipped string opens with it).
   Seams_.clientCmd("disconnect\n");
 
-  // 2. sv_lan 1 (recoverable).
+  // 2. sv_lan (recoverable). The shipped listen-server command hardcodes 1;
+  // the page projects the settings.scr "LAN Game" row instead, so the chosen
+  // value is applied and saved rather than silently ignored.
   if (!writeAndVerify(0, request.Lan ? "1" : "0"))
     return restoreAndFail(0);
 
@@ -317,8 +319,9 @@ CreateGameModel::Launch CreateGameModel::launch(const Request &request) {
       "maxplayers " + std::to_string(request.MaxPlayers) + "\n";
   Seams_.clientCmd(players.c_str());
 
-  // 5. sv_password: the password never leaves this single typed write; it is
-  // not logged, not snapshotted and not kept anywhere else.
+  // 5. sv_password: the password never crosses a command string or a log; it
+  // is not snapshotted. The apply seam writes it to settings.scr, the same
+  // plaintext row the shipped dialog saves.
   if (!writeAndVerify(1, request.Password.c_str()))
     return restoreAndFail(1);
 
@@ -350,6 +353,32 @@ CreateGameModel::Launch CreateGameModel::launch(const Request &request) {
     Seams_.clientCmd(Command.c_str());
   }
   return Launch::kLaunched;
+}
+
+void CreateGameModel::rememberRequest(const Request &request) {
+  Settings.apply(request.ServerName, request.Password, request.Lan,
+                 request.MaxPlayers);
+  for (const ServerOptionValue &value : request.Options) {
+    Settings.setValue(value.Name, value.Value);
+    const auto match = std::find_if(
+        Options.begin(), Options.end(),
+        [&](const ServerOption &option) { return option.Name == value.Name; });
+    if (match == Options.end())
+      continue;
+    if (const auto parsed = abc::ParseFloat(value.Value))
+      match->Default = *parsed;
+  }
+  // The page prefills from the file after a restart; use the stored spelling
+  // here too (the writer strips quote/'%') so a same-session reopen matches.
+  Saved = Settings.saved();
+  if (!Settings.find("hostname"))
+    Saved.Hostname = request.ServerName;
+  if (!Settings.find("sv_password"))
+    Saved.Password = request.Password;
+  if (!Settings.find("sv_lan"))
+    Saved.Lan = request.Lan;
+  if (!Settings.find("maxplayers"))
+    Saved.MaxPlayers = request.MaxPlayers;
 }
 
 std::vector<std::string> CreateGameModel::settleOptions(const Request &Value) {

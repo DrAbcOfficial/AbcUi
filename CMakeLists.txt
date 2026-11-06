@@ -326,6 +326,7 @@ add_library(AbcUi MODULE
     src/services/creategame/CreateGameModel.cpp
     src/services/creategame/CreateGameService.cpp
     src/services/creategame/ServerOptions.cpp
+    src/services/creategame/ServerSettings.cpp
     src/services/playerlist/PlayerListModel.cpp
     src/services/playerlist/MuteBackend.cpp
     src/services/playerlist/PlayerListService.cpp

@@ -106,7 +106,10 @@ void showHint(const char *text);
 // re-arms the Apply latch.
 void prepare() {
   Applied = false;
-  Lan = false;
+  // The shipped GameplayPage prefills its rows from settings.scr, including
+  // sv_lan and sv_password. defaultName() keeps the live hostname as its
+  // fallback when the file has no hostname row.
+  Lan = Api->creategame->defaultLan() != 0;
 
   // Module 1: the map catalog. The select is the page's value store
   // (selectedMap() reads it, row picks write it); the visible picker is
@@ -147,14 +150,21 @@ void prepare() {
                 std::format("{} / {}", catalog.size(), catalog.size()));
   }
 
-  Api->ui->elementSetValue(node("cg-players"), "8");
+  int players = Api->creategame->defaultPlayers();
+  if (players < 1 || players > 32)
+    players = 8;
+  const std::string playerText = std::to_string(players);
+  Api->ui->elementSetValue(node("cg-players"), playerText.c_str());
   {
     std::string name = Api->creategame->defaultName();
     if (name.empty())
       name = resolve("#abcui.gameui/CG_DefaultName");
     Api->ui->elementSetValue(node("cg-name"), name.c_str());
   }
-  Api->ui->elementSetValue(node("cg-password"), "");
+  {
+    const char *password = Api->creategame->defaultPassword();
+    Api->ui->elementSetValue(node("cg-password"), password ? password : "");
+  }
 
   // Module 2: the server settings rows (one per option on the 96dp label
   // grid the typed rows use, so every control lines up).
@@ -230,10 +240,11 @@ void prepare() {
     }
     Api->ui->elementSelectSetSelection(select, selected);
   }
-  setInnerRml("cg-lan", escapeText(resolve("#abcui.gameui/Settings_Off")));
+  setInnerRml("cg-lan", escapeText(resolve(Lan ? "#abcui.gameui/Settings_On"
+                                                : "#abcui.gameui/Settings_Off")));
 
   showHint(nullptr);
-  setInnerRml("cg-players-value", "8");
+  setInnerRml("cg-players-value", playerText);
 }
 
 // Marks the row of the select's current option.

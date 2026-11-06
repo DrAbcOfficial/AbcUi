@@ -96,6 +96,14 @@ abcui_add_test(abc_ui_text_encoding
 abcui_add_test(abc_ui_keybind_model
     SOURCES KeyBindModel.cpp "${SRC}/services/settings/KeyBindModel.cpp")
 
+# The settings.scr SERVER_OPTIONS document the create-game page reads and
+# writes back: the shipped grammar, the four typed rows, the writer's
+# normalization/header and a parse -> serialize -> parse round trip.
+abcui_add_test(abc_ui_create_game_settings
+    SOURCES CreateGameSettings.cpp
+            "${SRC}/services/creategame/ServerSettings.cpp"
+    LIBRARIES Abc::Core)
+
 # The weapon selector layout and the module's rule model: override
 # precedence, collision shifting inside the slot, clamping,
 # registration-order independence, JSON validation and the serialization

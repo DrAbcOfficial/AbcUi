@@ -33,8 +33,26 @@ services::creategame::CreateGameModel *model() {
 }
 
 const char *apiDefaultName(void) {
+  const auto *target = model();
+  if (target && !target->savedSettings().Hostname.empty())
+    return target->savedSettings().Hostname.c_str();
   const char *live = abc::CVAR_GET_STRING("hostname");
   return live ? live : "";
+}
+
+const char *apiDefaultPassword(void) {
+  const auto *target = model();
+  return target ? target->savedSettings().Password.c_str() : "";
+}
+
+int32_t apiDefaultLan(void) {
+  const auto *target = model();
+  return target && target->savedSettings().Lan ? 1 : 0;
+}
+
+int32_t apiDefaultPlayers(void) {
+  const auto *target = model();
+  return target ? target->savedSettings().MaxPlayers : 8;
 }
 
 uint32_t apiMapCount(void) {
@@ -126,6 +144,9 @@ const AbcUiCreateGameApi kCreateGameApi = {
     apiOptionAt,
     apiChoiceAt,
     apiSubmit,
+    apiDefaultPassword,
+    apiDefaultLan,
+    apiDefaultPlayers,
 };
 
 } // namespace

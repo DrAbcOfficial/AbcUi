@@ -24,6 +24,10 @@ struct CreateGameHost {
   std::function<void(const std::string &map)> dispatchCreate;
   std::function<void()> finishDispatch;
   std::function<void()> resetAutoRetry;
+  // Writes the validated request back to settings.scr (the shipped dialog
+  // saves its form on apply, before the map command). Failure does not block
+  // the launch: the attempt keeps its already-validated request.
+  std::function<bool(const services::creategame::Request &)> persistSettings;
 };
 
 class CreateGameFlow {

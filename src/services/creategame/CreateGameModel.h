@@ -68,15 +68,20 @@
 //                        writes and have no snapshot (documented: they are
 //                        accepted non-recoverable side effects of Apply).
 //
-// The request carries the user's password in memory only: it is never logged,
-// never persisted, and never leaves the single "sv_password" write.
+// The request carries the user's password in memory and writes it to
+// settings.scr on apply (the shipped dialog stores it there in plaintext); it
+// is never logged and never leaves the "sv_password" cvar write and that one
+// settings.scr row.
 
 #include <cstddef>
 #include <array>
 #include <cstdint>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 #include "ServerOptions.h"
+#include "ServerSettings.h"
 
 namespace services {
 namespace creategame {
@@ -188,6 +193,24 @@ public:
     return validateServerOptions(Options, Value.Options);
   }
 
+  // The settings.scr projection: loaded once at module init, then updated by
+  // rememberRequest before a validated attempt dispatches, so the next fresh
+  // open reads exactly what the shipped dialog would have saved.
+  void setServerSettings(ServerSettingsDocument document) {
+    Settings = std::move(document);
+    Saved = Settings.saved();
+  }
+  const ServerSettingsDocument &serverSettings() const {
+    return Settings;
+  }
+  const SavedServerSettings &savedSettings() const {
+    return Saved;
+  }
+  void rememberRequest(const Request &request);
+  std::string serverSettingsText(std::string_view generatedAt) const {
+    return Settings.serialize(generatedAt);
+  }
+
   static Validation validate(const MapCatalog &catalog, const Request &request);
 
   // Engine seams. Plain function pointers, no captured state: production
@@ -256,6 +279,8 @@ private:
 
   MapCatalog Catalog;
   std::vector<ServerOption> Options;
+  ServerSettingsDocument Settings;
+  SavedServerSettings Saved;
   Seams Seams_;
   std::array<Snapshot, kRecoverableCount> Snapshots;
   std::array<bool, kRecoverableCount> Wrote = {};

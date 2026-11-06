@@ -13,6 +13,7 @@
 #include <abc/CvarCmd.h>
 #include "services/commandmenu/CommandMenuService.h"
 #include "services/creategame/CreateGameService.h"
+#include "services/creategame/ServerSettings.h"
 #include "services/console/ConsolePageService.h"
 #include "services/loading/ConnectionService.h"
 #include "services/friends/FriendsService.h"
@@ -501,6 +502,22 @@ CreateGameHost GameUiModule::MakeCreateGameHost() {
   };
   host.finishDispatch = [this] { finishDispatch(); };
   host.resetAutoRetry = [this] { AutoRetry.reset(); };
+  host.persistSettings = [this](const services::creategame::Request &) {
+    // The flow's rememberRequest already updated the model document; rewrite
+    // the whole settings.scr exactly as the shipped ApplyChanges does.
+    const std::string Text = Create->model().serverSettingsText(
+        services::creategame::ServerSettingsDocument::generateTimestamp());
+    if (Text.empty())
+      return false;
+    std::string Error;
+    const std::vector<unsigned char> Bytes(Text.begin(), Text.end());
+    if (!writeModConfigFile("settings.scr", Bytes, Error)) {
+      abc::ConsoleWarn("[AbcUi] settings.scr write failed: %s\n",
+                       Error.c_str());
+      return false;
+    }
+    return true;
+  };
   return host;
 }
 
@@ -622,6 +639,17 @@ void GameUiModule::onInit() {
         ServerScript);
     Create->setOptions(services::creategame::parseServerOptions(ServerScript));
   }
+  // The same file is the create form's persistence store: the shipped
+  // GameplayPage loads its rows here and ApplyChanges rewrites it with the
+  // current values ("stores last settings chosen, too"). Keep the owning
+  // document beside the projected option list.
+  services::creategame::ServerSettingsDocument SettingsScript;
+  if (services::creategame::ServerSettingsDocument::parse(ServerScript,
+                                                          SettingsScript))
+    Create->model().setServerSettings(std::move(SettingsScript));
+  else
+    abc::ConsoleWarn("[AbcUi] settings.scr has no parsable SERVER_OPTIONS "
+                     "block; create-game settings will not persist\n");
   const auto Advanced = loadAdvancedScript();
   const auto &root = services::uiconfig::resourceRoot();
   if (!root.empty())

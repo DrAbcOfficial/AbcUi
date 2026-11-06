@@ -99,6 +99,12 @@ bool CreateGameFlow::apply(
     hint = hintTokenFor(validation);
     return false; // nothing reaches the controller or the engine
   }
+  // The shipped dialog's ApplyChanges runs before its map command: save the
+  // form (all rows, including sv_password) exactly as settings.scr expects.
+  // A failed write is reported by the host but never blocks the launch.
+  Model.rememberRequest(request);
+  if (Host.persistSettings)
+    (void)Host.persistSettings(request);
   Pending = request;
   PendingValid = true;
   // A user-initiated local start begins a fresh auto-retry chain.

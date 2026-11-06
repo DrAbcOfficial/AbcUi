@@ -1574,8 +1574,8 @@ typedef struct AbcUiCgField {
 
 typedef struct AbcUiCreateGameApi {
   uint32_t structSize;
-  // Fresh opening defaults: the live hostname (empty -> the page projects
-  // its localized default token).
+  // Fresh opening defaults: the hostname saved in settings.scr (falling back
+  // to the live cvar; empty -> the page projects its localized default token).
   const char *(ABCUI_CALL *defaultName)(void);
   uint32_t(ABCUI_CALL *mapCount)(void);
   // Catalog name `index` (stable per world; the module rebuilds the picker
@@ -1591,6 +1591,12 @@ typedef struct AbcUiCreateGameApi {
   // correct and re-Apply - the latch re-arms on any shown hint).
   int32_t(ABCUI_CALL *submit)(const AbcUiCgField *fields, int32_t fieldCount,
                               char *hint, uint32_t hintSize);
+  // The other three typed fields as settings.scr saved them (the shipped
+  // dialog prefills the password from the file and the player count from the
+  // maxplayers row).
+  const char *(ABCUI_CALL *defaultPassword)(void);
+  int32_t(ABCUI_CALL *defaultLan)(void);
+  int32_t(ABCUI_CALL *defaultPlayers)(void);
 } AbcUiCreateGameApi;
 
 // -------------------------------------------------------------- console ----

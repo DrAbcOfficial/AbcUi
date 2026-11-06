@@ -11,6 +11,12 @@ std::string readModFile(const char *relativePath);
 // back to a direct file beside the mod path. False + error on any failure.
 bool writeModFile(const char *relativePath,
                   const std::vector<unsigned char> &bytes, std::string &error);
+// Writes through the engine's GAMECONFIG path first (the pathID the shipped
+// settings.scr writer uses) and falls back to writeModFile. False + error on
+// any failure.
+bool writeModConfigFile(const char *relativePath,
+                        const std::vector<unsigned char> &bytes,
+                        std::string &error);
 std::vector<std::string> scanModDirectories(const char *relativeDir);
 std::vector<std::string> scanModFileBasenames(const char *relativeDir);
 // Native action models and the sequence choices derived from the model draft.

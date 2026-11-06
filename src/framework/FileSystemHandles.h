@@ -22,6 +22,11 @@ inline EngineFile openEngineFile(IFileSystem &filesystem, const char *path,
   return EngineFile(filesystem.Open(path, mode), {&filesystem});
 }
 
+inline EngineFile openEngineFile(IFileSystem &filesystem, const char *path,
+                                 const char *mode, const char *pathID) {
+  return EngineFile(filesystem.Open(path, mode, pathID), {&filesystem});
+}
+
 class EngineFileSearch {
 public:
   explicit EngineFileSearch(IFileSystem &filesystem)
