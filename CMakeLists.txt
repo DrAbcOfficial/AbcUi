@@ -365,6 +365,8 @@ target_include_directories(AbcUi PRIVATE
 target_link_libraries(AbcUi PRIVATE Abc::Core RmlUi::RmlUi FreeImage abcui_webp
     abcui_miniz imm32 abc_ui_config)
 
+include("${CMAKE_CURRENT_LIST_DIR}/cmake/AbcUiModule.cmake")
+
 # First-party UI modules (each its own DLL + package; see modules/<id>/).
 # Module images are mapped by the loader's manual PE mapper, which refuses
 # static TLS. Two MSVC debug-conditional mechanisms compile to per-thread
