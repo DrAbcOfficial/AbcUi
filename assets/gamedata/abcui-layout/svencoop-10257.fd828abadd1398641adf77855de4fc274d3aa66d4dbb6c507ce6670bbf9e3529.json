@@ -111,9 +111,9 @@
       "kind": "function",
       "payload": {
         "func_name": "SpectatorPanel::Update()",
-        "func_rva": "0x69a70",
-        "func_size": "0x821",
-        "func_sig": "55 8B EC 6A FF 68 ?? ?? ?? ?? 64 A1 00 00 00 00 50 83 EC 20 53 56 57 A1 ?? ?? ?? ?? 33 C5 50 8D 45 F4 64 A3 00 00 00 00 8B D9 89 5D F0 8B 03"
+        "func_rva": "0x69fe0",
+        "func_size": "0x22d",
+        "func_sig": "81 EC D0 00 00 00 A1 ?? ?? ?? ?? 33 C4 89 84 24 CC 00 00 00 A1 ?? ?? ?? ?? 53 8B D9 83 B8 80 01 00 00 00 0F 84 ?? ?? ?? ?? 55 E8 ?? ?? ?? ?? 8B"
       }
     }
   ]

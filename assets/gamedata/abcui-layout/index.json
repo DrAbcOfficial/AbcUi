@@ -3,20 +3,20 @@
   "versions": [
     {
       "gameVersion": "svencoop-10257",
-      "url": "svencoop-10257.157d517af46040f312ae6b17756cceaadd32b62db630311d22c8f8f776703621.json",
-      "sha256": "157d517af46040f312ae6b17756cceaadd32b62db630311d22c8f8f776703621",
-      "size": 3242,
+      "url": "svencoop-10257.fd828abadd1398641adf77855de4fc274d3aa66d4dbb6c507ce6670bbf9e3529.json",
+      "sha256": "fd828abadd1398641adf77855de4fc274d3aa66d4dbb6c507ce6670bbf9e3529",
+      "size": 3245,
       "snapshotSchemaVersion": 8,
       "fileCount": 7,
       "lastPublishTime": "2026-10-14T00:00:00Z"
     },
     {
       "gameVersion": "svencoop-8948",
-      "url": "svencoop-8948.fe9f6d45e1643e7670e347d5ea60902cc64ce8193a733497fbbf2c57cfacabab.json",
-      "sha256": "fe9f6d45e1643e7670e347d5ea60902cc64ce8193a733497fbbf2c57cfacabab",
-      "size": 2212,
+      "url": "svencoop-8948.5f99eb49d7811f7d051f820c29fc32b98f825748ec414ca212b26665dfd56d24.json",
+      "sha256": "5f99eb49d7811f7d051f820c29fc32b98f825748ec414ca212b26665dfd56d24",
+      "size": 2659,
       "snapshotSchemaVersion": 8,
-      "fileCount": 5,
+      "fileCount": 6,
       "lastPublishTime": "2026-10-14T00:00:00Z"
     }
   ]
