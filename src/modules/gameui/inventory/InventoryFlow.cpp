@@ -54,17 +54,8 @@ void InventoryFlow::open() {
     return;
   }
 
-  bool raisedMenu = false;
-  if (!Host.ensureMenu(raisedMenu))
+  if (!ensureMenuAndPhase(Host, RaisedMenu))
     return;
-  RaisedMenu = raisedMenu;
-
-  if (!Host.reconcileInGame()) {
-    if (RaisedMenu)
-      Host.cancelRaisedMenu();
-    RaisedMenu = false;
-    return;
-  }
 
   Host.dispatchOpen();
   Requested = false;

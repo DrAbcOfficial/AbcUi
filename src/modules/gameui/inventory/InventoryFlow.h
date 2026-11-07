@@ -19,27 +19,16 @@
 // selection, it is sent once, and no list mutation happens - a successful
 // drop only removes the row when the server's InvRemove arrives.
 
+#include "../navigation/PageHost.h"
 #include "../../../services/inventory/InventoryModel.h"
 
 #include <functional>
 
 namespace gameui {
 
-struct InventoryHost {
-  std::function<bool()> shellReady;
-  // The inventory page is on top of the menu stack (the module document is
-  // the presented surface).
-  std::function<bool()> pageOnTop;
-  // Raises the menu when needed and reports whether this call did so.
-  std::function<bool(bool &raisedMenu)> ensureMenu;
-  std::function<void()> cancelRaisedMenu;
-  std::function<bool()> reconcileInGame;
-  std::function<void()> dispatchOpen;
-  // Closes the page's navigation state; `raisedMenu` applies the paused-menu
-  // recovery exactly as CommandMenuFlow does.
-  std::function<void(bool raisedMenu)> closeNavigation;
-  std::function<void()> finishDispatch;
-};
+// The inventory page is on top of the menu stack (the module document is
+// the presented surface); the close rule is CommandMenuFlow's recovery.
+using InventoryHost = PageHost;
 
 class InventoryFlow {
 public:

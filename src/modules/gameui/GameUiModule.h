@@ -137,8 +137,7 @@ private:
   };
   VideoHost MakeVideoHost();
   VoteMenuHost MakeVoteMenuHost();
-  CommandMenuHost MakeCommandMenuHost();
-  InventoryHost MakeInventoryHost();
+  PageHost MakePageHost(MenuPage page);
   CreateGameHost MakeCreateGameHost();
   ServerBrowserHost MakeServerBrowserHost();
   Rml::Context *Context = nullptr;

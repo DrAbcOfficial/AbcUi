@@ -77,17 +77,8 @@ void CommandMenuFlow::open() {
     return;
   }
 
-  bool raisedMenu = false;
-  if (!Host.ensureMenu(raisedMenu))
+  if (!ensureMenuAndPhase(Host, RaisedMenu))
     return;
-  RaisedMenu = raisedMenu;
-
-  if (!Host.reconcileInGame()) {
-    if (RaisedMenu)
-      Host.cancelRaisedMenu();
-    RaisedMenu = false;
-    return;
-  }
 
   // Fresh opening for the live map: reset to the root. The page module
   // projects the reset through menu.state (map filters re-resolve here).

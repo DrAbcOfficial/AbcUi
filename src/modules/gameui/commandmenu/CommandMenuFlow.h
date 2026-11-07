@@ -11,6 +11,7 @@
 // here too: the services::commandmenu access point hands the page's
 // activations to handleCommand (close first, then the engine send).
 
+#include "../navigation/PageHost.h"
 #include "../../../services/commandmenu/CommandMenuModel.h"
 
 #include <functional>
@@ -18,21 +19,10 @@
 
 namespace gameui {
 
-struct CommandMenuHost {
-  std::function<bool()> shellReady;
-  // The command page is on top of the menu stack (the module document is
-  // the presented surface).
-  std::function<bool()> pageOnTop;
-  // Raises the menu when needed and reports whether this call did so.
-  std::function<bool(bool &raisedMenu)> ensureMenu;
-  std::function<void()> cancelRaisedMenu;
-  std::function<bool()> reconcileInGame;
-  std::function<void()> dispatchOpen;
-  // Closes the page's navigation state; `raisedMenu` applies the paused-menu
-  // recovery exactly as the old GameUiModule::closeCommandMenuPage did.
-  std::function<void(bool raisedMenu)> closeNavigation;
-  std::function<void()> finishDispatch;
-};
+// The command page is on top of the menu stack (the module document is the
+// presented surface); the close rule is the old
+// GameUiModule::closeCommandMenuPage recovery.
+using CommandMenuHost = PageHost;
 
 class CommandMenuFlow {
 public:

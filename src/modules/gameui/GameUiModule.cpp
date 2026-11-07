@@ -108,8 +108,10 @@ GameUiModule::GameUiModule()
         services::settings::setSprayResult(ok, message, previewUri);
       })),
       Vote(std::make_unique<VoteMenuFlow>(MakeVoteMenuHost(), voteMenuSeams())),
-      Command(std::make_unique<CommandMenuFlow>(MakeCommandMenuHost())),
-      Inventory(std::make_unique<InventoryFlow>(MakeInventoryHost())),
+      Command(std::make_unique<CommandMenuFlow>(
+          MakePageHost(MenuPage::kCommandMenu))),
+      Inventory(
+          std::make_unique<InventoryFlow>(MakePageHost(MenuPage::kInventory))),
       Create(std::make_unique<CreateGameFlow>(MakeCreateGameHost(),
                                               createGameSeams())),
       Server(std::make_unique<ServerBrowserFlow>(MakeServerBrowserHost(),
@@ -413,11 +415,11 @@ VoteMenuHost GameUiModule::MakeVoteMenuHost() {
   return host;
 }
 
-CommandMenuHost GameUiModule::MakeCommandMenuHost() {
-  CommandMenuHost host;
+PageHost GameUiModule::MakePageHost(MenuPage page) {
+  PageHost host;
   host.shellReady = [this] { return Context != nullptr; };
-  host.pageOnTop = [this] {
-    return Controller.state().pages.topIs(MenuPage::kCommandMenu);
+  host.pageOnTop = [this, page] {
+    return Controller.state().pages.topIs(page);
   };
   host.ensureMenu = [this](bool &raisedMenu) {
     const bool menuWasUp = MenuPresented;
@@ -439,67 +441,20 @@ CommandMenuHost GameUiModule::MakeCommandMenuHost() {
     reconcilePhase();
     return Controller.state().phase == menu::BackendPhase::kInGame;
   };
-  host.dispatchOpen = [this] {
-    Controller.dispatch(menu::makeOpenPage(MenuPage::kCommandMenu));
+  host.dispatchOpen = [this, page] {
+    Controller.dispatch(menu::makeOpenPage(page));
   };
-  host.closeNavigation = [this](bool raisedMenu) {
-    if (!Controller.state().pages.topIs(MenuPage::kCommandMenu))
+  host.closeNavigation = [this, page](bool raisedMenu) {
+    if (!Controller.state().pages.topIs(page))
       return;
-    Controller.dispatch(MenuEvent{EventKind::kBack}); // command page -> Pause
+    Controller.dispatch(MenuEvent{EventKind::kBack});
     if (!raisedMenu)
       return;
     if (Controller.state().pages.topIs(MenuPage::kPause))
-      Controller.dispatch(MenuEvent{EventKind::kResume}); // close + resume
+      Controller.dispatch(MenuEvent{EventKind::kResume});
     // A phase change can make the decided resume illegal. The menu command
     // still owns this presentation, so force-clear the host instead of
     // leaving the pause page behind it.
-    if (Controller.isMenuActive())
-      Controller.dispatch(MenuEvent{EventKind::kMenuHidden});
-  };
-  host.finishDispatch = [this] { finishDispatch(); };
-  return host;
-}
-
-InventoryHost GameUiModule::MakeInventoryHost() {
-  InventoryHost host;
-  host.shellReady = [this] { return Context != nullptr; };
-  host.pageOnTop = [this] {
-    return Controller.state().pages.topIs(MenuPage::kInventory);
-  };
-  host.ensureMenu = [this](bool &raisedMenu) {
-    const bool menuWasUp = MenuPresented;
-    if (!menuWasUp) {
-      if (!services::nativeUiBridge().menuUp())
-        services::nativeUiBridge().requestMenuUp(
-            services::NativeUiOrigin::kOwnUi);
-      if (!MenuPresented)
-        presentMenu();
-    }
-    raisedMenu = !menuWasUp;
-    return MenuPresented;
-  };
-  host.cancelRaisedMenu = [this] {
-    services::nativeUiBridge().requestMenuDown(
-        services::NativeUiOrigin::kOwnUi);
-  };
-  host.reconcileInGame = [this] {
-    reconcilePhase();
-    return Controller.state().phase == menu::BackendPhase::kInGame;
-  };
-  host.dispatchOpen = [this] {
-    Controller.dispatch(menu::makeOpenPage(MenuPage::kInventory));
-  };
-  host.closeNavigation = [this](bool raisedMenu) {
-    if (!Controller.state().pages.topIs(MenuPage::kInventory))
-      return;
-    Controller.dispatch(MenuEvent{EventKind::kBack}); // inventory -> Pause
-    if (!raisedMenu)
-      return;
-    if (Controller.state().pages.topIs(MenuPage::kPause))
-      Controller.dispatch(MenuEvent{EventKind::kResume}); // close + resume
-    // Same recovery as the command menu: a phase change can make the decided
-    // resume illegal, so force-clear the host instead of leaving the pause
-    // page behind the closed window.
     if (Controller.isMenuActive())
       Controller.dispatch(MenuEvent{EventKind::kMenuHidden});
   };
