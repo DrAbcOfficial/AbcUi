@@ -5,7 +5,12 @@
    fading in, so a talk burst reads as players joining a queue instead of
    blinking on. RmlUi (re)starts an animation whenever the computed
    `animation` value changes, and the panel never touches that property after
-   a row is appended, so every row plays this exactly once. */
+   a row is appended, so every row plays this exactly once.
+
+   The badge opens as icon + text when the voice state turns off, then (after
+   a few seconds, driven by the module) collapses to the translucent icon:
+   the width transition retracts the text to the right while it fades, and the
+   plate drops away. */
 
 #voice {
 	position: absolute;
@@ -61,43 +66,54 @@
 	white-space: nowrap;
 }
 
-/* Local status badge: a ringed mic glyph with a slash plus the state token.
-   It shares the row entrance so the icon appears with the same motion. */
+/* Local status badge. Expanded: icon + state text on the HUD plate.
+   Collapsed (.collapsed): the plate fades out, the width shrinks to the icon
+   and the text retracts to the right, leaving a semi-transparent glyph. */
 #voice-badge {
-	display: none;
+	display: flex;
 	flex-direction: row;
 	align-items: center;
-	justify-content: flex-end;
-	width: auto;
+	box-sizing: border-box;
+	width: 132dp;
+	height: 22dp;
+	padding: 0 6dp 0 4dp;
 	margin-top: 2dp;
-	padding: 2dp 6dp;
+	overflow: hidden;
 	background-color: #0000006b;
 	border-radius: 3dp;
-	animation: voice-row-enter 0.20s cubic-out;
+	transition: width 0.32s cubic-out, background-color 0.30s linear-in,
+		opacity 0.30s linear-in;
 }
 
-.voice-mute-icon {
-	position: relative;
-	width: 11dp;
-	height: 11dp;
-	margin-right: 5dp;
-	border: 1dp solid var(--abc-hud-accent);
-	border-radius: 6dp;
+#voice-badge.collapsed {
+	width: 22dp;
+	padding: 0 4dp;
+	background-color: transparent;
+	opacity: 0.55;
 }
 
-.voice-mute-slash {
-	position: absolute;
-	left: -2dp;
-	top: 5dp;
+#voice-badge-icon {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.voice-badge-icon {
 	width: 14dp;
-	height: 1.4dp;
-	background-color: var(--abc-hud-accent);
-	transform: rotate(-45deg);
+	height: 14dp;
+	image-color: #ffb000;
 }
 
 #voice-badge-text {
+	margin-left: 6dp;
 	font-family: Verdana;
 	font-size: 8.6dp;
 	color: var(--abc-hud-accent);
 	white-space: nowrap;
+	transition: opacity 0.20s linear-in, transform 0.32s cubic-out;
+}
+
+#voice-badge.collapsed #voice-badge-text {
+	opacity: 0;
+	transform: translateX(52dp);
 }

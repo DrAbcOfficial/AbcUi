@@ -22,6 +22,11 @@ AbcUiPanelDesc Panel = {};
 bool DocumentReady = false;
 bool ServerMuted = false;
 int StatusBits = -1; // -1 forces the first badge pass
+// Badge presentation: it opens with the state text, then retracts to the
+// translucent icon after BadgeHoldSeconds (driven by the frame pump).
+constexpr double BadgeHoldSeconds = 2.6;
+double BadgeAge = 0.0;
+bool BadgeCollapsed = false;
 AbcUiCvarHandle MicCvar = nullptr;
 AbcUiCvarHandle ReceiveCvar = nullptr;
 
@@ -64,6 +69,11 @@ std::string translateOr(const char *token, const char *fallback) {
 void setDisplay(const char *id, const char *value) {
   if (AbcUiElement *target = element(id))
     Api->ui->elementSetProperty(target, "display", value);
+}
+
+void setClass(const char *id, const char *name, bool on) {
+  if (AbcUiElement *target = element(id))
+    Api->ui->elementSetClass(target, name, on ? 1 : 0);
 }
 
 void setInner(const char *id, const std::string &rml) {
@@ -190,8 +200,17 @@ void updateStatus() {
     break;
   }
   setDisplay("voice-badge", bits ? "flex" : "none");
+  // The mic glyph leads a send mute; receive/ban states use the speaker glyph.
+  const char *iconMic = (bits & 1) ? "flex" : "none";
+  const char *iconSpeaker = (bits & 1) ? "none" : "flex";
+  setDisplay("voice-icon-mic", iconMic);
+  setDisplay("voice-icon-speaker", iconSpeaker);
   if (token)
     setInner("voice-badge-text", escape(translateOr(token, fallback)));
+  // A new state re-opens the badge (text visible) and restarts the hold.
+  BadgeAge = 0.0;
+  BadgeCollapsed = false;
+  setClass("voice-badge", "collapsed", false);
   refreshVisibility();
 }
 
@@ -200,15 +219,25 @@ void updateStatus() {
 void panelDocumentReady(void *) {
   DocumentReady = true;
   StatusBits = -1;
+  BadgeAge = 0.0;
+  BadgeCollapsed = false;
   clearRows();
   updateStatus();
   refreshVisibility();
 }
 
-void panelOnData(void *, double) {
+void panelOnData(void *, double frameTime) {
   // The mic/receive toggles are cvars, not events: poll once per frame. A
   // change only rewrites the badge when the state class actually moved.
   updateStatus();
+  if (StatusBits <= 0 || BadgeCollapsed)
+    return;
+  if (frameTime > 0.0 && frameTime < 0.25)
+    BadgeAge += frameTime;
+  if (BadgeAge >= BadgeHoldSeconds) {
+    BadgeCollapsed = true;
+    setClass("voice-badge", "collapsed", true);
+  }
 }
 
 void panelReset(void *) {
@@ -219,6 +248,8 @@ void panelReset(void *) {
   Rows.clear();
   ServerMuted = false;
   StatusBits = -1;
+  BadgeAge = 0.0;
+  BadgeCollapsed = false;
   setVisible(false);
 }
 

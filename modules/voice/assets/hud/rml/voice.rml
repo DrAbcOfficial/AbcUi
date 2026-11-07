@@ -5,11 +5,15 @@
 </head>
 <body id="voice">
 	<!-- Replacement for the native voice-status speaker labels: the badge
-	     reports a client that refuses to send or receive voice, and the list
-	     holds one row per talking player (avatar + name). Rows are appended by
+	     reports a client that refuses to send or receive voice (icon + text,
+	     then it retracts to a small translucent icon), and the list holds one
+	     row per talking player (avatar + name). Rows are appended by
 	     VoiceModule.cpp so each one plays its entrance once. -->
 	<div id="voice-badge">
-		<div class="voice-mute-icon"><div class="voice-mute-slash"></div></div>
+		<div id="voice-badge-icon">
+			<img id="voice-icon-mic" class="voice-badge-icon" src="mod://abcui.voice/hud/img/voice_mic_off.png"/>
+			<img id="voice-icon-speaker" class="voice-badge-icon" src="mod://abcui.voice/hud/img/voice_speaker_off.png"/>
+		</div>
 		<span id="voice-badge-text"></span>
 	</div>
 	<div id="voice-list"></div>
