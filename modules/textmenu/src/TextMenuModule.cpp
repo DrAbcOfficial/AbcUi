@@ -347,8 +347,11 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
   if (abiVersion != ABCUI_ABI_VERSION || !api ||
       !AbcUiModule_InitDescriptor(out))
     return 0;
-  if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->claims || !api->facts || !api->console)
+  if (!AbcUiModule_Validate(
+          api, ABCUI_MODULE_SECTION_CORE | ABCUI_MODULE_SECTION_CONSOLE |
+                   ABCUI_MODULE_SECTION_EVENTS | ABCUI_MODULE_SECTION_PANELS |
+                   ABCUI_MODULE_SECTION_UI | ABCUI_MODULE_SECTION_CLAIMS |
+                   ABCUI_MODULE_SECTION_FACTS))
     return 0;
   Api = api;
 

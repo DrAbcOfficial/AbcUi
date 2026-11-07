@@ -239,13 +239,10 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
   if (abiVersion != ABCUI_ABI_VERSION || !api ||
       !AbcUiModule_InitDescriptor(out))
     return 0;
-  if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->claims)
-    return 0;
-  // The ui/console sections grew for this module; refuse a framework whose
-  // tables are shorter than the members used below.
-  if (api->ui->structSize < sizeof(AbcUiUiApi) ||
-      api->console->structSize < sizeof(AbcUiConsoleApi))
+  if (!AbcUiModule_Validate(
+          api, ABCUI_MODULE_SECTION_CORE | ABCUI_MODULE_SECTION_CONSOLE |
+                   ABCUI_MODULE_SECTION_EVENTS | ABCUI_MODULE_SECTION_PANELS |
+                   ABCUI_MODULE_SECTION_UI | ABCUI_MODULE_SECTION_CLAIMS))
     return 0;
   Api = api;
 

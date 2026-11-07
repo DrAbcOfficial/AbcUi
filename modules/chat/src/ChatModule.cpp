@@ -778,16 +778,13 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
   if (abiVersion != ABCUI_ABI_VERSION || !api ||
       !AbcUiModule_InitDescriptor(out))
     return 0;
-  if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->data ||
-      !api->documents || !api->players || !api->input || !api->voice ||
-      !api->claims)
-    return 0;
-  if (api->ui->structSize < sizeof(AbcUiUiApi) ||
-      api->console->structSize < sizeof(AbcUiConsoleApi) ||
-      api->data->structSize < sizeof(AbcUiDataApi) ||
-      api->players->structSize < sizeof(AbcUiPlayersApi) ||
-      api->input->structSize < sizeof(AbcUiInputApi))
+  if (!AbcUiModule_Validate(
+          api, ABCUI_MODULE_SECTION_CORE | ABCUI_MODULE_SECTION_CONSOLE |
+                   ABCUI_MODULE_SECTION_EVENTS | ABCUI_MODULE_SECTION_PANELS |
+                   ABCUI_MODULE_SECTION_DATA | ABCUI_MODULE_SECTION_UI |
+                   ABCUI_MODULE_SECTION_PLAYERS | ABCUI_MODULE_SECTION_VOICE |
+                   ABCUI_MODULE_SECTION_INPUT | ABCUI_MODULE_SECTION_DOCUMENTS |
+                   ABCUI_MODULE_SECTION_CLAIMS))
     return 0;
   Api = api;
 

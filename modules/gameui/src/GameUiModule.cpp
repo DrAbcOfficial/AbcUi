@@ -247,14 +247,23 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       !AbcUiModule_InitDescriptor(out))
     return 0;
   // Every section the pages act through (see PageShared.h and the page
-  // sources for which calls each one makes).
-  if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->events ||
-      !api->ui || !api->console || !api->documents || !api->menu ||
-      !api->votemenu || !api->playerlist || !api->commandmenu ||
-      !api->menuconfig || !api->social || !api->inventory || !api->creategame ||
-      !api->consolepage || !api->input || !api->shell || !api->serverbrowser ||
-      !api->connection || !api->settings || !api->claims || !api->audio ||
-      !api->players)
+  // sources for which calls each one makes). The second block below pins the
+  // minimum tail of the sections that grew additively, so this first check
+  // only proves the sections exist.
+  if (!AbcUiModule_HasSections(
+          api,
+          ABCUI_MODULE_SECTION_CORE | ABCUI_MODULE_SECTION_EVENTS |
+              ABCUI_MODULE_SECTION_UI | ABCUI_MODULE_SECTION_CONSOLE |
+              ABCUI_MODULE_SECTION_DOCUMENTS | ABCUI_MODULE_SECTION_MENU |
+              ABCUI_MODULE_SECTION_VOTEMENU | ABCUI_MODULE_SECTION_PLAYERLIST |
+              ABCUI_MODULE_SECTION_COMMANDMENU |
+              ABCUI_MODULE_SECTION_MENUCONFIG | ABCUI_MODULE_SECTION_SOCIAL |
+              ABCUI_MODULE_SECTION_INVENTORY | ABCUI_MODULE_SECTION_CREATEGAME |
+              ABCUI_MODULE_SECTION_CONSOLEPAGE | ABCUI_MODULE_SECTION_INPUT |
+              ABCUI_MODULE_SECTION_SHELL | ABCUI_MODULE_SECTION_SERVERBROWSER |
+              ABCUI_MODULE_SECTION_CONNECTION | ABCUI_MODULE_SECTION_SETTINGS |
+              ABCUI_MODULE_SECTION_CLAIMS | ABCUI_MODULE_SECTION_AUDIO |
+              ABCUI_MODULE_SECTION_PLAYERS | ABCUI_MODULE_SECTION_MODULES))
     return 0;
   if (!ABCUI_API_HAS_MEMBER(AbcUiMenuApi, api->menu, dispatchCommand) ||
       !ABCUI_API_HAS_MEMBER(AbcUiCoreApi, api->core, failInitialization) ||

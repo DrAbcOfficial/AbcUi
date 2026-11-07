@@ -948,15 +948,12 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
   if (abiVersion != ABCUI_ABI_VERSION || !api ||
       !AbcUiModule_InitDescriptor(out))
     return 0;
-  if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->console ||
-      !api->events || !api->vfs || !api->ui || !api->claims ||
-      !api->documents || !api->input)
-    return 0;
-  if (api->console->structSize < sizeof(AbcUiConsoleApi) ||
-      api->ui->structSize < sizeof(AbcUiUiApi) ||
-      api->vfs->structSize < sizeof(AbcUiVfsApi) ||
-      api->documents->structSize < sizeof(AbcUiDocumentsApi) ||
-      api->input->structSize < sizeof(AbcUiInputApi))
+  if (!AbcUiModule_Validate(
+          api, ABCUI_MODULE_SECTION_CORE | ABCUI_MODULE_SECTION_CONSOLE |
+                   ABCUI_MODULE_SECTION_EVENTS | ABCUI_MODULE_SECTION_VFS |
+                   ABCUI_MODULE_SECTION_UI | ABCUI_MODULE_SECTION_INPUT |
+                   ABCUI_MODULE_SECTION_DOCUMENTS |
+                   ABCUI_MODULE_SECTION_CLAIMS))
     return 0;
   Api = api;
 

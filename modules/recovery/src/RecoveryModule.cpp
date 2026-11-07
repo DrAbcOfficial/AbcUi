@@ -61,12 +61,14 @@ void ABCUI_CALL onLoad() {
 ABCUI_MODULE_EXPORT int ABCUI_CALL
 AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
                  AbcUiModuleDescriptor *out) {
-  if (abiVersion != ABCUI_ABI_VERSION || !api ||
-      api->structSize < sizeof(AbcUiModuleApi) ||
+  if (abiVersion != ABCUI_ABI_VERSION || !AbcUiModule_InitDescriptor(out) ||
+      !AbcUiModule_HasSections(api, ABCUI_MODULE_SECTION_CORE |
+                                        ABCUI_MODULE_SECTION_UI |
+                                        ABCUI_MODULE_SECTION_DOCUMENTS |
+                                        ABCUI_MODULE_SECTION_MENU) ||
       !ABCUI_API_HAS_MEMBER(AbcUiDocumentsApi, api->documents, requestRetry) ||
       !ABCUI_API_HAS_MEMBER(AbcUiMenuApi, api->menu, quitNow) ||
-      !ABCUI_API_HAS_MEMBER(AbcUiCoreApi, api->core, failInitialization) ||
-      !api->ui || !AbcUiModule_InitDescriptor(out))
+      !ABCUI_API_HAS_MEMBER(AbcUiCoreApi, api->core, failInitialization))
     return 0;
   Api = api;
   out->id = "abcui.recovery";

@@ -948,15 +948,11 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
   if (abiVersion != ABCUI_ABI_VERSION || !api ||
       !AbcUiModule_InitDescriptor(out))
     return 0;
-  if (api->structSize < sizeof(AbcUiModuleApi) || !api->core || !api->panels ||
-      !api->events || !api->ui || !api->console || !api->data ||
-      !api->weapons || !api->claims)
-    return 0;
-  if (api->ui->structSize < sizeof(AbcUiUiApi) ||
-      api->console->structSize < sizeof(AbcUiConsoleApi) ||
-      api->events->structSize < sizeof(AbcUiEventsApi) ||
-      api->data->structSize < sizeof(AbcUiDataApi) ||
-      api->weapons->structSize < sizeof(AbcUiWeaponsApi))
+  if (!AbcUiModule_Validate(
+          api, ABCUI_MODULE_SECTION_CORE | ABCUI_MODULE_SECTION_CONSOLE |
+                   ABCUI_MODULE_SECTION_EVENTS | ABCUI_MODULE_SECTION_PANELS |
+                   ABCUI_MODULE_SECTION_DATA | ABCUI_MODULE_SECTION_UI |
+                   ABCUI_MODULE_SECTION_WEAPONS | ABCUI_MODULE_SECTION_CLAIMS))
     return 0;
   Api = api;
 

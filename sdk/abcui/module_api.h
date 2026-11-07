@@ -2439,6 +2439,112 @@ typedef struct AbcUiModuleApi {
   const AbcUiConfigApi *config;
 } AbcUiModuleApi;
 
+// ------------------------------------------------------- section checks ---
+//
+// The host always publishes every section (the boot audit in ApiTable::get
+// rejects a null initializer), but a module still states which sections it
+// dereferences so a rebuilt module cannot run against a truncated table and
+// a newly used section cannot silently escape the null/size check. The
+// helpers are header-only and add no table entry.
+//
+// Keep this bit list in the same order as AbcUiModuleApi above.
+#define ABCUI_MODULE_SECTION_CORE (1ull << 0)
+#define ABCUI_MODULE_SECTION_CONSOLE (1ull << 1)
+#define ABCUI_MODULE_SECTION_EVENTS (1ull << 2)
+#define ABCUI_MODULE_SECTION_VFS (1ull << 3)
+#define ABCUI_MODULE_SECTION_PANELS (1ull << 4)
+#define ABCUI_MODULE_SECTION_DATA (1ull << 5)
+#define ABCUI_MODULE_SECTION_UI (1ull << 6)
+#define ABCUI_MODULE_SECTION_WEAPONS (1ull << 7)
+#define ABCUI_MODULE_SECTION_PLAYERS (1ull << 8)
+#define ABCUI_MODULE_SECTION_RADAR (1ull << 9)
+#define ABCUI_MODULE_SECTION_SHELL (1ull << 10)
+#define ABCUI_MODULE_SECTION_VOICE (1ull << 11)
+#define ABCUI_MODULE_SECTION_SCORE (1ull << 12)
+#define ABCUI_MODULE_SECTION_INPUT (1ull << 13)
+#define ABCUI_MODULE_SECTION_DOCUMENTS (1ull << 14)
+#define ABCUI_MODULE_SECTION_MENU (1ull << 15)
+#define ABCUI_MODULE_SECTION_VOTEMENU (1ull << 16)
+#define ABCUI_MODULE_SECTION_PLAYERLIST (1ull << 17)
+#define ABCUI_MODULE_SECTION_COMMANDMENU (1ull << 18)
+#define ABCUI_MODULE_SECTION_MENUCONFIG (1ull << 19)
+#define ABCUI_MODULE_SECTION_SOCIAL (1ull << 20)
+#define ABCUI_MODULE_SECTION_INVENTORY (1ull << 21)
+#define ABCUI_MODULE_SECTION_CREATEGAME (1ull << 22)
+#define ABCUI_MODULE_SECTION_CONSOLEPAGE (1ull << 23)
+#define ABCUI_MODULE_SECTION_SERVERBROWSER (1ull << 24)
+#define ABCUI_MODULE_SECTION_CONNECTION (1ull << 25)
+#define ABCUI_MODULE_SECTION_SETTINGS (1ull << 26)
+#define ABCUI_MODULE_SECTION_TEXTURES (1ull << 27)
+#define ABCUI_MODULE_SECTION_AUDIO (1ull << 28)
+#define ABCUI_MODULE_SECTION_MODULES (1ull << 29)
+#define ABCUI_MODULE_SECTION_CLAIMS (1ull << 30)
+#define ABCUI_MODULE_SECTION_FACTS (1ull << 31)
+#define ABCUI_MODULE_SECTION_CONFIG (1ull << 32)
+
+// name, pointer type, bit.
+#define ABCUI_MODULE_SECTIONS(X)                                               \
+  X(core, AbcUiCoreApi, 0)                                                     \
+  X(console, AbcUiConsoleApi, 1)                                               \
+  X(events, AbcUiEventsApi, 2)                                                 \
+  X(vfs, AbcUiVfsApi, 3)                                                       \
+  X(panels, AbcUiPanelsApi, 4)                                                 \
+  X(data, AbcUiDataApi, 5)                                                     \
+  X(ui, AbcUiUiApi, 6)                                                         \
+  X(weapons, AbcUiWeaponsApi, 7)                                               \
+  X(players, AbcUiPlayersApi, 8)                                               \
+  X(radar, AbcUiRadarApi, 9)                                                   \
+  X(shell, AbcUiShellApi, 10)                                                  \
+  X(voice, AbcUiVoiceApi, 11)                                                  \
+  X(score, AbcUiScoreApi, 12)                                                  \
+  X(input, AbcUiInputApi, 13)                                                  \
+  X(documents, AbcUiDocumentsApi, 14)                                          \
+  X(menu, AbcUiMenuApi, 15)                                                    \
+  X(votemenu, AbcUiVoteMenuApi, 16)                                            \
+  X(playerlist, AbcUiPlayerListApi, 17)                                        \
+  X(commandmenu, AbcUiCommandMenuApi, 18)                                      \
+  X(menuconfig, AbcUiMenuConfigApi, 19)                                        \
+  X(social, AbcUiSocialApi, 20)                                                \
+  X(inventory, AbcUiInventoryApi, 21)                                          \
+  X(creategame, AbcUiCreateGameApi, 22)                                        \
+  X(consolepage, AbcUiConsolePageApi, 23)                                      \
+  X(serverbrowser, AbcUiServerBrowserApi, 24)                                  \
+  X(connection, AbcUiConnectionApi, 25)                                        \
+  X(settings, AbcUiSettingsApi, 26)                                            \
+  X(textures, AbcUiTexturesApi, 27)                                            \
+  X(audio, AbcUiAudioApi, 28)                                                  \
+  X(modules, AbcUiModulesApi, 29)                                              \
+  X(claims, AbcUiClaimsApi, 30)                                                \
+  X(facts, AbcUiFactsApi, 31)                                                  \
+  X(config, AbcUiConfigApi, 32)
+
+// Null/table check only: for modules that accept an older tail (appended
+// members guarded with ABCUI_API_HAS_MEMBER) instead of the full struct.
+static inline int AbcUiModule_HasSections(const AbcUiModuleApi *api,
+                                          uint64_t required) {
+  if (!api || api->structSize < sizeof(AbcUiModuleApi))
+    return 0;
+#define ABCUI_MODULE_SECTION_HAS(name, type, bit)                              \
+  if ((required & (1ull << (bit))) && !api->name)                              \
+    return 0;
+  ABCUI_MODULE_SECTIONS(ABCUI_MODULE_SECTION_HAS)
+#undef ABCUI_MODULE_SECTION_HAS
+  return 1;
+}
+
+// Null and full-struct check for every section the module compiles against.
+static inline int AbcUiModule_Validate(const AbcUiModuleApi *api,
+                                       uint64_t required) {
+  if (!AbcUiModule_HasSections(api, required))
+    return 0;
+#define ABCUI_MODULE_SECTION_SIZE(name, type, bit)                             \
+  if ((required & (1ull << (bit))) && api->name->structSize < sizeof(type))    \
+    return 0;
+  ABCUI_MODULE_SECTIONS(ABCUI_MODULE_SECTION_SIZE)
+#undef ABCUI_MODULE_SECTION_SIZE
+  return 1;
+}
+
 #ifdef __cplusplus
 } // extern "C"
 #endif
