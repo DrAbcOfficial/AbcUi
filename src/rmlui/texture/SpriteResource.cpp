@@ -356,58 +356,55 @@ int croppedTexture(const std::string &atlasFile, const wrect_t &rect,
   return id;
 }
 
+namespace {
+
+// Bounds-check one HUD crop against its atlas and return the cached texture.
+int croppedFromAtlas(const std::string &atlasFile, const wrect_t &rect,
+                     bool alpha, int &width, int &height) {
+  const auto *atlas = ensureAtlas(atlasFile);
+  int x = 0;
+  int y = 0;
+  if (!atlas || !framework::ResourceLimits::crop(
+                    rect.left, rect.top, rect.right, rect.bottom, atlas->width,
+                    atlas->height, x, y, width, height))
+    return 0;
+  return croppedTexture(atlasFile, rect, alpha);
+}
+
+} // namespace
+
 int textureForUri(const std::string &uri, int &width, int &height) {
   if (uri.starts_with("spr://")) {
     std::string atlasFile;
     wrect_t rect{};
     if (!findHudSprite(uri.c_str() + 6, atlasFile, rect))
       return 0;
-    const auto *atlas = ensureAtlas(atlasFile);
-    int x, y;
-    if (!atlas || !framework::ResourceLimits::crop(
-                      rect.left, rect.top, rect.right, rect.bottom,
-                      atlas->width, atlas->height, x, y, width, height))
-      return 0;
-    return croppedTexture(atlasFile, rect, false);
+    return croppedFromAtlas(atlasFile, rect, false, width, height);
   }
-  if (uri.starts_with("spricon://")) {
-    // spricon://<atlas>/<l>,<t>,<r>,<b>
+  // The crop forms share "<scheme>://<atlas>/<l>,<t>,<r>,<b>"; only the
+  // blend mode differs (spralpha is the old kRenderTransTexture path).
+  struct Scheme {
+    const char *prefix;
+    std::size_t bodyStart;
+    bool alpha;
+  };
+  static constexpr Scheme kSchemes[] = {
+      {"spricon://", 10, false},
+      {"spralpha://", 11, true},
+  };
+  for (const Scheme &scheme : kSchemes) {
+    if (!uri.starts_with(scheme.prefix))
+      continue;
     std::string atlasFile;
     int values[4] = {0, 0, 0, 0};
-    if (!splitCropUri(uri, 10, atlasFile, values))
+    if (!splitCropUri(uri, scheme.bodyStart, atlasFile, values))
       return 0;
     wrect_t rect{};
     rect.left = values[0];
     rect.top = values[1];
     rect.right = values[2];
     rect.bottom = values[3];
-    const auto *atlas = ensureAtlas(atlasFile);
-    int x, y;
-    if (!atlas || !framework::ResourceLimits::crop(
-                      rect.left, rect.top, rect.right, rect.bottom,
-                      atlas->width, atlas->height, x, y, width, height))
-      return 0;
-    return croppedTexture(atlasFile, rect, false);
-  }
-  if (uri.starts_with("spralpha://")) {
-    // spralpha://<atlas>/<l>,<t>,<r>,<b> - straight-alpha crop (old
-    // kRenderTransTexture sprites: the weapon crosshairs).
-    std::string atlasFile;
-    int values[4] = {0, 0, 0, 0};
-    if (!splitCropUri(uri, 11, atlasFile, values))
-      return 0;
-    wrect_t rect{};
-    rect.left = values[0];
-    rect.top = values[1];
-    rect.right = values[2];
-    rect.bottom = values[3];
-    const auto *atlas = ensureAtlas(atlasFile);
-    int x, y;
-    if (!atlas || !framework::ResourceLimits::crop(
-                      rect.left, rect.top, rect.right, rect.bottom,
-                      atlas->width, atlas->height, x, y, width, height))
-      return 0;
-    return croppedTexture(atlasFile, rect, true);
+    return croppedFromAtlas(atlasFile, rect, scheme.alpha, width, height);
   }
   return 0;
 }
