@@ -34,10 +34,12 @@ inline void unsubscribe(AbcUiSubscription &subscription) {
 }
 
 // Fills the menu-page descriptor the host validates. onShow may be null.
-inline AbcUiDocumentDesc menuDocument(
-    const char *name, const char *path, uint32_t flags, int32_t zIndex,
-    void(ABCUI_CALL *onReady)(void *), void(ABCUI_CALL *onShow)(void *),
-    void(ABCUI_CALL *onHide)(void *), void(ABCUI_CALL *onClose)(void *)) {
+inline AbcUiDocumentDesc menuDocument(const char *name, const char *path,
+                                      uint32_t flags, int32_t zIndex,
+                                      void(ABCUI_CALL *onReady)(void *),
+                                      void(ABCUI_CALL *onShow)(void *),
+                                      void(ABCUI_CALL *onHide)(void *),
+                                      void(ABCUI_CALL *onClose)(void *)) {
   AbcUiDocumentDesc desc{};
   desc.structSize = sizeof(desc);
   desc.name = name;
