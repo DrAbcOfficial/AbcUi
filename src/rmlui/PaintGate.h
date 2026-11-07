@@ -8,10 +8,13 @@
 // the exact strings this install reports, T02 §6), plus the client viewport's
 // observer bottom bar when a module claims it on hud.native.draw. The module
 // string is read per traversal, so panel creation/destruction/recreation needs
-// no cache and no VPANEL identity; the observer panel is identified per
-// traversal as the gViewPort child with the five constructor children, and a
-// claim hides the panel (SetVisible false) before skipping its subtree - it
-// never covers native pixels.
+// no cache and no VPANEL identity. The client observer bar is a different
+// story: the vgui2 traversal paints children through the client panel's own
+// virtual, so the IPanel interface hook never sees that subtree. The bar is
+// located per frame from the vgui2 root (the viewport's gViewPort client
+// object, or the structural five-child form), and its inherited
+// Panel::PaintTraverse virtual is inline-hooked once; the claim then skips
+// that object's paint and hides it - it never covers native pixels.
 //
 // Two VFT slots are taken (both validated to point into the vgui2 image):
 //   - slot 41 PaintTraverse: blocked entries are swallowed (the original is
@@ -46,6 +49,9 @@ namespace rmlui {
 
 // Idempotent; SysError (explicit stop) on any unverifiable step.
 void installPaintGate();
+// Per-frame pump (HUD_Redraw, before the native draw): re-locates the client
+// observer bar and installs its paint hook. Cheap; a no-op until installed.
+void paintGateFrame();
 // Unhooks if installed and drops the bridge back to unarmed. Safe to call
 // when not installed (no-op), and safe at process teardown (MetaHook's own
 // free path may already have removed the hooks; UnHook then just reports it

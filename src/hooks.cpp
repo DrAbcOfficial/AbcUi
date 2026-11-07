@@ -31,6 +31,7 @@
 #include "modules/Module.h"
 #include "render/BackendHost.h"
 #include "rmlui/InputBridge.h"
+#include "rmlui/PaintGate.h"
 #include "rmlui/RmlUiModule.h"
 #include "services/steam/SteamAPI.h"
 #include "services/voice/VoiceStatus.h"
@@ -196,6 +197,7 @@ static int H_HUD_Redraw(float time, int intermission) {
   // Old Viewport::SetInterMission -> ShowPanel(intermission > 0); the
   // +/-showscores commands stay dead while it lasts.
   framework::scoreseat::setIntermission(intermission != 0);
+  rmlui::paintGateFrame();
   rmlui::onRedraw(delta);
   int result = 0;
   {
