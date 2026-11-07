@@ -139,6 +139,9 @@ void updatePanel() {
   // Health/armor cells disappear when the observer has no target; the mode
   // cell then stretches across the bar (the native panel hides both labels
   // and shows the mode alone).
+  // No target: the whole vital group (divider included) goes away and the
+  // mode text keeps the bar.
+  setDisplay("spec-vitals", targetKnown ? "flex" : "none");
   setDisplay("spec-health", targetKnown ? "flex" : "none");
   setDisplay("spec-armor", (targetKnown && !dead) ? "flex" : "none");
   if (targetKnown) {
@@ -247,7 +250,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.spectator";
-  out->version = "2.0.0";
+  out->version = "2.1.0";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

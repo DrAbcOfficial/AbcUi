@@ -1,12 +1,12 @@
-/* spectator.rcss - observer bottom bar. The native panel is a dark plate with
-   three bordered cells (health, armor, mode : target) anchored bottom-left;
-   the replacement keeps that geometry in dp and uses the HUD accent for the
-   values. When no target is shown the two vital cells are display:none and
-   the mode cell stretches across the bar. */
+/* spectator.rcss - observer readout in the classic HUD language.
 
-/* The body itself must fill the document: its only child is absolutely
-   positioned, so an auto-sized body would collapse to 0x0 and clip the bar
-   away entirely (the same full-screen body rule the other HUD panels use). */
+   The native SpectatorPanel is suppressed by the paint gate, so this bar is
+   the only observer surface: no cover plate, just the HUD's own bottom band.
+   Left: the observed target's health and armor in the amber vital type
+   (Verdana bold with the same 1px outline as the health readout). Right: the
+   camera mode and the target name. When the observer has no target the vitals
+   hide and the mode keeps the bar. */
+
 #spectator {
 	position: absolute;
 	left: 0;
@@ -15,71 +15,71 @@
 	height: 100%;
 }
 
-/* The bar is the replacement's own surface: a translucent plate that reads
-   over the scene. It is NOT a cover - the native SpectatorPanel is hidden by
-   the paint gate (rmlui/PaintGate.cpp) while this document is visible, so no
-   native pixel needs masking. 39dp is the native strip's 26 YRES units
-   expressed in dp (both scale with screen height), kept so the replacement
-   occupies the same band. */
 #spectator-bar {
 	position: absolute;
 	left: 0;
-	width: 100%;
+	right: 0;
 	bottom: 0;
-	height: 39dp;
-	display: flex;
-	flex-direction: row;
-	align-items: stretch;
-	background-color: #0c1017d9;
-	border-top: 1dp #3b3a22;
-}
-
-.spec-cell {
+	height: 38dp;
 	display: flex;
 	flex-direction: row;
 	align-items: center;
-	justify-content: center;
-	height: 100%;
-	padding: 0 10dp;
-	border-right: 1dp #3b3a22;
-	white-space: nowrap;
+	justify-content: space-between;
+	box-sizing: border-box;
+	padding: 0 18dp;
+	background-color: #05070bd0;
+	border-top: 1dp var(--abc-hud-accent-faint);
 }
 
-#spec-mode {
-	flex: 1 1 auto;
-	min-width: 0;
-	border-right: 0dp;
+#spec-vitals {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	height: 100%;
 }
 
 .spec-vital {
-	flex: 0 0 auto;
+	display: flex;
+	flex-direction: row;
+	align-items: baseline;
 }
 
-#spec-health {
-	min-width: 96dp;
-}
-
-#spec-armor {
-	min-width: 88dp;
+.spec-divider {
+	width: 1dp;
+	height: 14dp;
+	margin: 0 12dp;
+	background-color: #ffffff26;
 }
 
 .spec-label {
 	font-family: Verdana;
-	font-size: 8.9dp;
-	color: #c8c8c8;
-	opacity: 0.8;
+	font-size: 8.2dp;
+	letter-spacing: 0.6dp;
+	color: #aab2bc;
 	margin-right: 6dp;
 }
 
 .spec-value {
 	font-family: Verdana;
 	font-weight: bold;
-	font-size: 10.7dp;
+	font-size: 18dp;
+	letter-spacing: 0.4dp;
 	color: var(--abc-hud-accent);
 	white-space: nowrap;
-	overflow: hidden;
+	font-effect: outline(1px #000000c8);
 }
 
-#spec-mode .spec-value {
+#spec-mode {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	min-width: 0;
+}
+
+.spec-mode-text {
+	font-family: Verdana;
+	font-size: 9.6dp;
 	color: #e8e8e8;
+	white-space: nowrap;
+	overflow: hidden;
 }

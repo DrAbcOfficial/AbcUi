@@ -16,7 +16,6 @@
 
 #include <Windows.h>
 #include <cstddef>
-#include <cstring>
 
 namespace rmlui {
 

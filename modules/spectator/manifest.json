@@ -3,7 +3,7 @@
   "name": "Spectator",
   "description": "RmlUi observer bottom bar: camera mode, target name, health and armor, replacing the native SpectatorPanel.",
   "author": "DrAbc",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "abi": 3,
   "minAbcUi": "0.10.0",
   "entry": "entry/abcui_spectator.dll",

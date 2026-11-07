@@ -4,20 +4,24 @@
 	<link type="text/rcss" href="../rcss/spectator.rcss"/>
 </head>
 <body id="spectator">
-	<!-- Rebuild of the native SpectatorPanel bottom bar: mode, target name,
-	     health and armor. The health/armor cells hide when the observer has
-	     no target; the mode cell then fills the bar. -->
+	<!-- Observer readout in the shared HUD language: the target's vitals on
+	     the left in the amber vital type, the camera mode and target name on
+	     the right. The native SpectatorPanel is suppressed, so this bar is the
+	     only observer surface and carries no cover styling. -->
 	<div id="spectator-bar">
-		<div id="spec-health" class="spec-cell spec-vital">
-			<span id="spec-health-label" class="spec-label">Health</span>
-			<span id="spec-health-value" class="spec-value">0</span>
+		<div id="spec-vitals">
+			<div id="spec-health" class="spec-vital">
+				<span id="spec-health-label" class="spec-label">Health</span>
+				<span id="spec-health-value" class="spec-value">0</span>
+			</div>
+			<div class="spec-divider"></div>
+			<div id="spec-armor" class="spec-vital">
+				<span id="spec-armor-label" class="spec-label">Armor</span>
+				<span id="spec-armor-value" class="spec-value">0</span>
+			</div>
 		</div>
-		<div id="spec-armor" class="spec-cell spec-vital">
-			<span id="spec-armor-label" class="spec-label">Armor</span>
-			<span id="spec-armor-value" class="spec-value">0</span>
-		</div>
-		<div id="spec-mode" class="spec-cell">
-			<span id="spec-mode-value" class="spec-value">Spectator</span>
+		<div id="spec-mode">
+			<span id="spec-mode-value" class="spec-mode-text">Spectator</span>
 		</div>
 	</div>
 </body>
