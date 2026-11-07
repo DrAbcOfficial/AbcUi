@@ -15,10 +15,12 @@
 	height: 100%;
 }
 
-/* The bar is an opaque full-width strip that covers the native viewport
-   panel: the client's observer bar is a VGUI panel the vgui2 paint gate
-   cannot reach, so the replacement masks it instead. 39dp is the native
-   strip's 26 YRES units expressed in dp (both scale with screen height). */
+/* The bar is the replacement's own surface: a translucent plate that reads
+   over the scene. It is NOT a cover - the native SpectatorPanel is hidden by
+   the paint gate (rmlui/PaintGate.cpp) while this document is visible, so no
+   native pixel needs masking. 39dp is the native strip's 26 YRES units
+   expressed in dp (both scale with screen height), kept so the replacement
+   occupies the same band. */
 #spectator-bar {
 	position: absolute;
 	left: 0;
@@ -28,7 +30,7 @@
 	display: flex;
 	flex-direction: row;
 	align-items: stretch;
-	background-color: #000000;
+	background-color: #0c1017d9;
 	border-top: 1dp #3b3a22;
 }
 

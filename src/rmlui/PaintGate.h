@@ -8,8 +8,10 @@
 // the exact strings this install reports, T02 §6), plus the client viewport's
 // observer bottom bar when a module claims it on hud.native.draw. The module
 // string is read per traversal, so panel creation/destruction/recreation needs
-// no cache and no VPANEL identity; the observer panel is identified by its
-// constructor-stable child label names, also per traversal.
+// no cache and no VPANEL identity; the observer panel is identified per
+// traversal as the gViewPort child with the five constructor children, and a
+// claim hides the panel (SetVisible false) before skipping its subtree - it
+// never covers native pixels.
 //
 // Two VFT slots are taken (both validated to point into the vgui2 image):
 //   - slot 41 PaintTraverse: blocked entries are swallowed (the original is
