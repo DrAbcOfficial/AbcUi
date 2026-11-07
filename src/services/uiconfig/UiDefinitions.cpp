@@ -1,6 +1,8 @@
 #include "UiDefinitions.h"
 
 #include <rapidjson/document.h>
+
+#include "../json/JsonFields.h"
 #include <rapidjson/error/en.h>
 #include <algorithm>
 #include <cmath>
@@ -8,17 +10,14 @@
 
 namespace services::uiconfig {
 namespace {
+
+using services::json::array;
+using services::json::fields;
+using services::json::member;
+using services::json::number;
+using services::json::require;
+using services::json::ValidationError;
 using Value = rapidjson::Value;
-
-struct ValidationError {
-  std::string Field;
-  std::string Message;
-};
-
-void require(bool Valid, const std::string &Field, const char *Message) {
-  if (!Valid)
-    throw ValidationError{Field, Message};
-}
 
 bool identifier(const std::string &Text) {
   return !Text.empty() && Text.size() <= 96 &&
@@ -26,25 +25,6 @@ bool identifier(const std::string &Text) {
            return (C >= 'a' && C <= 'z') || (C >= 'A' && C <= 'Z') ||
                   (C >= '0' && C <= '9') || C == '_' || C == '-';
          });
-}
-
-void fields(const Value &Object, std::initializer_list<const char *> Allowed,
-            const std::string &Path) {
-  require(Object.IsObject(), Path, "expected object");
-  std::set<std::string> Seen;
-  for (auto It = Object.MemberBegin(); It != Object.MemberEnd(); ++It) {
-    std::string Key(It->name.GetString(), It->name.GetStringLength());
-    require(Seen.insert(Key).second, Path + "." + Key, "duplicate field");
-    require(std::any_of(Allowed.begin(), Allowed.end(),
-                        [&](const char *Name) { return Key == Name; }),
-            Path + "." + Key, "unknown field");
-  }
-}
-
-const Value &member(const Value &Object, const char *Key,
-                    const std::string &Path) {
-  require(Object.HasMember(Key), Path + "." + Key, "required field missing");
-  return Object[Key];
 }
 
 std::string text(const Value &Object, const char *Key, const std::string &Path,
@@ -56,20 +36,6 @@ std::string text(const Value &Object, const char *Key, const std::string &Path,
               Result.find('\0') == std::string::npos,
           Path + "." + Key, "invalid string length or NUL");
   return Result;
-}
-
-float number(const Value &Object, const char *Key, const std::string &Path) {
-  const auto &V = member(Object, Key, Path);
-  require(V.IsNumber(), Path + "." + Key, "expected finite number");
-  float Result = static_cast<float>(V.GetDouble());
-  require(std::isfinite(Result), Path + "." + Key,
-          "number exceeds float range");
-  return Result;
-}
-
-void array(const Value &V, const std::string &Path, unsigned Limit) {
-  require(V.IsArray(), Path, "expected array");
-  require(V.Size() <= Limit, Path, "too many entries");
 }
 
 rapidjson::Document document(const std::string &Text) {

@@ -3,6 +3,8 @@
 #include "../../framework/TextUtil.h"
 
 #include <rapidjson/document.h>
+
+#include "../json/JsonFields.h"
 #include <rapidjson/error/en.h>
 
 #include <algorithm>
@@ -15,6 +17,10 @@ namespace services::commandmenu {
 namespace {
 
 using framework::TextUtil::lowerAscii;
+using services::json::fields;
+using services::json::member;
+using services::json::require;
+using services::json::ValidationError;
 using Value = rapidjson::Value;
 
 constexpr std::size_t kMaxFileBytes = 1024 * 1024;
@@ -23,19 +29,9 @@ constexpr unsigned kMaxDepth = 40;
 constexpr std::size_t kMaxNodes = 2048;
 constexpr unsigned kMaxMapsPerItem = 64;
 
-struct ValidationError {
-  std::string Field;
-  std::string Message;
-};
-
 struct ParseContext {
   std::size_t Nodes = 0;
 };
-
-void require(bool valid, const std::string &field, const char *message) {
-  if (!valid)
-    throw ValidationError{field, message};
-}
 
 std::string normalizeMapName(std::string name) {
   std::replace(name.begin(), name.end(), '\\', '/');
@@ -53,25 +49,6 @@ bool mapToken(const std::string &token) {
   return std::all_of(token.begin(), token.end(), [](unsigned char ch) {
     return std::isalnum(ch) || ch == '_' || ch == '-' || ch == '.';
   });
-}
-
-void fields(const Value &object, std::initializer_list<const char *> allowed,
-            const std::string &path) {
-  require(object.IsObject(), path, "expected object");
-  std::set<std::string> seen;
-  for (auto it = object.MemberBegin(); it != object.MemberEnd(); ++it) {
-    std::string key(it->name.GetString(), it->name.GetStringLength());
-    require(seen.insert(key).second, path + "." + key, "duplicate field");
-    require(std::any_of(allowed.begin(), allowed.end(),
-                        [&](const char *name) { return key == name; }),
-            path + "." + key, "unknown field");
-  }
-}
-
-const Value &member(const Value &object, const char *key,
-                    const std::string &path) {
-  require(object.HasMember(key), path + "." + key, "required field missing");
-  return object[key];
 }
 
 std::string text(const Value &object, const char *key, const std::string &path,
