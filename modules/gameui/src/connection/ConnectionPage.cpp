@@ -280,20 +280,25 @@ void hideDirect() {
     Api->documents->hide(DirectPage);
 }
 
+// The click payload: the first ancestor carrying data-action owns the
+// intent (the buttons nest icon/label children).
+std::string actionOf(AbcUiElement *target) {
+  for (AbcUiElement *entry = target; entry;
+       entry = Api->ui->elementParent(entry)) {
+    std::string action = attributeOf(entry, "data-action");
+    if (!action.empty())
+      return action;
+  }
+  return {};
+}
+
 // --- event handlers ---------------------------------------------------------
 
 int32_t onLoadingClick(void *, AbcUiElement *target,
                        const AbcUiElementEvent *event) {
   if (!event || !target || std::string_view(event->type) != "click")
     return 0;
-  AbcUiElement *entry = target;
-  std::string action;
-  while (entry) {
-    action = attributeOf(entry, "data-action");
-    if (!action.empty())
-      break;
-    entry = Api->ui->elementParent(entry);
-  }
+  const std::string action = actionOf(target);
   if (action != "loading-cancel")
     return 0;
   // The model latch is the once-only guard: a double-click is honest dead
@@ -306,14 +311,7 @@ int32_t onErrorClick(void *, AbcUiElement *target,
                      const AbcUiElementEvent *event) {
   if (!event || !target || std::string_view(event->type) != "click")
     return 0;
-  AbcUiElement *entry = target;
-  std::string action;
-  while (entry) {
-    action = attributeOf(entry, "data-action");
-    if (!action.empty())
-      break;
-    entry = Api->ui->elementParent(entry);
-  }
+  const std::string action = actionOf(target);
   if (action == "error-retry") {
     Api->connection->retryFailed(); // a NEW attempt generation
     return 1;
@@ -329,14 +327,7 @@ int32_t onPasswordClick(void *, AbcUiElement *target,
                         const AbcUiElementEvent *event) {
   if (!event || !target || std::string_view(event->type) != "click")
     return 0;
-  AbcUiElement *entry = target;
-  std::string action;
-  while (entry) {
-    action = attributeOf(entry, "data-action");
-    if (!action.empty())
-      break;
-    entry = Api->ui->elementParent(entry);
-  }
+  const std::string action = actionOf(target);
   if (action == "password-connect") {
     // The typed password travels only into the submit call (never stored,
     // never logged); empty is not a typed intent.
@@ -357,14 +348,7 @@ int32_t onDirectClick(void *, AbcUiElement *target,
                       const AbcUiElementEvent *event) {
   if (!event || !target || std::string_view(event->type) != "click")
     return 0;
-  AbcUiElement *entry = target;
-  std::string action;
-  while (entry) {
-    action = attributeOf(entry, "data-action");
-    if (!action.empty())
-      break;
-    entry = Api->ui->elementParent(entry);
-  }
+  const std::string action = actionOf(target);
   if (action == "directconnect-connect") {
     // Validated inside the section (the model's grammar); a refused entry
     // shows the inline hint and stays put.
