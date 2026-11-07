@@ -11,6 +11,7 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Glyphs.h"
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -39,7 +40,7 @@ float MaxSpeed = 0.0f;
 bool TemplateLoaded = false;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 std::string elementInnerRml(AbcUiElement *element) {
@@ -132,10 +133,7 @@ void panelReset(void *) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

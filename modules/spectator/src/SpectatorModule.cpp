@@ -9,6 +9,7 @@
 // spectateTarget; the module claims ABCUI_NATIVE_HUD_SPECTATOR so the VGUI
 // paint gate skips the native subtree while this document is on screen.
 #include "../../common/UiText.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -30,7 +31,7 @@ constexpr const char *kSpectatorCvar = "abc_ui_spectator";
 AbcUiCvarHandle SpectatorEnabled = nullptr;
 
 AbcUiDocument *panelDocument() {
-  return Api ? Api->ui->panelDocument(kPanelName) : nullptr;
+  return Api ? moduleui::panelDocument(Api, kPanelName) : nullptr;
 }
 
 bool enabled() {
@@ -205,10 +206,7 @@ void onModuleLoad() {
   native.canHandle = &onNativeHudDraw;
   if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
     Api->core->warn("spectator: cannot claim the native HUD draw");
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

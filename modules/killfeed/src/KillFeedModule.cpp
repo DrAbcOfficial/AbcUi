@@ -16,6 +16,7 @@
 #include "../../common/Text.h"
 #include "../../common/OpacityMotion.h"
 #include "../../common/UiText.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -57,7 +58,7 @@ double ClientTimeNow = 0.0;
 std::vector<Row> Rows;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 int cvarInt(AbcUiCvarHandle cvar, int fallback) {
@@ -296,10 +297,7 @@ void panelReset(void *) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = nullptr;
   Panel.onData = &panelOnData;

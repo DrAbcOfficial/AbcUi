@@ -15,6 +15,7 @@
 #include "../../common/Text.h"
 #include "../../common/OpacityMotion.h"
 #include "../../common/UiText.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -59,7 +60,7 @@ bool Fading = false;
 moduleui::opacity::Ramp Fade{1.0f};
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 void setOpacity(const char *value) {
@@ -362,10 +363,7 @@ void panelDocumentReady(void *) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

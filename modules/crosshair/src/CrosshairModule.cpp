@@ -16,6 +16,7 @@
 // code's own fallback (clientdata punchangle).
 #include <abcui/events.h>
 #include "../../common/Text.h"
+#include "../../common/Panel.h"
 #include <abcui/module_api.h>
 
 #include <cmath>
@@ -113,7 +114,7 @@ int CurrentWeaponId = 0;
 std::string SprUri;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 float cvarValue(AbcUiCvarHandle cvar, float fallback) {
@@ -442,10 +443,7 @@ void onModuleLoad() {
   native.canHandle = &onNativeHudDraw;
   if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
     Api->core->warn("crosshair: cannot claim the native HUD draw");
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = nullptr;
   Panel.onData = nullptr;

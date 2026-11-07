@@ -4,6 +4,7 @@
 // mod:// (the "document ready" console line). Not a feature and not part of
 // dist; third-party module authors should copy this shape.
 #include <abcui/module_api.h>
+#include "../../common/Panel.h"
 
 static const AbcUiModuleApi *Api = nullptr;
 static AbcUiPanelDesc DemoPanel = {};
@@ -14,10 +15,8 @@ static void DemoOnDocumentReady(void *userdata) {
 }
 
 static void DemoOnLoad() {
-  DemoPanel.structSize = sizeof(DemoPanel);
-  DemoPanel.name = "abcui-demo";
-  DemoPanel.documentPath = "mod://abcui.demo/hud/rml/demo.rml";
-  DemoPanel.zIndex = 0;
+  DemoPanel =
+      moduleui::makePanel("abcui-demo", "mod://abcui.demo/hud/rml/demo.rml", 0);
   DemoPanel.userdata = const_cast<char *>(DemoPanel.name);
   DemoPanel.onDocumentReady = &DemoOnDocumentReady;
   Api->panels->registerPanel(&DemoPanel);

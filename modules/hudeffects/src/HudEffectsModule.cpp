@@ -7,6 +7,7 @@
 // element owns the frame clock and the texture, this controller only restarts
 // the sequence on the OUT_WATER edge and drives the alpha ramps.
 #include "../../common/OpacityMotion.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -54,7 +55,7 @@ bool OutWaterStarted = false;
 moduleui::opacity::Ramp DangerOpacity;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 void setVisible(bool visible) {
@@ -248,10 +249,7 @@ void panelOnData(void *, double frameTime) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = nullptr;
   Panel.onData = &panelOnData;

@@ -8,6 +8,7 @@
 #include <abcui/module_api.h>
 #include "../../common/Glyphs.h"
 #include "../../common/OpacityMotion.h"
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -35,7 +36,7 @@ constexpr const char *kDocumentPath =
     "mod://abcui.flashlight/hud/rml/flashlight.rml";
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 void elementSetProperty(const char *id, const char *name, const char *value) {
@@ -241,10 +242,7 @@ void onModuleLoad() {
   native.canHandle = &onNativeHudDraw;
   if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
     Api->core->warn("flashlight: cannot claim the native HUD draw");
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

@@ -12,6 +12,7 @@
 // directly (the server owns its localization) and keeps the localized
 // default captions next to the bound key names.
 #include "../../common/UiText.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -39,7 +40,7 @@ AbcUiCvarHandle KeyNo = nullptr;
 bool Visible = false;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 void setInnerRml(const char *id, const char *rml) {
@@ -184,10 +185,7 @@ void panelReset(void *) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

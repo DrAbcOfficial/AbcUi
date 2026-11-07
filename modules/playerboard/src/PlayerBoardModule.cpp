@@ -5,6 +5,7 @@
 // world projection (cos-60 cone, 1024u range, same team, alive).
 #include <abcui/events.h>
 #include <abcui/module_api.h>
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -50,7 +51,7 @@ const char *tileId(int index) {
 }
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 AbcUiElement *tileElement(int index) {
@@ -267,10 +268,7 @@ void panelOnRedraw(void *, double) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = nullptr;
   Panel.onData = &panelOnData;

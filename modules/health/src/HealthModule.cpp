@@ -8,6 +8,7 @@
 // defaults (persisted contract).
 #include "../../common/BarMotion.h"
 #include "../../common/ValueBounce.h"
+#include "../../common/Panel.h"
 
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -45,7 +46,7 @@ VitalState HealthVital;
 VitalState ArmorVital;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 void setVisible(bool visible) {
@@ -309,10 +310,7 @@ void onModuleLoad() {
   native.canHandle = &onNativeHudDraw;
   if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
     Api->core->warn("health: cannot claim the native HUD draw");
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

@@ -31,6 +31,7 @@
 #include "../../common/Lean.h"
 #include "../../common/SegmentBar.h"
 #include "../../common/ValueBounce.h"
+#include "../../common/Panel.h"
 
 #include <abcui/events.h>
 #include <abcui/module_api.h>
@@ -98,7 +99,7 @@ AbcUiCvarHandle DangerHealthCvar = nullptr;
 AbcUiCvarHandle DangerArmorCvar = nullptr;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 AbcUiElement *elementById(AbcUiDocument *doc, const char *id) {
@@ -896,10 +897,7 @@ void onModuleLoad() {
   if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
     Api->core->warn("division: cannot claim the native HUD draw");
 
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

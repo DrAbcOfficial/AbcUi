@@ -6,6 +6,7 @@
 // commands and turns them into menuselect; the framework menu fact gates the
 // other consumers (the weaponchoose module yields while it is visible).
 #include "../../common/OpacityMotion.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -146,7 +147,7 @@ std::string trimNewlines(const std::string &text) {
 }
 
 void setMenuInnerRml(const char *rml) {
-  AbcUiDocument *doc = Api->ui->panelDocument("textmenu");
+  AbcUiDocument *doc = moduleui::panelDocument(Api, "textmenu");
   if (!doc)
     return;
   if (AbcUiElement *menu = Api->ui->querySelector(doc, "menu"))
@@ -181,7 +182,7 @@ void showMenu(int validSlots, int displaySeconds, int bits, const char *text) {
       const std::string rml = colorizeMenuRml(MenuString);
       setMenuInnerRml(rml.c_str());
       fadeTo(true);
-      Api->ui->documentShow(Api->ui->panelDocument("textmenu"));
+      Api->ui->documentShow(moduleui::panelDocument(Api, "textmenu"));
       Displayed = true;
       // A fresh menu cancels a pending fade-out-hide: the server's answer
       // to a menuselect usually lands inside the 0.2s window, and letting
@@ -212,8 +213,8 @@ void panelDocumentReady(void *) {
   // Invisible until a ShowMenu arrives (opacity 0, not display:none - the
   // fade-out transition needs the element alive).
   Fade.reset();
-  Api->ui->documentSetProperty(Api->ui->panelDocument("textmenu"), "opacity",
-                               "0");
+  Api->ui->documentSetProperty(moduleui::panelDocument(Api, "textmenu"),
+                               "opacity", "0");
 }
 
 void panelOnData(void *, double frameTime) {
@@ -231,15 +232,15 @@ void panelOnData(void *, double frameTime) {
   if (Fade.advance(fadeStarted ? 0.0 : frameTime, opacity)) {
     char value[16];
     moduleui::opacity::text(opacity, value);
-    Api->ui->documentSetProperty(Api->ui->panelDocument("textmenu"), "opacity",
-                                 value);
+    Api->ui->documentSetProperty(moduleui::panelDocument(Api, "textmenu"),
+                                 "opacity", value);
   }
   // Fade-out finished: take the document out of the layout. Doing it here -
   // instead of keeping the document permanently shown - is what keeps
   // slot-key chaining honest.
   if (HideAtTime >= 0.0 && ClientTimeNow >= HideAtTime) {
     HideAtTime = -1.0;
-    Api->ui->documentHide(Api->ui->panelDocument("textmenu"));
+    Api->ui->documentHide(moduleui::panelDocument(Api, "textmenu"));
   }
 }
 
@@ -254,15 +255,15 @@ void panelReset(void *) {
   HideAtTime = -1.0;
   setMenuInnerRml("");
   Fade.reset();
-  Api->ui->documentSetProperty(Api->ui->panelDocument("textmenu"), "opacity",
-                               "0");
-  Api->ui->documentHide(Api->ui->panelDocument("textmenu"));
+  Api->ui->documentSetProperty(moduleui::panelDocument(Api, "textmenu"),
+                               "opacity", "0");
+  Api->ui->documentHide(moduleui::panelDocument(Api, "textmenu"));
 }
 
 // ---- event sinks ----
 
 int canShowMenu(void *, const void *) {
-  return Api->ui->panelDocument("textmenu") != nullptr;
+  return moduleui::panelDocument(Api, "textmenu") != nullptr;
 }
 
 int32_t onShowMenu(void *, const void *payload) {
@@ -279,7 +280,7 @@ void onInitHud(void *, const void *) {
 // framework says a menu is up. The pure predicate runs before any handler, so
 // no other module can observe a mid-dispatch change.
 int slotOwned(void *, const void *) {
-  if (!Displayed || !Api->ui->panelDocument("textmenu"))
+  if (!Displayed || !moduleui::panelDocument(Api, "textmenu"))
     return 0;
   AbcUiMenuFacts menu{};
   menu.structSize = sizeof(menu);
@@ -298,10 +299,8 @@ int32_t onSlotCommand(void *userdata, const void *) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = "textmenu";
-  Panel.documentPath = "mod://abcui.textmenu/hud/rml/textmenu.rml";
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel("textmenu",
+                              "mod://abcui.textmenu/hud/rml/textmenu.rml", 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelDocumentReady;
   Panel.onData = &panelOnData;

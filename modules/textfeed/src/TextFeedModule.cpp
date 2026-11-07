@@ -4,6 +4,7 @@
 // "notice-center" (PRINTCENTER, screen-center); both fed by the
 // textfeed.notice channel with the old keep_time countdown.
 #include "../../common/UiText.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -32,7 +33,7 @@ NoticeState *stateOf(void *userdata) {
 }
 
 AbcUiDocument *panelDocument(const NoticeState &state) {
-  return Api->ui->panelDocument(state.Panel.name);
+  return moduleui::panelDocument(Api, state.Panel.name);
 }
 
 void setVisible(NoticeState &state, bool visible) {
@@ -89,7 +90,7 @@ NoticeState *noticeState(const AbcUiNoticeEvent *event) {
 int canNotice(void *, const void *payload) {
   const auto *event = static_cast<const AbcUiNoticeEvent *>(payload);
   NoticeState *state = noticeState(event);
-  return state && Api->ui->panelDocument(state->Panel.name) ? 1 : 0;
+  return state && moduleui::panelDocument(Api, state->Panel.name) ? 1 : 0;
 }
 
 int32_t onNotice(void *, const void *payload) {
@@ -127,10 +128,7 @@ void panelReset(void *userdata) {
 void registerPanel(NoticeState &state, const char *name, const char *document,
                    int target) {
   state.target = target;
-  state.Panel.structSize = sizeof(state.Panel);
-  state.Panel.name = name;
-  state.Panel.documentPath = document;
-  state.Panel.zIndex = 0;
+  state.Panel = moduleui::makePanel(name, document, 0);
   state.Panel.userdata = &state;
   state.Panel.onDocumentReady = nullptr;
   state.Panel.onData = &panelOnData;

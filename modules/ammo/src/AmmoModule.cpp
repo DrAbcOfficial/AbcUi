@@ -15,6 +15,7 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Glyphs.h"
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -68,7 +69,7 @@ int LastSlot = -1;
 int LastSlotPos = -1;
 
 AbcUiDocument *barDocument() {
-  return Api->ui->panelDocument(kBarPanel);
+  return moduleui::panelDocument(Api, kBarPanel);
 }
 
 void setElementProperty(const char *id, const char *name, const char *value) {
@@ -381,7 +382,7 @@ StackState WeaponStack;
 StackState ItemStack;
 
 AbcUiDocument *stackDocument(const StackState &stack) {
-  return Api->ui->panelDocument(stack.panelName);
+  return moduleui::panelDocument(Api, stack.panelName);
 }
 
 AbcUiElement *stackContainer(const StackState &stack) {
@@ -686,10 +687,7 @@ void itemStackReset(void *) {
 void registerPanel(AbcUiPanelDesc &desc, const char *name, const char *doc,
                    void (*ready)(void *), void (*onData)(void *, double),
                    void (*reset)(void *)) {
-  desc.structSize = sizeof(desc);
-  desc.name = name;
-  desc.documentPath = doc;
-  desc.zIndex = 0;
+  desc = moduleui::makePanel(name, doc, 0);
   desc.userdata = nullptr;
   desc.onDocumentReady = ready;
   desc.onData = onData;

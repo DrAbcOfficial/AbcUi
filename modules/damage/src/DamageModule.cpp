@@ -10,6 +10,7 @@
 // (grenade tracking; the module tracks entities by index, never by the
 // engine-owned pointer).
 #include "../../common/Text.h"
+#include "../../common/Panel.h"
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -175,7 +176,7 @@ double GrenadeTimeNow = 0.0;
 // --------------------------------------------------------------- helpers ----
 
 AbcUiDocument *panelDocument(const char *name) {
-  return Api->ui->panelDocument(name);
+  return moduleui::panelDocument(Api, name);
 }
 
 void setElementProperty(const char *panel, const char *id, const char *name,
@@ -878,10 +879,7 @@ void onAddEntityEvent(void *, const void *payload) {
 void registerPanel(AbcUiPanelDesc &desc, const char *name, const char *doc,
                    void (*ready)(void *), void (*onData)(void *, double),
                    void (*onRedraw)(void *, double), void (*reset)(void *)) {
-  desc.structSize = sizeof(desc);
-  desc.name = name;
-  desc.documentPath = doc;
-  desc.zIndex = 0;
+  desc = moduleui::makePanel(name, doc, 0);
   desc.userdata = nullptr;
   desc.onDocumentReady = ready;
   desc.onData = onData;

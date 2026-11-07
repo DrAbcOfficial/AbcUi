@@ -20,6 +20,7 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Avatars.h"
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -90,7 +91,7 @@ uint64_t ListenerDown = 0;
 uint64_t ListenerClick = 0;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 AbcUiElement *query(const char *id) {
@@ -878,10 +879,7 @@ void panelOnData(void *, double frameTime) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = nullptr;
   Panel.onData = &panelOnData;

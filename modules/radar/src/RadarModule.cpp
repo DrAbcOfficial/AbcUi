@@ -15,6 +15,7 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/Avatars.h"
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -53,7 +54,7 @@ std::unordered_map<int, std::string> AvatarUris;
 std::string MapUri;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 AbcUiElement *query(const char *id) {
@@ -297,13 +298,10 @@ void panelOnData(void *, double) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
   // The radar plate occupies the top-left corner the weapon chooser also
   // uses; parking it under every default HUD document keeps the chooser (and
   // the scoreboard) readable.
-  Panel.zIndex = -1;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, -1);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &panelReady;
   Panel.onData = &panelOnData;

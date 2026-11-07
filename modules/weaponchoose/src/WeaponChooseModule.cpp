@@ -18,6 +18,7 @@
 // hud_rainbow_menu cycle rides the rebuild (old PerformLayout counter).
 #include <abcui/events.h>
 #include "../../common/Text.h"
+#include "../../common/Panel.h"
 #include <abcui/module_api.h>
 
 #include <algorithm>
@@ -55,7 +56,7 @@ bool Visible = false;
 int RainbowCounter = 0;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 // The framework menu fact is the single input-ownership authority: a text
@@ -481,10 +482,7 @@ void onModuleLoad() {
   native.canHandle = &onNativeHudDraw;
   if (!Api->claims->claimDomain(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
     Api->core->warn("weaponchoose: cannot claim the native HUD draw");
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = nullptr;
   Panel.onData = &panelOnData;

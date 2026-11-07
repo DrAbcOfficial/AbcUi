@@ -23,6 +23,7 @@
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 #include "../../common/ImeOverlay.h"
+#include "../../common/Panel.h"
 
 #include <algorithm>
 #include <cmath>
@@ -94,7 +95,7 @@ bool CaptionModForcedOff = false;
 float CaptionModSavedValue = 1.0f;
 
 AbcUiDocument *panelDocument() {
-  return Api->ui->panelDocument(kPanelName);
+  return moduleui::panelDocument(Api, kPanelName);
 }
 
 AbcUiElement *query(const char *id) {
@@ -706,10 +707,7 @@ void onModuleFrame(double) {
 
 void onModuleLoad() {
   Ime.load(Api, "abcui.chat");
-  Panel.structSize = sizeof(Panel);
-  Panel.name = kPanelName;
-  Panel.documentPath = kDocumentPath;
-  Panel.zIndex = 0;
+  Panel = moduleui::makePanel(kPanelName, kDocumentPath, 0);
   Panel.userdata = nullptr;
   Panel.onDocumentReady = &onPanelReady;
   Panel.onData = &panelOnData;
