@@ -318,6 +318,9 @@ private:
     bool missing = true;
   };
 
+  // One RowView projection for rows()/rowViewAt()/find(); pointers into the
+  // runtime entry stay valid for the model's lifetime.
+  static RowView viewOf(const RowRuntime &entry);
   RowRuntime *runtime(const char *cvar);
   void resetDefaultsImpl(const std::vector<std::string> *Cvars);
   const RowRuntime *runtime(const char *cvar) const;

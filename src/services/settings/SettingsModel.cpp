@@ -581,22 +581,25 @@ std::optional<ApplyResult> SettingsModel::applyOne(const char *cvar) {
   return applyRow(*entry);
 }
 
+RowView SettingsModel::viewOf(const RowRuntime &entry) {
+  RowView view;
+  view.row = entry.row;
+  view.engineValue = entry.engineValue;
+  view.engineText = entry.engineText;
+  view.draftText = entry.draftText;
+  view.draftValue = entry.draftValue;
+  view.state = entry.state;
+  view.missing = entry.missing;
+  view.options = &entry.options;
+  view.optionLabels = &entry.optionLabels;
+  return view;
+}
+
 std::vector<RowView> SettingsModel::rows() const {
   std::vector<RowView> views;
   views.reserve(Rows_.size());
-  for (const auto &entry : Rows_) {
-    RowView view;
-    view.row = entry.row;
-    view.engineValue = entry.engineValue;
-    view.engineText = entry.engineText;
-    view.draftText = entry.draftText;
-    view.draftValue = entry.draftValue;
-    view.state = entry.state;
-    view.missing = entry.missing;
-    view.options = &entry.options;
-    view.optionLabels = &entry.optionLabels;
-    views.push_back(std::move(view));
-  }
+  for (const auto &entry : Rows_)
+    views.push_back(viewOf(entry));
   return views;
 }
 
@@ -607,17 +610,7 @@ int SettingsModel::rowCount() const {
 bool SettingsModel::rowViewAt(int index, RowView &out) const {
   if (index < 0 || index >= static_cast<int>(Rows_.size()))
     return false;
-  // The same projection rows() builds, for exactly one entry.
-  const RowRuntime &entry = Rows_[static_cast<size_t>(index)];
-  out.row = entry.row;
-  out.engineValue = entry.engineValue;
-  out.engineText = entry.engineText;
-  out.draftText = entry.draftText;
-  out.draftValue = entry.draftValue;
-  out.state = entry.state;
-  out.missing = entry.missing;
-  out.options = &entry.options;
-  out.optionLabels = &entry.optionLabels;
+  out = viewOf(Rows_[static_cast<size_t>(index)]);
   return true;
 }
 
@@ -627,17 +620,7 @@ std::optional<RowView> SettingsModel::find(const char *cvar) const {
   const RowRuntime *entry = runtime(cvar);
   if (!entry)
     return std::nullopt;
-  RowView view;
-  view.row = entry->row;
-  view.engineValue = entry->engineValue;
-  view.engineText = entry->engineText;
-  view.draftText = entry->draftText;
-  view.draftValue = entry->draftValue;
-  view.state = entry->state;
-  view.missing = entry->missing;
-  view.options = &entry->options;
-  view.optionLabels = &entry->optionLabels;
-  return view;
+  return viewOf(*entry);
 }
 
 bool SettingsModel::isDirty() const {
