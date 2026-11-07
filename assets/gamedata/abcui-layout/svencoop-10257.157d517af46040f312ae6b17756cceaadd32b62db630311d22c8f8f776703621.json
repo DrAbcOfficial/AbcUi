@@ -103,6 +103,18 @@
         "scalar_name": "AbcUi_IPanel_PaintTraverse_index",
         "scalar_value": 41
       }
+    },
+    {
+      "platform": "windows",
+      "module": "client",
+      "symbolName": "AbcUi_SpectatorPanel_Update",
+      "kind": "function",
+      "payload": {
+        "func_name": "SpectatorPanel::Update()",
+        "func_rva": "0x69a70",
+        "func_size": "0x821",
+        "func_sig": "55 8B EC 6A FF 68 ?? ?? ?? ?? 64 A1 00 00 00 00 50 83 EC 20 53 56 57 A1 ?? ?? ?? ?? 33 C5 50 8D 45 F4 64 A3 00 00 00 00 8B D9 89 5D F0 8B 03"
+      }
     }
   ]
 }

@@ -4,7 +4,6 @@
 #include "PaintGate.h"
 
 #include <IPanel.h>
-#include <ISurface.h>
 
 #include <abc/Console.h>
 #include <abc/GameData.h>
@@ -18,7 +17,6 @@
 #include <Windows.h>
 #include <cstddef>
 #include <cstring>
-#include <vector>
 
 namespace rmlui {
 
@@ -29,18 +27,12 @@ namespace {
 // partial installs are undone before failure is reported).
 bool Installed = false;
 vgui::IPanel *Panel = nullptr;
-vgui::ISurface *Surface = nullptr;
 void(__fastcall *OriginalPaintTraverse)(void *, int, vgui::VPANEL, bool,
                                         bool) = nullptr;
 vgui::VPANEL(__fastcall *OriginalIsWithinTraverse)(void *, int, vgui::VPANEL,
                                                    int, int, bool) = nullptr;
 hook_t *TraverseHook = nullptr;
 hook_t *HitTestHook = nullptr;
-
-// The vgui2 image range captured at install; the client-panel paint hook and
-// the interface slots are validated against it.
-const std::byte *VguiImageBase = nullptr;
-const std::byte *VguiImageEnd = nullptr;
 
 // Clear the keyboard/mouse input flags of one native panel and its whole
 // subtree. Conditional writes only: after the first pass every flag already
@@ -61,138 +53,112 @@ void clearNativeInput(vgui::VPANEL panel, uint32_t &cleared) {
     clearNativeInput(Panel->GetChild(panel, i), cleared);
 }
 
-// The client viewport object (TeamFortressViewport) that owns the observer
-// bar. Read from its gamedata global every call: the pointer is created
-// during client init and may be replaced by a client reload.
-void **ViewportSlot = nullptr;
+const std::byte *VguiImageBase = nullptr;
+const std::byte *VguiImageEnd = nullptr;
 
-// The client viewport's observer bar, re-located from the vgui2 root while
-// the replacement owns the surface. The client rebuilds the viewport (and its
-// SpectatorPanel) on a client VidInit, so only the handle value and the
-// client pointer are cached, and both are used for comparisons only.
-vgui::VPANEL SpectatorPanelVPanel = 0;
+// The client viewport's observer bar is identified at build time through the
+// gamedata symbol below (a signature derived from the shipped client.dll), so
+// no runtime panel search is needed: the engine hands us the object as the
+// receiver of SpectatorPanel::Update.
+#define ABCUI_SPECTATOR_UPDATE_SYMBOL "AbcUi_SpectatorPanel_Update"
+
+// Client panel vtable slots (vgui::Panel): 9 setVisible. The slot is read
+// from the live object and validated to resolve inside the client or vgui2
+// image before the call.
+using SetVisibleFn = void(__thiscall *)(void *, bool);
+using SpectatorUpdateFn = void(__fastcall *)(void *, int);
+
 void *SpectatorPanelClient = nullptr;
+SpectatorUpdateFn OriginalSpectatorUpdate = nullptr;
+hook_t *SpectatorUpdateHook = nullptr;
 bool SpectatorSuppressionLogged = false;
-
-// The vgui2 root captured from the interface traversal (parentless panel).
-// Used only when the surface interface is unavailable; both feed the same
-// walk.
-vgui::VPANEL RootVPanel = 0;
-int FailedWalks = 0;
-
-using ClientPaintFn = void(__fastcall *)(void *, int, bool, bool);
-ClientPaintFn OriginalClientPaint = nullptr;
-hook_t *ClientPaintHook = nullptr;
 
 bool spectatorClaimed() {
   const AbcUiNativeHudEvent event{ABCUI_NATIVE_HUD_SPECTATOR};
   return framework::arbitration::gate(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &event);
 }
 
-// The observer bar paints through its own client-panel PaintTraverse: the
-// vgui2 traversal calls the virtual directly for children, so the IPanel
-// interface hook below never sees this subtree. The virtual is shared by
-// every client panel (SpectatorPanel overrides nothing), so it is hooked once
-// on the first located bar and skips only that object.
-void __fastcall H_ClientPanelPaintTraverse(void *self, int dummy,
-                                           bool forceRepaint,
-                                           bool allowForce) {
-  if (self && self == SpectatorPanelClient && spectatorClaimed()) {
+bool insideClientImage(const std::byte *address) {
+  const auto base = reinterpret_cast<const std::byte *>(abc::g_dwClientBase);
+  if (!base || !address || address < base)
+    return false;
+  return static_cast<size_t>(address - base) < abc::g_dwClientSize;
+}
+
+bool insideVguiImage(const std::byte *address) {
+  return address && VguiImageBase && address >= VguiImageBase &&
+         address < VguiImageEnd;
+}
+
+bool validEntry(const void *entry) {
+  const auto *address = reinterpret_cast<const std::byte *>(entry);
+  return insideClientImage(address) || insideVguiImage(address);
+}
+
+// Hide one client panel through its own setVisible virtual. The receiver is a
+// live Panel* (only ever taken from the Update hook), so a stale pointer is the
+// only fault source; SEH turns that into "leave the native bar alone".
+void hideClientPanel(void *panel) {
+  if (!panel)
+    return;
+  __try {
+    void **vtable = *static_cast<void ***>(panel);
+    if (!vtable || !validEntry(vtable[9]))
+      return;
+    reinterpret_cast<SetVisibleFn>(vtable[9])(panel, false);
+  } __except (EXCEPTION_EXECUTE_HANDLER) {
+    SpectatorPanelClient = nullptr;
+  }
+}
+
+// SpectatorPanel::Update is where the native bar is shown and its labels are
+// written. The hook keeps the receiver (a deterministic identity, resolved at
+// build time through gamedata) and, while the replacement owns the surface,
+// forces the bar invisible and skips the update entirely - so it is never
+// shown again. Releasing the claim lets the next update run normally.
+void __fastcall H_SpectatorUpdate(void *self, int dummy) {
+  (void)dummy;
+  if (!self) {
+    if (OriginalSpectatorUpdate)
+      OriginalSpectatorUpdate(self, dummy);
+    return;
+  }
+  SpectatorPanelClient = self;
+  if (spectatorClaimed()) {
+    hideClientPanel(self);
     if (!SpectatorSuppressionLogged) {
       SpectatorSuppressionLogged = true;
-      abc::ConsolePrint("[AbcUi] paint gate: native spectator panel "
-                        "suppressed at Panel::PaintTraverse\n");
+      abc::ConsolePrint("[AbcUi] paint gate: native spectator bar suppressed "
+                        "(SpectatorPanel::Update)\n");
     }
     return;
   }
-  if (OriginalClientPaint)
-    OriginalClientPaint(self, dummy, forceRepaint, allowForce);
+  if (OriginalSpectatorUpdate)
+    OriginalSpectatorUpdate(self, dummy);
 }
 
-void installClientPanelPaintHook(void *clientPanel) {
-  if (ClientPaintHook || !clientPanel || !VguiImageBase || !VguiImageEnd)
+void installSpectatorHook() {
+  if (SpectatorUpdateHook || !g_pMetaHookAPI)
     return;
-  void **vtable = *static_cast<void ***>(clientPanel);
-  if (!vtable)
+  if (g_pMetaHookAPI->IsGameSymbolAvailable(abc::g_dwClientBase,
+                                            ABCUI_SPECTATOR_UPDATE_SYMBOL) !=
+      MH_GAMESYMBOL_OK) {
+    abc::ConsolePrint("[AbcUi] paint gate: %s unavailable for this client "
+                      "build; the native spectator bar stays native\n",
+                      ABCUI_SPECTATOR_UPDATE_SYMBOL);
     return;
-  // vgui2 publishes Panel::PaintTraverse at virtual slot 3 (gamedata
-  // vfunc_index 3); SpectatorPanel inherits it unchanged.
-  const auto *target = reinterpret_cast<const std::byte *>(vtable[3]);
-  if (!target || target < VguiImageBase || target >= VguiImageEnd)
+  }
+  void *target = abc::ResolveGameSymbol(
+      abc::g_dwClientBase, "client", ABCUI_SPECTATOR_UPDATE_SYMBOL,
+      MH_GAMESYMBOL_KIND_FUNCTION);
+  if (!target)
     return;
-  ClientPaintHook = g_pMetaHookAPI->InlineHook(
-      const_cast<std::byte *>(target),
-      reinterpret_cast<void *>(&H_ClientPanelPaintTraverse),
-      reinterpret_cast<void **>(&OriginalClientPaint));
-  if (ClientPaintHook)
-    abc::ConsolePrint("[AbcUi] paint gate: client panel paint hook installed "
-                      "(Panel::PaintTraverse)\n");
-}
-
-int childLabelCount(vgui::VPANEL panel) {
-  int labels = 0;
-  const int children = Panel ? Panel->GetChildCount(panel) : 0;
-  for (int i = 0; i < children; ++i) {
-    const char *className = Panel->GetClassName(Panel->GetChild(panel, i));
-    if (className && std::strcmp(className, "Label") == 0)
-      ++labels;
-  }
-  return labels;
-}
-
-// Locate the observer bar from the vgui2 root. The root is the surface's
-// embedded panel; the viewport is the panel whose client object is gViewPort;
-// the bar is its direct child with five constructor children (two plates and
-// three labels). The structural form is used only when gViewPort is absent.
-bool refreshSpectatorPanel() {
-  if (!Panel)
-    return false;
-  const vgui::VPANEL root =
-      Surface ? Surface->GetEmbeddedPanel() : RootVPanel;
-  if (!root)
-    return false;
-
-  std::vector<vgui::VPANEL> level{root};
-  vgui::VPANEL viewport = 0;
-  vgui::VPANEL structural = 0;
-  for (int depth = 0; depth < 8 && !level.empty(); ++depth) {
-    std::vector<vgui::VPANEL> next;
-    for (const vgui::VPANEL panel : level) {
-      if (!viewport && ViewportSlot && *ViewportSlot &&
-          Panel->Client(panel) == *ViewportSlot)
-        viewport = panel;
-      if (!structural && Panel->GetChildCount(panel) == 5 &&
-          childLabelCount(panel) == 3)
-        structural = panel;
-      const int children = Panel->GetChildCount(panel);
-      for (int i = 0; i < children; ++i)
-        next.push_back(Panel->GetChild(panel, i));
-    }
-    level.swap(next);
-  }
-
-  vgui::VPANEL spectator = 0;
-  if (viewport) {
-    const int children = Panel->GetChildCount(viewport);
-    for (int i = 0; i < children; ++i) {
-      const vgui::VPANEL child = Panel->GetChild(viewport, i);
-      if (Panel->GetChildCount(child) == 5) {
-        spectator = child;
-        break;
-      }
-    }
-  }
-  if (!spectator)
-    spectator = structural;
-  if (!spectator)
-    return false;
-  void *client = Panel->Client(spectator);
-  if (!client)
-    return false;
-  SpectatorPanelVPanel = spectator;
-  SpectatorPanelClient = client;
-  installClientPanelPaintHook(client);
-  return true;
+  SpectatorUpdateHook = g_pMetaHookAPI->InlineHook(
+      target, reinterpret_cast<void *>(&H_SpectatorUpdate),
+      reinterpret_cast<void **>(&OriginalSpectatorUpdate));
+  if (SpectatorUpdateHook)
+    abc::ConsolePrint(
+        "[AbcUi] paint gate: SpectatorPanel::Update hooked at %p\n", target);
 }
 
 // The selective paint filter. No IsVisible/IsPopup reads (the original's own
@@ -201,25 +167,6 @@ bool refreshSpectatorPanel() {
 // (T02 §6: "GameUI" / "ServerBrowser"; never "GAMEUIDLL").
 void __fastcall H_PaintTraverse(void *pthis, int dummy, vgui::VPANEL vguiPanel,
                                 bool forceRepaint, bool allowForce) {
-  // The engine paints from one root; remember it when the surface interface
-  // is not available (the walk then starts here instead).
-  if (!RootVPanel && Panel && vguiPanel && !Panel->GetParent(vguiPanel))
-    RootVPanel = vguiPanel;
-  // The observer overlay is a client VGUI child, not a GameUI module panel:
-  // it yields to the same per-element claim as the gHUD list (the module
-  // returns zero while its replacement document is unavailable).
-  if (SpectatorPanelVPanel && vguiPanel == SpectatorPanelVPanel &&
-      spectatorClaimed()) {
-    // Hide the panel as well: the client-panel virtual below skips it, and a
-    // hidden panel also drops out of every traversal and hit test path.
-    if (Panel->IsVisible(vguiPanel))
-      Panel->SetVisible(vguiPanel, false);
-    uint32_t cleared = 0;
-    clearNativeInput(vguiPanel, cleared);
-    if (cleared)
-      services::nativeUiBridge().noteInputFlagsCleared(cleared);
-    return;
-  }
   const char *module = Panel ? Panel->GetModuleName(vguiPanel) : nullptr;
   if (services::nativeUiBridge().gatePaintAttempt(module)) {
     uint32_t cleared = 0;
@@ -248,42 +195,18 @@ vgui::VPANEL __fastcall H_IsWithinTraverse(void *pthis, int dummy,
 // Anything that can be undone without the hook objects (pre-hook failures).
 void failCleanup() {
   Panel = nullptr;
-  Surface = nullptr;
   OriginalPaintTraverse = nullptr;
   OriginalIsWithinTraverse = nullptr;
 }
 
-const char *const kSurfaceVersions[] = {
-    "VGUI_Surface026", "VGUI_Surface025", "VGUI_Surface024",
-    "VGUI_Surface023", "VGUI_Surface022", "VGUI_Surface021",
-    "VGUI_Surface020", "VGUI_Surface019",
-};
-
 } // namespace
 
 void paintGateFrame() {
-  if (!Installed)
-    return;
-  const bool claimed = spectatorClaimed();
-  // The walk installs the client-panel hook on the first located bar and
-  // keeps the identity current while the replacement owns the surface.
-  if (!ClientPaintHook || claimed) {
-    if (refreshSpectatorPanel()) {
-      FailedWalks = 0;
-    } else if (claimed) {
-      // One report per ~3 s of failed walks: the identity rules (gViewPort or
-      // the structural form) did not match this client build.
-      if (++FailedWalks == 180) {
-        FailedWalks = 0;
-        abc::ConsolePrint(
-            "[AbcUi] paint gate: observer bar not located (surface=%d "
-            "root=%p)\n",
-            Surface ? 1 : 0, reinterpret_cast<void *>(RootVPanel));
-      }
-    } else {
-      FailedWalks = 0;
-    }
-  }
+  // The update hook owns the show side; this keeps the already-visible bar
+  // hidden on frames where the client does not re-run the update (the mode
+  // text is refreshed lazily).
+  if (Installed && SpectatorPanelClient && spectatorClaimed())
+    hideClientPanel(SpectatorPanelClient);
 }
 
 void installPaintGate() {
@@ -323,25 +246,6 @@ void installPaintGate() {
     abc::SysError("[AbcUi] paint gate: \"%s\" unavailable from vgui2.dll",
                   VGUI_PANEL_INTERFACE_VERSION);
   }
-
-  // Optional: the vgui2 surface, whose embedded panel is the root of the walk
-  // that locates the client observer bar. The interface version follows the
-  // engine build, so the known generations are probed in order; a miss only
-  // disables the walk (the IPanel gate stays armed).
-  for (const char *version : kSurfaceVersions) {
-    Surface = static_cast<vgui::ISurface *>(getFactory(version, nullptr));
-    if (Surface)
-      break;
-  }
-
-  // Optional anchor for the client viewport: gViewPort is a standard client
-  // global in the shared catalog. A missing symbol degrades the walk to its
-  // structural form; the gate itself stays strict.
-  if (g_pMetaHookAPI->IsGameSymbolAvailable(abc::g_dwClientBase, "gViewPort") ==
-      MH_GAMESYMBOL_OK)
-    ViewportSlot = static_cast<void **>(abc::ResolveGameSymbol(
-        abc::g_dwClientBase, "client", "gViewPort",
-        MH_GAMESYMBOL_KIND_GLOBAL));
 
   // Step 3: query the binary-matched slots before validating their owners.
   // MetaHook omits slot-only virtualFunction declarations from its runtime
@@ -400,9 +304,13 @@ void installPaintGate() {
   HitTestHook = hitTestHook;
   Installed = true;
   services::nativeUiBridge().arm();
-  abc::ConsolePrint("[AbcUi] paint gate: installed (IPanel gamedata slots, "
-                    "surface %s)\n",
-                    Surface ? "ready" : "unavailable");
+
+  // Build-time resolved observer-bar hook (optional: a client build without
+  // the symbol keeps its native bar).
+  installSpectatorHook();
+
+  abc::ConsolePrint("[AbcUi] paint gate: installed (IPanel gamedata slots; "
+                    "suppression requires module takeover)\n");
 }
 
 void uninstallPaintGate() {
@@ -416,10 +324,10 @@ void uninstallPaintGate() {
   // UnHook only reports "found" - at teardown MetaHook may already have
   // freed the hook records (MH_FreeAllHook restores the same vtable
   // entries), and the pointer comparison inside UnHook is safe for that.
-  if (ClientPaintHook) {
-    g_pMetaHookAPI->UnHook(ClientPaintHook);
-    ClientPaintHook = nullptr;
-    OriginalClientPaint = nullptr;
+  if (SpectatorUpdateHook) {
+    g_pMetaHookAPI->UnHook(SpectatorUpdateHook);
+    SpectatorUpdateHook = nullptr;
+    OriginalSpectatorUpdate = nullptr;
   }
   if (TraverseHook) {
     g_pMetaHookAPI->UnHook(TraverseHook);
@@ -431,12 +339,8 @@ void uninstallPaintGate() {
   }
   Installed = false;
   Panel = nullptr;
-  Surface = nullptr;
-  ViewportSlot = nullptr;
-  SpectatorPanelVPanel = 0;
   SpectatorPanelClient = nullptr;
-  RootVPanel = 0;
-  FailedWalks = 0;
+  SpectatorSuppressionLogged = false;
   OriginalPaintTraverse = nullptr;
   OriginalIsWithinTraverse = nullptr;
   abc::ConsolePrint("[AbcUi] paint gate: uninstalled\n");
