@@ -200,11 +200,11 @@ void updateStatus() {
     break;
   }
   setDisplay("voice-badge", bits ? "flex" : "none");
-  // The mic glyph leads a send mute; receive/ban states use the speaker glyph.
-  const char *iconMic = (bits & 1) ? "flex" : "none";
-  const char *iconSpeaker = (bits & 1) ? "none" : "flex";
-  setDisplay("voice-icon-mic", iconMic);
-  setDisplay("voice-icon-speaker", iconSpeaker);
+  // The mic glyph is only for a send-only mute. A receive mute (with or
+  // without the mic) and the engine's ban read as "voice off": speaker glyph.
+  const bool micOnly = (bits & 1) != 0 && (bits & 2) == 0 && (bits & 4) == 0;
+  setDisplay("voice-icon-mic", micOnly ? "flex" : "none");
+  setDisplay("voice-icon-speaker", micOnly ? "none" : "flex");
   if (token)
     setInner("voice-badge-text", escape(translateOr(token, fallback)));
   // A new state re-opens the badge (text visible) and restarts the hold.
