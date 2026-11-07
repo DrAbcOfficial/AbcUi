@@ -476,6 +476,24 @@ std::map<int, std::string> KeyBindModel::desiredKeys() const {
   return desired;
 }
 
+bool KeyBindModel::planBind(int keynum, const std::string &command,
+                            std::string &text) const {
+  const std::string name = keyNameFor(Seams_, keynum);
+  if (name.empty() || !keyNameBindable(name) || !commandBindable(command) ||
+      command.size() > kMaxBindCommand)
+    return false;
+  text = "bind \"" + name + "\" \"" + command + "\"";
+  return true;
+}
+
+bool KeyBindModel::planUnbind(int keynum, std::string &text) const {
+  const std::string name = keyNameFor(Seams_, keynum);
+  if (name.empty() || !keyNameBindable(name))
+    return false;
+  text = "unbind \"" + name + "\"";
+  return true;
+}
+
 std::vector<std::string> KeyBindModel::pendingCommands() const {
   std::vector<std::string> commands;
   // Desired state per key: at most one action's draft claims a key.
@@ -487,21 +505,20 @@ std::vector<std::string> KeyBindModel::pendingCommands() const {
         Seams_.bindingForKey ? Seams_.bindingForKey(entry.first) : "";
     if (current && entry.second == current)
       continue; // already the truth
-    const std::string name = keyNameFor(Seams_, entry.first);
-    if (name.empty() || !keyNameBindable(name) ||
-        !commandBindable(entry.second) || entry.second.size() > kMaxBindCommand)
+    std::string text;
+    if (!planBind(entry.first, entry.second, text))
       continue; // refused at apply(), not silently skipped here
-    commands.push_back("bind \"" + name + "\" \"" + entry.second + "\"");
+    commands.push_back(std::move(text));
   }
   // Unbind keys that no draft claims anymore.
   for (const auto &row : Rows_) {
     for (int keynum : row.engineKeys) {
       if (desired.count(keynum) != 0)
         continue;
-      const std::string name = keyNameFor(Seams_, keynum);
-      if (name.empty() || !keyNameBindable(name))
+      std::string text;
+      if (!planUnbind(keynum, text))
         continue;
-      commands.push_back("unbind \"" + name + "\"");
+      commands.push_back(std::move(text));
     }
   }
   return commands;
@@ -556,16 +573,14 @@ std::vector<BindApplyResult> KeyBindModel::apply() {
         Seams_.bindingForKey ? Seams_.bindingForKey(entry.first) : "";
     if (current && entry.second == current)
       continue;
-    const std::string name = keyNameFor(Seams_, entry.first);
     const auto rows = touchedRows(entry.first);
-    if (name.empty() || !keyNameBindable(name) ||
-        !commandBindable(entry.second) ||
-        entry.second.size() > kMaxBindCommand) {
+    std::string text;
+    if (!planBind(entry.first, entry.second, text)) {
       for (int rowIndex : rows)
         report(rowIndex, BindApplyOutcome::kInvalidRefused);
       continue;
     }
-    if (!issueCommand("bind \"" + name + "\" \"" + entry.second + "\"")) {
+    if (!issueCommand(text)) {
       for (int rowIndex : rows)
         report(rowIndex, BindApplyOutcome::kWriteRefused);
       continue;
@@ -582,10 +597,10 @@ std::vector<BindApplyResult> KeyBindModel::apply() {
     for (int keynum : row.engineKeys) {
       if (desired.count(keynum) != 0)
         continue;
-      const std::string name = keyNameFor(Seams_, keynum);
-      if (name.empty() || !keyNameBindable(name))
+      std::string text;
+      if (!planUnbind(keynum, text))
         continue;
-      if (!issueCommand("unbind \"" + name + "\"")) {
+      if (!issueCommand(text)) {
         report(index, BindApplyOutcome::kWriteRefused);
         continue;
       }

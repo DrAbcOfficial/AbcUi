@@ -232,6 +232,11 @@ private:
   static std::string keyNameFor(const Seams &seams, int keynum);
   static bool keyNameBindable(const std::string &name);
   static bool commandBindable(const std::string &command);
+  // One bind/unbind line builder shared by pendingCommands() and apply():
+  // false when the key name or the command is refused at the write boundary.
+  bool planBind(int keynum, const std::string &command,
+                std::string &text) const;
+  bool planUnbind(int keynum, std::string &text) const;
   bool issueCommand(const std::string &command) const;
   // Used by the unbind loop of apply() (row index while iterating).
   int rowIndex(const RowRuntime *row) const;
