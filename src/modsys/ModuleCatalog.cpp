@@ -1,6 +1,8 @@
 // framework::modulecatalog implementation - see ModuleCatalog.h.
 #include "ModuleCatalog.h"
 
+#include "../framework/TextUtil.h"
+
 #include "FrameworkVersion.h"
 #include "ModuleManager.h"
 #include "ModuleManifest.h"
@@ -134,14 +136,6 @@ bool regularFile(const std::string &path) {
          !(attributes & FILE_ATTRIBUTE_REPARSE_POINT);
 }
 
-std::string lowerCopy(std::string text) {
-  for (char &c : text) {
-    if (c >= 'A' && c <= 'Z')
-      c = static_cast<char>(c - 'A' + 'a');
-  }
-  return text;
-}
-
 } // namespace
 
 ModuleCatalog &ModuleCatalog::instance() {
@@ -159,9 +153,9 @@ int32_t ModuleCatalog::findIn(const std::vector<Entry> &entries,
                               const char *file) const {
   if (!file)
     return -1;
-  const std::string wanted = lowerCopy(file);
+  const std::string wanted = framework::TextUtil::lowerAscii(file);
   for (size_t i = 0; i < entries.size(); ++i) {
-    if (lowerCopy(entries[i].file) == wanted)
+    if (framework::TextUtil::lowerAscii(entries[i].file) == wanted)
       return static_cast<int32_t>(i);
   }
   return -1;
@@ -355,7 +349,8 @@ void ModuleCatalog::rebuild() {
   for (Entry &entry : Entries) {
     const modmanager::RuntimeModule *record = nullptr;
     for (const auto &candidate : runtime) {
-      if (lowerCopy(candidate.file) == lowerCopy(entry.file)) {
+      if (framework::TextUtil::lowerAscii(candidate.file) ==
+          framework::TextUtil::lowerAscii(entry.file)) {
         record = &candidate;
         break;
       }
@@ -438,7 +433,8 @@ void ModuleCatalog::resolve(std::vector<Entry> &entries,
     else if (entry.pending == kPendingDisable)
       entry.effectiveEnabled = false;
     if (preview && previewFile && previewEnabled &&
-        lowerCopy(entry.file) == lowerCopy(*previewFile)) {
+        framework::TextUtil::lowerAscii(entry.file) ==
+            framework::TextUtil::lowerAscii(*previewFile)) {
       entry.effectiveEnabled = *previewEnabled;
     }
     entry.nextState = entry.effectiveEnabled ? kSkipped : kDisabled;
@@ -763,7 +759,8 @@ int32_t ModuleCatalog::previewToggle(const char *file, int32_t enabled) {
       continue;
     current.previewState =
         previewEntries[static_cast<size_t>(previewIndex)].nextState;
-    if (lowerCopy(current.file) == lowerCopy(previewFile) ||
+    if (framework::TextUtil::lowerAscii(current.file) ==
+            framework::TextUtil::lowerAscii(previewFile) ||
         current.previewState != current.nextState) {
       current.flags |= kFlagPreview;
     } else {
@@ -803,7 +800,8 @@ int32_t ModuleCatalog::setPendingEnabled(const char *file, int32_t enabled,
     PendingChanges.erase(
         std::remove_if(PendingChanges.begin(), PendingChanges.end(),
                        [&](const PendingChange &change) {
-                         return lowerCopy(change.file) == lowerCopy(entry.file);
+                         return framework::TextUtil::lowerAscii(change.file) ==
+                                framework::TextUtil::lowerAscii(entry.file);
                        }),
         PendingChanges.end());
     rebuild();
@@ -825,7 +823,8 @@ int32_t ModuleCatalog::setPendingEnabled(const char *file, int32_t enabled,
   PendingChanges.erase(
       std::remove_if(PendingChanges.begin(), PendingChanges.end(),
                      [&](const PendingChange &change) {
-                       return lowerCopy(change.file) == lowerCopy(entry.file);
+                       return framework::TextUtil::lowerAscii(change.file) ==
+                              framework::TextUtil::lowerAscii(entry.file);
                      }),
       PendingChanges.end());
 

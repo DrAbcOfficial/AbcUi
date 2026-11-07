@@ -1,5 +1,7 @@
 #include "CommandMenuModel.h"
 
+#include "../../framework/TextUtil.h"
+
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 
@@ -12,6 +14,7 @@
 namespace services::commandmenu {
 namespace {
 
+using framework::TextUtil::lowerAscii;
 using Value = rapidjson::Value;
 
 constexpr std::size_t kMaxFileBytes = 1024 * 1024;
@@ -32,13 +35,6 @@ struct ParseContext {
 void require(bool valid, const std::string &field, const char *message) {
   if (!valid)
     throw ValidationError{field, message};
-}
-
-std::string lowerAscii(std::string text) {
-  std::transform(text.begin(), text.end(), text.begin(), [](unsigned char ch) {
-    return static_cast<char>(std::tolower(ch));
-  });
-  return text;
 }
 
 std::string normalizeMapName(std::string name) {

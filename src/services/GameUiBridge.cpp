@@ -3,6 +3,8 @@
 // the exact production logic links into the offline acceptance test.
 #include "GameUiBridge.h"
 
+#include "../framework/TextUtil.h"
+
 namespace services {
 
 namespace {
@@ -10,19 +12,7 @@ namespace {
 // ASCII case-insensitive equality; the module names are engine literals
 // ("GameUI", "ServerBrowser"), never localized.
 bool equalsIgnoreCase(const char *a, const char *b) {
-  if (!a || !b)
-    return false;
-  while (*a && *b) {
-    char ca = *a++;
-    char cb = *b++;
-    if (ca >= 'A' && ca <= 'Z')
-      ca = static_cast<char>(ca - 'A' + 'a');
-    if (cb >= 'A' && cb <= 'Z')
-      cb = static_cast<char>(cb - 'A' + 'a');
-    if (ca != cb)
-      return false;
-  }
-  return *a == *b;
+  return a && b && framework::TextUtil::equalsIgnoreCase(a, b);
 }
 
 PaintBucket bucketFor(const char *module) {

@@ -7,10 +7,32 @@
 // Every server-derived string routed into SetInnerRML goes through this.
 
 #include <string>
+#include <string_view>
 
 namespace framework {
 
 namespace TextUtil {
+
+// ASCII-only case folding. The engine tokens this repository compares are
+// ASCII literals; the Turkish-I/locale behaviour of <cctype> is not wanted.
+inline char lowerAscii(char c) {
+  return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
+}
+
+inline std::string lowerAscii(std::string text) {
+  for (char &c : text)
+    c = lowerAscii(c);
+  return text;
+}
+
+inline bool equalsIgnoreCase(std::string_view left, std::string_view right) {
+  if (left.size() != right.size())
+    return false;
+  for (std::size_t i = 0; i < left.size(); ++i)
+    if (lowerAscii(left[i]) != lowerAscii(right[i]))
+      return false;
+  return true;
+}
 
 inline std::string trimNewlines(const std::string &text) {
   const auto first = text.find_first_not_of('\n');

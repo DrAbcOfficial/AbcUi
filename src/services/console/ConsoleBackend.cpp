@@ -3,9 +3,13 @@
 
 #include <algorithm>
 
+#include "../../framework/TextUtil.h"
+
 namespace services::console {
 
 namespace {
+
+using framework::TextUtil::lowerAscii;
 
 bool isSpace(char c) {
   return c == ' ' || c == '\t';
@@ -20,10 +24,6 @@ std::string trimCopy(const char *text) {
   while (end > begin && isSpace(trimmed[end - 1]))
     --end;
   return trimmed.substr(begin, end - begin);
-}
-
-char lowerAscii(char c) {
-  return (c >= 'A' && c <= 'Z') ? static_cast<char>(c - 'A' + 'a') : c;
 }
 
 bool prefixMatches(const std::string &prefix, const std::string &name) {
@@ -76,7 +76,8 @@ bool ConsoleBackend::sensitiveCommand(const std::string &command) {
   // restriction on execution; no partial command parser can leak a later
   // password command by inspecting only the first verb.
   std::string Folded = command;
-  std::transform(Folded.begin(), Folded.end(), Folded.begin(), lowerAscii);
+  std::transform(Folded.begin(), Folded.end(), Folded.begin(),
+                 [](char c) { return lowerAscii(c); });
   return Folded.find("password") != std::string::npos;
 }
 

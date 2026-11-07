@@ -13,26 +13,15 @@
 #include <format>
 #include <string_view>
 
+#include "../../framework/TextUtil.h"
+
 namespace services {
 namespace creategame {
 
 namespace {
 
-char lowerAscii(char c) {
-  if (c >= 'A' && c <= 'Z')
-    return static_cast<char>(c - 'A' + 'a');
-  return c;
-}
-
-bool equalsIgnoreCase(const std::string &a, const std::string &b) {
-  if (a.size() != b.size())
-    return false;
-  for (std::size_t i = 0; i < a.size(); ++i) {
-    if (lowerAscii(a[i]) != lowerAscii(b[i]))
-      return false;
-  }
-  return true;
-}
+using framework::TextUtil::equalsIgnoreCase;
+using framework::TextUtil::lowerAscii;
 
 // Strict base-10 integer parse: the whole string, digits only, no sign, no
 // whitespace, no overflow (the 9-digit cap keeps 11+ digit garbage away).
