@@ -18,53 +18,14 @@
 
 namespace {
 
-class ClockSystem final : public abctest::QuietSystemInterface {
-public:
-  double Now = 0.0;
-  double GetElapsedTime() override {
-    return Now;
-  }
-  bool LogMessage(Rml::Log::Type type, const Rml::String &message) override {
-    if (type <= Rml::Log::LT_WARNING) {
-      ++Messages;
-      std::cerr << "rmlui(" << static_cast<int>(type) << "): " << message
-                << "\n";
-    }
-    return abctest::QuietSystemInterface::LogMessage(type, message);
-  }
-  int Messages = 0;
-};
+using abctest::readFile;
 
 // Icons and backgrounds are never inspected offline; accepting every texture
 // keeps the render pass free of "could not load" warnings.
-class TextureRenderInterface final : public abctest::NullRenderInterface {
-public:
-  Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex>,
-                                              Rml::Span<const int>) override {
-    return 1;
-  }
-  Rml::TextureHandle LoadTexture(Rml::Vector2i &size,
-                                 const Rml::String &) override {
-    size = Rml::Vector2i(1, 1);
-    return 1;
-  }
-  Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte>,
-                                     Rml::Vector2i) override {
-    return 1;
-  }
-  void ReleaseTexture(Rml::TextureHandle) override {}
-};
-
-std::string readFile(const std::filesystem::path &path) {
-  std::ifstream input(path, std::ios::binary);
-  std::ostringstream buffer;
-  buffer << input.rdbuf();
-  return buffer.str();
-}
-
 // Advance the fake clock in frame-sized steps: RmlUi clamps one update's time
 // step to 0.1s, so a large jump would not model real playback.
-void advance(Rml::Context *context, ClockSystem &system, double seconds) {
+void advance(Rml::Context *context, abctest::WarningSystemInterface &system,
+             double seconds) {
   constexpr double kFrame = 0.02;
   for (double elapsed = 0.0; elapsed < seconds; elapsed += kFrame) {
     system.Now += kFrame;
@@ -83,8 +44,8 @@ float widthOf(Rml::Element *element) {
 } // namespace
 
 int main() {
-  ClockSystem system;
-  TextureRenderInterface renderer;
+  abctest::WarningSystemInterface system;
+  abctest::TextureRenderInterface renderer;
   Rml::SetSystemInterface(&system);
   Rml::SetRenderInterface(&renderer);
   if (!Rml::Initialise()) {

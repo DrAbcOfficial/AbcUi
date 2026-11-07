@@ -22,67 +22,18 @@
 
 namespace {
 
-class CountingSystemInterface final : public abctest::QuietSystemInterface {
-public:
-  bool LogMessage(Rml::Log::Type type, const Rml::String &message) override {
-    if (type <= Rml::Log::LT_WARNING) {
-      ++Messages;
-      std::cerr << "rmlui(" << static_cast<int>(type) << "): " << message
-                << "\n";
-    }
-    return abctest::QuietSystemInterface::LogMessage(type, message);
-  }
-  int Messages = 0;
-};
+using abctest::hasId;
+using abctest::readFile;
+using abctest::replaceAll;
 
 // The document carries the longjump icon; the null renderer returns empty
 // texture handles, which RmlUi reports as a load failure. This renderer
 // accepts every texture (the pixel data itself is never inspected offline).
-class TextureRenderInterface final : public abctest::NullRenderInterface {
-public:
-  // Rendering the document compiles every geometry; a zero handle would log
-  // "Got empty compiled geometry" and break the zero-warning contract.
-  Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex>,
-                                              Rml::Span<const int>) override {
-    return 1;
-  }
-  Rml::TextureHandle LoadTexture(Rml::Vector2i &size,
-                                 const Rml::String &) override {
-    size = Rml::Vector2i(1, 1);
-    return 1;
-  }
-  Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte>,
-                                     Rml::Vector2i) override {
-    return 1;
-  }
-  void ReleaseTexture(Rml::TextureHandle) override {}
-};
-
-std::string readFile(const std::filesystem::path &path) {
-  std::ifstream input(path, std::ios::binary);
-  std::ostringstream buffer;
-  buffer << input.rdbuf();
-  return buffer.str();
-}
-
-void replaceAll(std::string &text, const std::string &from,
-                const std::string &to) {
-  std::size_t at = 0;
-  while ((at = text.find(from, at)) != std::string::npos) {
-    text.replace(at, from.size(), to);
-    at += to.size();
-  }
-}
-
-bool hasId(Rml::ElementDocument *document, const char *id) {
-  return document && document->GetElementById(id) != nullptr;
-}
-
 } // namespace
 
 int main() {
-  CountingSystemInterface systemInterface;
-  TextureRenderInterface renderer;
+  abctest::WarningSystemInterface systemInterface;
+  abctest::TextureRenderInterface renderer;
   Rml::SetSystemInterface(&systemInterface);
   Rml::SetRenderInterface(&renderer);
   if (!Rml::Initialise()) {
