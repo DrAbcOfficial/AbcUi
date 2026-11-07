@@ -55,11 +55,11 @@ void clearNativeInput(vgui::VPANEL panel, uint32_t &cleared) {
 const std::byte *VguiImageBase = nullptr;
 const std::byte *VguiImageEnd = nullptr;
 
-// The client viewport's observer bar is identified at build time through the
-// gamedata symbol below (a signature derived from the shipped client.dll), so
-// no runtime panel search is needed: the engine hands us the object as the
-// receiver of SpectatorPanel::Update.
-#define ABCUI_SPECTATOR_UPDATE_SYMBOL "AbcUi_SpectatorPanel_Update"
+// The client viewport's observer bar is identified through the shared
+// gamedata symbol below (published from the upstream catalog for both
+// supported Sven Co-op builds), so no runtime panel search is needed: the
+// engine hands us the object as the receiver of SpectatorPanel::Update.
+#define ABCUI_SPECTATOR_UPDATE_SYMBOL "SpectatorPanel_Update"
 
 // Client panel vtable slots (vgui::Panel): 9 setVisible. The slot is read
 // from the live object and validated to resolve inside the client or vgui2
