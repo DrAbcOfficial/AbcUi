@@ -1,5 +1,6 @@
 // framework::ApiTable implementation - see ApiTable.h.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 #include "ApiTextures.h"
 #include "ApiAudio.h"
 
@@ -289,12 +290,7 @@ int32_t apiKeyBinding(const char *name, char *out, uint32_t outSize) {
   const char *binding =
       (name && *name) ? gEngfuncs.Key_LookupBinding(name) : nullptr;
   const std::string text = binding ? binding : "";
-  if (out && outSize > 0) {
-    uint32_t i = 0;
-    for (; i + 1 < outSize && i < text.size(); ++i)
-      out[i] = text[i];
-    out[i] = 0;
-  }
+  abi::copyText(text, out, outSize);
   return static_cast<int32_t>(text.size());
 }
 

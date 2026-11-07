@@ -132,12 +132,7 @@ int32_t apiTeamNameToken(int32_t team, char *out, uint32_t outSize) {
   const char *token =
       teamres::teamNameToken(static_cast<teamres::TeamId>(team));
   const std::string text = token ? token : "";
-  if (out && outSize > 0) {
-    size_t i = 0;
-    for (; i + 1 < outSize && i < text.size(); ++i)
-      out[i] = text[i];
-    out[i] = 0;
-  }
+  abi::copyText(text, out, outSize);
   return static_cast<int32_t>(text.size());
 }
 

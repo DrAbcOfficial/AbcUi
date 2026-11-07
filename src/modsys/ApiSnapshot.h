@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <string_view>
 #include <type_traits>
 
 namespace framework::abi {
@@ -31,6 +32,22 @@ template <typename T> void copySnapshot(void *out, const T &full) {
                     sizeof(capacity),
                 bytes - sizeof(capacity));
   }
+}
+
+// Bounded, always-terminated copy into a module-owned buffer. The return is
+// the number of bytes written (never outSize or more).
+inline uint32_t copyText(std::string_view text, char *out, uint32_t outSize) {
+  if (!out || outSize == 0)
+    return 0;
+  uint32_t i = 0;
+  for (; i + 1 < outSize && i < text.size(); ++i)
+    out[i] = text[i];
+  out[i] = '\0';
+  return i;
+}
+
+inline uint32_t copyText(const char *text, char *out, uint32_t outSize) {
+  return copyText(std::string_view(text ? text : ""), out, outSize);
 }
 
 inline bool validArrayLayout(uint32_t count, uint32_t stride) {

@@ -45,21 +45,7 @@
 #include "ModuleDocuments.h"
 
 namespace framework {
-namespace {
-
-// Copies a string into a module-owned buffer, always terminating; returns the
-// number of bytes written (never outSize or more).
-int copyOut(const std::string &text, char *out, uint32_t outSize) {
-  if (!out || outSize == 0)
-    return 0;
-  uint32_t i = 0;
-  for (; i + 1 < outSize && i < text.size(); ++i)
-    out[i] = text[i];
-  out[i] = '\0';
-  return static_cast<int>(i);
-}
-
-} // namespace
+namespace {} // namespace
 
 namespace UiApi {
 namespace {
@@ -149,7 +135,7 @@ int apiElementAttribute(AbcUiElement *element, const char *name, char *out,
     return 0;
   const Rml::String value = target->GetAttribute<Rml::String>(name, "");
   if (out && outSize > 0)
-    copyOut(value, out, outSize);
+    abi::copyText(value, out, outSize);
   return static_cast<int>(value.size());
 }
 
@@ -158,7 +144,7 @@ int apiEscapeRmlAttribute(const char *text, char *out, uint32_t outSize) {
     return 0;
   const std::string escaped = TextUtil::escapeRmlAttribute(text);
   if (out && outSize > 0)
-    copyOut(escaped, out, outSize);
+    abi::copyText(escaped, out, outSize);
   return static_cast<int>(escaped.size());
 }
 
@@ -194,7 +180,7 @@ int apiTranslate(const char *token, char *out, uint32_t outSize) {
     if (translated.empty())
       return 0;
   }
-  copyOut(translated, out, outSize);
+  abi::copyText(translated, out, outSize);
   return 1;
 }
 
@@ -203,7 +189,7 @@ int apiEscapeRml(const char *text, char *out, uint32_t outSize) {
     return 0;
   const std::string escaped = TextUtil::escapeRml(text);
   if (out && outSize > 0)
-    copyOut(escaped, out, outSize);
+    abi::copyText(escaped, out, outSize);
   return static_cast<int>(escaped.size());
 }
 
@@ -211,14 +197,14 @@ int apiKeyNameForKey(int keynum, char *out, uint32_t outSize) {
   const char *name = vgui2ext::keyNameForKey(keynum);
   const std::string text = name ? name : "";
   if (out && outSize > 0)
-    copyOut(text, out, outSize);
+    abi::copyText(text, out, outSize);
   return static_cast<int>(text.size());
 }
 
 void apiFormatColor(const float rgb[3], char *out, uint32_t outSize) {
   if (!rgb || !out || outSize == 0)
     return;
-  copyOut(ColorUtil::format(rgb), out, outSize);
+  abi::copyText(ColorUtil::format(rgb), out, outSize);
 }
 
 void apiDifferColor(const float base[3], const float danger[3], float ratio,
@@ -227,7 +213,7 @@ void apiDifferColor(const float base[3], const float danger[3], float ratio,
     return;
   float rgb[3];
   ColorUtil::differColor(base, danger, ratio, rgb);
-  copyOut(ColorUtil::format(rgb), out, outSize);
+  abi::copyText(ColorUtil::format(rgb), out, outSize);
 }
 
 void apiElementSetAttribute(AbcUiElement *element, const char *name,
@@ -257,7 +243,7 @@ void apiElementRestartAnimation(AbcUiElement *element) {
 }
 
 void apiFormatRgba(int r, int g, int b, int a, char *out, uint32_t outSize) {
-  copyOut(ColorUtil::formatRgba(r, g, b, a), out, outSize);
+  abi::copyText(ColorUtil::formatRgba(r, g, b, a), out, outSize);
 }
 
 int apiProject(const float world[3], float screen[2]) {
@@ -450,7 +436,7 @@ int32_t apiElementValue(AbcUiElement *element, char *out, uint32_t outSize) {
       target ? rmlui_dynamic_cast<Rml::ElementFormControl *>(target) : nullptr;
   const std::string value = control ? control->GetValue().c_str() : "";
   if (out && outSize > 0)
-    copyOut(value, out, outSize);
+    abi::copyText(value, out, outSize);
   return static_cast<int32_t>(value.size());
 }
 
@@ -700,7 +686,7 @@ int apiHudSprite(const char *name, char *atlas, uint32_t atlasSize,
   if (!sprites::findHudSprite(name, sprite, crop))
     return 0;
   if (atlas && atlasSize > 0)
-    copyOut(sprite, atlas, atlasSize);
+    abi::copyText(sprite, atlas, atlasSize);
   if (rect) {
     rect[0] = crop.left;
     rect[1] = crop.top;
@@ -750,7 +736,7 @@ int apiElementInnerRml(AbcUiElement *element, char *out, uint32_t outSize) {
     return 0;
   const std::string inner = target->GetInnerRML();
   if (out && outSize > 0)
-    copyOut(inner, out, outSize);
+    abi::copyText(inner, out, outSize);
   return static_cast<int>(inner.size());
 }
 
@@ -783,7 +769,7 @@ void apiFormatHueColor(float value, char *out, uint32_t outSize) {
     return;
   float rgb[3];
   ColorUtil::playerHueColor(value, rgb);
-  copyOut(ColorUtil::format(rgb), out, outSize);
+  abi::copyText(ColorUtil::format(rgb), out, outSize);
 }
 
 void apiReleaseTexture(const char *source) {
@@ -1031,9 +1017,9 @@ void apiServerInfo(char *serverName, uint32_t serverNameSize, char *nextMap,
                    uint32_t nextMapSize, int32_t *timeEnd) {
   const hudstate::MessageSnapshot &messages = hudstate::messages();
   if (serverName && serverNameSize > 0)
-    copyOut(messages.ServerName, serverName, serverNameSize);
+    abi::copyText(messages.ServerName, serverName, serverNameSize);
   if (nextMap && nextMapSize > 0)
-    copyOut(messages.NextMap, nextMap, nextMapSize);
+    abi::copyText(messages.NextMap, nextMap, nextMapSize);
   if (timeEnd)
     *timeEnd = messages.TimeEnd;
 }
@@ -1042,7 +1028,7 @@ int apiLevelName(char *out, uint32_t outSize) {
   const char *name = gEngfuncs.pfnGetLevelName();
   const std::string text = name ? name : "";
   if (out && outSize > 0)
-    copyOut(text, out, outSize);
+    abi::copyText(text, out, outSize);
   return static_cast<int>(text.size());
 }
 

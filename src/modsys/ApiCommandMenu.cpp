@@ -19,14 +19,7 @@ namespace {
 // cannot disagree with the sliding-window math).
 constexpr std::size_t kWindow = 3;
 
-void copyText(const std::string &text, char *out, uint32_t outSize) {
-  if (!out || outSize == 0)
-    return;
-  uint32_t i = 0;
-  for (; i + 1 < outSize && i < text.size(); ++i)
-    out[i] = text[i];
-  out[i] = '\0';
-}
+using abi::copyText;
 
 services::commandmenu::Model *model() {
   return services::commandmenu::access().model;

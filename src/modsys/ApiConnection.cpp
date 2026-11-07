@@ -2,6 +2,7 @@
 // connection surfaces' data and intents). See ApiTable.h for how it joins
 // the module table.
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 
 #include <algorithm>
 #include <cstring>
@@ -14,14 +15,7 @@ namespace framework {
 namespace ConnectionApi {
 namespace {
 
-void copyText(const std::string &text, char *out, uint32_t outSize) {
-  if (!out || outSize == 0)
-    return;
-  uint32_t i = 0;
-  for (; i + 1 < outSize && i < text.size(); ++i)
-    out[i] = text[i];
-  out[i] = '\0';
-}
+using abi::copyText;
 
 const services::loading::LoadingModel *model() {
   return services::loading::connectionAccess().model;

@@ -14,14 +14,7 @@ namespace framework {
 namespace PlayerListApi {
 namespace {
 
-void copyText(const std::string &text, char *out, uint32_t outSize) {
-  if (!out || outSize == 0)
-    return;
-  uint32_t i = 0;
-  for (; i + 1 < outSize && i < text.size(); ++i)
-    out[i] = text[i];
-  out[i] = '\0';
-}
+using abi::copyText;
 
 services::playerlist::PlayerListModel *model() {
   return services::playerlist::model();

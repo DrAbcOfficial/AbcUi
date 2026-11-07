@@ -2,6 +2,7 @@
 #include "ApiModules.h"
 
 #include "ApiTable.h"
+#include "ApiSnapshot.h"
 #include "ModuleCatalog.h"
 
 #include <algorithm>
@@ -13,15 +14,6 @@ namespace ModulesApi {
 namespace {
 
 using namespace modulecatalog;
-
-void copyString(char *out, size_t size, const std::string &text) {
-  if (!out || size == 0)
-    return;
-  const size_t copy = text.size() < size - 1 ? text.size() : size - 1;
-  if (copy)
-    std::memcpy(out, text.data(), copy);
-  out[copy] = '\0';
-}
 
 int32_t countOfKind(const Entry &entry, RelationKind kind) {
   return static_cast<int32_t>(std::count_if(
@@ -62,14 +54,15 @@ int32_t apiAt(int32_t index, AbcUiModuleInfo *out) {
   value.conflictCount = countOfKind(*entry, kConflict);
   value.diagnosticCount = static_cast<int32_t>(entry->diagnostics.size());
   value.fileSize = entry->fileSize;
-  copyString(value.file, sizeof(value.file), entry->file);
-  copyString(value.id, sizeof(value.id), entry->id);
-  copyString(value.name, sizeof(value.name), entry->name);
-  copyString(value.description, sizeof(value.description), entry->description);
-  copyString(value.author, sizeof(value.author), entry->author);
-  copyString(value.version, sizeof(value.version), entry->version);
-  copyString(value.minAbcUi, sizeof(value.minAbcUi), entry->minAbcUi);
-  copyString(value.entry, sizeof(value.entry), entry->entry);
+  abi::copyText(entry->file, value.file, sizeof(value.file));
+  abi::copyText(entry->id, value.id, sizeof(value.id));
+  abi::copyText(entry->name, value.name, sizeof(value.name));
+  abi::copyText(entry->description, value.description,
+                sizeof(value.description));
+  abi::copyText(entry->author, value.author, sizeof(value.author));
+  abi::copyText(entry->version, value.version, sizeof(value.version));
+  abi::copyText(entry->minAbcUi, value.minAbcUi, sizeof(value.minAbcUi));
+  abi::copyText(entry->entry, value.entry, sizeof(value.entry));
   *out = value;
   return 1;
 }
@@ -90,9 +83,9 @@ int32_t apiRelationAt(int32_t index, int32_t relation,
   result.kind = value->kind;
   result.state = value->state;
   result.declaredBy = value->declaredBy ? 1 : 0;
-  copyString(result.id, sizeof(result.id), value->id);
-  copyString(result.name, sizeof(result.name), value->name);
-  copyString(result.file, sizeof(result.file), value->file);
+  abi::copyText(value->id, result.id, sizeof(result.id));
+  abi::copyText(value->name, result.name, sizeof(result.name));
+  abi::copyText(value->file, result.file, sizeof(result.file));
   *out = result;
   return 1;
 }
@@ -109,8 +102,8 @@ int32_t apiDiagnosticAt(int32_t index, int32_t diagnostic,
   result.structSize = sizeof(result);
   result.severity = value->severity;
   result.code = value->code;
-  copyString(result.subject, sizeof(result.subject), value->subject);
-  copyString(result.detail, sizeof(result.detail), value->detail);
+  abi::copyText(value->subject, result.subject, sizeof(result.subject));
+  abi::copyText(value->detail, result.detail, sizeof(result.detail));
   *out = result;
   return 1;
 }
@@ -135,8 +128,9 @@ int32_t apiSetPendingEnabled(const char *file, int32_t enabled,
     value.pending = change.pending;
     value.restartRequired = change.restartRequired ? 1 : 0;
     value.affectedCount = change.affectedCount;
-    copyString(value.file, sizeof(value.file), change.file);
-    copyString(value.targetFile, sizeof(value.targetFile), change.targetFile);
+    abi::copyText(change.file, value.file, sizeof(value.file));
+    abi::copyText(change.targetFile, value.targetFile,
+                  sizeof(value.targetFile));
     *out = value;
   }
   return code;

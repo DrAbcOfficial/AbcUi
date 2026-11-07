@@ -135,12 +135,7 @@ int32_t apiMenuUp() {
 
 int32_t apiImeLanguageTag(char *out, uint32_t outSize) {
   const std::string tag = rmlui::ime::inputLanguageTag();
-  if (out && outSize > 0) {
-    uint32_t i = 0;
-    for (; i + 1 < outSize && i < tag.size(); ++i)
-      out[i] = tag[i];
-    out[i] = 0;
-  }
+  abi::copyText(tag, out, outSize);
   return static_cast<int32_t>(tag.size());
 }
 
