@@ -86,25 +86,37 @@
 }
 
 #voice-badge.collapsed {
-	width: 22dp;
-	padding: 0 4dp;
+	/* 24dp = 5dp side padding + the 14dp glyph: the collapsed plate holds
+	   exactly the icon, so nothing is clipped or squeezed. */
+	width: 24dp;
+	padding: 0 5dp;
 	background-color: transparent;
 	opacity: 0.55;
 }
 
+/* The glyph must never shrink: without this a collapsing flex row squeezes
+   the icon to a sliver before the text leaves the box. */
 #voice-badge-icon {
 	display: flex;
 	flex-direction: row;
 	align-items: center;
+	flex: 0 0 auto;
+	min-width: 14dp;
+	min-height: 14dp;
 }
 
 .voice-badge-icon {
+	flex: 0 0 auto;
 	width: 14dp;
+	min-width: 14dp;
 	height: 14dp;
+	min-height: 14dp;
 	image-color: #ffb000;
 }
 
 #voice-badge-text {
+	flex: 0 1 auto;
+	min-width: 0;
 	margin-left: 6dp;
 	font-family: Verdana;
 	font-size: 8.6dp;
@@ -114,6 +126,7 @@
 }
 
 #voice-badge.collapsed #voice-badge-text {
+	margin-left: 0;
 	opacity: 0;
 	transform: translateX(52dp);
 }
