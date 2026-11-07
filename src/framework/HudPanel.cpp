@@ -47,12 +47,13 @@ void HudPanel::show() {
   // Idempotent: RmlUi's Show() defaults to FocusFlag::Auto, so re-showing a
   // visible document would silently steal the context focus (key input of
   // whatever document the user is interacting with, e.g. an open TextMenu).
-  // "spectator" and "chat" ride the whitelist because they replace native HUD
-  // surfaces that must show exactly while the observer state holds the
-  // hide-all token (dead or spectating players still read chat).
+  // "spectator", "chat" and "voice" ride the whitelist because they replace
+  // native HUD surfaces that must show exactly while the observer state holds
+  // the hide-all token (dead or spectating players still read chat and hear
+  // their team).
   if (hudstate::isHudHidden(hudstate::kHideAll) && Name != "scoreboard" &&
       Name != "motd" && Name != "textmenu" && Name != "vote" &&
-      Name != "spectator" && Name != "chat")
+      Name != "spectator" && Name != "chat" && Name != "voice")
     return;
   WantsVisible = true;
   if (SessionActive && Document && !Document->IsVisible())

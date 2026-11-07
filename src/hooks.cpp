@@ -365,6 +365,21 @@ static void H_CL_CreateMove(float time, usercmd_s *cmd, int active) {
   }
 }
 
+// Voice status is the engine's per-speaker notification; the client turns it
+// into native speaker labels. The observation is published first (the
+// replacement module builds its list from it), then a hud.native.draw claim
+// may drop the native path. Without a claim the client behaves exactly as
+// before.
+static void H_HUD_VoiceStatus(int entindex, int talking) {
+  const AbcUiVoiceStatusEvent event{entindex, talking ? 1 : 0};
+  framework::eventBus().publish(ABCUI_CHANNEL_VOICE_STATUS, event);
+  const AbcUiNativeHudEvent native{ABCUI_NATIVE_HUD_VOICE};
+  if (framework::arbitration::gate(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
+    return;
+  if (gExportfuncs.HUD_VoiceStatus)
+    gExportfuncs.HUD_VoiceStatus(entindex, talking);
+}
+
 void attachExports(cl_exportfuncs_t *pExportFuncs) {
   // LoadClient, unlike HUD_Init, identifies a new client-export lifetime.
   EngineStudioApi = nullptr;
@@ -382,6 +397,7 @@ void attachExports(cl_exportfuncs_t *pExportFuncs) {
   pExportFuncs->HUD_TxferPredictionData = H_HUD_TxferPredictionData;
   pExportFuncs->HUD_TxferLocalOverrides = H_HUD_TxferLocalOverrides;
   pExportFuncs->HUD_AddEntity = H_HUD_AddEntity;
+  pExportFuncs->HUD_VoiceStatus = H_HUD_VoiceStatus;
   pExportFuncs->HUD_Shutdown = H_HUD_Shutdown;
 }
 

@@ -1,0 +1,4 @@
+abcui.voice/Voice_MicOff = Mic off
+abcui.voice/Voice_ReceiveOff = Voice receive off
+abcui.voice/Voice_Muted = Voice muted
+abcui.voice/Voice_Off = Voice off

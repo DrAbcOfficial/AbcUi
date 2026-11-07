@@ -1,0 +1,4 @@
+abcui.voice/Voice_MicOff = Micrófono desactivado
+abcui.voice/Voice_ReceiveOff = Recepción de voz desactivada
+abcui.voice/Voice_Muted = Voz silenciada
+abcui.voice/Voice_Off = Voz desactivada

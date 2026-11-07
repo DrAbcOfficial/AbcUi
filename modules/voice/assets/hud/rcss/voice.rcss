@@ -1,0 +1,103 @@
+/* voice.rcss - the team-voice speaker list and the local mute badge.
+
+   The list is pinned to the right edge above the ammo readout, and rows slide
+   in from the right: a new speaker enters from off-list (translateX) while
+   fading in, so a talk burst reads as players joining a queue instead of
+   blinking on. RmlUi (re)starts an animation whenever the computed
+   `animation` value changes, and the panel never touches that property after
+   a row is appended, so every row plays this exactly once. */
+
+#voice {
+	position: absolute;
+	right: 18dp;
+	bottom: 78dp;
+	width: auto;
+	height: auto;
+}
+
+#voice-list {
+	display: block;
+	width: auto;
+	height: auto;
+}
+
+@keyframes voice-row-enter {
+	from {
+		transform: translateX(26dp);
+		opacity: 0;
+	}
+	to {
+		transform: translateX(0dp);
+		opacity: 1;
+	}
+}
+
+.voice-row {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	box-sizing: border-box;
+	width: auto;
+	min-width: 96dp;
+	margin-top: 2dp;
+	padding: 2dp 8dp 2dp 3dp;
+	background-color: #0000006b;
+	border-radius: 3dp;
+	animation: voice-row-enter 0.20s cubic-out;
+}
+
+.voice-avatar {
+	width: 20dp;
+	height: 20dp;
+	margin-right: 7dp;
+	border-radius: 2dp;
+	image-color: #ffffff;
+}
+
+.voice-name {
+	font-family: Verdana;
+	font-size: 9.6dp;
+	color: #e8e8e8;
+	white-space: nowrap;
+}
+
+/* Local status badge: a ringed mic glyph with a slash plus the state token.
+   It shares the row entrance so the icon appears with the same motion. */
+#voice-badge {
+	display: none;
+	flex-direction: row;
+	align-items: center;
+	justify-content: flex-end;
+	width: auto;
+	margin-top: 2dp;
+	padding: 2dp 6dp;
+	background-color: #0000006b;
+	border-radius: 3dp;
+	animation: voice-row-enter 0.20s cubic-out;
+}
+
+.voice-mute-icon {
+	position: relative;
+	width: 11dp;
+	height: 11dp;
+	margin-right: 5dp;
+	border: 1dp solid var(--abc-hud-accent);
+	border-radius: 6dp;
+}
+
+.voice-mute-slash {
+	position: absolute;
+	left: -2dp;
+	top: 5dp;
+	width: 14dp;
+	height: 1.4dp;
+	background-color: var(--abc-hud-accent);
+	transform: rotate(-45deg);
+}
+
+#voice-badge-text {
+	font-family: Verdana;
+	font-size: 8.6dp;
+	color: var(--abc-hud-accent);
+	white-space: nowrap;
+}

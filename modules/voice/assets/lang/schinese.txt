@@ -1,0 +1,4 @@
+abcui.voice/Voice_MicOff = 麦克风已关闭
+abcui.voice/Voice_ReceiveOff = 语音接收已关闭
+abcui.voice/Voice_Muted = 语音已静音
+abcui.voice/Voice_Off = 语音已关闭

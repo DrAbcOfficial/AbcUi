@@ -39,6 +39,12 @@
 #define ABCUI_NATIVE_HUD_FLASHLIGHT 4
 #define ABCUI_NATIVE_HUD_CROSSHAIR 5
 #define ABCUI_NATIVE_HUD_SPECTATOR 6
+// The client's voice-status speaker labels (CVoiceStatus, fed by the engine's
+// HUD_VoiceStatus export). A true predicate drops the notification before the
+// client turns it into speaker labels, so no native label is created while a
+// replacement module lists the speakers. The observation still reaches
+// voice.status below.
+#define ABCUI_NATIVE_HUD_VOICE 7
 typedef struct AbcUiNativeHudEvent {
   int32_t element;
 } AbcUiNativeHudEvent;
@@ -83,6 +89,17 @@ typedef struct AbcUiBoolEvent {
 
 // hud.spectate - the local player entered/left observer mode.
 #define ABCUI_CHANNEL_HUD_SPECTATE "hud.spectate"
+
+// voice.status - one voice-status notification (HUD_VoiceStatus). index 1..32
+// is a player's talk state, -1 the local player's own talk state
+// (voice_loopback) and -2 the engine's local voice-ban notice. talking is 1
+// while the speaker talks. Observation-only; the native speaker labels are
+// separately gated through hud.native.draw (ABCUI_NATIVE_HUD_VOICE).
+#define ABCUI_CHANNEL_VOICE_STATUS "voice.status"
+typedef struct AbcUiVoiceStatusEvent {
+  int32_t index;
+  int32_t talking;
+} AbcUiVoiceStatusEvent;
 
 // netmsg.health - the server Health value (predicted health rides the hud
 // state snapshot; this is the message-fed value).

@@ -16,6 +16,7 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
 - **Character preview** — live player model facing the screen at a slight angle on the main menu, plus a model picker with favorites in the settings.
 - **Media** — menu music, background movie and a media player for the game soundtrack.
 - **Voice mute** — per-player mute list shared by the player list and the scoreboard.
+- **Voice speakers** — team-voice speaker list with avatars and a status badge when your microphone or voice receive is off, replacing the native speaker icons.
 - **Spectator bar** — mode, target and target health instead of the native bar.
 - **Modules** — view installed UI modules and enable or disable them from Settings; changes are saved when you exit the game.
 

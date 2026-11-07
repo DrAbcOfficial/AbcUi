@@ -1,0 +1,14 @@
+{
+  "id": "abcui.voice",
+  "name": "Voice",
+  "description": "Team-voice speaker list with avatars and the local voice status badge, replacing the native speaker labels.",
+  "author": "DrAbc",
+  "version": "1.0.0",
+  "abi": 3,
+  "minAbcUi": "0.12.0",
+  "entry": "entry/abcui_voice.dll",
+  "dependencies": [
+    "abcui.base"
+  ],
+  "conflicts": []
+}

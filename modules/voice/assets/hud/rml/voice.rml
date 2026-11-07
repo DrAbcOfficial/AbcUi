@@ -1,0 +1,17 @@
+<rml>
+<head>
+	<link type="text/rcss" href="mod://abcui.base/rcss/base.rcss"/>
+	<link type="text/rcss" href="../rcss/voice.rcss"/>
+</head>
+<body id="voice">
+	<!-- Replacement for the native voice-status speaker labels: the badge
+	     reports a client that refuses to send or receive voice, and the list
+	     holds one row per talking player (avatar + name). Rows are appended by
+	     VoiceModule.cpp so each one plays its entrance once. -->
+	<div id="voice-badge">
+		<div class="voice-mute-icon"><div class="voice-mute-slash"></div></div>
+		<span id="voice-badge-text"></span>
+	</div>
+	<div id="voice-list"></div>
+</body>
+</rml>
