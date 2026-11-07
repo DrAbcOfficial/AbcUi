@@ -48,7 +48,11 @@ constexpr float kDefaultSayTextTime = 10.0f;
 constexpr int kDefaultSayTextLines = 5;
 constexpr size_t kMaxBuffer = 256;
 constexpr int kMaxWindowRows = 6;
-constexpr float kRowHeightDp = 13.0f;
+// One row's laid-out advance: line-height 11dp + the 1dp top/bottom padding +
+// the 1dp top margin (see chat.rcss). The window height and the wheel trips
+// both use it, so a six-row window is 84dp rather than the 78dp the old
+// 13dp value produced (which clipped the newest row's bottom edge).
+constexpr float kRowHeightDp = 14.0f;
 
 // Persisted contract (never rename): abc_ui_chat is AbcUi's chat switch
 // (0 = off, any other value = on, the default; while on, CaptionMod's chat
@@ -788,7 +792,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.chat";
-  out->version = "3.0.0";
+  out->version = "3.0.1";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

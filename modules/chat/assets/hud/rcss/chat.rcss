@@ -21,11 +21,15 @@
 }
 
 /* The scrolling viewport. `max-height` is written by the panel (rows *
-   13dp); overflow turns the log into the scrollable history window. */
+   14dp, the row's line box plus its padding and top margin); overflow turns
+   the log into the scrollable history window. The bottom padding keeps the
+   newest row's plate off the clip edge at the tail, where fractional unit
+   scaling would otherwise shave its bottom pixel row. */
 #chat-log {
 	display: block;
 	width: 100%;
-	max-height: 78dp;
+	max-height: 84dp;
+	padding-bottom: 2dp;
 	overflow-x: hidden;
 	overflow-y: auto;
 }
