@@ -242,8 +242,15 @@ void MenuController::closeConsoleOverlay() {
 void MenuController::connectRequest(const std::string &address) {
   if (address.empty())
     return;
-  // In-game connects go through disconnect first; the browser/create-game
-  // wiring owns that sequence (T17/T19).
+  // In-game joins leave the server first: the address is queued and the
+  // attempt starts when the backend reports the authoritative no-map phase.
+  // Without this the pause menu's server browser would accept a join that the
+  // phase gate below silently drops.
+  if (State.phase == BackendPhase::kInGame) {
+    State.pendingConnect = address; // owned copy
+    disconnectRequest();
+    return;
+  }
   if (!isNoMapPhase(State.phase))
     return;
   const uint32_t generation = NextGeneration++;
@@ -403,10 +410,12 @@ void MenuController::applyPhaseChange(uint32_t session, BackendPhase phase) {
   case BackendPhase::kDisconnected:
     State.session = session;
     enterDisconnected();
+    startPendingConnect();
     break;
   case BackendPhase::kInGame:
     State.session = session;
     retireAttempt();
+    State.pendingConnect.clear();
     State.phase = BackendPhase::kInGame;
     State.pages.clear();
     State.overlays.clear();
@@ -497,6 +506,7 @@ void MenuController::loadingFinished(uint32_t generation,
 
 void MenuController::applyFatal(const std::string &reason) {
   retireAttempt();
+  State.pendingConnect.clear();
   State.phase = BackendPhase::kFatal;
   State.pages.clear();
   State.overlays.clear();
@@ -506,6 +516,7 @@ void MenuController::applyFatal(const std::string &reason) {
 
 void MenuController::applyShutdown() {
   retireAttempt();
+  State.pendingConnect.clear();
   State.phase = BackendPhase::kShuttingDown;
   State.pages.clear();
   State.overlays.clear();
@@ -513,6 +524,16 @@ void MenuController::applyShutdown() {
   State.errorReason.clear();
   // Terminal: the dispatch guard drops everything after this point, so no
   // DOM can be created and no backend action can ever be emitted again.
+}
+
+// Starts a join queued while the player was in-game. Called only after the
+// authoritative disconnect, so the new attempt sees a clean no-map phase.
+void MenuController::startPendingConnect() {
+  if (State.pendingConnect.empty())
+    return;
+  const std::string address = State.pendingConnect;
+  State.pendingConnect.clear();
+  connectRequest(address);
 }
 
 void MenuController::enterDisconnected() {

@@ -11,7 +11,7 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
   While a text menu is open, number keys 0–9 select menu items instead of weapons.
 - **Chat** — new chat input and message log with full input method support.
   Enter sends or closes chat without activating its gameplay binding.
-- **Menu** — main menu, settings, server browser, create game, player list, vote creation, console, MOTD, inventory window, command menu, connect and loading screens, and quit confirmation. Pages fade in and out while preserving dimmed controls, and stop accepting input as soon as they start closing. Create game remembers the last server name, password, player limit and options.
+- **Menu** — main menu, settings, server browser, create game, player list, vote creation, console, MOTD, inventory window, command menu, connect and loading screens, and quit confirmation. Pages fade in and out while preserving dimmed controls, and stop accepting input as soon as they start closing. Create game remembers the last server name, password, player limit and options. The in-game menu opens the server browser as well; joining from it leaves the current server first.
 - **Settings** — video, audio, voice, captions, mouse, input, multiplayer, advanced, renderer and menu pages, all applied from inside the game.
 - **Character preview** — live player model facing the screen at a slight angle on the main menu, plus a model picker with favorites in the settings.
 - **Media** — menu music, background movie and a media player for the game soundtrack.

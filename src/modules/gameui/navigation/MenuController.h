@@ -195,6 +195,7 @@ private:
   // Back to the no-map world: Main up, overlays and focus gone, attempt
   // retired, stale reason dropped. Idempotent.
   void enterDisconnected();
+  void startPendingConnect();
   void retireAttempt();
 
   MenuState State;

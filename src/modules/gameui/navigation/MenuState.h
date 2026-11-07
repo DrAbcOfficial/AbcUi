@@ -319,6 +319,11 @@ struct MenuState {
   // retires its generation and any late result for it is dropped.
   uint32_t connectGeneration = 0;
   std::string connectAddress; // owned copy of the live attempt target
+  // In-game join: the address picked while connected. The menu leaves the
+  // server first and the attempt starts once the backend reports the
+  // authoritative no-map phase, so a join from the pause menu's server
+  // browser is never dropped by the phase gate.
+  std::string pendingConnect;
   // T19: what the live (or just-finished, for the retry decision) attempt
   // was. Set when an attempt starts; a successful/cancelled attempt clears
   // it, a failed one KEEPS it so the error overlay's retry can replay the

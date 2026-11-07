@@ -35,6 +35,11 @@
       "action": "disconnect"
     },
     {
+      "id": "pause-servers",
+      "label": "#abcui.gameui/MainMenu_Servers",
+      "action": "servers"
+    },
+    {
       "id": "pause-playerlist",
       "label": "#abcui.gameui/MainMenu_PlayerList",
       "action": "playerlist",
