@@ -14,6 +14,7 @@
 // actions execute framework-side (the window closes, then the client
 // command runs) and the read-through rule keeps the list truthful.
 #include "../shared/PageShared.h"
+#include "../shared/PageShell.h"
 
 #include <cstdio>
 #include <format>
@@ -305,12 +306,11 @@ void present() {
 }
 
 void dismiss() {
-  if (Page && Api->documents->visible(Page))
-    Api->documents->hide(Page);
+  pageshell::dismiss(Page);
 }
 
 bool wantsPage(const AbcUiMenuState *state) {
-  return state && state->up && state->page == ABCUI_MENU_PAGE_INVENTORY;
+  return pageshell::wants(state, ABCUI_MENU_PAGE_INVENTORY);
 }
 
 void onMenuState(void *, const void *payload) {
@@ -339,8 +339,7 @@ void onDocumentReady(void *) {
   BoundRoot = Api->documents->root(Page);
   if (!BoundRoot)
     return;
-  ClickBinding =
-      Api->ui->elementAddListener(BoundRoot, "click", &onClick, nullptr);
+  ClickBinding = pageshell::addListener(BoundRoot, "click", &onClick);
 }
 
 void onDocumentHide(void *) {
@@ -351,10 +350,7 @@ void onDocumentHide(void *) {
 void onDocumentClose(void *) {
   // The DOM is still alive: drop the listener before it goes (the framework
   // owns the listener object until it is removed).
-  if (BoundRoot && ClickBinding) {
-    Api->ui->elementRemoveListener(BoundRoot, "click", ClickBinding);
-    ClickBinding = 0;
-  }
+  pageshell::removeListener(BoundRoot, "click", ClickBinding);
   BoundRoot = nullptr;
   RenderedRevision = ~0u;
 }
@@ -372,10 +368,8 @@ int32_t handlePageKey(void *, const void *payload) {
 }
 
 void load() {
-  StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
-                                             &onMenuState, nullptr);
-  PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
-                                             &onMenuPaint, nullptr);
+  StateSubscription = pageshell::subscribeState(&onMenuState, nullptr);
+  PaintSubscription = pageshell::subscribePaint(&onMenuPaint, nullptr);
   AbcUiClaimDesc keys{};
   keys.structSize = sizeof(keys);
   keys.role = ABCUI_CLAIM_OWNER;
@@ -386,18 +380,9 @@ void load() {
   if (!KeySubscription)
     Api->core->warn("inventory: cannot claim the page keys");
 
-  AbcUiDocumentDesc desc{};
-  desc.structSize = sizeof(desc);
-  desc.name = kDocumentName;
-  desc.path = kDocumentPath;
-  desc.flags = ABCUI_DOC_FLAG_MENU;
-  desc.zIndex = 0;
-  desc.userdata = nullptr;
-  desc.onReady = &onDocumentReady;
-  desc.onShow = nullptr;
-  desc.onHide = &onDocumentHide;
-  desc.onClose = &onDocumentClose;
-  Page = Api->documents->create(&desc);
+  Page = pageshell::create(pageshell::menuDocument(
+      kDocumentName, kDocumentPath, ABCUI_DOC_FLAG_MENU, 0, &onDocumentReady,
+      nullptr, &onDocumentHide, &onDocumentClose));
 }
 
 void shutdown() {
@@ -409,14 +394,8 @@ void shutdown() {
 }
 
 void unload() {
-  if (StateSubscription) {
-    Api->events->unsubscribe(StateSubscription);
-    StateSubscription = 0;
-  }
-  if (PaintSubscription) {
-    Api->events->unsubscribe(PaintSubscription);
-    PaintSubscription = 0;
-  }
+  pageshell::unsubscribe(StateSubscription);
+  pageshell::unsubscribe(PaintSubscription);
   if (KeySubscription) {
     Api->claims->release(KeySubscription);
     KeySubscription = 0;

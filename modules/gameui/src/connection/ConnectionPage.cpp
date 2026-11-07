@@ -18,6 +18,7 @@
 // The direct-connect dialog validates with the model's grammar inside the
 // section - a refused entry shows the inline hint and stays put.
 #include "../shared/PageShared.h"
+#include "../shared/PageShell.h"
 
 #include <algorithm>
 #include <format>
@@ -381,7 +382,7 @@ void dismissAll() {
 }
 
 bool wantsLoading(const AbcUiMenuState *state) {
-  return state && state->up && state->page == ABCUI_MENU_PAGE_LOADING;
+  return pageshell::wants(state, ABCUI_MENU_PAGE_LOADING);
 }
 
 void onMenuState(void *, const void *payload) {
@@ -434,10 +435,8 @@ void onDocumentReadyClose(void *) {}
 } // namespace
 
 void load() {
-  StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
-                                             &onMenuState, nullptr);
-  PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
-                                             &onMenuPaint, nullptr);
+  StateSubscription = pageshell::subscribeState(&onMenuState, nullptr);
+  PaintSubscription = pageshell::subscribePaint(&onMenuPaint, nullptr);
 
   const auto create = [](const char *name, const char *path, bool backdrop,
                          int zIndex,
@@ -485,14 +484,8 @@ void shutdown() {
 }
 
 void unload() {
-  if (StateSubscription) {
-    Api->events->unsubscribe(StateSubscription);
-    StateSubscription = 0;
-  }
-  if (PaintSubscription) {
-    Api->events->unsubscribe(PaintSubscription);
-    PaintSubscription = 0;
-  }
+  pageshell::unsubscribe(StateSubscription);
+  pageshell::unsubscribe(PaintSubscription);
   LoadingPage = ErrorPage = PasswordPage = DirectPage = nullptr;
 }
 

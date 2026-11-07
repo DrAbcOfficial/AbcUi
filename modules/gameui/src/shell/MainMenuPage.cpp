@@ -18,6 +18,7 @@
 // section's first available entry, deferred while an overlay holds the
 // screen (the state's overlays bitmask).
 #include "../shared/PageShared.h"
+#include "../shared/PageShell.h"
 
 #include <cstdio>
 #include <format>
@@ -509,8 +510,7 @@ void present(int32_t section, bool focusDefault) {
 }
 
 void dismiss() {
-  if (Page && Api->documents->visible(Page))
-    Api->documents->hide(Page);
+  pageshell::dismiss(Page);
 }
 
 bool wantsPage(const AbcUiMenuState *state, int32_t &section) {
@@ -570,10 +570,7 @@ void onDocumentHide(void *) {
 void onDocumentClose(void *) {
   // The DOM is still alive: drop the listeners before it goes (the
   // framework owns the listener objects until they are removed).
-  if (BoundRoot && ClickBinding) {
-    Api->ui->elementRemoveListener(BoundRoot, "click", ClickBinding);
-    ClickBinding = 0;
-  }
+  pageshell::removeListener(BoundRoot, "click", ClickBinding);
   if (BoundRoot && MousedownBinding) {
     Api->ui->elementRemoveListener(BoundRoot, "mousedown", MousedownBinding);
     MousedownBinding = 0;
@@ -591,23 +588,13 @@ void onDocumentClose(void *) {
 } // namespace
 
 void load() {
-  StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
-                                             &onMenuState, nullptr);
-  PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
-                                             &onMenuPaint, nullptr);
+  StateSubscription = pageshell::subscribeState(&onMenuState, nullptr);
+  PaintSubscription = pageshell::subscribePaint(&onMenuPaint, nullptr);
 
-  AbcUiDocumentDesc desc{};
-  desc.structSize = sizeof(desc);
-  desc.name = kDocumentName;
-  desc.path = kDocumentPath;
-  desc.flags = ABCUI_DOC_FLAG_MENU | ABCUI_DOC_FLAG_BACKDROP;
-  desc.zIndex = 0;
-  desc.userdata = nullptr;
-  desc.onReady = &onDocumentReady;
-  desc.onShow = nullptr;
-  desc.onHide = &onDocumentHide;
-  desc.onClose = &onDocumentClose;
-  Page = Api->documents->create(&desc);
+  Page = pageshell::create(pageshell::menuDocument(
+      kDocumentName, kDocumentPath,
+      ABCUI_DOC_FLAG_MENU | ABCUI_DOC_FLAG_BACKDROP, 0, &onDocumentReady,
+      nullptr, &onDocumentHide, &onDocumentClose));
 }
 
 void shutdown() {
@@ -624,14 +611,8 @@ void shutdown() {
 }
 
 void unload() {
-  if (StateSubscription) {
-    Api->events->unsubscribe(StateSubscription);
-    StateSubscription = 0;
-  }
-  if (PaintSubscription) {
-    Api->events->unsubscribe(PaintSubscription);
-    PaintSubscription = 0;
-  }
+  pageshell::unsubscribe(StateSubscription);
+  pageshell::unsubscribe(PaintSubscription);
   Page = nullptr;
 }
 

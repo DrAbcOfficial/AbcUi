@@ -13,6 +13,7 @@
 // cap; the per-beat rebuild is signature-gated (including a digest over
 // the visible rows and the read-through favorite state).
 #include "../shared/PageShared.h"
+#include "../shared/PageShell.h"
 #include "ProjectionSignature.h"
 
 #include <algorithm>
@@ -904,12 +905,11 @@ void present() {
 }
 
 void dismiss() {
-  if (Page && Api->documents->visible(Page))
-    Api->documents->hide(Page);
+  pageshell::dismiss(Page);
 }
 
 bool wantsPage(const AbcUiMenuState *state) {
-  return state && state->up && state->page == ABCUI_MENU_PAGE_SERVERS;
+  return pageshell::wants(state, ABCUI_MENU_PAGE_SERVERS);
 }
 
 void onMenuState(void *, const void *payload) {
@@ -946,8 +946,7 @@ void onDocumentReady(void *) {
   BoundRoot = Api->documents->root(Page);
   if (!BoundRoot)
     return;
-  ClickBinding =
-      Api->ui->elementAddListener(BoundRoot, "click", &onClick, nullptr);
+  ClickBinding = pageshell::addListener(BoundRoot, "click", &onClick);
   MousedownBinding = Api->ui->elementAddListener(BoundRoot, "mousedown",
                                                  &onMousedown, nullptr);
   ChangeBinding =
@@ -997,23 +996,13 @@ void onDocumentClose(void *) {
 } // namespace
 
 void load() {
-  StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
-                                             &onMenuState, nullptr);
-  PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
-                                             &onMenuPaint, nullptr);
+  StateSubscription = pageshell::subscribeState(&onMenuState, nullptr);
+  PaintSubscription = pageshell::subscribePaint(&onMenuPaint, nullptr);
 
-  AbcUiDocumentDesc desc{};
-  desc.structSize = sizeof(desc);
-  desc.name = kDocumentName;
-  desc.path = kDocumentPath;
-  desc.flags = ABCUI_DOC_FLAG_MENU | ABCUI_DOC_FLAG_BACKDROP;
-  desc.zIndex = 0;
-  desc.userdata = nullptr;
-  desc.onReady = &onDocumentReady;
-  desc.onShow = nullptr;
-  desc.onHide = &onDocumentHide;
-  desc.onClose = &onDocumentClose;
-  Page = Api->documents->create(&desc);
+  Page = pageshell::create(pageshell::menuDocument(
+      kDocumentName, kDocumentPath,
+      ABCUI_DOC_FLAG_MENU | ABCUI_DOC_FLAG_BACKDROP, 0, &onDocumentReady,
+      nullptr, &onDocumentHide, &onDocumentClose));
 }
 
 void shutdown() {
@@ -1030,14 +1019,8 @@ void shutdown() {
 }
 
 void unload() {
-  if (StateSubscription) {
-    Api->events->unsubscribe(StateSubscription);
-    StateSubscription = 0;
-  }
-  if (PaintSubscription) {
-    Api->events->unsubscribe(PaintSubscription);
-    PaintSubscription = 0;
-  }
+  pageshell::unsubscribe(StateSubscription);
+  pageshell::unsubscribe(PaintSubscription);
   Page = nullptr;
 }
 

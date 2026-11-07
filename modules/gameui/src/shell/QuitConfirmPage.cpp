@@ -3,6 +3,7 @@
 // document from the menu.state overlay bit and resolves it through the menu
 // section. Cancel autofocuses, so a stray Enter never ends the game.
 #include "../shared/PageShared.h"
+#include "../shared/PageShell.h"
 
 #include <cstring>
 #include <string_view>
@@ -86,21 +87,12 @@ void onMenuState(void *, const void *payload) {
 } // namespace
 
 void load() {
-  StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
-                                             &onMenuState, nullptr);
+  StateSubscription = pageshell::subscribeState(&onMenuState, nullptr);
 
-  AbcUiDocumentDesc desc{};
-  desc.structSize = sizeof(desc);
-  desc.name = kDocumentName;
-  desc.path = kDocumentPath;
-  desc.flags = ABCUI_DOC_FLAG_MENU;
-  desc.zIndex = ABCUI_DOC_ZINDEX_QUIT_CONFIRM;
-  desc.userdata = nullptr;
-  desc.onReady = &onDocumentReady;
-  desc.onShow = &onDocumentShow;
-  desc.onHide = nullptr;
-  desc.onClose = &onDocumentClose;
-  Page = Api->documents->create(&desc);
+  Page = pageshell::create(
+      pageshell::menuDocument(kDocumentName, kDocumentPath, ABCUI_DOC_FLAG_MENU,
+                              ABCUI_DOC_ZINDEX_QUIT_CONFIRM, &onDocumentReady,
+                              &onDocumentShow, nullptr, &onDocumentClose));
 }
 
 void shutdown() {
@@ -111,10 +103,7 @@ void shutdown() {
 }
 
 void unload() {
-  if (StateSubscription) {
-    Api->events->unsubscribe(StateSubscription);
-    StateSubscription = 0;
-  }
+  pageshell::unsubscribe(StateSubscription);
   Page = nullptr;
   Root = nullptr;
   ClickBinding = 0;

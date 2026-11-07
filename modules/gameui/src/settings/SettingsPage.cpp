@@ -33,6 +33,7 @@
 // projections live in the sibling translation units behind SettingsInternal.h.
 
 #include "../shared/PageShared.h"
+#include "../shared/PageShell.h"
 #include "SettingsInternal.h"
 
 #include <algorithm>
@@ -874,10 +875,8 @@ int32_t handleEscape(void *, const void *payload) {
 }
 
 void load() {
-  StateSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_STATE, 0,
-                                             &onMenuState, nullptr);
-  PaintSubscription = Api->events->subscribe(ABCUI_CHANNEL_MENU_PAINT, 0,
-                                             &onMenuPaint, nullptr);
+  StateSubscription = pageshell::subscribeState(&onMenuState, nullptr);
+  PaintSubscription = pageshell::subscribePaint(&onMenuPaint, nullptr);
   AbcUiClaimDesc escape{};
   escape.structSize = sizeof(escape);
   escape.role = ABCUI_CLAIM_OWNER;
@@ -888,18 +887,10 @@ void load() {
   if (!EscapeSubscription)
     Api->core->warn("settings: cannot claim the routed ESC");
 
-  AbcUiDocumentDesc desc{};
-  desc.structSize = sizeof(desc);
-  desc.name = kDocumentName;
-  desc.path = kDocumentPath;
-  desc.flags = ABCUI_DOC_FLAG_MENU | ABCUI_DOC_FLAG_BACKDROP;
-  desc.zIndex = 0;
-  desc.userdata = nullptr;
-  desc.onReady = &onDocumentReady;
-  desc.onShow = nullptr;
-  desc.onHide = &onDocumentHide;
-  desc.onClose = &onDocumentClose;
-  Page = Api->documents->create(&desc);
+  Page = pageshell::create(pageshell::menuDocument(
+      kDocumentName, kDocumentPath,
+      ABCUI_DOC_FLAG_MENU | ABCUI_DOC_FLAG_BACKDROP, 0, &onDocumentReady,
+      nullptr, &onDocumentHide, &onDocumentClose));
 
   AbcUiDocumentDesc confirm{};
   confirm.structSize = sizeof(confirm);
@@ -949,14 +940,8 @@ void shutdown() {
 }
 
 void unload() {
-  if (StateSubscription) {
-    Api->events->unsubscribe(StateSubscription);
-    StateSubscription = 0;
-  }
-  if (PaintSubscription) {
-    Api->events->unsubscribe(PaintSubscription);
-    PaintSubscription = 0;
-  }
+  pageshell::unsubscribe(StateSubscription);
+  pageshell::unsubscribe(PaintSubscription);
   if (EscapeSubscription) {
     Api->claims->release(EscapeSubscription);
     EscapeSubscription = 0;
