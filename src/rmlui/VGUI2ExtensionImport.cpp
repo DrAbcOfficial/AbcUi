@@ -105,25 +105,36 @@ bool routeHudEscapeFromEvent(const void *event) {
   return rmlui::routeKey(key->Type == kSdlEventKeyDown, K_ESCAPE, false);
 }
 
-// T16 close route for the no-map console: with no level loaded the engine's
+// T16 close route for the no-map menu: with no level loaded the engine's
 // window handler turns ESC into ActivateGameUI (a no-op once the menu is
 // up), so the single routed close that serves the in-game case never
 // happens. This observation (pre-dispatch, Result untouched - the engine
-// keeps consuming ESC itself) covers exactly that gap: menu up, console
-// presented, no level, one close per physical press (the shared
-// EscPressRouted latch, cleared by the key-up above and at every raise).
+// keeps consuming ESC itself) covers exactly that gap: menu up, no level,
+// one close per physical press (the shared EscPressRouted latch, cleared by
+// the key-up above and at every raise). The console keeps its own close
+// action; every other surface gets the menu owner's ESC semantics (cancel a
+// composition first, otherwise pop exactly one layer), so the no-map pages,
+// a password/error dialog and the loading page's Cancel path stay reachable
+// even though the engine-side hide route is a no-level no-op.
 void notePhysicalEscDownFromEvent(const void *event) {
   const auto *key = static_cast<const SdlKeyEvent *>(event);
   if (key->Type != kSdlEventKeyDown || key->Key != kSdlKeycodeEscape ||
       key->Repeat)
     return;
   auto &bridge = services::nativeUiBridge();
-  if (!bridge.armed() || !bridge.menuUp() || !bridge.consoleRequested() ||
-      bridge.hasLevel())
+  if (!bridge.armed() || !bridge.menuUp() || bridge.hasLevel())
     return;
   if (!bridge.consumeEscRoute())
     return;
-  bridge.requestConsoleClose(services::NativeUiOrigin::kGameConsole);
+  if (bridge.consoleRequested()) {
+    bridge.requestConsoleClose(services::NativeUiOrigin::kGameConsole);
+    return;
+  }
+  // One synthetic press through the same route the engine close uses in
+  // game (down + up): the router feeds the focused editor first and then
+  // the owner's ESC action, which pops the top overlay/page.
+  rmlui::routeKey(1, K_ESCAPE, false);
+  rmlui::routeKey(0, K_ESCAPE, false);
 }
 
 // R-4 callback path (batch C): the engine surface WndProc sees every UI-level

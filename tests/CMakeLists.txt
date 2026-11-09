@@ -132,6 +132,18 @@ abcui_add_test(abc_ui_weapon_filter_module
     INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules"
     DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
 
+# The connection surfaces (the four abcui.gameui documents) driven through
+# recording documents/ui/events/menu/connection seams: listeners bind on the
+# descriptor's onReady (a module boots before any Rml context, so a load-time
+# root() is null), each dialog button reaches its typed intent, and a context
+# cycle rebinds through onClose/onReady (issue #133).
+abcui_add_test(abc_ui_connection_page
+    SOURCES ConnectionPage.cpp
+            "${PROJECT_SOURCE_DIR}/modules/gameui/src/connection/ConnectionPage.cpp"
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules"
+                 "${PROJECT_SOURCE_DIR}/modules/gameui/src"
+    DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
+
 # Module-scoped config keys: the local-name grammar, key composition and the
 # section bound the config ABI enforces.
 abcui_add_test(abc_ui_module_config

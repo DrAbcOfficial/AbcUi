@@ -430,7 +430,67 @@ void onMenuPaint(void *, const void *payload) {
     renderLoading();
 }
 
-void onDocumentReadyClose(void *) {}
+// One click-tree binding per loaded document. The module boots before any
+// Rml context exists, so a load-time documents->root() is null and the
+// buttons would never answer: the descriptor's onReady/onClose carry the
+// binding, and a reload (every context cycle) re-binds on the fresh DOM.
+struct ClickBinding {
+  AbcUiElement *Root = nullptr;
+  uint64_t Id = 0;
+};
+
+ClickBinding LoadingClicks;
+ClickBinding ErrorClicks;
+ClickBinding PasswordClicks;
+ClickBinding DirectClicks;
+
+void unbindClicks(ClickBinding &binding) {
+  if (binding.Id)
+    Api->ui->elementRemoveListener(binding.Root, "click", binding.Id);
+  binding.Root = nullptr;
+  binding.Id = 0;
+}
+
+void bindClicks(ClickBinding &binding, AbcUiDocument *page,
+                AbcUiElementListener listener) {
+  if (!page)
+    return;
+  AbcUiElement *root = Api->documents->root(page);
+  if (!root)
+    return; // not loaded yet (the descriptor's onReady binds it)
+  if (binding.Root == root && binding.Id)
+    return; // the same DOM: a repeated sync must not stack a listener
+  // A rebuilt document (retry/reload) has a new root; the stale id can no
+  // longer fire and must go before the fresh binding.
+  unbindClicks(binding);
+  binding.Root = root;
+  binding.Id = Api->ui->elementAddListener(root, "click", listener, nullptr);
+}
+
+void onLoadingReady(void *) {
+  bindClicks(LoadingClicks, LoadingPage, &onLoadingClick);
+}
+void onLoadingClose(void *) {
+  unbindClicks(LoadingClicks);
+}
+void onErrorReady(void *) {
+  bindClicks(ErrorClicks, ErrorPage, &onErrorClick);
+}
+void onErrorClose(void *) {
+  unbindClicks(ErrorClicks);
+}
+void onPasswordReady(void *) {
+  bindClicks(PasswordClicks, PasswordPage, &onPasswordClick);
+}
+void onPasswordClose(void *) {
+  unbindClicks(PasswordClicks);
+}
+void onDirectReady(void *) {
+  bindClicks(DirectClicks, DirectPage, &onDirectClick);
+}
+void onDirectClose(void *) {
+  unbindClicks(DirectClicks);
+}
 
 } // namespace
 
@@ -439,8 +499,8 @@ void load() {
   PaintSubscription = pageshell::subscribePaint(&onMenuPaint, nullptr);
 
   const auto create = [](const char *name, const char *path, bool backdrop,
-                         int zIndex,
-                         [[maybe_unused]] AbcUiElementListener listener) {
+                         int zIndex, void(ABCUI_CALL * onReady)(void *),
+                         void(ABCUI_CALL * onClose)(void *)) {
     AbcUiDocumentDesc desc{};
     desc.structSize = sizeof(desc);
     desc.name = name;
@@ -448,33 +508,39 @@ void load() {
     desc.flags = ABCUI_DOC_FLAG_MENU | (backdrop ? ABCUI_DOC_FLAG_BACKDROP : 0);
     desc.zIndex = zIndex;
     desc.userdata = nullptr;
-    desc.onReady = &onDocumentReadyClose;
+    desc.onReady = onReady;
     desc.onShow = nullptr;
     desc.onHide = nullptr;
-    desc.onClose = nullptr;
+    desc.onClose = onClose;
     return Api->documents->create(&desc);
   };
-  LoadingPage =
-      create(kLoadingName, kLoadingPath, true, kLoadingZIndex, nullptr);
-  ErrorPage =
-      create(kErrorName, kErrorPath, false, kConnectionDialogZIndex, nullptr);
-  PasswordPage = create(kPasswordName, kPasswordPath, false,
-                        kConnectionDialogZIndex, nullptr);
-  DirectPage =
-      create(kDirectName, kDirectPath, false, kConnectionDialogZIndex, nullptr);
-
-  const auto bind = [](AbcUiDocument *page, AbcUiElementListener listener) {
-    if (AbcUiElement *root = Api->documents->root(page))
-      Api->ui->elementAddListener(root, "click", listener, nullptr);
-  };
-  bind(LoadingPage, &onLoadingClick);
-  bind(ErrorPage, &onErrorClick);
-  bind(PasswordPage, &onPasswordClick);
-  bind(DirectPage, &onDirectClick);
+  LoadingPage = create(kLoadingName, kLoadingPath, true, kLoadingZIndex,
+                       &onLoadingReady, &onLoadingClose);
+  ErrorPage = create(kErrorName, kErrorPath, false, kConnectionDialogZIndex,
+                     &onErrorReady, &onErrorClose);
+  PasswordPage =
+      create(kPasswordName, kPasswordPath, false, kConnectionDialogZIndex,
+             &onPasswordReady, &onPasswordClose);
+  DirectPage = create(kDirectName, kDirectPath, false, kConnectionDialogZIndex,
+                      &onDirectReady, &onDirectClose);
+  // A create on a live context loads inside the call (onReady could not see
+  // the returned handle yet); these are no-ops for the boot order where the
+  // first context loads the pages later.
+  bindClicks(LoadingClicks, LoadingPage, &onLoadingClick);
+  bindClicks(ErrorClicks, ErrorPage, &onErrorClick);
+  bindClicks(PasswordClicks, PasswordPage, &onPasswordClick);
+  bindClicks(DirectClicks, DirectPage, &onDirectClick);
 }
 
 void shutdown() {
-  // The documents die with the context; forget every borrowed handle.
+  // The documents die with the context: onClose already dropped the click
+  // bindings while their DOM still existed; the teardown still runs the
+  // removal (a stale id is a no-op) so the documented owner contract holds
+  // even if a close was skipped. Forget every borrowed handle after it.
+  unbindClicks(LoadingClicks);
+  unbindClicks(ErrorClicks);
+  unbindClicks(PasswordClicks);
+  unbindClicks(DirectClicks);
   LoadingPage = ErrorPage = PasswordPage = DirectPage = nullptr;
   ErrorShown = false;
   ErrorReasonShown.clear();
@@ -486,6 +552,10 @@ void shutdown() {
 void unload() {
   pageshell::unsubscribe(StateSubscription);
   pageshell::unsubscribe(PaintSubscription);
+  unbindClicks(LoadingClicks);
+  unbindClicks(ErrorClicks);
+  unbindClicks(PasswordClicks);
+  unbindClicks(DirectClicks);
   LoadingPage = ErrorPage = PasswordPage = DirectPage = nullptr;
 }
 
