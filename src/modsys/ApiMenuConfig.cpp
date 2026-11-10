@@ -60,6 +60,7 @@ int32_t apiEntryAt(int32_t section, int32_t index, AbcUiMenuConfigEntry *out) {
   copyText(entry.Label, full.label, sizeof(full.label));
   copyText(entry.Action, full.action, sizeof(full.action));
   copyText(entry.Condition, full.condition, sizeof(full.condition));
+  copyText(entry.Command, full.command, sizeof(full.command));
 
   // The caller's declared size wins: never write past an older header.
   abi::copySnapshot(out, full);

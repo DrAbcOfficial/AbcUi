@@ -18,6 +18,9 @@ struct MenuEntry {
   std::string Label;
   std::string Action;
   std::string Condition = "always";
+  // The console line an `action: "command"` entry runs through the engine
+  // command buffer. Empty for every fixed intent.
+  std::string Command;
 };
 
 struct MenuDefinition {

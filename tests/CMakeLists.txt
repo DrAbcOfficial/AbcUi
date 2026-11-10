@@ -104,6 +104,14 @@ abcui_add_test(abc_ui_settings_key_row
             "${SRC}/services/settings/SettingsModel.cpp"
     LIBRARIES Abc::Core)
 
+# The shell's menu definition (uiconfig's mainmenu.json): the fixed intents
+# plus the "command" entries that carry their own console line.
+abcui_add_test(abc_ui_menu_shell
+    SOURCES MenuShell.cpp
+            "${SRC}/services/uiconfig/UiDefinitions.cpp"
+            "${SRC}/services/settings/SettingsModel.cpp"
+    LIBRARIES Abc::Core)
+
 # The settings.scr SERVER_OPTIONS document the create-game page reads and
 # writes back: the shipped grammar, the four typed rows, the writer's
 # normalization/header and a parse -> serialize -> parse round trip.

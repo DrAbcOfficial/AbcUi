@@ -1400,13 +1400,17 @@ typedef struct AbcUiCommandMenuApi {
 // main/pause entry lists) plus the engine facts the shell projects. The
 // JSON and its parser stay in the framework; a shell module builds the
 // entry buttons from this section and resolves the fixed action names
-// through the menu section's typed intents.
+// through the menu section's typed intents. The one exception is the
+// "command" action, whose entry carries its own console line and hands it
+// to console->engineCommand.
 #define ABCUI_MENU_SECTION_MAIN 0
 #define ABCUI_MENU_SECTION_PAUSE 1
 
-// The parser bounds ids at 96 bytes and free text at 1024.
+// The parser bounds ids at 96 bytes, free text at 1024 and the command line
+// at 256 (one printable line: no control characters).
 #define ABCUI_MENU_ID_MAX 96
 #define ABCUI_MENU_LABEL_MAX 1024
+#define ABCUI_MENU_COMMAND_MAX 256
 
 // The character card: the player name line and the Studio model the live
 // <model> element renders (an empty model path hides the preview box).
@@ -1428,8 +1432,12 @@ typedef struct AbcUiMenuConfigEntry {
   uint32_t structSize;
   char id[ABCUI_MENU_ID_MAX];        // anchors the DOM node
   char label[ABCUI_MENU_LABEL_MAX];  // "#token" or literal text
-  char action[ABCUI_MENU_ID_MAX];    // fixed intent name (menu section)
+  char action[ABCUI_MENU_ID_MAX];    // fixed intent name (menu section) or
+                                     // "command"
   char condition[ABCUI_MENU_ID_MAX]; // always | multiplayer | singleplayer
+  // The console line an action "command" entry runs through
+  // console->engineCommand (empty for every other intent).
+  char command[ABCUI_MENU_COMMAND_MAX];
 } AbcUiMenuConfigEntry;
 
 typedef struct AbcUiMenuConfigApi {

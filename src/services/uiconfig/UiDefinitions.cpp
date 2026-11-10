@@ -54,6 +54,19 @@ rapidjson::Document document(const std::string &Text) {
   return Doc;
 }
 
+// One console line. The engine command buffer splits its input on newlines,
+// so the field stays a single printable line (bounded like the ABI's
+// ABCUI_MENU_COMMAND_MAX): a definition can never smuggle a second command.
+std::string menuCommand(const Value &Item, const std::string &Path) {
+  std::string Command = text(Item, "command", Path);
+  require(Command.size() <= 256, Path + ".command",
+          "command exceeds 256 bytes");
+  require(std::none_of(Command.begin(), Command.end(),
+                       [](unsigned char C) { return C < 0x20 || C == 0x7f; }),
+          Path + ".command", "command contains a control character");
+  return Command;
+}
+
 std::vector<MenuEntry> menuEntries(const Value &V, const std::string &Path,
                                    std::set<std::string> &Ids) {
   array(V, Path, 64);
@@ -61,19 +74,28 @@ std::vector<MenuEntry> menuEntries(const Value &V, const std::string &Path,
   for (unsigned I = 0; I < V.Size(); ++I) {
     const std::string P = Path + "[" + std::to_string(I) + "]";
     const auto &Item = V[I];
-    fields(Item, {"id", "label", "action", "condition"}, P);
+    fields(Item, {"id", "label", "action", "condition", "command"}, P);
     MenuEntry Entry;
     Entry.Id = text(Item, "id", P);
     Entry.Label = text(Item, "label", P);
     Entry.Action = text(Item, "action", P);
     require(identifier(Entry.Id) && Ids.insert(Entry.Id).second, P + ".id",
             "invalid or duplicate id");
-    // Only home-menu intents, never dialog confirmations or commands.
+    // The shell's fixed intents plus the explicit command intent; dialog
+    // confirmations are still not definition material.
     const std::set<std::string> Actions = {
-        "resume",     "disconnect", "quit",     "settings", "servers",
-        "creategame", "playerlist", "votemenu", "console",  "directconnect"};
+        "resume",  "disconnect",    "quit",       "settings",
+        "servers", "creategame",    "playerlist", "votemenu",
+        "console", "directconnect", "command"};
     require(Actions.count(Entry.Action) != 0, P + ".action",
             "unregistered home-menu action");
+    // The command intent carries its own console line; every fixed intent
+    // refuses one so a mistyped "command" cannot ride along unnoticed.
+    if (Entry.Action == "command")
+      Entry.Command = menuCommand(Item, P);
+    else
+      require(!Item.HasMember("command"), P + ".command",
+              "only the command action carries a command");
     if (Item.HasMember("condition"))
       Entry.Condition = text(Item, "condition", P);
     require(Entry.Condition == "always" || Entry.Condition == "multiplayer" ||

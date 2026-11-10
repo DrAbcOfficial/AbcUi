@@ -116,7 +116,9 @@ void buildEntries() {
     std::string markup;
     const int32_t count = Api->menuconfig->entryCount(section);
     for (int32_t index = 0; index < count; ++index) {
-      AbcUiMenuConfigEntry entry;
+      // Zero-initialized: an older framework writes only the fields its
+      // header declared, so the appended command line must not be garbage.
+      AbcUiMenuConfigEntry entry{};
       entry.structSize = sizeof(entry);
       if (!Api->menuconfig->entryAt(section, index, &entry))
         continue;
@@ -124,6 +126,8 @@ void buildEntries() {
       markup += escapeAttribute(entry.id);
       markup += "\" data-action=\"";
       markup += escapeAttribute(entry.action);
+      markup += "\" data-command=\"";
+      markup += escapeAttribute(entry.command);
       markup += "\" data-label=\"";
       markup += escapeAttribute(entry.label);
       markup += "\" data-condition=\"";
@@ -203,7 +207,7 @@ void projectConditions() {
        {ABCUI_MENU_SECTION_MAIN, ABCUI_MENU_SECTION_PAUSE}) {
     const int32_t count = Api->menuconfig->entryCount(section);
     for (int32_t index = 0; index < count; ++index) {
-      AbcUiMenuConfigEntry entry;
+      AbcUiMenuConfigEntry entry{};
       entry.structSize = sizeof(entry);
       if (!Api->menuconfig->entryAt(section, index, &entry))
         continue;
@@ -348,8 +352,10 @@ void render() {
 }
 
 // The shell's fixed intents resolve through the menu section (the same
-// typed controller events the built-in shell sent).
-void dispatchAction(const std::string &action) {
+// typed controller events the built-in shell sent). The one definition-owned
+// intent is "command": the entry's own console line, handed to the engine
+// command buffer the way a custom GameMenu entry ran its command.
+void dispatchAction(const std::string &action, const std::string &command) {
   if (action == "resume")
     Api->menu->resume();
   else if (action == "disconnect")
@@ -370,7 +376,15 @@ void dispatchAction(const std::string &action) {
     Api->menu->toggleConsole();
   else if (action == "directconnect")
     Api->menu->directConnect();
-  else
+  else if (action == "command") {
+    // The definition's own line (the parser guarantees one printable command
+    // for this action; an empty one means a definition the running framework
+    // did not write).
+    if (command.empty())
+      Api->core->warn("shell action \"command\" carries no command line\n");
+    else
+      Api->console->engineCommand(command.c_str());
+  } else
     Api->core->warn("shell action \"%s\" has no menu intent\n", action.c_str());
 }
 
@@ -481,7 +495,7 @@ int32_t onClick(void *, AbcUiElement *target, const AbcUiElementEvent *event) {
     return 0;
   if (attributeOf(entry, "data-available") == "no")
     return 1;
-  dispatchAction(action);
+  dispatchAction(action, attributeOf(entry, "data-command"));
   return 1;
 }
 
