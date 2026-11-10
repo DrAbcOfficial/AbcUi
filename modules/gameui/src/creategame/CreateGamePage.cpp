@@ -1,10 +1,10 @@
 // The create-local-game page (moved from panels::creategame). A FORM
 // projection of the framework's enumerated map catalog plus the server
-// options from settings.scr, projected through the sdk creategame section;
-// the module validates nothing itself - Apply assembles the fields once
-// and the framework-side submit validates, keeps the pending request and
-// dispatches the attempt (a refusal comes back as a hint token and the
-// latch re-arms, so a corrected form can re-Apply).
+// options defined by the packaged server_options.json, projected through the
+// sdk creategame section; the module validates nothing itself - Apply
+// assembles the fields once and the framework-side submit validates, keeps
+// the pending request and dispatches the attempt (a refusal comes back as a
+// hint token and the latch re-arms, so a corrected form can re-Apply).
 //
 // The map picker offers exactly the catalog entries (the search narrows,
 // the row list mirrors the select one-to-one, so a pick can never name a
@@ -72,17 +72,17 @@ std::string selectedMap() {
   return inputValue("cg-map");
 }
 
-// The players field normalizes to an integer spelling (the shipped
-// settings.scr NUMBER semantics; the model still range-checks).
+// The players field normalizes to an integer spelling (the saved maxplayers
+// semantics; the model still range-checks).
 std::string playersText() {
   const std::string raw = inputValue("cg-players");
   return std::to_string(static_cast<int>(parseFloat(raw).value_or(0.0f)));
 }
 
 // Option names become element ids ("cg-option-<name>") in the generated
-// markup and in the later id lookups. settings.scr is local data, but a
-// quote or space would still break the markup; accept only the identifier
-// shape the shipped script uses.
+// markup and in the later id lookups. The document's own identifiers are
+// validated framework-side, but a quote or space would still break the
+// markup; accept only the identifier shape the document uses.
 bool validOptionName(const char *name) {
   const size_t size = name ? std::strlen(name) : 0;
   if (size == 0 || size > 64)
@@ -107,9 +107,9 @@ void showHint(const char *text);
 // re-arms the Apply latch.
 void prepare() {
   Applied = false;
-  // The shipped GameplayPage prefills its rows from settings.scr, including
-  // sv_lan and sv_password. defaultName() keeps the live hostname as its
-  // fallback when the file has no hostname row.
+  // The shipped GameplayPage prefilled its rows from a saved document,
+  // including sv_lan and sv_password. defaultName() keeps the live hostname as
+  // its fallback when no hostname was saved.
   Lan = Api->creategame->defaultLan() != 0;
 
   // Module 1: the map catalog. The select is the page's value store

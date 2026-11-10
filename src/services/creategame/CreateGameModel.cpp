@@ -179,7 +179,7 @@ Validation CreateGameModel::validate(const MapCatalog &catalog,
     result.error = Error::kMapNotEnumerated;
     return result;
   }
-  // Player count: the settings.scr row limit [1, 32] (parsePlayers is the
+  // Player count: the maxplayers document limit [1, 32] (parsePlayers is the
   // text-level gate; this is the value-level defense in depth).
   result.field = Field::kMaxPlayers;
   if (request.MaxPlayers < kMinPlayers || request.MaxPlayers > kMaxPlayers) {
@@ -293,7 +293,7 @@ CreateGameModel::Launch CreateGameModel::launch(const Request &request) {
   Seams_.clientCmd("disconnect\n");
 
   // 2. sv_lan (recoverable). The shipped listen-server command hardcodes 1;
-  // the page projects the settings.scr "LAN Game" row instead, so the chosen
+  // the page projects the document's "LAN Game" row instead, so the chosen
   // value is applied and saved rather than silently ignored.
   if (!writeAndVerify(0, request.Lan ? "1" : "0"))
     return restoreAndFail(0);
@@ -302,15 +302,15 @@ CreateGameModel::Launch CreateGameModel::launch(const Request &request) {
   Seams_.clientCmd("setmaster enable\n");
 
   // 4. maxplayers %d: an engine command, not a cvar (see the header). The
-  // value passed validate() [1, 32] - the settings.scr row limit - and the
+  // value passed validate() [1, 32] - the maxplayers document limit - and the
   // engine's own handler clamps against the live player count.
   const std::string players =
       "maxplayers " + std::to_string(request.MaxPlayers) + "\n";
   Seams_.clientCmd(players.c_str());
 
   // 5. sv_password: the password never crosses a command string or a log; it
-  // is not snapshotted. The apply seam writes it to settings.scr, the same
-  // plaintext row the shipped dialog saves.
+  // is not snapshotted. The apply seam saves it in config.json's create_game
+  // section, the same plaintext field the shipped dialog stored.
   if (!writeAndVerify(1, request.Password.c_str()))
     return restoreAndFail(1);
 
@@ -344,6 +344,31 @@ CreateGameModel::Launch CreateGameModel::launch(const Request &request) {
   return Launch::kLaunched;
 }
 
+void CreateGameModel::setServerSettings(ServerSettingsDocument document) {
+  // The packaged document's defaults are already in Options; apply the saved
+  // values over them. An entry this build no longer defines, or one outside
+  // the row's domain, is dropped here so a hand-edited section can never
+  // reach the engine.
+  SavedServerSettings SavedValues = document.saved();
+  std::vector<ServerOptionValue> Kept;
+  Kept.reserve(SavedValues.Options.size());
+  for (const ServerOptionValue &Value : SavedValues.Options) {
+    const auto Match = std::find_if(
+        Options.begin(), Options.end(),
+        [&](const ServerOption &Option) { return Option.Name == Value.Name; });
+    if (Match == Options.end() ||
+        !validateServerOptionValue(*Match, Value.Value))
+      continue;
+    if (const auto Parsed = abc::ParseFloat(Value.Value))
+      Match->Default = *Parsed;
+    Kept.push_back(Value);
+  }
+  SavedValues.Options = std::move(Kept);
+  document.setSaved(std::move(SavedValues));
+  Settings = std::move(document);
+  Saved = Settings.saved();
+}
+
 void CreateGameModel::rememberRequest(const Request &request) {
   Settings.apply(request.ServerName, request.Password, request.Lan,
                  request.MaxPlayers);
@@ -357,17 +382,9 @@ void CreateGameModel::rememberRequest(const Request &request) {
     if (const auto parsed = abc::ParseFloat(value.Value))
       match->Default = *parsed;
   }
-  // The page prefills from the file after a restart; use the stored spelling
-  // here too (the writer strips quote/'%') so a same-session reopen matches.
+  // The page prefills from the saved section after a restart; a same-session
+  // reopen reads the in-memory values this method just applied.
   Saved = Settings.saved();
-  if (!Settings.find("hostname"))
-    Saved.Hostname = request.ServerName;
-  if (!Settings.find("sv_password"))
-    Saved.Password = request.Password;
-  if (!Settings.find("sv_lan"))
-    Saved.Lan = request.Lan;
-  if (!Settings.find("maxplayers"))
-    Saved.MaxPlayers = request.MaxPlayers;
 }
 
 std::vector<std::string> CreateGameModel::settleOptions(const Request &Value) {

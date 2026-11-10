@@ -69,9 +69,9 @@
 //                        accepted non-recoverable side effects of Apply).
 //
 // The request carries the user's password in memory and writes it to
-// settings.scr on apply (the shipped dialog stores it there in plaintext); it
-// is never logged and never leaves the "sv_password" cvar write and that one
-// settings.scr row.
+// config.json's create_game section on apply (the shipped dialog stored it in
+// plaintext too); it is never logged and never leaves the "sv_password" cvar
+// write and that one saved field.
 
 #include <cstddef>
 #include <array>
@@ -162,8 +162,10 @@ struct Validation {
 class CreateGameModel {
 public:
   static constexpr int kMinPlayers = 1;
-  static constexpr int kMaxPlayers = 32;           // settings.scr NUMBER 1..32
-  static constexpr std::size_t kMaxTextBytes = 63; // shipped strncpy 0x40
+  static constexpr int kMaxPlayers = 32; // the maxplayers document row 1..32
+  // The shipped dialog's 64-byte strncpy buffers (0x40).
+  static constexpr std::size_t kMaxTextBytes =
+      ServerSettingsDocument::kMaxTextBytes;
 
   // Request text rule for hostname/password (the validator's charset half).
   // Bytes 0x20..0x7E and >= 0x80 pass (UTF-8 names are legitimate), except
@@ -193,13 +195,11 @@ public:
     return validateServerOptions(Options, Value.Options);
   }
 
-  // The settings.scr projection: loaded once at module init, then updated by
-  // rememberRequest before a validated attempt dispatches, so the next fresh
-  // open reads exactly what the shipped dialog would have saved.
-  void setServerSettings(ServerSettingsDocument document) {
-    Settings = std::move(document);
-    Saved = Settings.saved();
-  }
+  // The saved create-game values (config.json's create_game section) loaded
+  // once at module init: the typed fields prefill the next fresh open and the
+  // saved option values override the packaged defaults. Unknown or
+  // out-of-domain option values are dropped here, never at launch time.
+  void setServerSettings(ServerSettingsDocument document);
   const ServerSettingsDocument &serverSettings() const {
     return Settings;
   }
@@ -207,9 +207,6 @@ public:
     return Saved;
   }
   void rememberRequest(const Request &request);
-  std::string serverSettingsText(std::string_view generatedAt) const {
-    return Settings.serialize(generatedAt);
-  }
 
   static Validation validate(const MapCatalog &catalog, const Request &request);
 

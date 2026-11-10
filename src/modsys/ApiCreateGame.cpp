@@ -78,7 +78,8 @@ int32_t apiOptionAt(int32_t index, AbcUiCgOption *out) {
   full.structSize = sizeof(AbcUiCgOption);
   copyText(option.Name, full.name, sizeof(full.name));
   copyText(option.Label, full.label, sizeof(full.label));
-  full.toggle = option.Toggle ? 1 : 0;
+  full.toggle =
+      option.Kind == services::creategame::ServerSettingKind::kBool ? 1 : 0;
   full.hasChoices = !option.Choices.empty() ? 1 : 0;
   full.slider = option.Bounded && option.Min < option.Max ? 1 : 0;
   full.min = option.Min;

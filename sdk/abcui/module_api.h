@@ -1541,15 +1541,15 @@ typedef struct AbcUiInventoryApi {
 // ----------------------------------------------------------- creategame ----
 
 // The create-local-game page's form data (the enumerated map catalog and
-// the server options from settings.scr) plus the validated submit. The
+// the server options from server_options.json) plus the validated submit. The
 // model, the catalog enumeration and the launch path stay framework-side;
 // the page builds the form and sends the fields once on Apply.
 #define ABCUI_CG_NAME_MAX 96
 #define ABCUI_CG_LABEL_MAX 256
 #define ABCUI_CG_VALUE_MAX 256
 
-// One server option (a settings.scr row): a toggle or enum renders as a
-// select; a bounded numeric renders as a slider; anything else is a text
+// One server option (a server_options.json row): a toggle or enum renders as
+// a select; a bounded numeric renders as a slider; anything else is a text
 // field.
 typedef struct AbcUiCgOption {
   uint32_t structSize;
@@ -1582,7 +1582,7 @@ typedef struct AbcUiCgField {
 
 typedef struct AbcUiCreateGameApi {
   uint32_t structSize;
-  // Fresh opening defaults: the hostname saved in settings.scr (falling back
+  // Fresh opening defaults: the hostname saved in config.json (falling back
   // to the live cvar; empty -> the page projects its localized default token).
   const char *(ABCUI_CALL *defaultName)(void);
   uint32_t(ABCUI_CALL *mapCount)(void);
@@ -1599,9 +1599,9 @@ typedef struct AbcUiCreateGameApi {
   // correct and re-Apply - the latch re-arms on any shown hint).
   int32_t(ABCUI_CALL *submit)(const AbcUiCgField *fields, int32_t fieldCount,
                               char *hint, uint32_t hintSize);
-  // The other three typed fields as settings.scr saved them (the shipped
-  // dialog prefills the password from the file and the player count from the
-  // maxplayers row).
+  // The other three typed fields as config.json saved them (the form
+  // prefills the password from the file and the player count from the
+  // maxplayers value).
   const char *(ABCUI_CALL *defaultPassword)(void);
   int32_t(ABCUI_CALL *defaultLan)(void);
   int32_t(ABCUI_CALL *defaultPlayers)(void);

@@ -301,31 +301,6 @@ bool writeModFile(const char *relativePath,
   return true;
 }
 
-bool writeModConfigFile(const char *relativePath,
-                        const std::vector<unsigned char> &bytes,
-                        std::string &error) {
-  error.clear();
-  if (bytes.empty()) {
-    error = "nothing to write";
-    return false;
-  }
-  // The shipped settings.scr writer opens with the GAMECONFIG pathID; use it
-  // first so the file lands in the mod's own config directory even when a
-  // mounted addon or download root is earlier in the search path.
-  if (abc::g_pFileSystem) {
-    if (const auto file = framework::openEngineFile(
-            *abc::g_pFileSystem, relativePath, "wb", "GAMECONFIG")) {
-      const int written = abc::g_pFileSystem->Write(
-          bytes.data(), static_cast<int>(bytes.size()), file.get());
-      if (written == static_cast<int>(bytes.size()))
-        return true;
-      error = "short write";
-      return false;
-    }
-  }
-  return writeModFile(relativePath, bytes, error);
-}
-
 services::settings::SettingsModel::UserScrTable loadAdvancedScript() {
   services::settings::SettingsModel::UserScrTable Table;
   // Localized variant first (svencoop_schinese ships translated prompts):

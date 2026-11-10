@@ -112,11 +112,12 @@ abcui_add_test(abc_ui_menu_shell
             "${SRC}/services/settings/SettingsModel.cpp"
     LIBRARIES Abc::Core)
 
-# The settings.scr SERVER_OPTIONS document the create-game page reads and
-# writes back: the shipped grammar, the four typed rows, the writer's
-# normalization/header and a parse -> serialize -> parse round trip.
+# The create-game server option document (server_options.json) and the saved
+# values in config.json's create_game section: the packaged rows, the strict
+# shape and value gate, the saved round trip and the shipped file itself.
 abcui_add_test(abc_ui_create_game_settings
     SOURCES CreateGameSettings.cpp
+            "${SRC}/services/creategame/ServerOptions.cpp"
             "${SRC}/services/creategame/ServerSettings.cpp"
     LIBRARIES Abc::Core)
 

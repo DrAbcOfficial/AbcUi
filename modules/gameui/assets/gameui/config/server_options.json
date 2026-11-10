@@ -1,0 +1,184 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "cvar": "sv_lan",
+      "label": "#abcui.gameui/CG_OptLan",
+      "kind": "bool",
+      "default": 0
+    },
+    {
+      "cvar": "hostname",
+      "label": "#Valve_Hostname",
+      "kind": "text",
+      "default": "Sven Co-op listen server"
+    },
+    {
+      "cvar": "maxplayers",
+      "label": "#Valve_Max_Players",
+      "kind": "number",
+      "min": 1,
+      "max": 32,
+      "default": 8
+    },
+    {
+      "cvar": "sv_password",
+      "label": "#Valve_Server_Password",
+      "kind": "text",
+      "default": ""
+    },
+    {
+      "cvar": "sv_region",
+      "label": "#abcui.gameui/CG_OptRegion",
+      "kind": "list",
+      "default": 255,
+      "options": [
+        { "value": 0, "label": "#abcui.gameui/CG_Region0" },
+        { "value": 1, "label": "#abcui.gameui/CG_Region1" },
+        { "value": 2, "label": "#abcui.gameui/CG_Region2" },
+        { "value": 3, "label": "#abcui.gameui/CG_Region3" },
+        { "value": 4, "label": "#abcui.gameui/CG_Region4" },
+        { "value": 5, "label": "#abcui.gameui/CG_Region5" },
+        { "value": 6, "label": "#abcui.gameui/CG_Region6" },
+        { "value": 7, "label": "#abcui.gameui/CG_Region7" },
+        { "value": 255, "label": "#abcui.gameui/CG_Region255" }
+      ]
+    },
+    {
+      "cvar": "mp_noblastgibs",
+      "label": "#abcui.gameui/CG_OptNoBlastGibs",
+      "kind": "bool",
+      "default": 0
+    },
+    {
+      "cvar": "mp_weaponstay",
+      "label": "#Valve_Weapons_Stay",
+      "kind": "bool",
+      "default": 1
+    },
+    {
+      "cvar": "mp_footsteps",
+      "label": "#Valve_Footsteps",
+      "kind": "bool",
+      "default": 1
+    },
+    {
+      "cvar": "mp_flashlight",
+      "label": "#Valve_Flashlight",
+      "kind": "bool",
+      "default": 1
+    },
+    {
+      "cvar": "mp_autocrosshair",
+      "label": "#Valve_Autocrosshair",
+      "kind": "bool",
+      "default": 0
+    },
+    {
+      "cvar": "mp_chattime",
+      "label": "#abcui.gameui/CG_OptChatTime",
+      "kind": "number",
+      "min": 0,
+      "max": 60,
+      "default": 6
+    },
+    {
+      "cvar": "mp_notimelimit",
+      "label": "#abcui.gameui/CG_OptNoTimeLimit",
+      "kind": "bool",
+      "default": 0
+    },
+    {
+      "cvar": "mp_disable_pcbalancing",
+      "label": "#abcui.gameui/CG_OptNoPcBalancing",
+      "kind": "bool",
+      "default": 0
+    },
+    {
+      "cvar": "mp_voteallow",
+      "label": "#abcui.gameui/CG_OptVoteAllow",
+      "kind": "bool",
+      "default": 1
+    },
+    {
+      "cvar": "mp_votekillrequired",
+      "label": "#abcui.gameui/CG_OptVoteKill",
+      "kind": "number",
+      "min": 1,
+      "max": 100,
+      "default": 51
+    },
+    {
+      "cvar": "mp_votekickrequired",
+      "label": "#abcui.gameui/CG_OptVoteKick",
+      "kind": "number",
+      "min": 1,
+      "max": 100,
+      "default": 67
+    },
+    {
+      "cvar": "mp_votebanrequired",
+      "label": "#abcui.gameui/CG_OptVoteBan",
+      "kind": "number",
+      "min": 1,
+      "max": 100,
+      "default": 76
+    },
+    {
+      "cvar": "mp_votemaprequired",
+      "label": "#abcui.gameui/CG_OptVoteMap",
+      "kind": "number",
+      "min": 1,
+      "max": 100,
+      "default": 66
+    },
+    {
+      "cvar": "mp_votetimecheck",
+      "label": "#abcui.gameui/CG_OptVoteTime",
+      "kind": "number",
+      "min": 5,
+      "max": 25,
+      "default": 10
+    },
+    {
+      "cvar": "mp_votetimebetween",
+      "label": "#abcui.gameui/CG_OptVoteBetween",
+      "kind": "number",
+      "min": 10,
+      "max": 300,
+      "default": 20
+    },
+    {
+      "cvar": "mp_playervotedelay",
+      "label": "#abcui.gameui/CG_OptVoteDelay",
+      "kind": "number",
+      "min": 20,
+      "max": 600,
+      "default": 120
+    },
+    {
+      "cvar": "mp_votekill_respawndelay",
+      "label": "#abcui.gameui/CG_OptVoteRespawn",
+      "kind": "number",
+      "min": 6,
+      "max": 300,
+      "default": 30
+    },
+    {
+      "cvar": "mp_kickbantime",
+      "label": "#abcui.gameui/CG_OptKickBanTime",
+      "kind": "number",
+      "min": 1,
+      "max": 999,
+      "default": 25
+    },
+    {
+      "cvar": "mp_bantime",
+      "label": "#abcui.gameui/CG_OptBanTime",
+      "kind": "number",
+      "min": 10,
+      "max": 99999,
+      "default": 1440
+    }
+  ]
+}

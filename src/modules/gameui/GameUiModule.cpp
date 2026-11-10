@@ -13,6 +13,7 @@
 #include <abc/CvarCmd.h>
 #include "services/commandmenu/CommandMenuService.h"
 #include "services/creategame/CreateGameService.h"
+#include "services/creategame/ServerOptions.h"
 #include "services/creategame/ServerSettings.h"
 #include "services/console/ConsolePageService.h"
 #include "services/loading/ConnectionService.h"
@@ -470,17 +471,17 @@ CreateGameHost GameUiModule::MakeCreateGameHost() {
   host.finishDispatch = [this] { finishDispatch(); };
   host.resetAutoRetry = [this] { AutoRetry.reset(); };
   host.persistSettings = [this](const services::creategame::Request &) {
-    // The flow's rememberRequest already updated the model document; rewrite
-    // the whole settings.scr exactly as the shipped ApplyChanges does.
-    const std::string Text = Create->model().serverSettingsText(
-        services::creategame::ServerSettingsDocument::generateTimestamp());
-    if (Text.empty())
-      return false;
+    // The flow's rememberRequest already updated the saved document; write it
+    // back as config.json's create_game section (never a game-side script).
+    std::string Json;
     std::string Error;
-    const std::vector<unsigned char> Bytes(Text.begin(), Text.end());
-    if (!writeModConfigFile("settings.scr", Bytes, Error)) {
-      abc::ConsoleWarn("[AbcUi] settings.scr write failed: %s\n",
-                       Error.c_str());
+    if (!Create->model().serverSettings().serialize(Json, Error)) {
+      abc::ConsoleWarn("[AbcUi] create_game settings: %s\n", Error.c_str());
+      return false;
+    }
+    if (!services::userconfig::writeSection(
+            services::creategame::ServerSettingsDocument::kSection, Json)) {
+      abc::ConsoleWarn("[AbcUi] config.json create_game write failed\n");
       return false;
     }
     return true;
@@ -592,31 +593,42 @@ void GameUiModule::onInit() {
                    nullptr);
   abc::CREATE_CVAR("abc_ui_menu_weapon_model", "models/p_m16.mdl",
                    abc::FCVAR_VALUE, nullptr);
-  std::string ServerScript = readModFile("settings.scr");
-  if (ServerScript.empty())
-    framework::ModuleVfs::readText(
-        (services::uiconfig::resourceRoot() + "/server_options.scr").c_str(),
-        ServerScript);
-  Create->setOptions(services::creategame::parseServerOptions(ServerScript));
-  if (Create->optionsEmpty()) {
-    abc::ConsoleWarn("[AbcUi] settings.scr unavailable or malformed; using "
-                     "shipped server option definitions\n");
-    framework::ModuleVfs::readText(
-        (services::uiconfig::resourceRoot() + "/server_options.scr").c_str(),
-        ServerScript);
-    Create->setOptions(services::creategame::parseServerOptions(ServerScript));
+  // Create-game server options: the packaged JSON document owns the rows and
+  // the four typed defaults. The last applied values live in config.json
+  // under create_game, so no game-side script is read or written.
+  std::string ServerOptionsText;
+  if (!framework::ModuleVfs::readText(
+          (services::uiconfig::resourceRoot() + "/server_options.json").c_str(),
+          ServerOptionsText))
+    abc::ConsoleWarn("[AbcUi] server_options.json unavailable\n");
+  services::creategame::ServerOptionDocument OptionDocument;
+  std::string OptionError;
+  if (!services::creategame::parseServerOptionDocument(
+          ServerOptionsText, OptionDocument, OptionError))
+    abc::ConsoleWarn("[AbcUi] server_options.json: %s\n", OptionError.c_str());
+  Create->setOptions(std::move(OptionDocument.Options));
+
+  services::creategame::ServerSettingsDocument SettingsDocument;
+  SettingsDocument.setSaved(std::move(OptionDocument.Defaults));
+  std::string SavedJson;
+  switch (services::userconfig::readSection(
+      services::creategame::ServerSettingsDocument::kSection, SavedJson)) {
+  case services::userconfig::LoadStatus::Loaded: {
+    std::string SavedError;
+    if (!services::creategame::ServerSettingsDocument::parse(
+            SavedJson, SettingsDocument, SavedError))
+      abc::ConsoleWarn("[AbcUi] config.json create_game: %s\n",
+                       SavedError.c_str());
+    break;
   }
-  // The same file is the create form's persistence store: the shipped
-  // GameplayPage loads its rows here and ApplyChanges rewrites it with the
-  // current values ("stores last settings chosen, too"). Keep the owning
-  // document beside the projected option list.
-  services::creategame::ServerSettingsDocument SettingsScript;
-  if (services::creategame::ServerSettingsDocument::parse(ServerScript,
-                                                          SettingsScript))
-    Create->model().setServerSettings(std::move(SettingsScript));
-  else
-    abc::ConsoleWarn("[AbcUi] settings.scr has no parsable SERVER_OPTIONS "
-                     "block; create-game settings will not persist\n");
+  case services::userconfig::LoadStatus::Missing:
+    break;
+  case services::userconfig::LoadStatus::Unreadable:
+    abc::ConsoleWarn("[AbcUi] config.json create_game unreadable; create-game "
+                     "settings will not persist\n");
+    break;
+  }
+  Create->model().setServerSettings(std::move(SettingsDocument));
   const auto Advanced = loadAdvancedScript();
   const auto &root = services::uiconfig::resourceRoot();
   if (!root.empty())

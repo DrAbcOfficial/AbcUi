@@ -100,8 +100,9 @@ bool CreateGameFlow::apply(
     return false; // nothing reaches the controller or the engine
   }
   // The shipped dialog's ApplyChanges runs before its map command: save the
-  // form (all rows, including sv_password) exactly as settings.scr expects.
-  // A failed write is reported by the host but never blocks the launch.
+  // form's values (the password included) into config.json's create_game
+  // section. A failed write is reported by the host but never blocks the
+  // launch.
   Model.rememberRequest(request);
   if (Host.persistSettings)
     (void)Host.persistSettings(request);

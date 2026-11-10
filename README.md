@@ -77,8 +77,8 @@ Live character previews stay animated while you adjust multiplayer settings.
 Applying a new resolution or display mode restarts the game and then asks you to
 keep or revert the change.
 
-AbcUi stores its backend selection, model favorites, muted players, blocked
-servers and pending video confirmation together in
+AbcUi stores its backend selection, model favorites, create-game settings,
+muted players, blocked servers and pending video confirmation together in
 `svencoop/abc/abcui/config.json`. When this file does not exist, AbcUi creates
 it with the default settings. Older separate configuration files are not read.
 Unreadable files are not overwritten. Other game settings remain in the
