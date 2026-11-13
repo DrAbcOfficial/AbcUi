@@ -56,6 +56,9 @@ struct RecordingUi {
   std::map<std::string, float> cvars;
   std::vector<Subscription> subscriptions;
   std::vector<std::unique_ptr<Element>> rows;
+  // Client-data health the fake hudState reports (the authoritative sample
+  // the hudeffects panel reconciles against every frame).
+  int hudHealth = 0;
 
   void publish(const char *channel, const void *payload) {
     for (const auto &entry : subscriptions) {
@@ -189,6 +192,7 @@ int main() {
   data.hudState = [](AbcUiHudState *out) {
     out->suit = 1;
     out->flashBattery = 100;
+    out->health = recording().hudHealth;
   };
   data.playerState = [](AbcUiPlayerState *out) { out->index = 1; };
   data.levelName = [](char *out, uint32_t size) {
@@ -346,6 +350,10 @@ int main() {
       CHECK(!state.documents.at("motd").visible);
     } else if (kind == "hudeffects") {
       TEST_CASE("danger-retargets-without-jumping");
+      // The Health usermsg and the client-data health carry the same sample;
+      // model both so the per-frame reconcile does not retarget to the
+      // default 0 (which the panel clamps to 1 while connected).
+      state.hudHealth = 10;
       const AbcUiIntEvent health{10};
       state.publish(ABCUI_CHANNEL_NETMSG_HEALTH, &health);
       auto &danger = state.documents.at("effect").elements.at("danger");
