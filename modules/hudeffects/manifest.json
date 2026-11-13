@@ -3,7 +3,7 @@
   "name": "HUD Effects",
   "description": "Danger vignette and water overlays with the splash animations.",
   "author": "DrAbc",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "abi": 3,
   "minAbcUi": "0.10.0",
   "entry": "entry/abcui_hudeffects.dll",

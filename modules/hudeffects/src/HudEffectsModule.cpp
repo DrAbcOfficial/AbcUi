@@ -112,6 +112,17 @@ void setHealth(int health) {
   }
 }
 
+// Old Viewport g_EventHealth clamp (#120): while connected and not spectating,
+// a non-positive health clamps to 1. Shared by the message path and the
+// per-frame reconcile, so the vignette can never disagree with the vitals
+// readout about the same sample.
+int clampedHealth(const AbcUiHudState &state, const AbcUiPlayerState &player,
+                  int health) {
+  if (health > 0)
+    return health;
+  return player.index != 0 && !state.spectate ? 1 : health;
+}
+
 void setWater(WaterType type) {
   if (NowWaterType == type)
     return;
@@ -125,20 +136,15 @@ void setWater(WaterType type) {
 // ---- event sinks ----
 
 void onHealth(void *, const void *payload) {
-  int health = static_cast<const AbcUiIntEvent *>(payload)->value;
-  // Old Viewport g_EventHealth handler ran before both panels' SetHealth:
-  // while connected and not spectating, non-positive health clamps to 1.
-  if (health <= 0) {
-    AbcUiHudState state{};
-    state.structSize = sizeof(state);
-    Api->data->hudState(&state);
-    AbcUiPlayerState player{};
-    player.structSize = sizeof(player);
-    Api->data->playerState(&player);
-    if (player.index != 0 && !state.spectate)
-      health = 1;
-  }
-  setHealth(health);
+  // Old Viewport g_EventHealth handler ran before both panels' SetHealth.
+  const int health = static_cast<const AbcUiIntEvent *>(payload)->value;
+  AbcUiHudState state{};
+  state.structSize = sizeof(state);
+  Api->data->hudState(&state);
+  AbcUiPlayerState player{};
+  player.structSize = sizeof(player);
+  Api->data->playerState(&player);
+  setHealth(clampedHealth(state, player, health));
 }
 
 // ---- panel callbacks ----
@@ -185,6 +191,12 @@ void panelOnData(void *, double frameTime) {
     return;
   }
   setVisible(true);
+
+  // Issue 137: the vignette was only driven by the Health usermsg, so a revive
+  // that lost that sample held it at the death value until the next real
+  // change. Reconcile it against the local client-data health every frame; the
+  // ramp ignores a repeated target.
+  setHealth(clampedHealth(state, player, state.health));
 
   // Old water state machine: leaving head-depth fires OUT_WATER once; while
   // the splashes are still fading (alpha > 0) the type holds, otherwise the
@@ -293,7 +305,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.hudeffects";
-  out->version = "3.0.0";
+  out->version = "3.0.1";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;

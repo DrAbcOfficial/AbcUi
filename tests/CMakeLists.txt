@@ -290,6 +290,23 @@ abcui_add_test(abc_ui_health_document
     SOURCES HealthDocument.cpp
     LIBRARIES RmlUi::RmlUi)
 
+# The abcui.health readout driven through the recording HUD seams: the number
+# follows the local client-data health every frame (issue 137), the usermsg
+# stays an immediate path, the issue-120 non-positive clamp still renders 1 and
+# a settled readout never rewrites the DOM.
+abcui_add_test(abc_ui_health_vitals
+    SOURCES HealthVitals.cpp
+            "${PROJECT_SOURCE_DIR}/modules/health/src/HealthModule.cpp"
+    DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
+
+# The abcui.hudeffects danger vignette through the same seams: a revive that
+# loses the Health usermsg must still drop the overlay (issue 137), and the
+# session/cvar gates keep hiding the panel.
+abcui_add_test(abc_ui_hud_effects
+    SOURCES HudEffectsDanger.cpp
+            "${PROJECT_SOURCE_DIR}/modules/hudeffects/src/HudEffectsModule.cpp"
+    DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
+
 abcui_add_test(abc_ui_audit_regressions
     SOURCES AuditRegressions.cpp
             "${SRC}/modules/gameui/navigation/MenuAction.cpp"

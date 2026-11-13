@@ -73,6 +73,7 @@ void setLongJump(bool longJump) {
 
 void setHealth(int health);
 void setArmor(int armor);
+void applyHealth(const AbcUiHudState &state, int health);
 
 // Old SetHealthVisible/SetArmorVisible element groups.
 void setGroupVisible(const char *const *ids, size_t count, bool visible) {
@@ -204,14 +205,26 @@ void tickVital(const char *labelId, VitalState &vital, double frameTime) {
 void panelOnData(void *, double frameTime) {
   tickVital("health-label", HealthVital, frameTime);
   tickVital("armor-label", ArmorVital, frameTime);
-}
 
-void setHealth(int health) {
-  // Old g_EventHealth handler: while connected and not spectating, a
-  // non-positive health clamps to 1 (spectator feeds report 0).
+  // The readout has no continuous feed: the Health usermsg only arrives when
+  // the server's cached value changes, and the revive sample can be consumed
+  // while the readout is still gated, leaving the death value on screen until
+  // the next real change (issue 137; the same path produced the transient 0 of
+  // issue 120). Reconcile it against the local client-data health every frame:
+  // the tracker ignores a repeated value and keeps a running transition, so a
+  // settled readout costs one compare and every revive or respawn converges
+  // within one frame.
   AbcUiHudState state{};
   state.structSize = sizeof(state);
   Api->data->hudState(&state);
+  applyHealth(state, state.health);
+}
+
+// Old g_EventHealth handler: while connected and not spectating, a
+// non-positive health clamps to 1 (spectator feeds report 0). Shared by the
+// usermsg path and the per-frame reconcile, so one sample always renders the
+// same way whichever stream delivered it.
+void applyHealth(const AbcUiHudState &state, int health) {
   AbcUiPlayerState player{};
   player.structSize = sizeof(player);
   Api->data->playerState(&player);
@@ -219,6 +232,13 @@ void setHealth(int health) {
     health = 1;
   applyVital("health-label", "health-bar", "health-icon", health, DangerHealth,
              45.0f, healthShown(state), HealthVital);
+}
+
+void setHealth(int health) {
+  AbcUiHudState state{};
+  state.structSize = sizeof(state);
+  Api->data->hudState(&state);
+  applyHealth(state, health);
 }
 
 void setArmor(int armor) {
@@ -356,7 +376,7 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
 
   out->structSize = sizeof(AbcUiModuleDescriptor);
   out->id = "abcui.health";
-  out->version = "3.0.0";
+  out->version = "3.0.1";
   out->onLoad = &onModuleLoad;
   out->onInit = &onModuleInit;
   out->onContextReady = nullptr;
