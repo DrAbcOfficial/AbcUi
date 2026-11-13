@@ -5,6 +5,7 @@
 
 #include "NetworkMessages.h"
 #include "TextFeed.h"
+#include "WeaponDomain.h"
 #include <cmath>
 
 #include <abc/NetMsg.h>
@@ -137,7 +138,11 @@ int __MsgFunc_WeaponList(const char *pszName, int iSize, void *pbuf) {
   data.flags = msg.readByte();
   if (!msg.ok())
     return original_WeaponList(pszName, iSize, pbuf);
-  if (data.id > 0 && data.slot >= 0 && data.slot < 10)
+  // svencoop_sdk: the prediction array holds weapon ids 0..255; a server id
+  // outside that domain must never enter the registry (the prediction diff
+  // indexes weapondata[id]).
+  if (weapondomain::validWeaponId(data.id) && data.slot >= 0 &&
+      data.slot < 10)
     WeaponList(data);
   return original_WeaponList(pszName, iSize, pbuf);
 }

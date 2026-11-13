@@ -316,6 +316,11 @@ abcui_add_test(abc_ui_inventory_model
     SOURCES InventoryModel.cpp "${SRC}/services/inventory/InventoryModel.cpp"
     LIBRARIES Abc::Core)
 
+# The prediction weapon domain: the SDK 256-entry array is the registration
+# boundary for server weapon ids (ids 64..255 must stay accepted).
+abcui_add_test(abc_ui_weapon_domain
+    SOURCES WeaponDomain.cpp)
+
 # --- RmlUi page and document tests -------------------------------------------
 abcui_add_test(abc_ui_interactive
     SOURCES InteractiveDocument.cpp

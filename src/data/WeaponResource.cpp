@@ -27,6 +27,7 @@
 
 #include "HudState.h"
 #include "NetworkMessages.h"
+#include "WeaponDomain.h"
 #include "framework/ScreenMetrics.h"
 
 namespace weaponres {
@@ -300,7 +301,7 @@ void rebuildSlots() {
 // from rebuildSlots() so collisions follow the deterministic layout rule.
 void addWeapon(Weapon &&incoming) {
   const int id = incoming.id;
-  if (id <= 0 || incoming.serverSlot < 0 ||
+  if (!weapondomain::validWeaponId(id) || incoming.serverSlot < 0 ||
       incoming.serverSlot >= static_cast<int>(kMaxWeaponSlot))
     return;
   if (RegistryState.byId.count(id))
@@ -333,7 +334,8 @@ void dropAllWeapons() {
 // their WeaponList has not arrived yet so a later registration and the
 // weapon menu see them.
 void markOwned(int id) {
-  if (id <= 0 || !RegistryState.owned.insert(id).second)
+  if (!weapondomain::validWeaponId(id) ||
+      !RegistryState.owned.insert(id).second)
     return;
   const auto itor = RegistryState.byId.find(id);
   if (itor != RegistryState.byId.end()) {
@@ -354,7 +356,7 @@ void onWeaponList(const netmsg::WeaponListData &data) {
   // console by WeaponChoosePanel::confirmSelection; it is also the sprite
   // base name. Accept only a command-safe identifier (AbcEssential applies
   // the same rule to its signal feed).
-  if (data.id <= 0 || data.slot < 0 ||
+  if (!weapondomain::validWeaponId(data.id) || data.slot < 0 ||
       data.slot >= static_cast<int>(kMaxWeaponSlot) ||
       !framework::ResourceLimits::identifierName(data.name))
     return;
@@ -414,6 +416,8 @@ void onCurWeapon(int state, int id, int clip, int clip2) {
       dropAllWeapons();
       return;
     }
+    if (!weapondomain::validWeaponId(id))
+      return;
     markOwned(id);
     RegistryState.curWeaponId = id;
     RegistryState.curWeapon = getWeapon(id);
@@ -477,13 +481,16 @@ void onTxferPredictionData(const weapon_data_s *weaponDataArray) {
   // every owned weapon; the shipped client (CHudAmmo::UpdateWeaponList) reads
   // weapon_data[ri->iId] with no bound. This loop mirrors that authoritative
   // consumer: every registered id indexes the array.
-  // DO NOT add a capacity bound, clamp or "defensive" range check on the id
-  // here. A cap silently drops plugin weapons (ids past the cap never become
-  // owned) and the selector collapses to the one weapon CurWeapon reported -
-  // the regression this file once shipped as kPredictionWeaponSlots = 64.
+  // The registration boundary (validWeaponId) keeps the domain at the SDK's
+  // 256 entries, so this loop may index the whole engine id range without a
+  // cap or clamp. Do not shrink it to a "defensive" slot count: a cap
+  // silently drops plugin weapons and collapses the selector to the one
+  // weapon CurWeapon reported (the kPredictionWeaponSlots = 64 regression).
   std::vector<const Weapon *> pickedUp;
   std::vector<const Weapon *> dropped;
   for (const auto &[id, weapon] : RegistryState.byId) {
+    if (!weapondomain::validWeaponId(id))
+      continue;
     const weapon_data_s &data = weaponDataArray[id];
     if (data.m_iId <= 0) {
       if (RegistryState.owned.erase(id))
@@ -521,6 +528,8 @@ void onTxferPredictionData(const weapon_data_s *weaponDataArray) {
 }
 
 const Weapon *getWeapon(int id) {
+  if (!weapondomain::validWeaponId(id))
+    return nullptr;
   const auto itor = RegistryState.byId.find(id);
   return itor != RegistryState.byId.end() ? &itor->second : nullptr;
 }
