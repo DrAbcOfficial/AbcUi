@@ -169,6 +169,18 @@ static int H_HUD_VidInit() {
   return result;
 }
 
+static void H_HUD_Reset() {
+  // The client calls HUD_Reset at demo start/end and rebuilds its own HUD
+  // state. The replacement data layer must follow: no new map/VidInit cycle
+  // happens on a demo transition, so stale weapons and player rows would
+  // otherwise survive into the demo (or back out of it).
+  if (gExportfuncs.HUD_Reset)
+    gExportfuncs.HUD_Reset();
+  hudstate::reset();
+  weaponres::reset();
+  playerres::resetAll();
+}
+
 static void H_HUD_Frame(double frametime) {
   gExportfuncs.HUD_Frame(frametime);
   commands::pump();
@@ -376,10 +388,16 @@ static void H_HUD_VoiceStatus(int entindex, int talking) {
   const AbcUiVoiceStatusEvent event{entindex, talking ? 1 : 0};
   framework::eventBus().publish(ABCUI_CHANNEL_VOICE_STATUS, event);
   const AbcUiNativeHudEvent native{ABCUI_NATIVE_HUD_VOICE};
-  if (framework::arbitration::gate(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native))
-    return;
-  if (gExportfuncs.HUD_VoiceStatus)
-    gExportfuncs.HUD_VoiceStatus(entindex, talking);
+  const bool claimed =
+      framework::arbitration::gate(ABCUI_CHANNEL_HUD_NATIVE_DRAW, &native);
+  // HUD_VoiceStatus is also the native state feed, not only the speaker-label
+  // draw: -1 is the local mic (it auto-enables voice_modenable) and -2 is the
+  // server ack. A replacement voice surface must still keep those state
+  // updates; only the per-speaker labels are suppressed by the claim.
+  if (entindex < 0 || !claimed) {
+    if (gExportfuncs.HUD_VoiceStatus)
+      gExportfuncs.HUD_VoiceStatus(entindex, talking);
+  }
 }
 
 void attachExports(cl_exportfuncs_t *pExportFuncs) {
@@ -391,6 +409,7 @@ void attachExports(cl_exportfuncs_t *pExportFuncs) {
   pExportFuncs->CL_CreateMove = H_CL_CreateMove;
   pExportFuncs->HUD_Init = H_HUD_Init;
   pExportFuncs->HUD_VidInit = H_HUD_VidInit;
+  pExportFuncs->HUD_Reset = H_HUD_Reset;
   pExportFuncs->HUD_Redraw = H_HUD_Redraw;
   pExportFuncs->HUD_Frame = H_HUD_Frame;
   pExportFuncs->HUD_Key_Event = H_HUD_Key_Event;

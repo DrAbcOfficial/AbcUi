@@ -3,7 +3,8 @@
 // AbcUi hook spine: chains the client exports this plugin drives into the
 // export table (R-2 chain semantics, same shape as AbcEssential src/hooks.cpp).
 // Consumed exports: HUD_Init (command registration), HUD_VidInit (context
-// resize), HUD_Frame (Rml update pump + input poll), HUD_Redraw (vanilla HUD
+// resize), HUD_Reset (demo start/end data reset), HUD_Frame (Rml update pump
+// + input poll), HUD_Redraw (vanilla HUD
 // suppression + the onRedraw pump for world-projection panels), HUD_Key_Event
 // (keyboard into Rml), HUD_UpdateClientData (fov capture),
 // HUD_TxferPredictionData / HUD_TxferLocalOverrides (clientdata capture),
