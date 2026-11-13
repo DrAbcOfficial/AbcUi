@@ -52,19 +52,12 @@ void update(bool levelActive) {
   vec3_t end{};
   for (int i = 0; i < 3; i++)
     end[i] = local->origin[i] + forward[i] * 8192.0f;
-  int ignorePhysent = -1;
-  if (gEngfuncs.pEventAPI->EV_GetPhysent)
-    for (int i = 0; i < MAX_PHYSENTS; ++i) {
-      const auto *phys = gEngfuncs.pEventAPI->EV_GetPhysent(i);
-      if (!phys)
-        break;
-      if (phys->info == local->index) {
-        ignorePhysent = i;
-        break;
-      }
-    }
+  // EV_PlayerTrace's ignore_pe is the entity index: the SDK helper converts
+  // the physent index through physent->info before the call. local->index is
+  // already that entity index; passing the physent loop index would ignore a
+  // different entity (or none) and let the view hull start inside the player.
   gEngfuncs.pEventAPI->EV_SetTraceHull(2);
-  gEngfuncs.pEventAPI->EV_PlayerTrace(start, end, PM_STUDIO_BOX, ignorePhysent,
+  gEngfuncs.pEventAPI->EV_PlayerTrace(start, end, PM_STUDIO_BOX, local->index,
                                       &ViewTrace);
 
   // Head: world-only trace straight up from the player origin.
