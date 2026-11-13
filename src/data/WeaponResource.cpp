@@ -28,7 +28,6 @@
 #include "HudState.h"
 #include "NetworkMessages.h"
 #include "WeaponDomain.h"
-#include "framework/ScreenMetrics.h"
 
 namespace weaponres {
 
@@ -226,8 +225,10 @@ void loadWeaponSprites(Weapon &weapon, const char *customSpr) {
   if (!list)
     return;
 
-  const int screenW = framework::ScreenWidth();
-  const int res = screenW < 640 ? 320 : 640;
+  // CHudAmmo::LoadWeaponSprites always asks for HUD_SPRITE_RES (640); the
+  // client does not fall back to the 320 bucket on a narrow screen.
+  constexpr int kHudSpriteRes = 640;
+  const int res = kHudSpriteRes;
 
   const auto load = [&](const char *type, Weapon::SpriteSource &source) {
     if (const client_sprite_t *entry = findSpriteEntry(list, count, type, res))

@@ -137,7 +137,9 @@ int __MsgFunc_WeaponList(const char *pszName, int iSize, void *pbuf) {
   if (data.max2 == 255)
     data.max2 = -1;
   data.slot = msg.readChar();
-  data.slotPos = msg.readByte();
+  // CHudAmmo::MsgFunc_WeaponList reads iSlotPos with READ_CHAR (signed), not
+  // READ_BYTE; keep the wire sign extension observable to the registry.
+  data.slotPos = msg.readChar();
   data.id = msg.readShort();
   data.flags = msg.readByte();
   if (!msg.ok())
@@ -187,9 +189,11 @@ int __MsgFunc_HideWeapon(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
   int token = msg.readByte();
   if (!msg.ok())
-    return original_HideWeapon(pszName, iSize, pbuf);
+    return original_HideWeapon ? original_HideWeapon(pszName, iSize, pbuf) : 0;
   HideWeapon(token);
-  return original_HideWeapon(pszName, iSize, pbuf);
+  // The SDK client does not register HideWeapon (only HideHUD); an addon may
+  // register it later, so the predecessor can legitimately be null.
+  return original_HideWeapon ? original_HideWeapon(pszName, iSize, pbuf) : 0;
 }
 
 int __MsgFunc_HideHUD(const char *pszName, int iSize, void *pbuf) {
