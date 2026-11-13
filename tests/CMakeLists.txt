@@ -321,6 +321,11 @@ abcui_add_test(abc_ui_inventory_model
 abcui_add_test(abc_ui_weapon_domain
     SOURCES WeaponDomain.cpp)
 
+# UserMsg field quirks: HideHUD is a short, AmmoX is absolute and MapList has
+# a payload-less end opcode.
+abcui_add_test(abc_ui_user_msg_fields
+    SOURCES UserMsgFields.cpp)
+
 # --- RmlUi page and document tests -------------------------------------------
 abcui_add_test(abc_ui_interactive
     SOURCES InteractiveDocument.cpp

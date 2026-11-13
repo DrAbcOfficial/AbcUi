@@ -122,6 +122,11 @@ typedef struct AbcUiIntEvent {
 #define ABCUI_HIDEBIT_BATTERY (1 << 5)
 #define ABCUI_HIDEBIT_CUSTOM1 (1 << 6)
 #define ABCUI_HIDEBIT_CUSTOM2 (1 << 7)
+// The two SDK bits above the first byte (dlls/cdll_dll.h): the native HUD
+// hides its crosshair/ammo readout on these, so a short HideHUD token must
+// carry them through the ABI.
+#define ABCUI_HIDEBIT_CROSSHAIR (1 << 8)
+#define ABCUI_HIDEBIT_AMMO (1 << 9)
 
 // hud.chooseWeapon - the weapon-selection highlight moved (slot keys /
 // invnext / invprev). The payload is the registry identity (slot, slotPos);

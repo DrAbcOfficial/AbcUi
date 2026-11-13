@@ -5,6 +5,7 @@
 
 #include "NetworkMessages.h"
 #include "TextFeed.h"
+#include "UserMsgFields.h"
 #include "WeaponDomain.h"
 #include <cmath>
 
@@ -109,8 +110,11 @@ pfnUserMsgHook original_InvRemove = nullptr;
 int __MsgFunc_AmmoX(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
   int index = msg.readByte();
-  int count = msg.readLong();
+  const int rawCount = msg.readLong();
   if (!msg.ok())
+    return original_AmmoX(pszName, iSize, pbuf);
+  int count = 0;
+  if (!normalizeAmmoCount(rawCount, count))
     return original_AmmoX(pszName, iSize, pbuf);
   AmmoX(index, count);
   const AbcUiAmmoEvent ammoEvent{index, count};
@@ -189,9 +193,8 @@ int __MsgFunc_HideWeapon(const char *pszName, int iSize, void *pbuf) {
 }
 
 int __MsgFunc_HideHUD(const char *pszName, int iSize, void *pbuf) {
-  abc::MsgReader msg(pbuf, iSize);
-  int token = msg.readByte();
-  if (!msg.ok())
+  int token = 0;
+  if (!decodeHideHud(pbuf, iSize, token))
     return original_HideHUD(pszName, iSize, pbuf);
   HideHud(token);
   return original_HideHUD(pszName, iSize, pbuf);
@@ -499,6 +502,10 @@ int __MsgFunc_MapList(const char *pszName, int iSize, void *pbuf) {
   MapListData data;
   data.clearAll = msg.readByte();
   if (!msg.ok())
+    return original_MapList(pszName, iSize, pbuf);
+  // MAPLIST_END closes the catalog without a payload; it is not a reset or a
+  // chunk (svencoop_sdk cl_dll/vgui_VotePanel.h).
+  if (data.clearAll == kMapListEnd)
     return original_MapList(pszName, iSize, pbuf);
   if (data.clearAll == 0) {
     data.allCount = msg.readShort();

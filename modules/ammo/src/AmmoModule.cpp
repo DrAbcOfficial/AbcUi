@@ -128,6 +128,7 @@ void applyHideToken() {
   const bool visible = state.suit &&
                        !(state.hideBits & ABCUI_HIDEBIT_WEAPONS) &&
                        !(state.hideBits & ABCUI_HIDEBIT_ALL) &&
+                       !(state.hideBits & ABCUI_HIDEBIT_AMMO) &&
                        !state.spectate && BarWeaponKnown;
   setBarVisible(visible);
 }

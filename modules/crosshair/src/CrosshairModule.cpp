@@ -342,8 +342,9 @@ void panelOnRedraw(void *, double frameTime) {
   AbcUiDocument *doc = panelDocument();
   if (!doc)
     return;
-  const bool showDocument = state.suit && cvarInt(Crosshair, 1) > 0 &&
-                            !(state.hideBits & ABCUI_HIDEBIT_ALL);
+  const bool showDocument =
+      state.suit && cvarInt(Crosshair, 1) > 0 &&
+      !(state.hideBits & (ABCUI_HIDEBIT_ALL | ABCUI_HIDEBIT_CROSSHAIR));
   if (showDocument)
     Api->ui->documentShow(doc);
   else
@@ -354,7 +355,8 @@ void panelOnRedraw(void *, double frameTime) {
   // Old OnThink/PaintBackground hide gates (spectate / hud hide / suit /
   // health): nothing draws this frame.
   if (state.spectate ||
-      (state.hideBits & (ABCUI_HIDEBIT_ALL | ABCUI_HIDEBIT_WEAPONS)) ||
+      (state.hideBits &
+       (ABCUI_HIDEBIT_ALL | ABCUI_HIDEBIT_WEAPONS | ABCUI_HIDEBIT_CROSSHAIR)) ||
       !state.suit || state.health <= 0) {
     hideDynamicCrosshair();
     return;
