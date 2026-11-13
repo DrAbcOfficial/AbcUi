@@ -257,8 +257,12 @@ struct RowRef {
   AbcUiPlayerInfo info;
 };
 
+constexpr int32_t kDonorLevelMask = 0xFFFF;
+
 const char *donorIcon(int32_t donor) {
-  switch (donor) {
+  // AbcUiPlayerInfo.donor is 0x10000 | extraslevel; the icon set is keyed by
+  // the low-word level (1..6). None/hidden is 0x10000, whose low word is 0.
+  switch (donor & kDonorLevelMask) {
   case 1:
     return "donor_1";
   case 2:
@@ -522,13 +526,18 @@ void rebuildTable() {
                "255);'>" +
                escapeText(na) + "</div>";
       } else {
-        if (info.health < 0)
+        // -128 is the server withholding the value from this recipient (for
+        // example an enemy in a team mode); only a real negative is DEAD.
+        if (info.health <= ABCUI_SCOREINFO_WITHHELD)
+          appendFmt(rml, "<div class='cell c-health'>{}</div>", escapeText(na));
+        else if (info.health < 0)
           appendFmt(rml, "<div class='cell c-health'>{}</div>",
                     escapeText(deadTag));
         else
           appendFmt(rml,
                     "<div class='cell c-health' style='color: {};'>{}</div>",
                     percentColor(info.health), static_cast<int>(info.health));
+        // -128 (withheld) and -1 (no armor) both render N/A.
         if (info.armor < 0)
           appendFmt(rml, "<div class='cell c-armor'>{}</div>", escapeText(na));
         else

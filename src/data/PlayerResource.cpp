@@ -32,13 +32,13 @@ std::array<PlayerInfo, kMaxPlayers + 1> &infos() {
   return Infos;
 }
 
-// Old PlayerInfo::Update donor read: the native HUD panel table carries the
-// donor/admin columns the wire omits.
+// Old PlayerInfo::Update donor read: the native HUD panel table is the
+// client's decrypted ClExtrasInfo cache. Its word at +0x54 carries both the
+// level and the ScoreInfo showextras bit, so no wire gate is needed here.
 void readNativeFlags(PlayerInfo &info) {
   int32_t donor = 0;
-  info.donor = (info.hideExtra != HideExtra::No &&
-                hooks::NativeHudPanelInfo.readDonor(info.index, donor))
-                   ? static_cast<Donor>(donor)
+  info.donor = hooks::NativeHudPanelInfo.readDonor(info.index, donor)
+                   ? decodeDonor(donor)
                    : Donor::None;
   // ADMIN rides the wire (ScoreInfo admin byte); the native table's admin
   // column stayed unread by the old code - same here.
@@ -175,7 +175,6 @@ void PlayerInfo::reset() {
   admin = Admin::None;
   connected = false;
   spectate = false;
-  hideExtra = HideExtra::No;
   donor = Donor::None;
   steamId64 = 0;
 }
@@ -185,8 +184,11 @@ void init() {
   if (registered)
     return;
   registered = true;
+  // Byte 6 of the wire is the showextras flag; the native donor word already
+  // carries the same bit, so the store keeps no second copy of it.
   netmsg::ScoreInfo.append([](int index, float frag, int death, float health,
-                              float armor, int team, int extra, int admin) {
+                              float armor, int team, int /*showExtras*/,
+                              int admin) {
     PlayerInfo *info = getPlayerInfo(index);
     if (!info)
       return;
@@ -200,7 +202,6 @@ void init() {
     info->health = health;
     info->armor = armor;
     info->team = static_cast<teamres::TeamId>(team);
-    info->hideExtra = static_cast<HideExtra>(extra);
     info->admin = static_cast<Admin>(admin);
   });
   netmsg::Spectator.append([](int index, bool spectate) {
@@ -284,7 +285,6 @@ void debugPopulateBoard() {
     info.loss = n % 5;
     info.spectate = (n % 11) == 3;
     info.steamId64 = 76561197960287930ull + static_cast<std::uint64_t>(index);
-    info.hideExtra = (n % 4 == 0) ? HideExtra::HideAdmin : HideExtra::No;
     info.admin = (n == 2) ? Admin::ServerOwner
                           : ((n == 4) ? Admin::Operator : Admin::None);
     info.donor = static_cast<Donor>(65536 + (n % 7));

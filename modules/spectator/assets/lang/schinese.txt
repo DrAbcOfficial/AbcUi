@@ -4,4 +4,5 @@ abcui.spectator/Spec_Mode3 = 自由漫游模式
 abcui.spectator/Spec_Mode4 = 观察者模式
 abcui.spectator/Spec_Health = 生命
 abcui.spectator/Spec_Armor = 护甲
+abcui.spectator/Spec_NA = N/A
 abcui.spectator/Spec_Dead = 死亡

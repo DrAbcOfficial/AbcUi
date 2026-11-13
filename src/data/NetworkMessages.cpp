@@ -272,20 +272,25 @@ int __MsgFunc_Health(const char *pszName, int iSize, void *pbuf) {
 }
 
 int __MsgFunc_ScoreInfo(const char *pszName, int iSize, void *pbuf) {
+  // Chain first: the client's handler writes showextras (+0x56) and
+  // adminlevel (+0x58) into g_PlayerExtraInfo. Subscribers re-read the
+  // native donor word, so publishing first would gate the badge on the
+  // previous message (a hide-extras toggle would lag one ScoreInfo).
+  const int result = original_ScoreInfo(pszName, iSize, pbuf);
   abc::MsgReader msg(pbuf, iSize);
   int clientIndex = msg.readByte();
   if (!msg.ok())
-    return original_ScoreInfo(pszName, iSize, pbuf);
+    return result;
   if (clientIndex >= 1 && clientIndex <= 32) {
     float frags = msg.readFloat();
     int deaths = msg.readLong();
     float health = msg.readFloat();
     float armor = msg.readFloat();
     int teamNumber = msg.readByte();
-    int hideExtra = msg.readByte();
+    int showExtras = msg.readByte();
     int isAdmin = msg.readByte();
     if (!msg.ok())
-      return original_ScoreInfo(pszName, iSize, pbuf);
+      return result;
     // Health/armor may go negative on overkill (GoldSrc reports the raw
     // value); both are accepted as long as they are finite. The magnitude
     // bound only keeps the later int display casts in range; panels clamp
@@ -294,9 +299,9 @@ int __MsgFunc_ScoreInfo(const char *pszName, int iSize, void *pbuf) {
         std::abs(frags) <= 1000000.0f && deaths >= 0 && deaths <= 1000000 &&
         std::abs(health) <= 1000000000.0f && std::abs(armor) <= 1000000000.0f)
       ScoreInfo(clientIndex, frags, deaths, health, armor, teamNumber,
-                hideExtra, isAdmin);
+                showExtras, isAdmin);
   }
-  return original_ScoreInfo(pszName, iSize, pbuf);
+  return result;
 }
 
 int __MsgFunc_ShowMenu(const char *pszName, int iSize, void *pbuf) {

@@ -76,7 +76,7 @@ extern abc::CallbackList<void(int, int)> AmmoPickup;     // (ammoIndex, count)
 extern abc::CallbackList<void(const char *)> ItemPickup; // hud.txt sprite name
 extern abc::CallbackList<void(int)> Battery;             // armor
 extern abc::CallbackList<void(int)> Health;
-// (clientIndex 1..32, frags, deaths, health, armor, teamNumber, hideExtra,
+// (clientIndex 1..32, frags, deaths, health, armor, teamNumber, showExtras,
 // isAdmin)
 extern abc::CallbackList<void(int, float, int, float, float, int, int, int)>
     ScoreInfo;

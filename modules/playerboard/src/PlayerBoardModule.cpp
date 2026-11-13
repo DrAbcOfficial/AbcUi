@@ -101,7 +101,11 @@ bool updateClientInfo(AbcUiElement *tile, int entindex) {
     return false;
 
   const float health = info.health;
-  const bool dead = health <= 0.0f;
+  // -128 means the server withheld the value from this observer; only a real
+  // non-positive value is death. A withheld value must not draw the skull or
+  // trip the medkit band.
+  const bool withheld = health <= ABCUI_SCOREINFO_WITHHELD;
+  const bool dead = !withheld && health <= 0.0f;
   // Health/armor clamp for display: negative overkill and >100 values are
   // wire-legal. A dead player's residual armor is not meaningful on the
   // overhead tile, so both bars read 0 while the dead icon shows.
@@ -142,7 +146,7 @@ bool updateClientInfo(AbcUiElement *tile, int entindex) {
   const float danger = cvarFloat(PlayerInfoDanger, 30.0f);
   // Priority is dead > medkit > crouch; an unusual health value never hides
   // the tile.
-  const bool showMedkit = !dead && health < danger;
+  const bool showMedkit = !withheld && !dead && health < danger;
   const bool showDead = dead;
   const bool showCrouch = !showMedkit && !showDead && entity.valid &&
                           std::fabs(entity.maxs[2] - entity.mins[2]) < 64.0f;

@@ -329,6 +329,10 @@ abcui_add_test(abc_ui_ping_refresh
             "${SRC}/modsys/EventBus.cpp"
     LIBRARIES Abc::Core)
 
+abcui_add_test(abc_ui_player_flags
+    SOURCES PlayerFlags.cpp
+    LIBRARIES Abc::Core)
+
 abcui_add_test(abc_ui_inventory_model
     SOURCES InventoryModel.cpp "${SRC}/services/inventory/InventoryModel.cpp"
     LIBRARIES Abc::Core)

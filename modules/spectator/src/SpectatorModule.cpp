@@ -118,9 +118,14 @@ void updatePanel() {
       targetIndex >= 1 && targetIndex <= ABCUI_MAX_PLAYERS;
   const bool targetKnown =
       targetInRange && Api->players->get(targetIndex, &target) != 0;
-  const bool dead = targetKnown && target.health <= 0.0f;
-  const int health =
-      targetKnown ? static_cast<int>(std::lround(target.health)) : 0;
+  // -128 is the server withholding the value from this observer (an enemy in
+  // a team mode); only a real non-positive value is death.
+  const bool withheld =
+      targetKnown && target.health <= ABCUI_SCOREINFO_WITHHELD;
+  const bool dead = targetKnown && !withheld && target.health <= 0.0f;
+  const int health = targetKnown && !withheld
+                         ? static_cast<int>(std::lround(target.health))
+                         : 0;
   const int armor =
       targetKnown ? static_cast<int>(std::lround(target.armor)) : 0;
   const std::string name =
@@ -129,7 +134,8 @@ void updatePanel() {
   const std::string key =
       std::to_string(mode) + "|" + std::to_string(targetIndex) + "|" +
       std::to_string(targetKnown ? 1 : 0) + "|" + std::to_string(dead ? 1 : 0) +
-      "|" + std::to_string(health) + "|" + std::to_string(armor) + "|" + name;
+      "|" + std::to_string(withheld ? 1 : 0) + "|" + std::to_string(health) +
+      "|" + std::to_string(armor) + "|" + name;
   if (key == LastKey) {
     setVisible(doc, true);
     return;
@@ -145,11 +151,18 @@ void updatePanel() {
   setDisplay("spec-health", targetKnown ? "flex" : "none");
   setDisplay("spec-armor", (targetKnown && !dead) ? "flex" : "none");
   if (targetKnown) {
-    setDisplay("spec-health-label", dead ? "none" : "inline");
-    setInner("spec-health-value", dead
-                                      ? escape(translateOr("Spec_Dead", "Dead"))
-                                      : std::to_string(health));
-    setInner("spec-armor-value", std::to_string(armor));
+    if (withheld) {
+      const std::string na = escape(translateOr("Spec_NA", "N/A"));
+      setDisplay("spec-health-label", "inline");
+      setInner("spec-health-value", na);
+      setInner("spec-armor-value", na);
+    } else {
+      setDisplay("spec-health-label", dead ? "none" : "inline");
+      setInner("spec-health-value",
+               dead ? escape(translateOr("Spec_Dead", "Dead"))
+                    : std::to_string(health));
+      setInner("spec-armor-value", std::to_string(armor));
+    }
   }
 
   const char *token = modeToken(mode);

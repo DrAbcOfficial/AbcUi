@@ -835,6 +835,13 @@ typedef struct AbcUiWeaponsApi {
 
 #define ABCUI_MAX_PLAYERS 32
 
+// health/armor are the raw ScoreInfo floats. The server withholds a value
+// from recipients that may not see it (non-allies, or HIDEHUD_HEALTH/ARMOR)
+// as -128; -1 is the real dead/no-armor marker.
+#define ABCUI_SCOREINFO_WITHHELD (-128.0f)
+#define ABCUI_SCOREINFO_HEALTH_DEAD (-1.0f)
+#define ABCUI_SCOREINFO_ARMOR_NONE (-1.0f)
+
 // One player-resource row (ScoreInfo wire values + engine mirror).
 typedef struct AbcUiPlayerInfo {
   uint32_t structSize;
@@ -843,14 +850,16 @@ typedef struct AbcUiPlayerInfo {
   int32_t spectate;
   int32_t team;  // teamres::TeamId
   int32_t admin; // 0 none, 1 operator, 2 server owner
-  int32_t donor; // old native donor kind (0x10000 + kind)
+  // 0x10000 | extraslevel (1..6); 0x10000 = none/hidden. The low 16 bits are
+  // the level the donor icon set is keyed by.
+  int32_t donor;
   int32_t topColor;
   int32_t bottomColor;
   int32_t ping;
   int32_t loss;
   float frags;
-  float health;
-  float armor;
+  float health; // _HEALTH_DEAD when dead, _WITHHELD when hidden
+  float armor;  // _ARMOR_NONE when unarmored, _WITHHELD when hidden
   uint64_t steamId64;
   char name[64];
   char model[96];

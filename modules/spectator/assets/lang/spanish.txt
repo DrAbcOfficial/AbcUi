@@ -4,4 +4,5 @@ abcui.spectator/Spec_Mode3 = Modo de recorrido libre
 abcui.spectator/Spec_Mode4 = Modo de observador
 abcui.spectator/Spec_Health = Vida
 abcui.spectator/Spec_Armor = Armadura
+abcui.spectator/Spec_NA = N/A
 abcui.spectator/Spec_Dead = Muerto
