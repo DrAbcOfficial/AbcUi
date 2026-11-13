@@ -128,7 +128,7 @@ struct InvItemData {
   int id = 0;
   bool canActivate = false;  // native item+0x04: Activate warning tint
   bool canDrop = false;      // native item+0x05: Drop warning tint
-  bool removeLocked = false; // native item+0x06: needs a forced InvRemove
+  bool keepOnClear = false; // native item+0x06: kept while preserve != 0
   float value = 0.0f;        // native item+0x08 (not rendered by the window)
   std::string name;          // native item+0x0c
   std::string displayName;   // native item+0x10 (preferred by the window)
@@ -137,8 +137,9 @@ struct InvItemData {
   std::string key;           // native item+0x1c (native selection key)
 };
 extern abc::CallbackList<void(const InvItemData &)> InvAdd;
-// InvRemove: (item id, force). id 0 removes every unlocked item; force != 0
-// also removes items whose removeLocked flag is set (native removal rule).
+// InvRemove: (item id, preserve). id 0 clears every item whose keepOnClear
+// flag is not set; preserve != 0 keeps the keepOnClear items (the native
+// CInventoryPanel::MsgFunc_InvRemove rule).
 extern abc::CallbackList<void(int, int)> InvRemove;
 
 // Parses one ShowMenu chunk, updates the framework menu fact, publishes the

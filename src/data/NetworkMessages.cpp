@@ -573,7 +573,7 @@ int __MsgFunc_InvAdd(const char *pszName, int iSize, void *pbuf) {
   data.id = msg.readLong();
   data.canActivate = msg.readByte() != 0;
   data.canDrop = msg.readByte() != 0;
-  data.removeLocked = msg.readByte() != 0;
+  data.keepOnClear = msg.readByte() != 0;
   data.value = msg.readFloat();
   data.name = msg.readString();
   data.displayName = msg.readString();
@@ -589,10 +589,10 @@ int __MsgFunc_InvAdd(const char *pszName, int iSize, void *pbuf) {
 int __MsgFunc_InvRemove(const char *pszName, int iSize, void *pbuf) {
   abc::MsgReader msg(pbuf, iSize);
   const int id = msg.readLong();
-  const int force = msg.readByte();
+  const int preserve = msg.readByte();
   if (!msg.ok())
     return original_InvRemove ? original_InvRemove(pszName, iSize, pbuf) : 0;
-  InvRemove(id, force);
+  InvRemove(id, preserve);
   return original_InvRemove ? original_InvRemove(pszName, iSize, pbuf) : 0;
 }
 

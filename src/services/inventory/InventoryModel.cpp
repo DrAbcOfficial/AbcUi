@@ -21,7 +21,7 @@ void InventoryModel::add(const netmsg::InvItemData &data) {
   item.id = data.id;
   item.canActivate = data.canActivate;
   item.canDrop = data.canDrop;
-  item.removeLocked = data.removeLocked;
+  item.keepOnClear = data.keepOnClear;
   // The native window prefers item+0x10 and falls back to item+0x0c.
   item.name = data.displayName.empty() ? data.name : data.displayName;
   item.description = data.description;
@@ -29,12 +29,14 @@ void InventoryModel::add(const netmsg::InvItemData &data) {
   Revision_++;
 }
 
-void InventoryModel::remove(int id, int force) {
-  const auto removed = std::erase_if(Items_, [id, force](const Item &item) {
-    // Native MsgFunc_InvRemove: (id == 0 || id == item id) &&
-    // (item+0x06 == 0 || force != 0).
-    return (id == 0 || id == item.id) && (!item.removeLocked || force != 0);
-  });
+void InventoryModel::remove(int id, int preserve) {
+  const auto removed =
+      std::erase_if(Items_, [id, preserve](const Item &item) {
+        // Native MsgFunc_InvRemove: target the id, then keep an item when it
+        // is keepOnClear and the server set preserve.
+        return (id == 0 || id == item.id) &&
+               (!item.keepOnClear || preserve == 0);
+      });
   if (removed == 0)
     return;
   if (Selected_ != 0 && !selected())

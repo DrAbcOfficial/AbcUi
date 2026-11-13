@@ -42,7 +42,7 @@ struct Item {
   int id = 0;               // server id used by the action commands
   bool canActivate = false;
   bool canDrop = false;
-  bool removeLocked = false;
+  bool keepOnClear = false;
   std::string name;        // display name (native item+0x10, else +0x0c)
   std::string description; // native item+0x14
 };
@@ -52,9 +52,9 @@ public:
   // InvAdd: append in arrival order (native AddItem appends to the tail).
   // The display name prefers the native window's second string.
   void add(const netmsg::InvItemData &data);
-  // InvRemove: id 0 removes every unlocked item; a non-zero force also
-  // removes items the server had marked removeLocked (native rule).
-  void remove(int id, int force);
+  // InvRemove: id 0 clears every item unless it is keepOnClear and the
+  // server sent preserve != 0 (the native CInventoryPanel rule).
+  void remove(int id, int preserve);
   void clear();
 
   const std::vector<Item> &items() const {

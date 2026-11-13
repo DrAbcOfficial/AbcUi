@@ -726,7 +726,9 @@ void GameUiModule::onInit() {
       Inventory->model().add(data);
     });
     netmsg::InvRemove.append(
-        [this](int id, int force) { Inventory->model().remove(id, force); });
+        [this](int id, int preserve) {
+          Inventory->model().remove(id, preserve);
+        });
     InventoryFeedBound = true;
   }
 #ifndef NDEBUG

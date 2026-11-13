@@ -2,11 +2,11 @@
 // The wire semantics are pinned against the
 // client's MsgFunc_InvAdd/MsgFunc_InvRemove and CInventoryPanel's action
 // strings:
-//   InvAdd: long id, byte canActivate, byte canDrop, byte removeLocked,
+//   InvAdd: long id, byte canActivate, byte canDrop, byte keepOnClear,
 //           float value, five strings (name, displayName, description,
 //           extra, key)
-//   InvRemove: long id, byte force; id 0 clears every unlocked item and
-//           force also drops removeLocked items.
+//   InvRemove: long id, byte preserve; id 0 targets every item and preserve
+//           keeps the items whose keepOnClear flag is set.
 //   Actions: activateitem "#<id>", dropitem "#<id>", dropitem "*".
 #include "services/inventory/InventoryModel.h"
 
@@ -111,17 +111,18 @@ void testRemovalSemantics() {
   model.remove(0, 0);
   CHECK(model.empty());
 
-  // removeLocked: a normal removal keeps it, a forced one drops it.
+  // keepOnClear: the server preserve byte keeps it, a clear without
+  // preserve removes it (the native CInventoryPanel rule).
   netmsg::InvItemData locked = makeItem(8, "eight", "Eight", "");
-  locked.removeLocked = true;
+  locked.keepOnClear = true;
   model.add(locked);
-  model.remove(8, 0);
-  CHECK(model.items().size() == 1);
-  model.remove(0, 0);
+  model.remove(0, 1);
   CHECK(model.items().size() == 1);
   model.remove(8, 1);
+  CHECK(model.items().size() == 1);
+  model.remove(8, 0);
   CHECK(model.empty());
-  model.remove(8, 1); // idempotent
+  model.remove(8, 0); // idempotent
   CHECK(model.empty());
 
   // clear() drops everything including the selection.
