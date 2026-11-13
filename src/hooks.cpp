@@ -324,9 +324,12 @@ H_HUD_GetStudioModelInterface(int version,
                               struct engine_studio_api_s *pstudio) {
   // Old exportfuncs: mirror the engine studio API once (player info reads
   // in data::playerres; AbcEssential holds its own copy - D-01 no sharing).
-  EngineStudioApi = pstudio;
-  return gExportfuncs.HUD_GetStudioModelInterface(version, ppinterface,
-                                                  pstudio);
+  // The client rejects an incompatible version before it copies the table;
+  // only mirror a studio API it actually accepted.
+  const int result = gExportfuncs.HUD_GetStudioModelInterface(
+      version, ppinterface, pstudio);
+  EngineStudioApi = result ? pstudio : nullptr;
+  return result;
 }
 
 static void H_HUD_Shutdown() {
