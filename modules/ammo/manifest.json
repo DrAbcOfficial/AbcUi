@@ -3,9 +3,9 @@
   "name": "Ammo",
   "description": "Ammo pool readout plus the ammo, weapon and item pickup stacks.",
   "author": "DrAbc",
-  "version": "3.0.0",
+  "version": "3.1.0",
   "abi": 3,
-  "minAbcUi": "0.10.0",
+  "minAbcUi": "0.12.1",
   "entry": "entry/abcui_ammo.dll",
   "dependencies": [
     "abcui.base"

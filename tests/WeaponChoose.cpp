@@ -34,6 +34,8 @@ struct Recording {
   void *chooseData = nullptr;
   AbcUiEventSink layout = nullptr;
   void *layoutData = nullptr;
+  AbcUiEventSink sprites = nullptr;
+  void *spritesData = nullptr;
   bool visible = false;
   bool document = true;
   bool textVisible = false;
@@ -158,6 +160,10 @@ int main() {
     if (std::strcmp(name, ABCUI_CHANNEL_HUD_WEAPON_LAYOUT) == 0) {
       recording().layout = sink;
       recording().layoutData = data;
+    }
+    if (std::strcmp(name, ABCUI_CHANNEL_HUD_WEAPON_SPRITES) == 0) {
+      recording().sprites = sink;
+      recording().spritesData = data;
     }
     return 1;
   };
@@ -327,6 +333,20 @@ int main() {
   CHECK(!state.visible);
   state.rml = "hidden";
   state.layout(state.layoutData, nullptr);
+  CHECK(state.rml == "hidden");
+
+  TEST_CASE("sprite reload refreshes an open bar only");
+  CHECK(state.sprites != nullptr);
+  CHECK(command("slot2") == 1);
+  CHECK(state.visible);
+  state.rml = "sentinel";
+  state.sprites(state.spritesData, nullptr);
+  CHECK(state.rml != "sentinel");
+  CHECK(state.rml.find("slot2_icon") != std::string::npos);
+  state.panel.onData(nullptr, 6.0);
+  CHECK(!state.visible);
+  state.rml = "hidden";
+  state.sprites(state.spritesData, nullptr);
   CHECK(state.rml == "hidden");
 
   TEST_CASE("wheel opens and confirms without native selection");

@@ -13,8 +13,11 @@
 // The ownership script events the old code fired here belong to AbcEssential
 // signals (own diff) and are not duplicated.
 //
-// Sprite sources: sprites/<sprName>.txt parsed via SPR_GetList, atlas file +
-// rect stored per slot; panels build spricon:// URIs through data::sprites.
+// Sprite sources: sprites/[<spriteDir>/]<sprName>.txt parsed via SPR_GetList,
+// atlas file + rect stored per slot; panels build spricon:// URIs through
+// data::sprites. The directory is the server's CustWeapon custom sprite
+// directory (svencoop_sdk WEAPON.szCustomDirectory) and stays on the weapon so
+// every later reload keeps resolving inside it.
 
 #include <cstddef>
 #include <cstdint>
@@ -49,6 +52,12 @@ enum ItemFlags {
 struct Weapon {
   std::string name;
   std::string sprName;
+  // Server custom sprite directory (CustWeapon message; svencoop_sdk
+  // WEAPON.szCustomDirectory). Empty = sprites/<sprName>.txt, else
+  // sprites/<spriteDir>/<sprName>.txt. It must stay on the weapon: a
+  // WeaponSpr reload (the script LoadSprites call custom weapons make when
+  // they change state) carries only the new sprite name.
+  std::string spriteDir;
   int ammoType = -1;
   int ammo2Type = -1;
   int max1 = -1;

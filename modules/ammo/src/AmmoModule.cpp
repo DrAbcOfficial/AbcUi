@@ -50,6 +50,9 @@ AbcUiPanelDesc ItemStackDesc = {};
 
 bool BarWeaponKnown = false;
 AbcUiWeaponInfo BarWeapon = {};
+// Registry identity of the snapshot above, so a sprite reload can tell whether
+// the current weapon is the one that changed.
+int32_t BarWeaponId = 0;
 std::string PoolRml[2];
 // One pool's magazine pop (moduleui::bounce). The pool line is rebuilt on
 // every change, so the last clip string decides whether the number really
@@ -565,12 +568,26 @@ void onCurWeapon(void *, const void *payload) {
   // Old g_EventCurWeapon handler: weapon lookup may miss (server sent no
   // WeaponList yet) - RefreshAmmo then hides the bar.
   BarWeaponKnown = Api->weapons->getById(event->id, &BarWeapon) != 0;
+  BarWeaponId = BarWeaponKnown ? event->id : 0;
   if (BarWeaponKnown) {
     BarWeapon.clip = event->clip;
     BarWeapon.clip2 = event->clip2;
     BarWeapon.state = event->state;
   }
   refreshAmmo();
+}
+
+// A CustWeapon/WeaponSpr reload changed the current weapon's icons (custom
+// weapons re-send their sprite list when they change state). Re-snapshot and
+// repaint the bar so its icon follows instead of waiting for the next
+// CurWeapon (issue #138).
+void onWeaponSprites(void *, const void *payload) {
+  const auto *event = static_cast<const AbcUiWeaponIdEvent *>(payload);
+  if (!BarWeaponKnown || event->id == 0 || event->id != BarWeaponId)
+    return;
+  BarWeaponKnown = Api->weapons->getById(BarWeaponId, &BarWeapon) != 0;
+  if (BarWeaponKnown)
+    refreshAmmo();
 }
 
 void onAmmoX(void *, const void *) {
@@ -618,6 +635,7 @@ void barOnData(void *, double frameTime) {
 
 void barDocumentReady(void *) {
   BarWeaponKnown = false;
+  BarWeaponId = 0;
   Bullets.clear();
   Clip[0] = ClipBounce{};
   Clip[1] = ClipBounce{};
@@ -634,6 +652,7 @@ void barReset(void *) {
   if (doc)
     Api->ui->documentHide(doc);
   BarWeaponKnown = false;
+  BarWeaponId = 0;
   Bullets.clear();
   Clip[0] = ClipBounce{};
   Clip[1] = ClipBounce{};
@@ -736,6 +755,8 @@ void onModuleLoad() {
   Api->events->subscribe(ABCUI_CHANNEL_HUD_HIDE_TOKEN, 0, &onHideToken,
                          nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_HUD_SPECTATE, 0, &onSpectate, nullptr);
+  Api->events->subscribe(ABCUI_CHANNEL_HUD_WEAPON_SPRITES, 0, &onWeaponSprites,
+                         nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_WEAP_PICKUP, 0, &onWeapPickup,
                          nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_NETMSG_AMMO_PICKUP, 0, &onAmmoPickup,
@@ -754,6 +775,7 @@ void onModuleShutdown() {
   Clip[0] = ClipBounce{};
   Clip[1] = ClipBounce{};
   BarWeaponKnown = false;
+  BarWeaponId = 0;
 }
 
 void onModuleUnload() {

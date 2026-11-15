@@ -143,6 +143,18 @@ typedef struct AbcUiWeaponEvent {
 #define ABCUI_CHANNEL_HUD_PICKUP_WEAPON "hud.pickupWeapon"
 #define ABCUI_CHANNEL_HUD_DROP_WEAPON "hud.dropWeapon"
 
+// Weapon-id payload: hud.weaponSprites and netmsg.weappickup.
+typedef struct AbcUiWeaponIdEvent {
+  int32_t id;
+} AbcUiWeaponIdEvent;
+
+// hud.weaponSprites - one registry weapon reloaded its sprite sources from a
+// CustWeapon or WeaponSpr message: the server's custom sprite directory or
+// the LoadSprites sprite-list name changed. The payload is AbcUiWeaponIdEvent;
+// a consumer re-reads the weapon (weapons->getById) when it is on screen.
+// Registration-time reloads are covered by hud.weaponLayout instead.
+#define ABCUI_CHANNEL_HUD_WEAPON_SPRITES "hud.weaponSprites"
+
 // hud.weaponLayout - the client-side selector layout changed: a rule was
 // edited, the filter was toggled, or a WeaponList registration recomputed it.
 // Data channel; the payload is null. Consumers re-read weapons->list /
@@ -300,11 +312,8 @@ typedef struct AbcUiAmmoEvent {
   int32_t count;
 } AbcUiAmmoEvent;
 
-// netmsg.weappickup - the player picked up weapon `id`.
+// netmsg.weappickup - the player picked up weapon `id` (AbcUiWeaponIdEvent).
 #define ABCUI_CHANNEL_NETMSG_WEAP_PICKUP "netmsg.weappickup"
-typedef struct AbcUiWeaponIdEvent {
-  int32_t id;
-} AbcUiWeaponIdEvent;
 
 // netmsg.ammopickup - the player picked up ammo (AbcUiAmmoEvent).
 #define ABCUI_CHANNEL_NETMSG_AMMO_PICKUP "netmsg.ammopickup"

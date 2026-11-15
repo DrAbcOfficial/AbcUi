@@ -104,11 +104,17 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   placement (`slot`/`slotPos`); every snapshot and the selection walk read
   the effective pair. `weaponres::rebuildSlots` applies the client rules
   through the pure `src/data/WeaponSlotLayout.*` unit and publishes
-  `hud.weaponLayout`. The rule map is process-lifetime (a map transition
-  clears the registry, not the rules), capped at 256 rules, keyed by
-  `[A-Za-z0-9_]{1,64}` names and never sent to the server. Collisions place
-  overrides first, then server entries, then by name, and shift the later
-  weapon to the next free position inside the same slot; the filter's
+  `hud.weaponLayout`. The `CustWeapon` sprite directory (`Weapon.spriteDir`,
+  svencoop_sdk `WEAPON.szCustomDirectory`) is registry state next to the
+  sprite name and must survive every reload: `WeaponSpr` (the script
+  `LoadSprites` call custom weapons make when they change state) carries only
+  the new name, and dropping the directory resolves the list outside it and
+  falls back to the error art for the whole weapon (issue #138). A reload
+  publishes `hud.weaponSprites`. The rule map is process-lifetime (a map
+  transition clears the registry, not the rules), capped at 256 rules, keyed
+  by `[A-Za-z0-9_]{1,64}` names and never sent to the server. Collisions
+  place overrides first, then server entries, then by name, and shift the
+  later weapon to the next free position inside the same slot; the filter's
   enabled state only selects which placement is applied. Server weapon ids
   span the engine's full id domain (Sven Co-op 5.x: `ItemInfoArray` and the
   `weapon_data[]` prediction array hold 256 entries; the shipped client

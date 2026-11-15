@@ -342,6 +342,11 @@ abcui_add_test(abc_ui_inventory_model
 abcui_add_test(abc_ui_weapon_domain
     SOURCES WeaponDomain.cpp)
 
+# The weapon sprite-list path: "sprites/<name>.txt" or
+# "sprites/<custom sprite dir>/<name>.txt" (svencoop_sdk LoadWeaponSprites).
+abcui_add_test(abc_ui_weapon_sprite_path
+    SOURCES WeaponSpritePath.cpp)
+
 # UserMsg field quirks: HideHUD is a short, AmmoX is absolute and MapList has
 # a payload-less end opcode.
 abcui_add_test(abc_ui_user_msg_fields

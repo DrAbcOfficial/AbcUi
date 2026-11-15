@@ -5,6 +5,7 @@
 
 #include "WeaponResource.h"
 #include "WeaponSlotLayout.h"
+#include "WeaponSpritePath.h"
 #include "../framework/ResourceLimits.h"
 
 #include <cdll_int.h>
@@ -45,6 +46,13 @@ void publishWeapon(const char *channel, const Weapon *weapon) {
   const AbcUiWeaponEvent event{weapon ? weapon->slot : -1,
                                weapon ? weapon->slotPos : -1};
   framework::eventBus().publish(channel, event);
+}
+
+// Module-facing mirror of a sprite reload: the selector and the ammo bar
+// re-read the weapon when its icons changed (CustWeapon/WeaponSpr).
+void publishSprites(const Weapon &weapon) {
+  const AbcUiWeaponIdEvent event{weapon.id};
+  framework::eventBus().publish(ABCUI_CHANNEL_HUD_WEAPON_SPRITES, event);
 }
 
 constexpr int kMaxWeaponName = 128;
@@ -195,8 +203,10 @@ void fillSpriteSource(Weapon::SpriteSource &source, const char *atlasName,
 }
 
 // Record only actual server-provided sprite entries. Presentation fallbacks
-// belong to consumers, not the registry.
-void loadWeaponSprites(Weapon &weapon, const char *customSpr) {
+// belong to consumers, not the registry. The list lives in the weapon's custom
+// sprite directory when the server sent one (svencoop_sdk
+// WEAPON.szCustomDirectory); the registry keeps it for every reload.
+void loadWeaponSprites(Weapon &weapon) {
   weapon.active = {};
   weapon.inactive = {};
   weapon.ammo = {};
@@ -207,15 +217,10 @@ void loadWeaponSprites(Weapon &weapon, const char *customSpr) {
   weapon.zoomedAutoaim = {};
 
   if (!framework::ResourceLimits::resourceName(weapon.sprName) ||
-      (customSpr && *customSpr &&
-       !framework::ResourceLimits::resourceName(customSpr)))
+      (!weapon.spriteDir.empty() &&
+       !framework::ResourceLimits::resourceName(weapon.spriteDir)))
     return;
-  std::string listPath = "sprites/";
-  if (customSpr && *customSpr) {
-    listPath += customSpr;
-    listPath += '/';
-  }
-  listPath += weapon.sprName + ".txt";
+  std::string listPath = spriteListPath(weapon.sprName, weapon.spriteDir);
   if (listPath.size() >= 256)
     return;
 
@@ -311,7 +316,7 @@ void addWeapon(Weapon &&incoming) {
 
   Weapon &weapon = RegistryState.byId[id] = std::move(incoming);
   RegistryState.byName[weapon.name] = id;
-  loadWeaponSprites(weapon, nullptr);
+  loadWeaponSprites(weapon);
   rebuildSlots();
   if (wasOwned) {
     PickupWeapon(&weapon);
@@ -376,6 +381,10 @@ void onWeaponList(const netmsg::WeaponListData &data) {
     updated.id = data.id;
     updated.flags = data.flags;
     Weapon &weapon = itor->second;
+    // The registration reload keeps the directory: the server pairs every
+    // WeaponList with a CustWeapon, and rebuilding the selector between the
+    // two messages must not flash the error placeholder.
+    updated.spriteDir = weapon.spriteDir;
     updated.clip = weapon.clip;
     updated.clip2 = weapon.clip2;
     updated.state = weapon.state;
@@ -384,7 +393,7 @@ void onWeaponList(const netmsg::WeaponListData &data) {
       RegistryState.byName.erase(oldName);
     weapon = std::move(updated);
     RegistryState.byName[weapon.name] = weapon.id;
-    loadWeaponSprites(weapon, nullptr);
+    loadWeaponSprites(weapon);
     rebuildSlots();
     return;
   }
@@ -404,11 +413,15 @@ void onWeaponList(const netmsg::WeaponListData &data) {
   addWeapon(std::move(created));
 }
 
-void onCustWeapon(int id, const char *sprName) {
+void onCustWeapon(int id, const char *spriteDir) {
+  if (!spriteDir || !framework::ResourceLimits::resourceName(spriteDir))
+    return;
   const auto itor = RegistryState.byId.find(id);
   if (itor == RegistryState.byId.end())
     return;
-  loadWeaponSprites(itor->second, sprName);
+  itor->second.spriteDir = spriteDir;
+  loadWeaponSprites(itor->second);
+  publishSprites(itor->second);
 }
 
 void onCurWeapon(int state, int id, int clip, int clip2) {
@@ -445,7 +458,8 @@ void onWeaponSpr(int id, const char *sprName) {
   if (itor == RegistryState.byId.end() || id <= 0)
     return;
   itor->second.sprName = sprName;
-  loadWeaponSprites(itor->second, nullptr);
+  loadWeaponSprites(itor->second);
+  publishSprites(itor->second);
 }
 #pragma endregion
 

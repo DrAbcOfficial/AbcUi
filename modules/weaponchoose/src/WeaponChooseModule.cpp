@@ -421,6 +421,14 @@ void onLayoutChanged(void *, const void *) {
     rebuild();
 }
 
+// A CustWeapon/WeaponSpr reload changed one weapon's icons (custom weapons
+// send a new sprite list when they change state); an open bar redraws with the
+// new sources instead of waiting for the next choice event.
+void onSpritesChanged(void *, const void *) {
+  if (Visible)
+    rebuild();
+}
+
 // ---- panel callbacks ----
 
 void panelOnData(void *, double frameTime) {
@@ -499,6 +507,8 @@ void onModuleLoad() {
   Api->events->subscribe(ABCUI_CHANNEL_HUD_DROP_WEAPON, 0, &onOwnershipChanged,
                          nullptr);
   Api->events->subscribe(ABCUI_CHANNEL_HUD_WEAPON_LAYOUT, 0, &onLayoutChanged,
+                         nullptr);
+  Api->events->subscribe(ABCUI_CHANNEL_HUD_WEAPON_SPRITES, 0, &onSpritesChanged,
                          nullptr);
 
   for (intptr_t i = 0; i < ABCUI_WEAPON_SLOT_COUNT; i++) {
