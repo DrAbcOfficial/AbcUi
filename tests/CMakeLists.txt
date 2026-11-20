@@ -347,6 +347,12 @@ abcui_add_test(abc_ui_weapon_domain
 abcui_add_test(abc_ui_weapon_sprite_path
     SOURCES WeaponSpritePath.cpp)
 
+# The engine loading-plaque gate: "level"/"transition" bracket a world
+# replacement, so world-dependent reads (the player traces) must stay off
+# while it is open (issue #139).
+abcui_add_test(abc_ui_level_load_gate
+    SOURCES LevelLoadGate.cpp)
+
 # UserMsg field quirks: HideHUD is a short, AmmoX is absolute and MapList has
 # a payload-less end opcode.
 abcui_add_test(abc_ui_user_msg_fields

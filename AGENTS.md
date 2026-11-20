@@ -89,6 +89,15 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `netmsg::refreshAfterClientLoad()` after a client DLL reload (detected via a
   Ui-exclusive message); re-hooking every cycle would make AbcEssential's and
   this plugin's hooks point at each other and recurse forever.
+- The player hull traces run only while `hasLevel() && !levelLoading()`. A
+  listen-server changelevel keeps the session connected, while
+  `Host_ClearMemory` in `SV_SpawnServer` already freed the world before any
+  client disconnect/reconnect reaches `DisconnectFromServer`; `hasLevel()`
+  alone therefore stays true over a replaced world. `levelLoading()` is the
+  engine loading-plaque fact driven by the GameUI `LoadingStarted/Finished`
+  "level" and "transition" resources (`services/loading/LevelLoadGate.h`)
+  and brackets that window (issue #139). Never gate world reads on
+  `hasLevel()` alone.
 - GameUiModule's data subscriptions (InvAdd/InvRemove, MapList) are installed
   once in `onInit` and guarded by `*Bound` flags; the votemenu/command-menu/
   inventory commands are process-lifetime arbitration claims owned by the

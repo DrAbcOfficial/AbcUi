@@ -196,7 +196,14 @@ public:
     // non-visual bookkeeping stays intact and its dialog stays paint-gated.
     if (CallbackContext->IsPost)
       return;
-    services::nativeUiBridge().noteLoadingStart();
+    auto &bridge = services::nativeUiBridge();
+    bridge.noteLoadingStart();
+    // The loading plaque brackets the world replacement (SCR_BeginLoadingPlaque
+    // runs before SV_ServerShutdown; the level stream covers connect/map).
+    // World-dependent reads (the player traces) follow this gate, not only
+    // hasLevel(), which a listen-server changelevel leaves true (issue #139).
+    if (services::loading::isLevelLoadResource(resourceType))
+      bridge.noteLevelLoadingStart();
     services::LoadingFeedEvent event;
     event.kind = services::LoadingFeedKind::kLoadingStarted;
     event.text = resourceType ? resourceType : "";
@@ -210,6 +217,11 @@ public:
       return;
     auto &bridge = services::nativeUiBridge();
     bridge.noteLoadingFinish();
+    // Any level/transition finish reopens the world-dependent reads. The
+    // level finish is unconditional at CL_SignonReply, so a missed transition
+    // finish cannot leave the gate closed.
+    if (services::loading::isLevelLoadResource(resourceType))
+      bridge.noteLevelLoadingFinish();
     // A finished level load is the engine-confirmed "in game" fact the
     // vanilla connected-only hide gate reads.
     if (resourceType && !_stricmp(resourceType, "level"))

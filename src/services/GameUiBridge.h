@@ -34,6 +34,8 @@
 #include <cstdint>
 #include <string>
 
+#include "loading/LevelLoadGate.h"
+
 namespace services {
 
 // Executor of the typed menu actions (T04 step 2). Implementations copy any
@@ -335,7 +337,23 @@ public:
   }
   void noteDisconnected() {
     HasLevel = false;
+    LevelLoad.disconnected();
     ++Counters.Disconnects;
+  }
+
+  // Engine loading-plaque fact for world-dependent reads (the player hull
+  // traces). Kept apart from hasLevel(): a listen-server changelevel keeps
+  // the session connected while Host_ClearMemory already freed the old
+  // world, and the client may not process the reconnect before the next HUD
+  // frame (issue #139). LevelLoadGate.h documents the two resource types.
+  bool levelLoading() const {
+    return LevelLoad.active();
+  }
+  void noteLevelLoadingStart() {
+    LevelLoad.started();
+  }
+  void noteLevelLoadingFinish() {
+    LevelLoad.finished();
   }
 
   // Derived engine-facing answers (IGameUI types: HasExclusiveInput int,
@@ -411,6 +429,7 @@ private:
   bool MenuUp = false;
   bool PageShown = false;
   bool HasLevel = false;
+  loading::LevelLoadGate LevelLoad;
   // T16 console presentation truth (see requestConsoleOpen). The pending
   // latches hold pre-arm entries (see the arm() note).
   bool ConsoleRequested = false;

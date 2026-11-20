@@ -189,8 +189,12 @@ static void H_HUD_Frame(double frametime) {
   // frame; render-phase consumers (crosshair third-person centre) read the
   // cache later in the frame. The level gate is the trace's world
   // precondition (see PlayerTrace.h): tracing while a map change replaces
-  // the world faults inside the engine's own trace.
-  playertrace::update(services::nativeUiBridge().hasLevel());
+  // the world faults inside the engine's own trace. hasLevel() alone is not
+  // enough: a listen-server changelevel keeps the session connected while
+  // Host_ClearMemory has already freed the world (issue #139), so the engine
+  // loading plaque brackets the unsafe window.
+  const auto &bridge = services::nativeUiBridge();
+  playertrace::update(bridge.hasLevel() && !bridge.levelLoading());
   services::voice::status().frame();
   rmlui::onFrame(frametime);
 }
@@ -326,8 +330,8 @@ H_HUD_GetStudioModelInterface(int version,
   // in data::playerres; AbcEssential holds its own copy - D-01 no sharing).
   // The client rejects an incompatible version before it copies the table;
   // only mirror a studio API it actually accepted.
-  const int result = gExportfuncs.HUD_GetStudioModelInterface(
-      version, ppinterface, pstudio);
+  const int result =
+      gExportfuncs.HUD_GetStudioModelInterface(version, ppinterface, pstudio);
   EngineStudioApi = result ? pstudio : nullptr;
   return result;
 }
