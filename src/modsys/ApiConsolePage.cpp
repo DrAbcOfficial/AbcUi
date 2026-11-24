@@ -121,9 +121,11 @@ void apiNoteUnknownCommand(const char *command) {
   if (verb.empty())
     return; // not classifiable: never guess a name
   std::string line;
+  // The template is a {0} marker string (never a printf or std::format
+  // pattern: the wording is table data).
   if (!framework::Localization::translate(line, "Console_UnknownCommand"))
-    line = "Unknown command: %s";
-  const std::string marker = "%s";
+    line = "Unknown command: {0}";
+  const std::string marker = "{0}";
   const auto at = line.find(marker);
   if (at != std::string::npos)
     line.replace(at, marker.size(), verb);

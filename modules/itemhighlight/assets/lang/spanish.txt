@@ -1,4 +1,4 @@
-abcui.itemhighlight/GameUI_ABC_ItemPickupNotice = Pulsa [%%USE_BINDKEY%%] recoger %%PICKUP_ITEM%%
+abcui.itemhighlight/GameUI_ABC_ItemPickupNotice = Pulsa [{0}] recoger {1}
 abcui.itemhighlight/Weapon_UZI = UZI
 abcui.itemhighlight/Weapon_UZIGold = UZI de oro
 abcui.itemhighlight/Weapon_9mmAR = 9mmAR

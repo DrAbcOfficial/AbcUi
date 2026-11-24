@@ -381,10 +381,9 @@ void updatePromptText(const char *nameToken) {
   if (!text)
     return;
   // Old GetTemplateText + UpdateName: the localized template carries the
-  // %%USE_BINDKEY%% / %%PICKUP_ITEM%% markers.
+  // {0} (USE binding) / {1} (item name) markers.
   const std::string templ =
-      translate("GameUI_ABC_ItemPickupNotice", "[%%USE_BINDKEY%%] pick up "
-                                               "%%PICKUP_ITEM%%");
+      translate("GameUI_ABC_ItemPickupNotice", "[{0}] pick up {1}");
   char binding[64];
   const int length = Api->console->keyBinding("use", binding, sizeof(binding));
   std::string key = length > 0 ? std::string(binding) : std::string();
@@ -402,8 +401,8 @@ void updatePromptText(const char *nameToken) {
     name = nameToken ? nameToken : "";
 
   std::string result = templ;
-  moduleui::replaceAll(result, "%%USE_BINDKEY%%", key);
-  moduleui::replaceAll(result, "%%PICKUP_ITEM%%", name);
+  moduleui::replaceAll(result, "{0}", key);
+  moduleui::replaceAll(result, "{1}", name);
   setElementText(text, escapeText(result.c_str()));
 }
 

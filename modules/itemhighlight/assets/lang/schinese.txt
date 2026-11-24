@@ -1,4 +1,4 @@
-abcui.itemhighlight/GameUI_ABC_ItemPickupNotice = 按[%%USE_BINDKEY%%]拾取%%PICKUP_ITEM%%
+abcui.itemhighlight/GameUI_ABC_ItemPickupNotice = 按[{0}]拾取{1}
 abcui.itemhighlight/Weapon_UZI = UZI冲锋枪
 abcui.itemhighlight/Weapon_UZIGold = 黄金UZI冲锋枪
 abcui.itemhighlight/Weapon_9mmAR = 冲锋枪

@@ -1,4 +1,4 @@
-abcui.itemhighlight/GameUI_ABC_ItemPickupNotice = Press [%%USE_BINDKEY%%] pick up %%PICKUP_ITEM%%
+abcui.itemhighlight/GameUI_ABC_ItemPickupNotice = Press [{0}] pick up {1}
 abcui.itemhighlight/Weapon_UZI = UZI
 abcui.itemhighlight/Weapon_UZIGold = Gold UZI
 abcui.itemhighlight/Weapon_9mmAR = 9mmAR
