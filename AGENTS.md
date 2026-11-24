@@ -4,6 +4,17 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
 
 ## Hard rules
 
+- The language is C++ 20 (see Build). Write to that standard; never add a
+  pre-C++20 fallback or lower it.
+- Prefer the standard library. When C++ 20 already provides a facility (the
+  containers, `<algorithm>`, `<ranges>`, `<filesystem>`, `<format>`, the
+  string views), use it instead of writing an equivalent by hand.
+- No C-style code outside the inter-module C ABI, here the module ABI tables
+  under `sdk/abcui/` with `AbcUiModule_Main`, the `AbcCore_CreateInterface`
+  table the framework consumes, and the engine, client and MetaHook
+  interfaces they bind to. Everywhere else the code is idiomatic C++ 20:
+  named casts and never `(T)x`, standard containers and algorithms and never
+  raw buffers or `memcpy` loops in their place.
 - Nothing committed (code, comments, docs, commit messages, tags) may contain local machine paths, personal directories, session logs or any credentials; the deployment destination is provided through the `ABC_GAME_DIR` environment variable (optional; unset means no deploy).
 - The committed tests are the hermetic offline suite under `tests/` (see Build). Do not commit ad-hoc acceptance scripts, evidence screenshots, plans or progress logs; those are session artifacts that do not belong in the release.
 - The README is the single public document; UI, config-format or cvar behaviour changes must update it in the same commit.
@@ -119,7 +130,19 @@ These are deliberate, audited exceptions rather than unfinished cleanups:
   `LoadSprites` call custom weapons make when they change state) carries only
   the new name, and dropping the directory resolves the list outside it and
   falls back to the error art for the whole weapon (issue #138). A reload
-  publishes `hud.weaponSprites`. The rule map is process-lifetime (a map
+  publishes `hud.weaponSprites`. The server sprite paths (`WeaponSpr` name,
+  `CustWeapon` directory, the atlas names a list names) may carry `..`
+  segments - the stock `REPLACE_WEAPON_SPRITES` map script sends
+  `../<dir>/<name>` to leave the custom directory (issue #141) - and are
+  refused only when `std::filesystem::path::lexically_normal` still shows a
+  root or a `..` (`WeaponSpritePath.h`); a refused path is reported once per
+  reason and never reaches `SPR_GetList`. `WeaponSpr`/`CustWeapon` for an id
+  without a `WeaponList` yet are staged and applied when it registers (the
+  shipped client forgets them there). `HUD_VidInit` on the same level and
+  `HUD_Reset` only re-resolve the sprites (`weaponres::reloadSprites`, the
+  shipped client's `LoadAllWeaponSprites`); the registry starts from scratch
+  on another level (`weaponres::reset(levelName)`) and on disconnect
+  (`weaponres::clear`). The rule map is process-lifetime (a map
   transition clears the registry, not the rules), capped at 256 rules, keyed
   by `[A-Za-z0-9_]{1,64}` names and never sent to the server. Collisions
   place overrides first, then server entries, then by name, and shift the
@@ -293,8 +316,9 @@ ctest --preset win32-debug-tests
   surrounding declarations. The legacy UpperCamelCase framework namespaces
   (`Assets`, `ColorUtil`, `ImageLoader`, `ResourceFile`, `TextUtil`, `Theme`)
   and ABCEnchance-derived identifiers are kept; do not mass-rename.
-- C-style casts remain in the ABCEnchance-derived code; new code uses
-  `static_cast` / `const_cast` / `reinterpret_cast`.
+- C-style casts in the ABCEnchance-derived code are legacy, not a precedent:
+  replace them with `static_cast` / `const_cast` / `reinterpret_cast` when
+  touching that code, and never add new ones.
 - Interface structure is orchestrated through the GameUI composition root.
   Page documents and their stylesheets live in the module packages; the
   configuration JSON and the shared theme stay under `assets/abc/abcui/`:
