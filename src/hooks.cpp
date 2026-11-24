@@ -162,7 +162,10 @@ static int H_HUD_VidInit() {
   // and native suppression wrote into them every frame.
   rebuildVanillaHudPanels();
   hudstate::reset();
-  weaponres::reset();
+  // Another level rebuilds the weapon registry; a video restart on the same
+  // one only re-resolves the sprites, like the client's own VidInit above.
+  weaponres::reset(gEngfuncs.pfnGetLevelName ? gEngfuncs.pfnGetLevelName()
+                                             : nullptr);
   playerres::resetAll();
   services::voice::status().resetForWorld();
   rmlui::onVidInit();
@@ -172,12 +175,14 @@ static int H_HUD_VidInit() {
 static void H_HUD_Reset() {
   // The client calls HUD_Reset at demo start/end and rebuilds its own HUD
   // state. The replacement data layer must follow: no new map/VidInit cycle
-  // happens on a demo transition, so stale weapons and player rows would
-  // otherwise survive into the demo (or back out of it).
+  // happens on a demo transition, so stale player rows would otherwise
+  // survive into the demo (or back out of it). The weapon registry does what
+  // the client's Reset does (VidInit -> LoadAllWeaponSprites): it keeps the
+  // weapons and re-resolves their sprites.
   if (gExportfuncs.HUD_Reset)
     gExportfuncs.HUD_Reset();
   hudstate::reset();
-  weaponres::reset();
+  weaponres::reloadSprites();
   playerres::resetAll();
 }
 

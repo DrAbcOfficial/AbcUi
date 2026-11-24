@@ -32,16 +32,23 @@ inline bool crop(int left, int top, int right, int bottom, int atlasWidth,
   std::size_t bytes;
   return imageBytes(width, height, bytes);
 }
+inline constexpr std::size_t MaxResourceName = 127;
+// Everything a server-provided resource name may be spelled with.
+inline constexpr std::string_view ResourceAlphabet =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_"
+    "-/.";
+// A name the engine opens a resource by: non-empty, relative to the game
+// directory, within MaxResourceName and spelled with ResourceAlphabet.
+// Parent segments are legal; whoever resolves the composed path decides
+// whether they stay inside the game directory (data/WeaponSpritePath.h).
+inline bool relativeResourceName(std::string_view name) {
+  return !name.empty() && name.size() <= MaxResourceName &&
+         name.front() != '/' &&
+         name.find_first_not_of(ResourceAlphabet) == name.npos;
+}
+// The same name without any "..", for a resource used exactly as named.
 inline bool resourceName(std::string_view name) {
-  if (name.empty() || name.size() > 127 || name.front() == '/' ||
-      name.find("..") != name.npos)
-    return false;
-  for (unsigned char c : name)
-    if (!((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-          (c >= '0' && c <= '9') || c == '_' || c == '-' || c == '/' ||
-          c == '.'))
-      return false;
-  return true;
+  return relativeResourceName(name) && name.find("..") == name.npos;
 }
 // A token that is safe to hand to the engine console verbatim (the client
 // sends the weapon name as the selection command). resourceName also allows

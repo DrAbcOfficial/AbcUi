@@ -21,6 +21,10 @@ int main() {
   CHECK(!resourceName("../escape"));
   CHECK(!resourceName("x;quit"));
   CHECK(!resourceName(std::string(128, 'x')));
+  // A resource the engine opens by a path may carry parent segments.
+  CHECK(relativeResourceName("../blackops/weapon_bd_mp5"));
+  CHECK(!relativeResourceName("x;quit"));
+  CHECK(!relativeResourceName("/absolute"));
 
   using namespace framework::TextUtil;
   CHECK(trimNewlines("").empty());

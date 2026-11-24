@@ -343,7 +343,9 @@ abcui_add_test(abc_ui_weapon_domain
     SOURCES WeaponDomain.cpp)
 
 # The weapon sprite-list path: "sprites/<name>.txt" or
-# "sprites/<custom sprite dir>/<name>.txt" (svencoop_sdk LoadWeaponSprites).
+# "sprites/<custom sprite dir>/<name>.txt" (svencoop_sdk LoadWeaponSprites),
+# and which server paths resolve inside the game directory - a ".." may leave
+# the custom directory (issue #141).
 abcui_add_test(abc_ui_weapon_sprite_path
     SOURCES WeaponSpritePath.cpp)
 

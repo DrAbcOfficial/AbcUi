@@ -17,7 +17,9 @@
 // atlas file + rect stored per slot; panels build spricon:// URIs through
 // data::sprites. The directory is the server's CustWeapon custom sprite
 // directory (svencoop_sdk WEAPON.szCustomDirectory) and stays on the weapon so
-// every later reload keeps resolving inside it.
+// every later reload keeps resolving inside it. Name, directory and atlas
+// paths may carry ".." segments; WeaponSpritePath.h decides which of them
+// resolve inside the game directory.
 
 #include <cstddef>
 #include <cstdint>
@@ -94,9 +96,17 @@ struct Weapon {
 
 // HUD_Init-time: subscribes the netmsg weapon feed. Idempotent.
 void init();
-// Map transition (HUD_VidInit chain): registry starts from scratch. The
-// client layout overrides survive (the next WeaponList lays out the same way).
-void reset();
+// HUD_VidInit chain. Another level (or none) starts the registry from
+// scratch; the client layout overrides survive either way (the next
+// WeaponList lays out the same way). The same level, a video restart, keeps
+// the registered weapons and only re-resolves their sprites, like the
+// shipped client's LoadAllWeaponSprites.
+void reset(const char *levelName);
+// HUD_Reset (demo boundaries): re-resolves the sprites of every registered
+// weapon and keeps everything else.
+void reloadSprites();
+// The session ended: the registry starts from scratch.
+void clear();
 
 // Client-side selector layout override. The map is process-lifetime, capped
 // at 256 rules and keyed by one canonical weapon name. Rules rebuild the

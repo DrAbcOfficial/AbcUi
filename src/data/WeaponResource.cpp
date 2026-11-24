@@ -13,6 +13,7 @@
 #include <weaponinfo.h>
 
 #include <algorithm>
+#include <format>
 #include <functional>
 #include <map>
 #include <set>
@@ -101,7 +102,21 @@ struct Registry {
     curWeaponId = 0;
     selected = nullptr;
     selectedSlotId = kInvalidWeaponSlot;
+    pending.clear();
+    level.clear();
   }
+
+  // WeaponSpr / CustWeapon that arrived before the weapon's WeaponList. The
+  // shipped client indexes rgWeapons[id] whatever the entry's state, so the
+  // values wait here and join the weapon when it registers.
+  struct Pending {
+    std::string sprName;
+    std::string spriteDir;
+  };
+  std::unordered_map<int, Pending> pending;
+  // The level the last HUD_VidInit ran on: another one starts the registry
+  // from scratch, the same one only re-resolves the sprites.
+  std::string level;
 };
 
 Registry RegistryState;
@@ -193,10 +208,41 @@ const client_sprite_t *findSpriteEntry(const client_sprite_t *list, int count,
   return nullptr;
 }
 
+// A refused server sprite path used to vanish without a trace (issue #141
+// only ever showed "the old icons stay"): say why, once per path kind and
+// reason per process. The server bytes reach the console as an argument and
+// with anything unprintable replaced, never as a format or a control
+// character.
+void reportSpritePath(std::string_view kind,
+                      weaponres::SpritePathStatus status,
+                      std::string_view what) {
+  using weaponres::SpritePathStatus;
+  const std::string_view why =
+      status == SpritePathStatus::kInvalidPart
+          ? "invalid characters or length"
+          : status == SpritePathStatus::kEscapesRoot
+                ? "it climbs above the game directory"
+                : "the path is too long";
+  const std::string reason = std::format("weapon sprite {} ({})", kind, why);
+  static std::set<std::string> reported;
+  if (!reported.insert(reason).second)
+    return;
+  std::string shown(what);
+  std::replace_if(shown.begin(), shown.end(),
+                  [](unsigned char c) { return c < 0x20 || c > 0x7E; }, '?');
+  abc::ConsoleWarn("[AbcUi] ignored a %s: %s\n", reason.c_str(),
+                   shown.c_str());
+}
+
 void fillSpriteSource(Weapon::SpriteSource &source, const char *atlasName,
                       const wrect_t &rect) {
-  if (!atlasName || !framework::ResourceLimits::resourceName(atlasName))
+  if (!atlasName)
     return;
+  const auto status = weaponres::checkSpriteAtlasPath(atlasName);
+  if (status != weaponres::SpritePathStatus::kAccepted) {
+    reportSpritePath("atlas", status, atlasName);
+    return;
+  }
   source.atlas = std::string(atlasName) + ".spr";
   source.rect = rect;
   source.valid = true;
@@ -216,13 +262,13 @@ void loadWeaponSprites(Weapon &weapon) {
   weapon.zoomedCrosshair = {};
   weapon.zoomedAutoaim = {};
 
-  if (!framework::ResourceLimits::resourceName(weapon.sprName) ||
-      (!weapon.spriteDir.empty() &&
-       !framework::ResourceLimits::resourceName(weapon.spriteDir)))
+  const auto status =
+      weaponres::checkSpriteListPath(weapon.sprName, weapon.spriteDir);
+  if (status != weaponres::SpritePathStatus::kAccepted) {
+    reportSpritePath("list", status, weapon.sprName);
     return;
+  }
   std::string listPath = spriteListPath(weapon.sprName, weapon.spriteDir);
-  if (listPath.size() >= 256)
-    return;
 
   int count = 0;
   const client_sprite_t *list =
@@ -357,6 +403,20 @@ void onAmmoX(int index, int count) {
   RegistryState.ammo[index] = count;
 }
 
+// A staged WeaponSpr/CustWeapon (Registry::pending) joins the weapon it was
+// meant for. The shipped client forgets it here: its WeaponList builds a
+// fresh entry. The server's last instruction is the one meant to show.
+void applyPending(Weapon &weapon) {
+  const auto itor = RegistryState.pending.find(weapon.id);
+  if (itor == RegistryState.pending.end())
+    return;
+  if (!itor->second.spriteDir.empty())
+    weapon.spriteDir = itor->second.spriteDir;
+  if (!itor->second.sprName.empty())
+    weapon.sprName = itor->second.sprName;
+  RegistryState.pending.erase(itor);
+}
+
 void onWeaponList(const netmsg::WeaponListData &data) {
   // The name is server-controlled and is later sent verbatim to the engine
   // console by WeaponChoosePanel::confirmSelection; it is also the sprite
@@ -410,15 +470,31 @@ void onWeaponList(const netmsg::WeaponListData &data) {
   created.id = data.id;
   created.flags = data.flags;
   created.clip = 0;
+  applyPending(created);
   addWeapon(std::move(created));
 }
 
 void onCustWeapon(int id, const char *spriteDir) {
-  if (!spriteDir || !framework::ResourceLimits::resourceName(spriteDir))
+  if (!spriteDir)
+    return;
+  if (!framework::ResourceLimits::relativeResourceName(spriteDir)) {
+    reportSpritePath("list", weaponres::SpritePathStatus::kInvalidPart,
+                     spriteDir);
+    return;
+  }
+  if (!weapondomain::validWeaponId(id))
     return;
   const auto itor = RegistryState.byId.find(id);
-  if (itor == RegistryState.byId.end())
+  if (itor == RegistryState.byId.end()) {
+    RegistryState.pending[id].spriteDir = spriteDir;
     return;
+  }
+  const auto status =
+      weaponres::checkSpriteListPath(itor->second.sprName, spriteDir);
+  if (status != weaponres::SpritePathStatus::kAccepted) {
+    reportSpritePath("list", status, spriteDir);
+    return;
+  }
   itor->second.spriteDir = spriteDir;
   loadWeaponSprites(itor->second);
   publishSprites(itor->second);
@@ -452,11 +528,26 @@ void onWeapPickup(int id) {
 }
 
 void onWeaponSpr(int id, const char *sprName) {
-  if (!sprName || !framework::ResourceLimits::resourceName(sprName))
+  if (!sprName)
+    return;
+  if (!framework::ResourceLimits::relativeResourceName(sprName)) {
+    reportSpritePath("list", weaponres::SpritePathStatus::kInvalidPart,
+                     sprName);
+    return;
+  }
+  if (!weapondomain::validWeaponId(id))
     return;
   const auto itor = RegistryState.byId.find(id);
-  if (itor == RegistryState.byId.end() || id <= 0)
+  if (itor == RegistryState.byId.end()) {
+    RegistryState.pending[id].sprName = sprName;
     return;
+  }
+  const auto status =
+      weaponres::checkSpriteListPath(sprName, itor->second.spriteDir);
+  if (status != weaponres::SpritePathStatus::kAccepted) {
+    reportSpritePath("list", status, sprName);
+    return;
+  }
   itor->second.sprName = sprName;
   loadWeaponSprites(itor->second);
   publishSprites(itor->second);
@@ -479,7 +570,24 @@ void init() {
   netmsg::WeapPickup.append(onWeapPickup);
 }
 
-void reset() {
+void reset(const char *levelName) {
+  const std::string level = levelName ? levelName : "";
+  if (level == RegistryState.level) {
+    reloadSprites();
+    return;
+  }
+  RegistryState.clear();
+  RegistryState.level = level;
+}
+
+void reloadSprites() {
+  // The shipped client's LoadAllWeaponSprites: the sprite name and the
+  // directory stay on the weapon, only the sources are read again.
+  for (auto &entry : RegistryState.byId)
+    loadWeaponSprites(entry.second);
+}
+
+void clear() {
   RegistryState.clear();
 }
 

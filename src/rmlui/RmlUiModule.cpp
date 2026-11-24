@@ -556,7 +556,7 @@ void onDisconnected() {
   // Match the map-init data reset without destroying the menu context or
   // resetting the entire input router (the menu may already own it).
   hudstate::reset();
-  weaponres::reset();
+  weaponres::clear();
   playerres::resetAll();
 }
 
