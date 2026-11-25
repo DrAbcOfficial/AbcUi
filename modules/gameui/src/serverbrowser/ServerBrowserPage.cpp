@@ -25,6 +25,8 @@
 #include <string>
 #include <string_view>
 
+#include <abc/Format.h>
+
 namespace serverbrowserpage {
 namespace {
 
@@ -84,11 +86,7 @@ std::string tokenValue(const char *name, int value) {
   std::string out = translate(name);
   if (out.empty())
     out = std::string("#") + name; // raw fallback keeps the count visible
-  const std::string marker = "{0}";
-  const auto at = out.find(marker);
-  if (at != std::string::npos)
-    out.replace(at, marker.size(), std::to_string(value));
-  return out;
+  return abc::Format(out, value);
 }
 
 std::string playersCell(const AbcUiSbEntry &entry) {

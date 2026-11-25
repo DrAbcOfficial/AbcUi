@@ -82,6 +82,13 @@ abcui_add_test(abc_ui_helpers
     SOURCES UiHelpers.cpp
     LIBRARIES Abc::Core)
 
+# The one translation-template filler (abc::Format) and the shipped language
+# tables: the {0}/{1} contract the call sites rely on, well-formed markers in
+# every table, the same markers in every language, and the argument count of
+# every template the code fills.
+abcui_add_test(abc_ui_format_templates
+    SOURCES FormatTemplates.cpp)
+
 abcui_add_test(abc_ui_modules
     SOURCES ModuleRegistry.cpp "${SRC}/modules/UiModuleRegistry.cpp"
     LIBRARIES Abc::Core)

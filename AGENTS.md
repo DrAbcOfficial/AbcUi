@@ -15,6 +15,26 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
   interfaces they bind to. Everywhere else the code is idiomatic C++ 20:
   named casts and never `(T)x`, standard containers and algorithms and never
   raw buffers or `memcpy` loops in their place.
+- A translation with arguments is a `{0}` / `{1}` / `{2}` template, filled
+  only through `abc::Format` (`abc/Format.h`, header-only; modules get the
+  include path from `abcui_add_module` and never link AbcCore). Call it as
+  `abc::Format(template, argument0, argument1, ...)`: arguments in index
+  order, every `{N}` takes argument N, `{{` writes a literal `{`. An
+  argument is inserted verbatim and never rescanned, so a server-derived
+  name needs no marker escaping; a malformed or out-of-range marker stays
+  visible verbatim. The template is table data: never a printf format,
+  never a `std::format` pattern, never filled by a hand-written
+  `find`/`replace` or `moduleui::replaceAll`. In `lang/*.txt` a template
+  carries `{N}` markers only, numbered from 0 without gaps and the same in
+  every language; `%s`, `%d`, `%s1`, `%%NAME%%` and `{name}` are not
+  translation placeholders (the `{SCORE}` of the sidetext RML is a document
+  token). Good: table `Unknown command: {0}`, code
+  `abc::Format(translate("Console_UnknownCommand"), verb)`. Bad: table
+  `Unknown command: %s` or `Press [%%USE_BINDKEY%%] pick up
+  %%PICKUP_ITEM%%`, or code `snprintf(buffer, size, text.c_str(),
+  verb.c_str())`. The `abc_ui_format_templates` test rejects the bad forms,
+  per-language drift and a filled template that does not use its call
+  site's arguments.
 - Nothing committed (code, comments, docs, commit messages, tags) may contain local machine paths, personal directories, session logs or any credentials; the deployment destination is provided through the `ABC_GAME_DIR` environment variable (optional; unset means no deploy).
 - The committed tests are the hermetic offline suite under `tests/` (see Build). Do not commit ad-hoc acceptance scripts, evidence screenshots, plans or progress logs; those are session artifacts that do not belong in the release.
 - The README is the single public document; UI, config-format or cvar behaviour changes must update it in the same commit.

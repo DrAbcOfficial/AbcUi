@@ -1,7 +1,7 @@
 # First-party UI module build contract: one MODULE DLL per modules/<id>, the
-# abcui_<id> output name, the SDK include path and the shared compile flags.
-# Keep the packaging contract (entry DLL + manifest + assets) in pack.py; this
-# helper only removes the per-directory boilerplate.
+# abcui_<id> output name, the SDK and AbcCore header paths and the shared
+# compile flags. Keep the packaging contract (entry DLL + manifest + assets)
+# in pack.py; this helper only removes the per-directory boilerplate.
 
 function(abcui_add_module id)
   cmake_parse_arguments(ARG "" "" "SOURCES;INCLUDES;LIBS;OPTIONS" ${ARGN})
@@ -12,6 +12,9 @@ function(abcui_add_module id)
   add_library(${target} MODULE ${ARG_SOURCES})
   target_include_directories(${target} PRIVATE
       "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/../sdk"
+      # AbcCore's header-only templates (abc::Format fills the {0}/{1}
+      # translation markers). Headers only: no module links AbcCore.
+      "${ABC_CORE_DIR}/include"
       ${ARG_INCLUDES})
   set_target_properties(${target} PROPERTIES OUTPUT_NAME "abcui_${id}")
   target_compile_definitions(${target} PRIVATE

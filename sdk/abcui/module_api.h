@@ -432,7 +432,9 @@ typedef struct AbcUiUiApi {
   // language tables: the module packages first, then the engine's own
   // shipped strings (the "#GameUI_..." loading tokens). Returns 1 and writes
   // the translation (at most outSize-1 bytes plus terminator); 0 when the
-  // token is unknown (out untouched).
+  // token is unknown (out untouched). A translation with arguments carries
+  // "{0}"/"{1}" markers: fill them with abc::Format (abc/Format.h), never
+  // printf.
   int(ABCUI_CALL *translate)(const char *token, char *out, uint32_t outSize);
   // Escapes server-derived text for elementSetInnerRML (the built-in panels'
   // TextUtil::escapeRml). Returns the byte count the escaped text needs

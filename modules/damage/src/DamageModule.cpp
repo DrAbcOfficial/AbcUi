@@ -11,6 +11,7 @@
 // engine-owned pointer).
 #include "../../common/Text.h"
 #include "../../common/Panel.h"
+#include <abc/Format.h>
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -496,10 +497,9 @@ std::string formatPopValue(int value) {
   if (text.empty())
     text = "{0}"; // bare number (the old null-Find case rendered nothing;
                   // D-17 keeps the value visible)
-  // D-17: the tokens carry {0} placeholders and substitute here - no printf
-  // near the table text.
-  moduleui::replaceAll(text, "{0}", std::to_string(value));
-  return text;
+  // The token carries a {0} placeholder, filled through abc::Format - no
+  // printf near the table text.
+  return abc::Format(text, value);
 }
 
 void addPopNumber(const float origin[3], int value, const int color[4]) {

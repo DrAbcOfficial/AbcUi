@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include <abc/Format.h>
+
 #include "../framework/Localization.h"
 #include "../services/console/ConsoleBackend.h"
 #include "../services/console/ConsoleBuffer.h"
@@ -120,16 +122,12 @@ void apiNoteUnknownCommand(const char *command) {
   const std::string verb = services::console::ConsoleBackend::verbOf(command);
   if (verb.empty())
     return; // not classifiable: never guess a name
+  // The wording is table data: a {0} template filled through abc::Format,
+  // never a printf or std::format pattern.
   std::string line;
-  // The template is a {0} marker string (never a printf or std::format
-  // pattern: the wording is table data).
   if (!framework::Localization::translate(line, "Console_UnknownCommand"))
     line = "Unknown command: {0}";
-  const std::string marker = "{0}";
-  const auto at = line.find(marker);
-  if (at != std::string::npos)
-    line.replace(at, marker.size(), verb);
-  pushLocalLine(line);
+  pushLocalLine(abc::Format(line, verb));
 }
 
 int32_t apiHistoryCount(void) {

@@ -17,6 +17,7 @@
 #include "../../common/OpacityMotion.h"
 #include "../../common/UiText.h"
 #include "../../common/Panel.h"
+#include <abc/Format.h>
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -88,19 +89,6 @@ std::string translate(const char *token, const char *fallback) {
                                                      : std::string(fallback);
 }
 
-// Old console print template is a {0}..{2} template (never a printf format).
-std::string substitute(const std::string &text, const char *a, const char *b,
-                       const char *c) {
-  const char *values[3] = {a, b, c};
-  std::string out = text;
-  for (int i = 0; i < 3; i++) {
-    const std::string key = "{" + std::to_string(i) + "}";
-    const std::string value = values[i] ? values[i] : "";
-    moduleui::replaceAll(out, key, value);
-  }
-  return out;
-}
-
 void removeRow(Row &row) {
   if (row.element)
     Api->ui->elementRemove(row.element);
@@ -162,13 +150,14 @@ void addItem(const char *victim, const char *attacker, const char *inflictor) {
   Rows.push_back(entry);
 
   // Old AddItem console print (localized template). The names never touch a
-  // printf format slot.
+  // printf format slot: they fill the template's {0}..{2} through
+  // abc::Format.
   const std::string consoleTemplate = translate("DeathMsg_ConsolePrint", "");
   if (!consoleTemplate.empty()) {
     Api->core->print(
         "%s\n",
-        substitute(consoleTemplate, victim,
-                   attacker && attacker[0] ? attacker : "Something", inflictor)
+        abc::Format(consoleTemplate, victim,
+                    attacker && attacker[0] ? attacker : "Something", inflictor)
             .c_str());
   }
 }

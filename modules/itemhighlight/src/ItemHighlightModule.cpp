@@ -26,6 +26,7 @@
 #include "../../common/Text.h"
 #include "../../common/UiText.h"
 #include "../../common/Panel.h"
+#include <abc/Format.h>
 #include <abcui/events.h>
 #include <abcui/module_api.h>
 
@@ -380,8 +381,7 @@ void updatePromptText(const char *nameToken) {
   AbcUiElement *text = query("pickup-text");
   if (!text)
     return;
-  // Old GetTemplateText + UpdateName: the localized template carries the
-  // {0} (USE binding) / {1} (item name) markers.
+  // The template carries {0} (USE binding) and {1} (item name).
   const std::string templ =
       translate("GameUI_ABC_ItemPickupNotice", "[{0}] pick up {1}");
   char binding[64];
@@ -400,10 +400,7 @@ void updatePromptText(const char *nameToken) {
   else
     name = nameToken ? nameToken : "";
 
-  std::string result = templ;
-  moduleui::replaceAll(result, "{0}", key);
-  moduleui::replaceAll(result, "{1}", name);
-  setElementText(text, escapeText(result.c_str()));
+  setElementText(text, escapeText(abc::Format(templ, key, name).c_str()));
 }
 
 // ---- event sinks ----

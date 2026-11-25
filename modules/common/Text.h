@@ -17,7 +17,8 @@ void copyCString(char (&dest)[N], std::string_view text) {
 }
 
 // Replace each original occurrence once, including adjacent occurrences.
-// The views must not refer to storage owned by text.
+// The views must not refer to storage owned by text. Not for a translation
+// template: its {0}/{1} markers are filled by abc::Format.
 inline void replaceAll(std::string &text, std::string_view from,
                        std::string_view to) {
   if (from.empty())

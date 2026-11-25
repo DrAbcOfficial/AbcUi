@@ -10,6 +10,8 @@
 #include <utility>
 #include <string_view>
 
+#include <abc/Format.h>
+
 namespace settingspage {
 
 // ------------------------------------------------------- display modes ----
@@ -167,14 +169,12 @@ void renderConfirm(bool focusDefault) {
     break;
   }
   setInnerRml(confirmNode("videoconfirm-lead"), escapeText(resolve(lead)));
-  std::string timeout = resolve("#abcui.gameui/VideoConfirm_TimeoutTime");
-  const std::string marker = "{0}";
-  const std::string seconds = std::to_string(facts.remainingSeconds);
-  const std::size_t at = timeout.find(marker);
-  if (at != std::string::npos)
-    timeout.replace(at, marker.size(), seconds);
-  else
-    timeout += " " + seconds;
+  // The template carries {0}; a table entry without it still shows the count.
+  const std::string templateText =
+      resolve("#abcui.gameui/VideoConfirm_TimeoutTime");
+  std::string timeout = abc::Format(templateText, facts.remainingSeconds);
+  if (timeout == templateText)
+    timeout += " " + std::to_string(facts.remainingSeconds);
   setInnerRml(confirmNode("videoconfirm-timeout"), escapeText(timeout));
 
   // The Keep entry is only offered when the switch actually took effect; the
