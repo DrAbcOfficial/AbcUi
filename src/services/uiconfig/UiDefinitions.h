@@ -37,7 +37,8 @@ struct OptionDefinition {
 // One declared section of a settings page: the big row the page projects as a
 // card. Items attach to it through their `section` id; `components` name the
 // special widgets rendered inside the card (model preview, crosshair preview,
-// spray preview / maker, the bind list and the video/voice hardware blocks).
+// spray preview / maker, the bind list, the video/voice hardware blocks and
+// the main menu character card's camera/model/light controls).
 // Components are business models the plugin already implements - the schema
 // only decides where they appear.
 struct SectionDefinition {

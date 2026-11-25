@@ -1,10 +1,13 @@
 // The crosshair colour pickers: the RGBA hex bridge between a picker value
-// and the four cvar rows it edits.
+// and the four cvar rows it edits, and the main menu light colour that rides
+// the same picker.
 
 #include "../shared/PageShared.h"
+#include "MenuPreviewSettings.h"
 #include "SettingsInternal.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <format>
@@ -116,6 +119,41 @@ void handleColorChange(const char *elementId, const char *value) {
         std::format("{}", static_cast<int>(color[channel]));
     Api->settings->setDraftText(cvars[channel], text.c_str());
   }
+}
+
+void renderMenuPreviewColor() {
+  if (!Page)
+    return;
+  AbcUiElement *element = node(kMenuPreviewColorPicker);
+  if (!element)
+    return;
+  // The light has no alpha: the projection always writes 255 back, so the
+  // picker leaves an alpha drag instead of keeping a value the card
+  // dropped. A picker that already shows this colour is not rewritten.
+  const std::array<int, 3> &draft = menupreview::state().Draft.LightColor;
+  unsigned char rgba[4] = {static_cast<unsigned char>(draft[0]),
+                           static_cast<unsigned char>(draft[1]),
+                           static_cast<unsigned char>(draft[2]), 255};
+  const std::string hex = formatHex(rgba);
+  if (attributeOf(element, "value") != hex)
+    Api->ui->elementSetAttribute(element, "value", hex.c_str());
+  // The swatch and the hex readout show the three channels the card keeps.
+  char css[48];
+  css[0] = '\0';
+  Api->ui->formatRgba(rgba[0], rgba[1], rgba[2], 255, css, sizeof(css));
+  setProperty(node("menu-preview-swatch"), "background-color", css);
+  setInnerRml(node("menu-preview-color-value"), escapeText(hex.substr(0, 7)));
+}
+
+void handleMenuPreviewColorChange(const char *value) {
+  unsigned char color[4];
+  if (!parseHex(value, color))
+    return; // picker intent with an unusable payload: consumed, no-op
+  // Only the three colour channels are kept; the alpha is the picker's own
+  // and never reaches the light.
+  std::array<int, 3> &draft = menupreview::state().Draft.LightColor;
+  for (int channel = 0; channel < 3; ++channel)
+    draft[channel] = color[channel];
 }
 
 } // namespace settingspage

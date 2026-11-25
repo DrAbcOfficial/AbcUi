@@ -9,6 +9,13 @@
       "id": "menu",
       "label": "#abcui.gameui/Settings_Menu",
       "components": []
+    },
+    {
+      "id": "menu_preview",
+      "label": "#abcui.gameui/Settings_SecMenuPreview",
+      "components": [
+        "menu-preview"
+      ]
     }
   ],
   "items": [

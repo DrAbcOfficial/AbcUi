@@ -72,6 +72,7 @@ constexpr const char *kActionModuleRestart = "module-restart";
 constexpr const char *kActionModuleRestartYes = "module-restart-yes";
 constexpr const char *kActionModuleRestartNo = "module-restart-no";
 constexpr const char *kActionModuleLater = "modules-later";
+constexpr const char *kActionMenuPreviewReset = "menu-preview-reset";
 
 // Page-internal layer DOM ids.
 constexpr const char *kLayerReset = "reset-confirm";
@@ -102,6 +103,7 @@ constexpr WidgetBlock kWidgetBlocks[] = {
     {"bindings", "widget-bindings", false, false},
     {"video", "widget-video", false, false},
     {"voice", "widget-voice", false, false},
+    {"menu-preview", "widget-menu-preview", false, false},
     {"modules", "widget-modules", false, false},
 };
 constexpr int kWidgetBlockCount =
@@ -219,6 +221,10 @@ extern uint32_t ModuleRenderedRevision;
 extern PreviewPart PreviewCore[5];
 extern PreviewPart PreviewOutline[5];
 
+// The main menu character card's slider rows were injected into the live
+// settings document.
+extern bool MenuPreviewBuilt;
+
 // ------------------------------------------------------- shared helpers ----
 
 AbcUiElement *node(const char *id);
@@ -315,6 +321,32 @@ int channelValue(float value);
 const ColorBinding *bindingFor(const char *elementId);
 void renderColorRows();
 void handleColorChange(const char *elementId, const char *value);
+// The main menu light colour rides the same picker, value contract and
+// change queue; only its RGB is kept (the alpha stays 255).
+void renderMenuPreviewColor();
+void handleMenuPreviewColorChange(const char *value);
+
+// ---------------------------------------------------------- menu preview --
+
+// The main menu character card's camera, model placement and light: the
+// module's menu_preview config section (SettingsMenuPreview.cpp; the model
+// itself is MenuPreviewSettings.h).
+constexpr const char *kMenuPreviewComponent = "menu-preview";
+constexpr const char *kMenuPreviewColorPicker = "menu-preview-color";
+
+// Reads the config section into the shared state (once per process).
+void loadMenuPreview();
+// The card's slider rows, injected once per document.
+void buildMenuPreview();
+void renderMenuPreview();
+// A change on one of the card's sliders: consumed (true) even when the
+// value did not move.
+bool handleMenuPreviewChange(AbcUiElement *target);
+// The card owes a save (see menupreview::dirty).
+bool menuPreviewDirty();
+// Apply: writes the section. False when the values could not be saved -
+// they still apply to this session.
+bool applyMenuPreview();
 
 // -------------------------------------------------------------- bindings --
 

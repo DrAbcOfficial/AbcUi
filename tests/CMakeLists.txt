@@ -160,6 +160,17 @@ abcui_add_test(abc_ui_connection_page
                  "${PROJECT_SOURCE_DIR}/modules/gameui/src"
     DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
 
+# The main menu character card's config model (module.abcui.gameui.
+# menu_preview): the documented defaults, the slider table, the strict read
+# gate with its clamping, the serialization round trip, the light angle <->
+# direction conversion, the applied/draft transaction, and the coupling to
+# the <model> element's validators and the shipped documents (issue #36).
+abcui_add_test(abc_ui_menu_preview_settings
+    SOURCES MenuPreviewSettings.cpp
+            "${PROJECT_SOURCE_DIR}/modules/gameui/src/settings/MenuPreviewSettings.cpp"
+            "${SRC}/rmlui/modelpreview/Options.cpp"
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules")
+
 # Module-scoped config keys: the local-name grammar, key composition and the
 # section bound the config ABI enforces.
 abcui_add_test(abc_ui_module_config

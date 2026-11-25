@@ -219,6 +219,47 @@ int main() {
     CHECK(pages >= 10);
   }
 
+  // -- the shipped menu page declares the character card's section ---------
+  {
+    TEST_CASE("shipped-menu-page-preview-section");
+    const std::string text = readShipped("menu.json");
+    SettingsPageDefinition page;
+    ConfigError error;
+    CHECK(DefinitionParser::parsePage(text, page, error));
+    // The card is a section of the Menu page, not a page of its own, and it
+    // owns the one component that renders it.
+    const services::uiconfig::SectionDefinition *preview =
+        page.section("menu_preview");
+    CHECK(preview != nullptr);
+    CHECK(preview && preview->hasComponent("menu-preview"));
+    CHECK(preview && preview->Components.size() == 1);
+    // The page's cvar rows keep their own section.
+    const services::uiconfig::SectionDefinition *menu = page.section("menu");
+    CHECK(menu != nullptr);
+    CHECK(menu && !menu->hasComponent("menu-preview"));
+    for (const auto &item : page.Items)
+      CHECK(item.Section == "menu");
+
+    // The component is a section widget only: page level refuses it, and a
+    // section refuses a name that is not a known widget.
+    SettingsPageDefinition rejected;
+    CHECK(!DefinitionParser::parsePage(
+        R"({"version": 1, "id": "menu", "label": "#abcui.gameui/Settings_Menu",
+            "order": 85, "components": ["menu-preview"],
+            "sections": [{"id": "menu", "label": "#abcui.gameui/Settings_Menu"}],
+            "items": []})",
+        rejected, error));
+    CHECK(error.Field == "$.components");
+    CHECK(!DefinitionParser::parsePage(
+        R"({"version": 1, "id": "menu", "label": "#abcui.gameui/Settings_Menu",
+            "order": 85, "sections": [
+              {"id": "x", "label": "#abcui.gameui/Settings_Menu",
+               "components": ["no-such-widget"]}],
+            "items": []})",
+        rejected, error));
+    CHECK(error.Field == "$.sections[0].components");
+  }
+
   // -- a key row is a plain float row for the transaction model ------------
   {
     TEST_CASE("model-key-draft-apply");

@@ -56,7 +56,8 @@ std::string resolveCardModelPath(std::string_view Spelling,
                                  const ModelExists &Exists);
 
 // The card's camera, Studio lighting and background. LightDirection is the
-// world-space light-ray direction, normalized by the draw bridge.
+// world-space light-ray direction, normalized by the draw bridge. The camera
+// is explicit: Origin and Angles place and aim the view, nothing is fitted.
 struct PreviewView {
   std::array<float, 3> Origin{120, 0, 0};
   std::array<float, 3> Angles{0, 180, 0};
@@ -98,15 +99,6 @@ struct Options {
   float FrameRate = 1;
   float Scale = 1;
   bool Animate = true;
-  // Auto framing: fit the visible posed player/weapon mesh vertices so
-  // models of different sizes fill the same box. Before the first sampled
-  // pose, the displayed player's bounds bootstrap the view. Camera-origin/fov
-  // attributes are then
-  // ignored for placement, while camera-angles sets the viewing direction.
-  // FrameMargin scales the fitted extent
-  // (1.0 = the box is exactly filled, 1.15 leaves a margin).
-  bool AutoFrame = false;
-  float FrameMargin = 1.15f;
   // Pointer drag rotation (the multiplayer settings' inspection preview):
   // while the primary button is held, horizontal motion turns the entity and
   // vertical motion tilts it within a clamped range.
