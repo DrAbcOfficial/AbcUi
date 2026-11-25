@@ -33,15 +33,37 @@
 			<div class="settings-widget" id="widget-model-preview">
 				<!-- The player model preview is a live Studio render (font/HLP
 				     style inspection): drag it with the primary button to turn
-				     the character. -->
+				     the character. The camera is explicit and level with the
+				     model's origin, which is the middle of the player model's
+				     own bounding box (-36..+36 units), so the character sits
+				     centred in the box. 100 units keeps the default
+				     models/player.mdl whole through a full drag turn and the
+				     drag's tilt, in both the short and the tall card. -->
 				<div class="preview-box">
-					<model id="model-preview" auto-frame="true" frame-margin="1.25" drag-rotate="true"
-						sequence="2" animate="true" angles="0 25 0"
-				controllers="127 127 127 127" blending="127 127"
-						camera-origin="120 0 0" camera-angles="0 180 0" fov="40"
+					<model id="model-preview" drag-rotate="true" sequence="2" animate="true" angles="0 25 0"
+					controllers="127 127 127 127" blending="127 127"
+						camera-origin="100 0 0" camera-angles="0 180 0" fov="40"
 						ambient="96" shade="110" light-color="1 0.96 0.9" light-direction="-0.6 -0.35 -1"/>
 					<div id="model-preview-hint">#abcui.gameui/Settings_PlayerModelHint</div>
 				</div>
+			</div>
+			<div class="settings-widget" id="widget-menu-preview">
+				<!-- The main menu character card's camera, model placement and
+				     light (the module's menu_preview config section). The
+				     slider rows are built from the section's field table;
+				     the light colour reuses the RGBA picker with its alpha
+				     fixed. Edits are drafts like the cvar rows: Apply writes
+				     them, the card's entry stages the documented defaults. -->
+				<div id="menu-preview-controls"></div>
+				<div class="color-row" id="menu-preview-color-row">
+					<!-- The label token is its own text node, with no trailing
+					     space: the translation lookup is exact. The hex readout
+					     spaces itself with its margin. -->
+					<div class="row-label"><span id="menu-preview-swatch"></span>#abcui.gameui/Settings_MenuPreviewLightColor<span id="menu-preview-color-value" class="menu-preview-hex"></span></div>
+					<colorpicker id="menu-preview-color" value="#fff5e6ff"/>
+				</div>
+				<div id="menu-preview-status"></div>
+				<button id="menu-preview-reset" data-action="menu-preview-reset">#abcui.gameui/Settings_MenuPreviewReset</button>
 			</div>
 			<div class="settings-widget" id="widget-model-picker">
 				<!-- I16 model picker: the models/player list with favorites and

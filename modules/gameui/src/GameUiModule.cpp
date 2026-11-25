@@ -67,6 +67,9 @@ namespace settingspage {
 void load();
 void shutdown();
 void unload();
+// Reads the main menu character card's config section (menu_preview) into
+// the shared state the main menu projection and the settings card read.
+void loadMenuPreview();
 } // namespace settingspage
 
 namespace quitconfirmpage {
@@ -99,6 +102,10 @@ void onModuleInit() {
       ABCUI_CVAR_VALUE);
   Api->console->registerCvar("abc_ui_menu_backdrop_blur", "2",
                              ABCUI_CVAR_VALUE);
+  // The main menu character card's camera, placement and light: the
+  // module's menu_preview config section, read once per process (init runs
+  // once per process).
+  settingspage::loadMenuPreview();
 }
 
 void onModuleFrame(double) {
@@ -263,7 +270,8 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
               ABCUI_MODULE_SECTION_SHELL | ABCUI_MODULE_SECTION_SERVERBROWSER |
               ABCUI_MODULE_SECTION_CONNECTION | ABCUI_MODULE_SECTION_SETTINGS |
               ABCUI_MODULE_SECTION_CLAIMS | ABCUI_MODULE_SECTION_AUDIO |
-              ABCUI_MODULE_SECTION_PLAYERS | ABCUI_MODULE_SECTION_MODULES))
+              ABCUI_MODULE_SECTION_PLAYERS | ABCUI_MODULE_SECTION_MODULES |
+              ABCUI_MODULE_SECTION_CONFIG))
     return 0;
   if (!ABCUI_API_HAS_MEMBER(AbcUiMenuApi, api->menu, dispatchCommand) ||
       !ABCUI_API_HAS_MEMBER(AbcUiCoreApi, api->core, failInitialization) ||
@@ -283,7 +291,8 @@ AbcUiModule_Main(uint32_t abiVersion, const AbcUiModuleApi *api,
       api->serverbrowser->structSize < sizeof(AbcUiServerBrowserApi) ||
       api->connection->structSize < sizeof(AbcUiConnectionApi) ||
       api->settings->structSize < sizeof(AbcUiSettingsApi) || !api->modules ||
-      api->modules->structSize < sizeof(AbcUiModulesApi))
+      api->modules->structSize < sizeof(AbcUiModulesApi) ||
+      api->config->structSize < sizeof(AbcUiConfigApi))
     return 0;
   Api = api;
 

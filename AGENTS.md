@@ -65,6 +65,25 @@ Guidance for AI/automation collaborators working in this repository. Read `READM
   never the rest of the UI. List StandaloneView first so its callbacks are
   outermost and its manager outlives the consumers.
 - AbcCore must stay renderer-free. AbcUi owns `thirdparty/Renderer` and the renderer-facing bridge in `src/render/`; do not move either back into AbcCore.
+- The `<model>` camera is explicit: `camera-origin` / `camera-angles` are
+  used as written and nothing fits the view to the model. Do not bring back
+  an auto-framing path, a fit-on-invalid-config fallback or pose-vertex
+  sampling for framing (issue #36) - the defaults are the only fallback. The
+  engine keeps its own projection fov, so the `fov` attribute does not move
+  the framing; a camera is placed by its origin and angles.
+- The main menu character card's camera, model placement and light are the
+  `abcui.gameui` module's `menu_preview` config section
+  (`module.abcui.gameui.menu_preview`, reached only through the `config`
+  section). Its pure model - defaults, control ranges, the strict read gate,
+  the serialization and the light angle <-> direction conversion - is
+  `modules/gameui/src/settings/MenuPreviewSettings.*`, linked alone by
+  `tests/MenuPreviewSettings.cpp`. Every control range stays inside its
+  `<model>` attribute domain, so each value projects onto `#player-model`
+  unchanged. A malformed section or an unreadable file makes a read-only
+  session: the defaults are shown, nothing is written and Apply reports the
+  failure; an out-of-range value is clamped. Edits are drafts of the settings
+  transaction - a slider or picker change never writes the config, Apply
+  does, `isDirty()` counts the draft and Reset stages the defaults.
 
 ## README
 

@@ -19,6 +19,7 @@
 // screen (the state's overlays bitmask).
 #include "../shared/PageShared.h"
 #include "../shared/PageShell.h"
+#include "../settings/MenuPreviewSettings.h"
 
 #include <cstdio>
 #include <format>
@@ -243,6 +244,21 @@ void projectFacts() {
       setAttribute("action-src", card.actionModel);
       setAttribute("weapon", card.weaponModel);
       setAttribute("sequence", std::to_string(card.sequence));
+      // The camera, the model's placement and the light are the module's
+      // menu_preview config section (Settings > Menu): explicit values, so
+      // an edit shows on the next projection after Apply. An attribute is
+      // rewritten only when its text changes; a settled section never
+      // touches the DOM.
+      const menupreview::Settings &view = menupreview::state().Applied;
+      setAttribute("camera-origin", menupreview::vectorText(view.CameraOrigin));
+      setAttribute("camera-angles", menupreview::vectorText(view.CameraAngles));
+      setAttribute("origin", menupreview::vectorText(view.ModelOrigin));
+      setAttribute("angles", menupreview::vectorText(view.ModelAngles));
+      setAttribute("light-direction",
+                   menupreview::vectorText(view.LightDirection));
+      setAttribute("light-color", menupreview::colorText(view.LightColor));
+      setAttribute("ambient", std::to_string(view.Ambient));
+      setAttribute("shade", std::to_string(view.Shade));
       Api->ui->elementSetProperty(preview, "display",
                                   path.empty() ? "none" : "block");
     }

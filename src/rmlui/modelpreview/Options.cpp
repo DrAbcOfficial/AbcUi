@@ -170,7 +170,7 @@ bool Options::set(std::string_view Name, std::string_view Value) {
   if (Name == "far")
     return number(Value, View.FarPlane, 65.0f, 32768.0f);
   if (Name == "ambient")
-    return number(Value, View.Ambient, 0, 128);
+    return number(Value, View.Ambient, 0, 255);
   if (Name == "shade")
     return number(Value, View.Shade, 0, 255);
   if (Name == "light-color")
@@ -238,14 +238,6 @@ bool Options::set(std::string_view Name, std::string_view Value) {
     else
       View.Lighting = Enabled;
   }
-  if (Name == "auto-frame") {
-    if (Value != "true" && Value != "false" && Value != "1" && Value != "0")
-      return false;
-    AutoFrame = Value == "true" || Value == "1";
-    return true;
-  }
-  if (Name == "frame-margin")
-    return number(Value, FrameMargin, 0.5f, 4.0f);
   if (Name == "drag-rotate") {
     if (Value != "true" && Value != "false" && Value != "1" && Value != "0")
       return false;

@@ -34,6 +34,7 @@
 
 #include "../shared/PageShared.h"
 #include "../shared/PageShell.h"
+#include "MenuPreviewSettings.h"
 #include "SettingsInternal.h"
 
 #include <algorithm>
@@ -311,7 +312,7 @@ bool isDirty() {
   if (!Api->settings)
     return false;
   return Api->settings->dirty() != 0 || Api->settings->bindDirty() != 0 ||
-         currentVideoStaged() || currentVoiceDirty();
+         currentVideoStaged() || currentVoiceDirty() || menuPreviewDirty();
 }
 
 // -------------------------------------------------------------- layers ----
@@ -546,6 +547,15 @@ void applyAndReport() {
     else
       ++failed;
   }
+  // The main menu character card's section is applied with the rows,
+  // whichever page is up. A refused or failed save counts as a failure:
+  // its values still apply to this session, but they were not persisted.
+  if (menuPreviewDirty()) {
+    if (applyMenuPreview())
+      ++applied;
+    else
+      ++failed;
+  }
   const int32_t touched = applied + failed + queued + bindTouched;
   std::string text;
   if (touched == 0) {
@@ -589,6 +599,10 @@ void resetCurrentPage() {
     pointers.push_back(cvar.c_str());
   Api->settings->resetDefaults(pointers.empty() ? nullptr : pointers.data(),
                                static_cast<int32_t>(pointers.size()));
+  // The main menu character card rides the page's Reset: its fields return
+  // to the documented defaults as drafts, like the rows.
+  if (pageHasComponent(page, kMenuPreviewComponent))
+    menupreview::resetDraft();
   // Hardware/display controls have no verified factory-default provider.
   // Their own explicit transactions remain separate; never invent values.
 }
@@ -637,6 +651,9 @@ bool requestLeave() {
 void discardAndReturn() {
   if (Api->settings)
     Api->settings->cancel();
+  // The character card's drafts go with the rows' - including values a
+  // failed save left in effect, back to what is persisted.
+  menupreview::discardDraft();
   hideLayers();
   render();
   Api->menu->back();
@@ -770,6 +787,8 @@ void render(const char *skipRow) {
     renderModelPicker();
   if (hasComponent(kColorPickerComponent))
     renderColorRows();
+  if (hasComponent(kMenuPreviewComponent))
+    renderMenuPreview();
   if (hasComponent("modules"))
     renderModules();
   setStatusSummary();
@@ -861,6 +880,8 @@ void onDocumentClose(void *) {
   SprayOpen = false;
   SpraySelected.clear();
   moduleReset();
+  // The slider rows lived in the document that is going.
+  MenuPreviewBuilt = false;
   VoiceVolumeSkip = nullptr;
   RenderedRevision = ~0u;
 }
@@ -935,6 +956,8 @@ void shutdown() {
   SprayOpen = false;
   SpraySelected.clear();
   moduleReset();
+  // The slider rows lived in the document that is going.
+  MenuPreviewBuilt = false;
   VoiceVolumeSkip = nullptr;
   RenderedRevision = ~0u;
 }

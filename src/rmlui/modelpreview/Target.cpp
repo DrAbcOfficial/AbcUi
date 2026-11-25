@@ -16,7 +16,6 @@
 // slot for an aiment lookup. The action group's mesh is never drawn.
 #include <metahook.h>
 #include "Target.h"
-#include "Framing.h"
 
 #include <com_model.h>
 #include <const.h>
@@ -26,7 +25,6 @@
 #include <IStandaloneView.h>
 
 #include <abc/Console.h>
-#include <abc/CvarCmd.h>
 #include <abc/Plugin.h>
 
 #include "../../render/BackendHost.h"
@@ -38,9 +36,7 @@
 #include "../RmlUiModule.h"
 
 #include <algorithm>
-#include <array>
 #include <cmath>
-#include <span>
 #include <vector>
 
 #undef min
@@ -122,56 +118,6 @@ struct ModelRef {
   }
 };
 
-// Sequence boxes are asset data too: a placeholder (some menu action groups
-// ship +/-9999 when their pose has no real box) or a malformed table must not
-// blow up the auto-framing distance.
-bool usableBox(std::span<const float> Min, std::span<const float> Max) {
-  if (Min.size() != 3 || Max.size() != 3 || !(Max[2] > Min[2]))
-    return false;
-  for (std::size_t i = 0; i < Min.size(); ++i) {
-    if (!std::isfinite(Min[i]) || !std::isfinite(Max[i]) || Max[i] < Min[i] ||
-        std::abs(Min[i]) > 2048.0f || std::abs(Max[i]) > 2048.0f)
-      return false;
-  }
-  return true;
-}
-
-// Axis-aligned union of the boxes that must fit into the card.
-struct Bounds {
-  std::array<float, 3> Min{};
-  std::array<float, 3> Max{};
-  bool Valid = false;
-
-  void add(const ModelRef &Ref, int Sequence, float Scale) {
-    if (!Ref.Header)
-      return;
-    const auto *Desc = Ref.sequence(Sequence);
-    std::span<const float> SourceMin;
-    std::span<const float> SourceMax;
-    if (Desc && usableBox(Desc->bbmin, Desc->bbmax)) {
-      SourceMin = std::span<const float>(Desc->bbmin);
-      SourceMax = std::span<const float>(Desc->bbmax);
-    } else if (usableBox(Ref.Header->bbmin, Ref.Header->bbmax)) {
-      SourceMin = std::span<const float>(Ref.Header->bbmin);
-      SourceMax = std::span<const float>(Ref.Header->bbmax);
-    } else {
-      return;
-    }
-    for (std::size_t i = 0; i < Min.size(); ++i) {
-      const float Low = SourceMin[i] * Scale;
-      const float High = SourceMax[i] * Scale;
-      if (!Valid) {
-        Min[i] = Low;
-        Max[i] = High;
-      } else {
-        Min[i] = std::min(Min[i], Low);
-        Max[i] = std::max(Max[i], High);
-      }
-    }
-    Valid = true;
-  }
-};
-
 ModelRef loadModel(const std::string &Path) {
   ModelRef Ref;
   if (Path.empty() || !hooks::EngineStudioApi ||
@@ -191,82 +137,6 @@ ModelRef loadModel(const std::string &Path) {
       Ref.Header->id != 0x54534449 || Ref.Header->version != 10)
     return {};
   return Ref;
-}
-
-template <class T>
-std::span<const T> studioTable(const studiohdr_t *Header, int Offset, int Count,
-                               int Limit) {
-  if (!Header || Header->length < sizeof(studiohdr_t) ||
-      Offset < static_cast<int>(sizeof(studiohdr_t)) || Count < 0 ||
-      Count > Limit || Offset % alignof(T) != 0)
-    return {};
-  const auto Start = static_cast<size_t>(Offset);
-  const auto Size = static_cast<size_t>(Header->length);
-  if (Start > Size || static_cast<size_t>(Count) > (Size - Start) / sizeof(T))
-    return {};
-  return {reinterpret_cast<const T *>(reinterpret_cast<const byte *>(Header) +
-                                      Start),
-          static_cast<size_t>(Count)};
-}
-
-// Read the selected bodygroups through the engine's freshly evaluated bone
-// matrices. Sequence boxes and a p-model's unmerged coordinates do not describe
-// the visible character/held weapon; only these transformed vertices do.
-bool appendStudioVertices(const cl_entity_t &Entity,
-                          std::vector<FramePoint> &Points) {
-  auto *Api = hooks::EngineStudioApi;
-  if (!Api || !Api->Mod_Extradata || !Api->StudioGetBoneTransform ||
-      !Entity.model)
-    return false;
-  const auto *Header =
-      static_cast<const studiohdr_t *>(Api->Mod_Extradata(Entity.model));
-  if (!Header || Header->length < sizeof(studiohdr_t) ||
-      Header->numbones <= 0 || Header->numbones > MAXSTUDIOBONES)
-    return false;
-  using BoneMatrix = float[3][4];
-  const auto *Bones =
-      reinterpret_cast<const BoneMatrix *>(Api->StudioGetBoneTransform());
-  if (!Bones)
-    return false;
-  const auto Parts = studioTable<mstudiobodyparts_t>(
-      Header, Header->bodypartindex, Header->numbodyparts, MAXSTUDIOBODYPARTS);
-  if (Parts.empty())
-    return false;
-  constexpr int MaxVertices = 131072;
-  for (const auto &Part : Parts) {
-    const auto Models = studioTable<mstudiomodel_t>(
-        Header, Part.modelindex, Part.nummodels, MAXSTUDIOMODELS_SVENGINE);
-    if (Models.empty() || Part.base <= 0)
-      return false;
-    const auto Index =
-        (std::max(Entity.curstate.body, 0) / Part.base) % Part.nummodels;
-    const auto &Model = Models[static_cast<size_t>(Index)];
-    if (Model.numverts == 0 || Model.nummesh == 0)
-      continue;
-    using Vertex = float[3];
-    const auto Vertices = studioTable<Vertex>(Header, Model.vertindex,
-                                              Model.numverts, MaxVertices);
-    const auto BoneIndices = studioTable<byte>(Header, Model.vertinfoindex,
-                                               Model.numverts, MaxVertices);
-    if (Vertices.empty() || Vertices.size() != BoneIndices.size() ||
-        Points.size() + Vertices.size() > MaxVertices)
-      return false;
-    for (size_t v = 0; v < Vertices.size(); ++v) {
-      const int Bone = BoneIndices[v];
-      if (Bone >= Header->numbones)
-        return false;
-      FramePoint Point{};
-      for (int i = 0; i < 3; ++i) {
-        Point[i] = Bones[Bone][i][3];
-        for (int j = 0; j < 3; ++j)
-          Point[i] += Bones[Bone][i][j] * Vertices[v][j];
-        if (!std::isfinite(Point[i]) || std::abs(Point[i]) > 1000000.0f)
-          return false;
-      }
-      Points.push_back(Point);
-    }
-  }
-  return true;
 }
 
 // Private follow entities share the source's world transform explicitly.
@@ -312,16 +182,12 @@ struct Target::State : IStandaloneView {
   float AnimationFrame = 0;
   int LastSequence = -1;
   float LastFrame = -1;
-  // Camera resolved at sync time (auto-framing needs the model headers).
+  // The card's explicit camera, copied at sync time.
   float ViewOrigin[3] = {0, 0, 0};
   float ViewAngles[3] = {0, 0, 0};
   float Background[4] = {0, 0, 0, 0};
   IStandaloneViewManager *Manager = nullptr;
   standaloneview::StudioLighting Lighting;
-  Options FramingOptions;
-  std::vector<FramePoint> PoseVertices;
-  std::vector<FramePoint> PoseScratch;
-  bool UsePoseFraming = false;
   bool TransparentPass = false;
 
   bool IsActive() const override {
@@ -338,10 +204,8 @@ struct Target::State : IStandaloneView {
 
   void CalcRefdef(struct ref_params_s *pparams) override {
     // Only vieworg / viewangles / viewport: the cl_* fields belong to the
-    // main view (the engine writes them back). The engine keeps its own
-    // projection fov (ref_params has no fov field on this engine
-    // generation); the auto-framing math reads the engine's scr_fov_value
-    // instead of the card's fov attribute.
+    // main view (the engine writes them back). The projection is the
+    // engine's own (ref_params carries no fov on this engine generation).
     std::ranges::copy(ViewOrigin, pparams->vieworg);
     std::ranges::copy(ViewAngles, pparams->viewangles);
     pparams->viewport[0] = 0;
@@ -363,19 +227,6 @@ struct Target::State : IStandaloneView {
                                      CaptureWidth, CaptureHeight, Background);
     };
     clearViewport();
-    if (UsePoseFraming) {
-      PoseScratch.clear();
-      bool Complete =
-          studio.SetupStudioPose(&Entity, HasAction ? &Action : nullptr) &&
-          appendStudioVertices(Entity, PoseScratch) && !PoseScratch.empty();
-      if (Complete && HasWeapon)
-        Complete = studio.SetupStudioPose(&Weapon, &Action) &&
-                   appendStudioVertices(Weapon, PoseScratch);
-      if (Complete)
-        PoseVertices.swap(PoseScratch);
-      else
-        PoseVertices.clear();
-    }
     // Each follower consumes a fresh source pose, never a previous preview's
     // saved bones (or the saved bones of the displayed player's extra bones).
     studio.DrawStudioModel(&Entity, HasAction ? &Action : nullptr, &Lighting);
@@ -459,9 +310,6 @@ void Target::invalidate() {
   Data->WeaponModel = {};
   Data->HasAction = false;
   Data->HasWeapon = false;
-  Data->PoseVertices.clear();
-  Data->PoseScratch.clear();
-  Data->UsePoseFraming = false;
   Data->ActionWarned = false;
   Data->WeaponWarned = false;
   Data->Attempted = false;
@@ -688,46 +536,11 @@ bool Target::render(const Options &Config, int Width, int Height) {
   std::ranges::copy(Config.View.LightDirection, state.Lighting.direction);
   state.Lighting.enabled = Config.View.Lighting;
 
-  // Pose sampling happens in the engine pass; use the last completed pose on
-  // this frame's sync. Discard it when the caller changes the pose/placement.
-  const auto &Previous = state.FramingOptions;
-  if (Previous.Source != Config.Source ||
-      Previous.Sequence != Config.Sequence || Previous.Frame != Config.Frame ||
-      Previous.Body != Config.Body || Previous.Origin != Config.Origin ||
-      Previous.Angles != Config.Angles || Previous.Scale != Config.Scale ||
-      Previous.Mouth != Config.Mouth ||
-      Previous.Controllers != Config.Controllers ||
-      Previous.Blending != Config.Blending ||
-      Previous.AutoFrame != Config.AutoFrame)
-    state.PoseVertices.clear();
-  state.FramingOptions = Config;
-  state.UsePoseFraming = Config.AutoFrame;
-
-  // Fit only visible posed geometry. Until the first pose (or on an
-  // unavailable Studio bone API), bootstrap from the displayed player's box,
-  // never the invisible action group or an unmerged weapon's metadata.
+  // The camera is the element's explicit view: origin and angles are copied
+  // as given, the projection stays the engine's.
   std::ranges::copy(Config.View.Origin, state.ViewOrigin);
   std::ranges::copy(Config.View.Angles, state.ViewAngles);
   std::ranges::copy(Config.View.Background, state.Background);
-  if (Config.AutoFrame) {
-    float EngineFov = 90.0f;
-    if (cvar_t *fov = abc::CVAR_GET_POINTER("scr_fov_value"))
-      EngineFov = std::clamp(fov->value, 30.0f, 170.0f);
-    const float Aspect = static_cast<float>(Width) / Height;
-    auto Camera =
-        frameCameraPoints(Config, state.PoseVertices, EngineFov, Aspect);
-    if (!Camera) {
-      Bounds Box;
-      Box.add(state.EntityModel, state.EntityModel.clampSequence(SequenceIndex),
-              Config.Scale);
-      if (Box.Valid)
-        Camera = frameCamera(Config, Box.Min, Box.Max, EngineFov, Aspect);
-    }
-    if (Camera) {
-      std::ranges::copy(Camera->Origin, state.ViewOrigin);
-      std::ranges::copy(Camera->Angles, state.ViewAngles);
-    }
-  }
   // Readiness follows the last pass; the pass runs one engine frame later
   // (V_RenderView precedes the end-frame beat that syncs options).
   return state.LastPassOk && state.CaptureTexture != 0;

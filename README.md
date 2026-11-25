@@ -13,7 +13,7 @@ HUD and menu replacement for Sven Co-op. It rebuilds the game interface, from th
   Enter sends or closes chat without activating its gameplay binding.
 - **Menu** — main menu, settings, server browser, create game, player list, vote creation, console, MOTD, inventory window, command menu, connect and loading screens, and quit confirmation. Pages fade in and out while preserving dimmed controls, and stop accepting input as soon as they start closing. Create game remembers the last server name, password, player limit and options. The in-game menu opens the server browser as well; joining from it leaves the current server first. Menu entries can also run a console command of your choice, for example joining a server directly.
 - **Settings** — video, audio, voice, captions, mouse, input, multiplayer, advanced, renderer and menu pages, all applied from inside the game.
-- **Character preview** — live player model facing the screen at a slight angle on the main menu, plus a model picker with favorites in the settings.
+- **Character preview** — live player model facing the screen at a slight angle on the main menu, plus a model picker with favorites in the settings. The main menu character's camera, position, rotation and light can be adjusted in Settings > Menu.
 - **Media** — menu music, background movie and a media player for the game soundtrack.
 - **Voice mute** — per-player mute list shared by the player list and the scoreboard.
 - **Voice speakers** — team-voice speaker list with avatars and a status badge when your microphone or voice receive is off, replacing the native speaker icons.
@@ -78,7 +78,8 @@ Applying a new resolution or display mode restarts the game and then asks you to
 keep or revert the change.
 
 AbcUi stores its backend selection, model favorites, create-game settings,
-muted players, blocked servers and pending video confirmation together in
+muted players, blocked servers, pending video confirmation and main menu
+character settings together in
 `svencoop/abc/abcui/config.json`. When this file does not exist, AbcUi creates
 it with the default settings. Older separate configuration files are not read.
 Unreadable files are not overwritten. Other game settings remain in the
@@ -112,6 +113,53 @@ Useful console commands and variables:
 | `abc_ui_division_follow` | `1` follows your character in third person (default); `0` keeps the readouts fixed. |
 | `abc_ui_division_side` | `0` keeps the readouts on your character's left (default); `1` puts them on the right. |
 | `abc_ui_weapon_filter` | `1` applies your weapon selector slot rules; `0` shows the server layout. |
+
+## Main menu character
+
+Settings > Menu has a **Main menu character** card for the character on the
+main menu. Each value is a slider with its current value; angles are in
+degrees.
+
+| Control | Range | Default |
+|---|---|---|
+| Camera position X / Y / Z | -1024 to 1024 | 121 / -70 / 55 |
+| Camera angles pitch / yaw / roll | -180 to 180 | 16 / 150 / -3 |
+| Model position X / Y / Z | -256 to 256 | 0 / 0 / 0 |
+| Model rotation pitch / yaw / roll | -180 to 180 | 0 / -8 / 0 |
+| Light angle horizontal / pitch | -179 to 180 / -89 to 89 | 172 / 0 |
+| Light color | color picker | 255, 245, 230 |
+| Ambient / Shade | 0 to 255 | 96 / 110 |
+
+A positive light pitch shines downwards. **Restore defaults** in the card
+returns every value to the defaults above.
+
+Click **Apply** to save the values. They show on the main menu as soon as you
+return to it; no restart is needed. **Return** discards changes you have not
+applied. **Restore Defaults** at the bottom of the page also returns this card
+to its defaults.
+
+The values are saved in `svencoop/abc/abcui/config.json`:
+
+```json
+{
+  "module.abcui.gameui.menu_preview": {
+    "version": 1,
+    "camera_origin": [121, -70, 55],
+    "camera_angles": [16, 150, -3],
+    "model_origin": [0, 0, 0],
+    "model_angles": [0, -8, 0],
+    "light_direction": [-0.990268, 0.139173, 0],
+    "light_color": [255, 245, 230],
+    "ambient": 96,
+    "shade": 110
+  }
+}
+```
+
+You can also edit this section by hand. AbcUi creates it the first time you
+change a value and click Apply. Values outside their range are limited to it.
+If the section or the file cannot be read, the defaults are used, the file is
+left unchanged, and your changes apply to the current session only.
 
 ## Weapon selector layout
 

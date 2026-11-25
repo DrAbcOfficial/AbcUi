@@ -2,6 +2,7 @@
 // dispatched to the section handlers.
 
 #include "../shared/PageShared.h"
+#include "MenuPreviewSettings.h"
 #include "SettingsInternal.h"
 
 #include <cstring>
@@ -36,6 +37,18 @@ void onChange(AbcUiElement *target) {
     render();
     return;
   }
+  // The main menu light colour rides the same picker and change queue; its
+  // value lands in the character card's draft, not in cvar rows. Dragging
+  // the picker only edits the draft: Apply writes the section.
+  if (id == kMenuPreviewColorPicker) {
+    handleMenuPreviewColorChange(attributeOf(target, "value").c_str());
+    renderMenuPreview();
+    setStatusSummary();
+    return;
+  }
+  // The character card's sliders edit the module's own config draft.
+  if (handleMenuPreviewChange(target))
+    return;
   std::string value;
   if (!rowEditValue(target, value))
     return;
@@ -227,6 +240,12 @@ void onClick(AbcUiElement *target) {
       Api->settings->voiceSetBoostDraft(on ? 0 : 1);
     }
     renderVoiceSection();
+  } else if (action == kActionMenuPreviewReset) {
+    // The character card's own entry stages the documented defaults as
+    // drafts; like the page's Reset, nothing is written before Apply.
+    menupreview::resetDraft();
+    renderMenuPreview();
+    setStatusSummary();
   } else if (action == kActionAdopt && !rowKey.empty()) {
     Api->settings->adopt(rowKey.c_str());
     render();

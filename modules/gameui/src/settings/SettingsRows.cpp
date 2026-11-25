@@ -2,6 +2,7 @@
 // the per-row projection for every setting kind the framework model exposes.
 
 #include "../shared/PageShared.h"
+#include "MenuPreviewSettings.h"
 #include "SettingsInternal.h"
 
 #include <algorithm>
@@ -570,14 +571,20 @@ void renderRow(AbcUiSettingRow &row, bool skipInput) {
 void setStatusSummary() {
   if (!Page || !Api->settings)
     return;
+  // The main menu character card's section counts like the rows: its drafts
+  // are pending edits, and a value a failed save left in effect is never
+  // summarized as clean.
+  const menupreview::State &preview = menupreview::state();
   std::string text;
-  if (!Api->settings->dirty()) {
+  if (!Api->settings->dirty() && !menupreview::dirty()) {
     text = resolve("#abcui.gameui/Settings_StatusClean");
   } else {
     text = resolve("#abcui.gameui/Settings_StatusDirty");
     if (Api->settings->hasConflicts())
       text += " | " + resolve("#abcui.gameui/Settings_StatusConflict");
   }
+  if (preview.Unsaved)
+    text += " | " + resolve("#abcui.gameui/Settings_MenuPreviewSaveFailed");
   setInnerRml(node("settings-status"), escapeText(text));
 }
 
