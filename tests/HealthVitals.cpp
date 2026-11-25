@@ -42,7 +42,9 @@ void frame(double seconds = 1.0 / 60.0) {
 
 // Lets a running value pop settle, so a "no write" check cannot trip over the
 // burst the previous change started.
-void settle() { frame(1.0); }
+void settle() {
+  frame(1.0);
+}
 
 void documentReady() {
   const AbcUiPanelDesc &panel = seams::state().panel;

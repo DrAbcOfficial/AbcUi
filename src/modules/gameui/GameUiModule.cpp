@@ -725,10 +725,9 @@ void GameUiModule::onInit() {
     netmsg::InvAdd.append([this](const netmsg::InvItemData &data) {
       Inventory->model().add(data);
     });
-    netmsg::InvRemove.append(
-        [this](int id, int preserve) {
-          Inventory->model().remove(id, preserve);
-        });
+    netmsg::InvRemove.append([this](int id, int preserve) {
+      Inventory->model().remove(id, preserve);
+    });
     InventoryFeedBound = true;
   }
 #ifndef NDEBUG

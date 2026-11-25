@@ -147,9 +147,9 @@ void installSpectatorHook() {
                       ABCUI_SPECTATOR_UPDATE_SYMBOL);
     return;
   }
-  void *target = abc::ResolveGameSymbol(
-      abc::g_dwClientBase, "client", ABCUI_SPECTATOR_UPDATE_SYMBOL,
-      MH_GAMESYMBOL_KIND_FUNCTION);
+  void *target = abc::ResolveGameSymbol(abc::g_dwClientBase, "client",
+                                        ABCUI_SPECTATOR_UPDATE_SYMBOL,
+                                        MH_GAMESYMBOL_KIND_FUNCTION);
   if (!target)
     return;
   SpectatorUpdateHook = g_pMetaHookAPI->InlineHook(

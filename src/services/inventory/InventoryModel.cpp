@@ -30,13 +30,11 @@ void InventoryModel::add(const netmsg::InvItemData &data) {
 }
 
 void InventoryModel::remove(int id, int preserve) {
-  const auto removed =
-      std::erase_if(Items_, [id, preserve](const Item &item) {
-        // Native MsgFunc_InvRemove: target the id, then keep an item when it
-        // is keepOnClear and the server set preserve.
-        return (id == 0 || id == item.id) &&
-               (!item.keepOnClear || preserve == 0);
-      });
+  const auto removed = std::erase_if(Items_, [id, preserve](const Item &item) {
+    // Native MsgFunc_InvRemove: target the id, then keep an item when it
+    // is keepOnClear and the server set preserve.
+    return (id == 0 || id == item.id) && (!item.keepOnClear || preserve == 0);
+  });
   if (removed == 0)
     return;
   if (Selected_ != 0 && !selected())

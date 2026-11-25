@@ -213,25 +213,23 @@ const client_sprite_t *findSpriteEntry(const client_sprite_t *list, int count,
 // reason per process. The server bytes reach the console as an argument and
 // with anything unprintable replaced, never as a format or a control
 // character.
-void reportSpritePath(std::string_view kind,
-                      weaponres::SpritePathStatus status,
+void reportSpritePath(std::string_view kind, weaponres::SpritePathStatus status,
                       std::string_view what) {
   using weaponres::SpritePathStatus;
-  const std::string_view why =
-      status == SpritePathStatus::kInvalidPart
-          ? "invalid characters or length"
-          : status == SpritePathStatus::kEscapesRoot
-                ? "it climbs above the game directory"
-                : "the path is too long";
+  const std::string_view why = status == SpritePathStatus::kInvalidPart
+                                   ? "invalid characters or length"
+                               : status == SpritePathStatus::kEscapesRoot
+                                   ? "it climbs above the game directory"
+                                   : "the path is too long";
   const std::string reason = std::format("weapon sprite {} ({})", kind, why);
   static std::set<std::string> reported;
   if (!reported.insert(reason).second)
     return;
   std::string shown(what);
-  std::replace_if(shown.begin(), shown.end(),
-                  [](unsigned char c) { return c < 0x20 || c > 0x7E; }, '?');
-  abc::ConsoleWarn("[AbcUi] ignored a %s: %s\n", reason.c_str(),
-                   shown.c_str());
+  std::replace_if(
+      shown.begin(), shown.end(),
+      [](unsigned char c) { return c < 0x20 || c > 0x7E; }, '?');
+  abc::ConsoleWarn("[AbcUi] ignored a %s: %s\n", reason.c_str(), shown.c_str());
 }
 
 void fillSpriteSource(Weapon::SpriteSource &source, const char *atlasName,

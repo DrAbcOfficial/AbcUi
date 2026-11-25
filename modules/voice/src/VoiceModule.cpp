@@ -162,8 +162,7 @@ void updateStatus() {
     MicCvar = Api->console->findCvar("voice_modenable");
   if (!ReceiveCvar)
     ReceiveCvar = Api->console->findCvar("voice_enable");
-  const bool micOn =
-      !MicCvar || Api->console->cvarValue(MicCvar, 1.0f) > 0.5f;
+  const bool micOn = !MicCvar || Api->console->cvarValue(MicCvar, 1.0f) > 0.5f;
   const bool receiveOn =
       !ReceiveCvar || Api->console->cvarValue(ReceiveCvar, 1.0f) > 0.5f;
   int bits = 0;
@@ -304,7 +303,8 @@ int onNativeVoiceDraw(void *, const void *payload) {
 // ---- lifecycle ----
 
 void onModuleLoad() {
-  Api->events->subscribe(ABCUI_CHANNEL_VOICE_STATUS, 0, &onVoiceStatus, nullptr);
+  Api->events->subscribe(ABCUI_CHANNEL_VOICE_STATUS, 0, &onVoiceStatus,
+                         nullptr);
   AbcUiClaimDesc native{};
   native.structSize = sizeof(native);
   native.role = ABCUI_CLAIM_GATE;

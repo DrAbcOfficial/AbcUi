@@ -126,15 +126,15 @@ extern abc::CallbackList<void()> ReqState;
 // unused field, carried through so the wire contract is not narrowed.
 struct InvItemData {
   int id = 0;
-  bool canActivate = false;  // native item+0x04: Activate warning tint
-  bool canDrop = false;      // native item+0x05: Drop warning tint
+  bool canActivate = false; // native item+0x04: Activate warning tint
+  bool canDrop = false;     // native item+0x05: Drop warning tint
   bool keepOnClear = false; // native item+0x06: kept while preserve != 0
-  float value = 0.0f;        // native item+0x08 (not rendered by the window)
-  std::string name;          // native item+0x0c
-  std::string displayName;   // native item+0x10 (preferred by the window)
-  std::string description;   // native item+0x14
-  std::string extra;         // native item+0x18 (unused by the window)
-  std::string key;           // native item+0x1c (native selection key)
+  float value = 0.0f;       // native item+0x08 (not rendered by the window)
+  std::string name;         // native item+0x0c
+  std::string displayName;  // native item+0x10 (preferred by the window)
+  std::string description;  // native item+0x14
+  std::string extra;        // native item+0x18 (unused by the window)
+  std::string key;          // native item+0x1c (native selection key)
 };
 extern abc::CallbackList<void(const InvItemData &)> InvAdd;
 // InvRemove: (item id, preserve). id 0 clears every item whose keepOnClear

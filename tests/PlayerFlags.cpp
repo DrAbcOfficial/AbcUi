@@ -5,14 +5,14 @@
 #include "data/PlayerResource.h"
 #include "framework/TestHarness.h"
 
-using playerres::Donor;
 using playerres::decodeDonor;
+using playerres::Donor;
 
 int main() {
   TEST_CASE("donor native word decode");
   {
-    CHECK(decodeDonor(0) == Donor::None);              // slot never saw extras
-    CHECK(decodeDonor(0x10000) == Donor::None);        // shown, level 0
+    CHECK(decodeDonor(0) == Donor::None);       // slot never saw extras
+    CHECK(decodeDonor(0x10000) == Donor::None); // shown, level 0
     CHECK(decodeDonor(0x10001) == Donor::ElectricCrowbar);
     CHECK(decodeDonor(0x10002) == Donor::GoldedUzi);
     CHECK(decodeDonor(0x10003) == Donor::GoldedDollar);

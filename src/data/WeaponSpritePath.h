@@ -77,9 +77,8 @@ inline SpritePathStatus checkSpritePath(std::string path) {
   return SpritePathStatus::kAccepted;
 }
 
-inline SpritePathStatus
-checkSpriteListPath(std::string_view spriteName,
-                    std::string_view spriteDirectory) {
+inline SpritePathStatus checkSpriteListPath(std::string_view spriteName,
+                                            std::string_view spriteDirectory) {
   if (!framework::ResourceLimits::relativeResourceName(spriteName) ||
       (!spriteDirectory.empty() &&
        !framework::ResourceLimits::relativeResourceName(spriteDirectory)))

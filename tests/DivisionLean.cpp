@@ -18,16 +18,16 @@ int main() {
   // follow target the module builds).
   {
     TEST_CASE("hip-left");
-    const float hip = moduleui::lean::hipXFromApplied(700.0f, 150.0f, 24.0f,
-                                                      false);
+    const float hip =
+        moduleui::lean::hipXFromApplied(700.0f, 150.0f, 24.0f, false);
     CHECK_NEAR(hip, 700.0f + 150.0f + 24.0f, kTolerance);
   }
 
   // Right side: the plate's left edge sits one gap right of the hip.
   {
     TEST_CASE("hip-right");
-    const float hip = moduleui::lean::hipXFromApplied(900.0f, 150.0f, 24.0f,
-                                                      true);
+    const float hip =
+        moduleui::lean::hipXFromApplied(900.0f, 150.0f, 24.0f, true);
     CHECK_NEAR(hip, 900.0f - 24.0f, kTolerance);
   }
 

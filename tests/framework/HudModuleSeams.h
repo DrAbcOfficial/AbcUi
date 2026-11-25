@@ -121,7 +121,9 @@ inline AbcUiCvarHandle registerCvar(const char *, const char *, int) {
   return &handles[next++ % 8];
 }
 
-inline float cvarValue(AbcUiCvarHandle, float) { return state().cvarValue; }
+inline float cvarValue(AbcUiCvarHandle, float) {
+  return state().cvarValue;
+}
 
 inline AbcUiCvarHandle findCvar(const char *) {
   static int handle = 0;
@@ -241,8 +243,8 @@ inline void restartAnimation(AbcUiElement *) {}
 
 inline void formatColor(const float rgb[3], char *out, uint32_t outSize) {
   std::snprintf(out, outSize, "rgb(%.0f,%.0f,%.0f)",
-                 static_cast<double>(rgb[0]), static_cast<double>(rgb[1]),
-                 static_cast<double>(rgb[2]));
+                static_cast<double>(rgb[0]), static_cast<double>(rgb[1]),
+                static_cast<double>(rgb[2]));
 }
 
 inline void differColor(const float base[3], const float danger[3], float ratio,
