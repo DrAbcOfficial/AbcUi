@@ -89,7 +89,7 @@ bool PackageFile::read(const char *name, PackageEntry &out,
     return false;
   }
 
-  if (stat.m_uncomp_size > 128u * 1024 * 1024) {
+  if (stat.m_uncomp_size > kMaxEntryBytes) {
     fail(error, "package entry exceeds 128 MiB");
     return false;
   }

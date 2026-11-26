@@ -1,6 +1,8 @@
 // framework::PackageImage implementation - see PackageImage.h.
 #include "PackageImage.h"
 
+#include "NativeText.h"
+
 #include <string>
 
 #include <Windows.h>
@@ -8,16 +10,7 @@
 namespace framework {
 namespace {
 
-std::wstring wideFromUtf8(const std::string &text) {
-  const int length = MultiByteToWideChar(
-      CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
-  std::wstring wide(static_cast<size_t>(length > 0 ? length : 0), L'\0');
-  if (length > 0) {
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()),
-                        wide.data(), length);
-  }
-  return wide;
-}
+using wtext::wideFromUtf8;
 
 } // namespace
 

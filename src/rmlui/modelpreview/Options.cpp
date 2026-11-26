@@ -10,6 +10,7 @@
 #include <cmath>
 #include <filesystem>
 #include <ranges>
+#include <utility>
 
 namespace modelpreview {
 namespace {
@@ -62,6 +63,12 @@ bool isMdlExtension(std::string_view Text) {
         return std::tolower(static_cast<unsigned char>(Left)) == Right;
       });
 }
+
+// The action model directory, shared by every reader of it.
+std::string &actionModelDirectory() {
+  static std::string instance;
+  return instance;
+}
 } // namespace
 
 bool Options::isModelPath(std::string_view Text) {
@@ -79,6 +86,14 @@ bool Options::isModelPath(std::string_view Text) {
   return !HasParent && Text.find_first_of("\\:") == std::string_view::npos &&
          std::ranges::none_of(
              Text, [](unsigned char c) { return c < 32 || c == 127; });
+}
+
+void setActionModelDir(std::string directory) {
+  actionModelDirectory() = std::move(directory);
+}
+
+const std::string &actionModelDir() {
+  return actionModelDirectory();
 }
 
 namespace {
@@ -116,13 +131,20 @@ std::string resolveActionModelPath(std::string_view Spelling,
                                    const ModelExists &Exists) {
   if (Spelling.empty())
     Spelling = kActionModelDefault;
-  std::string Resolved;
-  if (isMdlExtension(Spelling) || Spelling.find('/') != std::string_view::npos)
-    Resolved = std::string(Spelling);
-  else
-    Resolved = kActionModelDir + std::string(Spelling) + ".mdl";
-  if (!Options::isModelPath(Resolved))
-    Resolved = std::string(kActionModelDir) + kActionModelDefault + ".mdl";
+  const std::string &Directory = actionModelDir();
+  const bool Group =
+      !isMdlExtension(Spelling) && Spelling.find('/') == std::string_view::npos;
+  // A bare spelling is a file of the action model directory; without one no
+  // group exists to name.
+  if (Group && Directory.empty())
+    return {};
+  std::string Resolved = Group ? Directory + std::string(Spelling) + ".mdl"
+                               : std::string(Spelling);
+  if (!Options::isModelPath(Resolved)) {
+    if (Directory.empty())
+      return {};
+    Resolved = Directory + kActionModelDefault + ".mdl";
+  }
   // A group the engine cannot see is not presented: the card degrades to the
   // displayed model drawing alone instead of an invisible body.
   if (Exists && !Exists(Resolved))

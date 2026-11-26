@@ -15,6 +15,14 @@ struct NativeFindCloser {
 };
 using NativeFindHandle = std::unique_ptr<void, NativeFindCloser>;
 
+struct NativeHandleCloser {
+  void operator()(void *handle) const noexcept {
+    if (handle && handle != INVALID_HANDLE_VALUE)
+      CloseHandle(handle);
+  }
+};
+using NativeHandle = std::unique_ptr<void, NativeHandleCloser>;
+
 struct NativeLibraryCloser {
   void operator()(HMODULE module) const noexcept {
     FreeLibrary(module);

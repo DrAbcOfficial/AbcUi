@@ -9,9 +9,12 @@
 #include <algorithm>
 #include <cstring>
 
+#include <abc/Paths.h>
+
 #include "../services/uiconfig/MenuShellService.h"
 #include "../services/uiconfig/UiDefinitions.h"
 #include "../rmlui/modelpreview/ActionModels.h"
+#include "../rmlui/modelpreview/Options.h"
 
 namespace framework {
 namespace MenuConfigApi {
@@ -119,11 +122,25 @@ int32_t apiSetResourceRoot(const char *uri) {
   std::string models;
   if (ModuleVfs::resolve(root + "/_", "../../models/menu_action/_", models)) {
     models.pop_back();
-    modelpreview::prepareActionModels(models.c_str());
+    // The action models live in the menu module's custom directory, derived
+    // from the module's own id: the packaged groups are materialized there
+    // for the engine's Studio loader, and a user's file of the same name
+    // wins.
+    std::string directory;
+    if (ModuleVfs::customPath(models.c_str(), directory)) {
+      modelpreview::setActionModelDir(directory + "/");
+      modelpreview::prepareActionModels(models.c_str(),
+                                        [](const std::string &relative) {
+                                          return abc::ModPath(relative.c_str());
+                                        });
+    }
   }
   lifetime = module_resources::Registration{};
   services::uiconfig::setResourceRoot(std::move(root));
-  lifetime.track([] { services::uiconfig::setResourceRoot({}); });
+  lifetime.track([] {
+    services::uiconfig::setResourceRoot({});
+    modelpreview::setActionModelDir({});
+  });
   return ABCUI_OK;
 }
 

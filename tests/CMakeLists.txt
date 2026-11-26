@@ -378,6 +378,37 @@ abcui_add_test(abc_ui_level_load_gate
 abcui_add_test(abc_ui_user_msg_fields
     SOURCES UserMsgFields.cpp)
 
+# The custom resource overlay of the module VFS (issue 35): a custom file
+# replaces the package entry of its path, a new one is listed, code paths
+# stay package-only, traversal and foreign ids are refused, junctions are not
+# followed, an unreadable custom file falls back to the package entry, the
+# mount-time snapshot holds until a remount, and decoder threads read
+# concurrently. Packages are built in memory and mapped from a scratch
+# directory.
+abcui_add_test(abc_ui_module_vfs
+    SOURCES ModuleVfs.cpp
+            "${SRC}/modsys/ModuleVfs.cpp"
+            "${SRC}/modsys/ModuleCustom.cpp"
+            "${SRC}/modsys/PackageFile.cpp"
+            "${SRC}/modsys/PackageImage.cpp"
+    LIBRARIES Abc::Core abcui_miniz
+    DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
+
+# The menu action models: one directory (the menu module's custom mount,
+# derived from its id) behind the bare-spelling resolver, the extraction and
+# the settings scan, and an extraction that writes a model only when its file
+# is missing (issue 35).
+abcui_add_test(abc_ui_menu_action_models
+    SOURCES MenuActionModels.cpp
+            "${SRC}/rmlui/modelpreview/Options.cpp"
+            "${SRC}/rmlui/modelpreview/ActionModels.cpp"
+            "${SRC}/modsys/ModuleVfs.cpp"
+            "${SRC}/modsys/ModuleCustom.cpp"
+            "${SRC}/modsys/PackageFile.cpp"
+            "${SRC}/modsys/PackageImage.cpp"
+    LIBRARIES Abc::Core abcui_miniz
+    DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
+
 # --- RmlUi page and document tests -------------------------------------------
 abcui_add_test(abc_ui_interactive
     SOURCES InteractiveDocument.cpp
@@ -385,6 +416,7 @@ abcui_add_test(abc_ui_interactive
             "${SRC}/framework/MenuBackdrop.cpp"
             "${SRC}/framework/Localization.cpp"
             "${SRC}/modsys/ModuleVfs.cpp"
+            "${SRC}/modsys/ModuleCustom.cpp"
             "${SRC}/modsys/PackageFile.cpp"
             "${SRC}/modsys/PackageImage.cpp"
             "${SRC}/rmlui/LanguageChannel.cpp"
@@ -400,6 +432,7 @@ abcui_add_test(abc_ui_text_input
             "${SRC}/framework/MenuBackdrop.cpp"
             "${SRC}/framework/Localization.cpp"
             "${SRC}/modsys/ModuleVfs.cpp"
+            "${SRC}/modsys/ModuleCustom.cpp"
             "${SRC}/modsys/PackageFile.cpp"
             "${SRC}/modsys/PackageImage.cpp"
     LIBRARIES RmlUi::RmlUi Abc::Core abcui_miniz imm32

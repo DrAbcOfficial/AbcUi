@@ -18,6 +18,7 @@
 #include "FrameworkVersion.h"
 #include "MemoryDll.h"
 #include "ModuleCatalog.h"
+#include "ModuleCustom.h"
 #include "ModuleDocuments.h"
 #include "ModuleManifest.h"
 #include "ModuleVfs.h"
@@ -29,6 +30,8 @@ namespace modmanager {
 namespace {
 
 constexpr const char *kEntrySymbol = "AbcUiModule_Main";
+constexpr const char *kCustomRoot = "abc/abcui/custom";
+constexpr const char *kManifest = "manifest.json";
 
 struct LoadedModule {
   ModuleManifest manifest;
@@ -96,6 +99,13 @@ void retire(LoadedModule &module, bool failedInit = false) {
   ModuleVfs::unmount(module.manifest.id.c_str());
 }
 
+// The custom overlay queues what it finds from any thread, decoders
+// included; the engine console is only written from the main thread.
+void reportCustom() {
+  for (const auto &message : ModuleCustom::takeReports())
+    abc::ConsoleWarn("[AbcUi] %s\n", message.c_str());
+}
+
 struct Candidate {
   ModuleManifest manifest;
   std::string path;
@@ -110,8 +120,14 @@ bool loadModule(Candidate &candidate) {
   module.owner = std::make_shared<module_resources::Owner>(id);
   module.owner->dependencies = candidate.manifest.dependencies;
   module.owner->initializing = true;
+  // Code never comes from a custom file: the manifest was read from the
+  // image itself, and it and the entry are reserved for every later reader.
+  std::vector<std::string> codePaths{kManifest};
+  if (!module.manifest.resourcesOnly)
+    codePaths.push_back(module.manifest.entry);
   if (!ModuleVfs::mount(id.c_str(), std::move(candidate.image),
-                        candidate.manifest.dependencies)) {
+                        candidate.manifest.dependencies,
+                        std::move(codePaths))) {
     abc::ConsoleWarn("[AbcUi] module \"%s\": package mount refused\n",
                      id.c_str());
     recordFailure(module, "package mount refused");
@@ -210,6 +226,9 @@ size_t boot() {
     return loadedCount();
   booted = true;
 
+  // Named before the first mount: each one indexes its module's custom
+  // directory (ModuleCustom.h).
+  ModuleVfs::setCustomRoot(kCustomRoot, abc::ModPath(kCustomRoot).c_str());
   const std::string directory = abc::ModPath("abc/abcui/modules");
   const std::string pattern = directory + "\\*.zip";
   WIN32_FIND_DATAA find{};
@@ -238,8 +257,10 @@ size_t boot() {
     Candidate candidate;
     candidate.image = std::move(image);
     candidate.path = find.cFileName;
+    // Straight from the image, like the entry image in loadModule: code
+    // never comes from a custom file.
     PackageEntry manifestEntry;
-    if (!candidate.image->file().read("manifest.json", manifestEntry, &error)) {
+    if (!candidate.image->file().read(kManifest, manifestEntry, &error)) {
       abc::ConsoleWarn("[AbcUi] module package \"%s\" skipped: %s\n",
                        find.cFileName, error.c_str());
       continue;
@@ -367,6 +388,14 @@ size_t boot() {
                        id.c_str());
   }
 
+  // A custom directory without its module: disabled, failed, or a name that
+  // is not the id of any loaded module. Its files would never be reached.
+  for (const auto &id : ModuleVfs::unmountedCustomIds())
+    abc::ConsoleWarn("[AbcUi] custom directory \"%s/%s\" is not used: no "
+                     "module of that id is loaded\n",
+                     kCustomRoot, id.c_str());
+  reportCustom();
+
   if (loadedIds.empty())
     abc::ConsolePrint("[AbcUi] no ui modules loaded\n");
   else
@@ -425,6 +454,7 @@ void contextReadyAll(Rml::Context *context) {
 
 void frameAll(double frameTime) {
   module_documents::pump(frameTime);
+  reportCustom();
   for (LoadedModule &module : loaded())
     module_resources::invoke(module.owner, "onFrame", module.descriptor.onFrame,
                              frameTime);

@@ -93,14 +93,15 @@ std::vector<std::string> scanModFileBasenames(const char *Directory) {
 namespace {
 std::vector<services::settings::StringChoice> actionModels() {
   std::vector<services::settings::StringChoice> choices;
-  if (!abc::g_pFileSystem)
+  const std::string directory = modelpreview::actionModelDir();
+  if (!abc::g_pFileSystem || directory.empty())
     return choices;
   framework::EngineFileSearch search(*abc::g_pFileSystem);
   auto &handle = search.handle;
-  const std::string mask = std::string(modelpreview::kActionModelDir) + "*.mdl";
+  const std::string mask = directory + "*.mdl";
   const char *name = abc::g_pFileSystem->FindFirst(mask.c_str(), &handle);
   while (name && choices.size() < 512) {
-    const std::string path = std::string(modelpreview::kActionModelDir) + name;
+    const std::string path = directory + name;
     if (!abc::g_pFileSystem->FindIsDirectory(handle) &&
         modelpreview::Options::isModelPath(path)) {
       const std::string stem = std::filesystem::path(name).stem().string();

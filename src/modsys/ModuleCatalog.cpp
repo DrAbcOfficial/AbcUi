@@ -6,6 +6,7 @@
 #include "FrameworkVersion.h"
 #include "ModuleManager.h"
 #include "ModuleManifest.h"
+#include "NativeText.h"
 #include "PackageImage.h"
 
 #include <abc/Console.h>
@@ -83,32 +84,8 @@ bool validFileName(const char *name) {
   return extensionKind(file, enabled);
 }
 
-std::wstring wideFromUtf8(const std::string &text) {
-  if (text.empty())
-    return {};
-  const int length = MultiByteToWideChar(
-      CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()), nullptr, 0);
-  std::wstring wide(static_cast<size_t>(length > 0 ? length : 0), L'\0');
-  if (length > 0) {
-    MultiByteToWideChar(CP_UTF8, 0, text.c_str(), static_cast<int>(text.size()),
-                        wide.data(), length);
-  }
-  return wide;
-}
-
-std::string utf8FromWide(const wchar_t *text) {
-  if (!text || !*text)
-    return {};
-  const int length =
-      WideCharToMultiByte(CP_UTF8, 0, text, -1, nullptr, 0, nullptr, nullptr);
-  if (length <= 1)
-    return {};
-  std::string out(static_cast<size_t>(length), '\0');
-  WideCharToMultiByte(CP_UTF8, 0, text, -1, out.data(), length, nullptr,
-                      nullptr);
-  out.resize(static_cast<size_t>(length - 1));
-  return out;
-}
+using wtext::utf8FromWide;
+using wtext::wideFromUtf8;
 
 std::string moduleDirectory() {
   return abc::ModPath("abc/abcui/modules");

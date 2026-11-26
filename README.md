@@ -58,7 +58,9 @@ These DLLs are not included in the AbcUi archive.
 Character previews follow your selected installed player model after leaving or
 rejoining a game, including models from downloaded and addon content.
 The two menu animation models ship inside the gameui module package and are
-automatically extracted when it loads. No separate model installation is needed.
+automatically extracted to
+`svencoop/abc/abcui/custom/abcui.gameui/models/menu_action/` when it loads.
+No separate model installation is needed.
 
 ## Third-person HUD
 
@@ -207,6 +209,33 @@ restart button that exits and relaunches the game so the pending changes
 apply right away. A forced exit loses the pending changes. Disabling a module
 that others depend on can also disable those modules on the next launch.
 Disabling `abcui.gameui` removes the Modules page itself.
+
+## Custom resources
+
+You can add or replace the files of a UI module without repacking it. Put them
+in `svencoop/abc/abcui/custom/<module id>/`, with the module's id as Settings >
+Modules lists it and the file's path inside the module's `.zip` file:
+
+```text
+svencoop/abc/abcui/custom/abcui.gameui/gameui/scence/video/myclip.mp4
+svencoop/abc/abcui/custom/abcui.gameui/gameui/rml/mainmenu.rml
+svencoop/abc/abcui/custom/abcui.gameui/models/menu_action/mymodel.mdl
+```
+
+A file with the same path as one inside the module replaces it; any other file
+is added. A background movie or menu music track placed there appears in
+Settings > Menu, and an action model placed in `models/menu_action` appears in
+the action model list. Restart the game after adding, replacing or removing
+files.
+
+A file that cannot be read is skipped and the module's own file is used
+instead. The module's manifest and program file always come from the package.
+Links to folders outside are not followed, and the files of a module that is
+not loaded are not used.
+
+The menu action models are extracted only when their files do not exist yet.
+A model you placed there is never overwritten, so when a module update changes
+a packaged model, delete the old file to receive the new one.
 
 ## Build the dist package
 

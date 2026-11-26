@@ -272,6 +272,42 @@ implemented rules the transition must keep:
   `ModuleVfs::unmountAll`; never rename while a package is mounted. The cache
   is intentionally not persisted (an abnormal exit loses it) and a full process
   restart is required. Do not add `FILE_SHARE_DELETE` or live module reloading.
+- Each mounted module layers `abc/abcui/custom/<module-id>/<package path>`
+  over its package: a file there replaces the package entry of the same
+  `mod://<module-id>/<path>` and any other is a new entry, for every reader
+  alike (`ModuleVfs::open`/`openPath`/`readText`/`list`, and through them
+  documents, textures, media, localization and the module VFS section). Code
+  is never overlaid: `manifest.json` and the manifest `entry` are
+  `ModuleVfs::mount`'s `codePaths` and always come from the zip.
+  `ModuleManager::boot` names the root once (`ModuleVfs::setCustomRoot` with
+  `abc::ModPath`); framework code never scans the directory itself - read
+  through the VFS, or take a file's game-relative spelling from
+  `ModuleVfs::customPath`.
+- The overlay is `src/modsys/ModuleCustom.*`: one immutable index per mount,
+  built when the module mounts. No file watching and no hot reload - a file
+  added or removed later counts after a restart - while the bytes of a listed
+  file are read at open into a `PackageEntry` the caller owns, so decoder
+  threads share no state. Only regular files reached without a reparse point
+  are indexed, every open re-checks through `GetFinalPathNameByHandleW` that
+  the file still lies inside the module's custom directory, and a directory
+  name must be the module id exactly. An unreadable custom file is reported
+  once and the package entry is served instead. Reports are queued
+  (`ModuleCustom::report`) and printed by the main thread in
+  `modmanager::boot` and `frameAll`, never from a decoder thread.
+- The packaged menu action models are materialized into the menu module's
+  custom directory because the engine's Studio loader needs a file in the
+  game search path. `modelpreview::actionModelDir()` is their one path source:
+  `apiSetResourceRoot` derives it from the resource root's module id through
+  `ModuleVfs::customPath`, and the bare-spelling resolver (`Options.cpp`),
+  the extraction target (`ActionModels.cpp`) and the settings scan
+  (`SettingsResources.cpp`) all read it - nowhere else does the framework
+  spell the module id for it. `prepareActionModels` writes a model only when
+  its file is missing and renames without replacement: a file already there,
+  the user's or one an earlier run wrote, is never rewritten, and through the
+  overlay it shadows the packaged model, so a packaged model changed by a
+  module upgrade stays shadowed until that file is deleted. The old
+  `abc/abcui/models/menu_action/` is neither read nor written; its files are
+  left alone.
 - Module panel descriptors are kept for the whole process and every
   HUD_Init cycle builds fresh wrappers: `PanelManager::shutdown` destroys the
   panel list on every HUD_Shutdown, so taking the wrappers once would lose

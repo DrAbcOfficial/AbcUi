@@ -584,9 +584,9 @@ void GameUiModule::onInit() {
   abc::CREATE_CVAR("abc_ui_menu_model_path", "", abc::FCVAR_VALUE, nullptr);
   // The card's action group (the stance model that poses the displayed model
   // and the weapon), its sequence, and the weapon model merged onto it. A
-  // bare action spelling lives in abc/abcui/models/menu_action/. A weapon
-  // requires its complete game-relative .mdl path, used verbatim; empty
-  // means no weapon.
+  // bare action spelling lives in the module's custom directory
+  // (modelpreview::actionModelDir). A weapon requires its complete
+  // game-relative .mdl path, used verbatim; empty means no weapon.
   abc::CREATE_CVAR("abc_ui_menu_action_model", "display_male", abc::FCVAR_VALUE,
                    nullptr);
   abc::CREATE_CVAR("abc_ui_menu_model_sequence", "0", abc::FCVAR_VALUE,

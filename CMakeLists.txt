@@ -176,6 +176,7 @@ add_library(AbcUi MODULE
     src/modsys/PackageFile.cpp
     src/modsys/PackageImage.cpp
     src/modsys/ModuleVfs.cpp
+    src/modsys/ModuleCustom.cpp
     src/modsys/MemoryDll.cpp
     src/modsys/ModuleManifest.cpp
     src/modsys/ModulePanel.cpp

@@ -23,13 +23,20 @@
 
 namespace framework {
 
+// The largest entry served, packaged or custom: a decoder holds all of it.
+constexpr size_t kMaxEntryBytes = 128u * 1024u * 1024;
+
 // One opened entry. `data` points into the mapped package for zero-copy
-// entries and into `owned` for extracted ones; `owned` must outlive the use
-// of the view.
+// entries, into `owned` for extracted ones and into `custom` for a custom
+// file; the owning member must outlive the use of the view.
 struct PackageEntry {
   const void *data = nullptr;
   size_t size = 0;
+  // Extracted package content (a miniz heap block).
   std::unique_ptr<std::byte[], void (*)(void *)> owned{nullptr, mz_free};
+  // The bytes of a custom file (see ModuleCustom.h): private to this entry,
+  // so a view a decoder thread holds depends on no shared buffer.
+  std::unique_ptr<std::byte[]> custom;
   // VFS views retain the backing mapping even if its provider is retired.
   std::shared_ptr<const void> mappingPin;
 };

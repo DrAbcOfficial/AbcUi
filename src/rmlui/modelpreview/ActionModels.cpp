@@ -3,9 +3,7 @@
 
 #include "modsys/ModuleVfs.h"
 #include <abc/Console.h>
-#include <abc/Paths.h>
 
-#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string>
@@ -18,20 +16,6 @@ namespace {
 
 bool materialize(const framework::PackageEntry &entry,
                  const std::filesystem::path &path) {
-  if (path.empty())
-    return false;
-  // Do not rewrite unchanged files, including while the engine has them open.
-  std::ifstream current(path, std::ios::binary | std::ios::ate);
-  if (current && current.tellg() == static_cast<std::streamoff>(entry.size)) {
-    std::string bytes(entry.size, '\0');
-    current.seekg(0);
-    if (current.read(bytes.data(),
-                     static_cast<std::streamsize>(bytes.size())) &&
-        std::equal(bytes.begin(), bytes.end(),
-                   static_cast<const char *>(entry.data)))
-      return true;
-  }
-  current.close();
   std::error_code error;
   std::filesystem::create_directories(path.parent_path(), error);
   if (error)
@@ -44,9 +28,9 @@ bool materialize(const framework::PackageEntry &entry,
   output.write(static_cast<const char *>(entry.data),
                static_cast<std::streamsize>(entry.size));
   output.close();
-  const bool complete =
-      output && MoveFileExW(temporary.c_str(), path.c_str(),
-                            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH);
+  // Without replacement: a file that appeared meanwhile stays.
+  const bool complete = output && MoveFileExW(temporary.c_str(), path.c_str(),
+                                              MOVEFILE_WRITE_THROUGH);
   if (!complete)
     std::filesystem::remove(temporary, error);
   return complete;
@@ -54,7 +38,12 @@ bool materialize(const framework::PackageEntry &entry,
 
 } // namespace
 
-void prepareActionModels(const char *directory) {
+void prepareActionModels(const char *directory, const NativePath &path) {
+  const std::string target = actionModelDir();
+  // Without the directory (no resource root declared) there is nowhere to
+  // write to.
+  if (target.empty())
+    return;
   std::string prefix = directory;
   if (!prefix.ends_with('/'))
     prefix += '/';
@@ -63,11 +52,17 @@ void prepareActionModels(const char *directory) {
     // Only direct model children; archive paths never become output paths.
     if (name.find('/') != std::string::npos || !Options::isModelPath(name))
       continue;
+    // A file already there is the user's, or one an earlier run wrote: it
+    // is never rewritten, and through the overlay it replaces this entry.
+    const std::string native = path ? path(target + name) : std::string();
+    std::error_code error;
+    if (!native.empty() && std::filesystem::exists(native, error))
+      continue;
     framework::PackageEntry entry;
-    if (!framework::ModuleVfs::open(uri.c_str(), entry, nullptr) ||
+    if (native.empty() ||
+        !framework::ModuleVfs::open(uri.c_str(), entry, nullptr) ||
         entry.size == 0 || entry.size > 16 * 1024 * 1024 ||
-        !materialize(
-            entry, abc::ModPath((std::string(kActionModelDir) + name).c_str())))
+        !materialize(entry, native))
       abc::ConsoleWarn("[AbcUi] menu action model unavailable: %s\n",
                        name.c_str());
   }

@@ -1,8 +1,14 @@
 // framework::ModuleVfs implementation - see ModuleVfs.h.
 #include "ModuleVfs.h"
 
-#include <map>
+#include "ModuleCustom.h"
+#include "ModulePath.h"
+
 #include <algorithm>
+#include <map>
+#include <ranges>
+#include <set>
+#include <utility>
 #include <vector>
 
 namespace framework {
@@ -14,6 +20,8 @@ constexpr std::string_view kScheme = "mod://";
 struct Mount {
   std::shared_ptr<PackageImage> image;
   std::vector<std::string> dependencies;
+  // Null while the module has no usable custom directory.
+  std::unique_ptr<const ModuleCustom> custom;
 };
 
 std::map<std::string, Mount> &mounts() {
@@ -21,42 +29,50 @@ std::map<std::string, Mount> &mounts() {
   return instance;
 }
 
-// Canonical package path: '/' separators, no '.', '..' or repeated
-// separators. Returns false for paths escaping the root.
-bool normalizePath(std::string_view path, std::string &out) {
-  if (path.empty() || path.front() == '/' ||
-      path.find_first_of("\\:\0?#", 0, 5) != std::string_view::npos)
-    return false;
-  for (const unsigned char c : path)
-    if (c < 0x20 || c == 0x7f)
-      return false;
-  std::vector<std::string_view> segments;
-  size_t start = 0;
-  while (start <= path.size()) {
-    size_t end = path.find('/', start);
-    if (end == std::string_view::npos)
-      end = path.size();
-    const std::string_view segment = path.substr(start, end - start);
-    start = end + 1;
-    if (segment.empty() || segment == ".")
-      continue;
-    if (segment == "..") {
-      if (segments.empty())
-        return false;
-      segments.pop_back();
-      continue;
-    }
-    segments.push_back(segment);
+// The custom root since setCustomRoot named it. Its directories are read
+// once, by their exact names: a name is used only as the id it spells.
+struct CustomRoot {
+  std::string relative; // "abc/abcui/custom"
+  std::string absolute; // the same directory for the file APIs
+  std::vector<ModuleCustom::Folder> directories;
+};
+
+CustomRoot &customRoot() {
+  static CustomRoot instance;
+  return instance;
+}
+
+// The module's overlay: null while it has no custom directory, which is
+// the ordinary case and is reported for nothing.
+std::unique_ptr<const ModuleCustom>
+indexCustom(const char *moduleId, const std::vector<std::string> &codePaths) {
+  const auto &root = customRoot();
+  if (root.absolute.empty())
+    return nullptr;
+  const auto directory = std::ranges::find(root.directories, moduleId,
+                                           &ModuleCustom::Folder::name);
+  if (directory == root.directories.end())
+    return nullptr;
+  const std::string module = std::string("module \"") + moduleId + "\"";
+  if (directory->link) {
+    ModuleCustom::report(module +
+                         ": its custom directory is a link, so its files are "
+                         "not used");
+    return nullptr;
   }
-  if (segments.empty())
-    return false;
-  out.clear();
-  for (const std::string_view segment : segments) {
-    if (!out.empty())
-      out.push_back('/');
-    out.append(segment);
+  std::set<std::string> reserved;
+  for (const auto &path : codePaths) {
+    std::string normalized;
+    if (modulePath::normalize(path, normalized))
+      reserved.insert(std::move(normalized));
   }
-  return true;
+  std::string failure;
+  auto custom = ModuleCustom::index(root.absolute + "\\" + directory->name,
+                                    moduleId, reserved, failure);
+  if (!custom && !failure.empty())
+    ModuleCustom::report(module + ": its custom directory is not used (" +
+                         failure + ")");
+  return custom;
 }
 
 } // namespace
@@ -65,8 +81,23 @@ bool isModuleUri(std::string_view uri) {
   return uri.size() > kScheme.size() && uri.starts_with(kScheme);
 }
 
+void setCustomRoot(const char *directory, const char *absolute) {
+  auto &root = customRoot();
+  root = {};
+  // An empty path (no game directory yet) would address the drive root.
+  if (!directory || !absolute || !*absolute)
+    return;
+  std::string relative;
+  if (!modulePath::normalize(directory, relative))
+    return;
+  root.relative = std::move(relative);
+  root.absolute = absolute;
+  root.directories = ModuleCustom::rootDirectories(absolute);
+}
+
 bool mount(const char *moduleId, std::unique_ptr<PackageImage> image,
-           std::vector<std::string> dependencies) {
+           std::vector<std::string> dependencies,
+           std::vector<std::string> codePaths) {
   if (!moduleId || !*moduleId || !image)
     return false;
   auto &table = mounts();
@@ -75,6 +106,7 @@ bool mount(const char *moduleId, std::unique_ptr<PackageImage> image,
   Mount entry;
   entry.image = std::move(image);
   entry.dependencies = std::move(dependencies);
+  entry.custom = indexCustom(moduleId, codePaths);
   table.emplace(moduleId, std::move(entry));
   return true;
 }
@@ -104,6 +136,16 @@ std::vector<std::string> mountedIds() {
   return ids;
 }
 
+std::vector<std::string> unmountedCustomIds() {
+  std::vector<std::string> ids;
+  for (const auto &directory : customRoot().directories)
+    if (!mounts().contains(directory.name))
+      ids.push_back(directory.name);
+  // The directory order is the file system's; the report is ours.
+  std::sort(ids.begin(), ids.end());
+  return ids;
+}
+
 bool open(const char *uri, PackageEntry &out, std::string *error) {
   out = {};
   if (!uri || !isModuleUri(uri)) {
@@ -120,7 +162,7 @@ bool open(const char *uri, PackageEntry &out, std::string *error) {
   }
   const std::string moduleId(rest.substr(0, slash));
   std::string path;
-  if (!normalizePath(rest.substr(slash + 1), path)) {
+  if (!modulePath::normalize(rest.substr(slash + 1), path)) {
     if (error)
       *error = "module uri path is invalid";
     return false;
@@ -144,14 +186,23 @@ bool openPath(const char *moduleId, const char *path, PackageEntry &out,
     return false;
   }
   std::string normalized;
-  if (!normalizePath(path, normalized)) {
+  if (!modulePath::normalize(path, normalized)) {
     if (error)
       *error = "invalid package path";
     return false;
   }
-  if (!it->second.image->file().read(normalized.c_str(), out, error))
+  const auto &mount = it->second;
+  // A custom file replaces the package entry of its path; one that cannot
+  // be read counts as absent, and the package entry is served instead.
+  if (mount.custom && mount.custom->contains(normalized)) {
+    if (mount.custom->read(normalized, out, error))
+      return true;
+    if (error)
+      error->clear();
+  }
+  if (!mount.image->file().read(normalized.c_str(), out, error))
     return false;
-  out.mappingPin = it->second.image;
+  out.mappingPin = mount.image;
   return true;
 }
 
@@ -174,7 +225,8 @@ bool resolve(std::string_view base, std::string_view path, std::string &uri) {
   if (id.find_first_not_of("abcdefghijklmnopqrstuvwxyz0123456789.") != id.npos)
     return false;
   std::string normalized;
-  if (!normalizePath(std::string_view(input).substr(slash + 1), normalized))
+  if (!modulePath::normalize(std::string_view(input).substr(slash + 1),
+                             normalized))
     return false;
   uri = input.substr(0, slash + 1) + normalized;
   if (isModuleUri(base)) {
@@ -220,13 +272,19 @@ std::vector<std::string> list(const char *directory) {
   if (it == mounts().end())
     return result;
   const auto prefix = canonical.substr(slash + 1);
-  const auto &file = it->second.image->file();
+  const auto &mount = it->second;
+  const auto &file = mount.image->file();
   for (size_t i = 0; i < file.entryCount(); ++i) {
     auto name = file.entryName(i);
     if (name.starts_with(prefix) && !name.ends_with('/'))
       result.push_back(canonical.substr(0, slash + 1) + name);
   }
+  if (mount.custom)
+    for (const auto &name : mount.custom->paths(prefix))
+      result.push_back(canonical.substr(0, slash + 1) + name);
+  // One entry per path: a custom file takes the place of the package entry.
   std::sort(result.begin(), result.end());
+  result.erase(std::unique(result.begin(), result.end()), result.end());
   return result;
 }
 
@@ -238,6 +296,24 @@ bool readText(const char *uri, std::string &out, size_t maxBytes) {
   out.assign(static_cast<const char *>(entry.data), entry.size);
   if (out.starts_with("\xef\xbb\xbf"))
     out.erase(0, 3);
+  return true;
+}
+
+bool customPath(const char *uri, std::string &out) {
+  out.clear();
+  const auto &root = customRoot();
+  if (root.relative.empty() || !uri || !isModuleUri(uri))
+    return false;
+  const std::string_view rest(uri + kScheme.size());
+  const auto slash = rest.find('/');
+  if (slash == std::string_view::npos || slash == 0)
+    return false;
+  const std::string id(rest.substr(0, slash));
+  std::string path;
+  if (!mounts().contains(id) ||
+      !modulePath::normalize(rest.substr(slash + 1), path))
+    return false;
+  out = root.relative + "/" + id + "/" + path;
   return true;
 }
 
