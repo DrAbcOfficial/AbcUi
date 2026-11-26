@@ -1,11 +1,13 @@
 // abc_ui_menu_action_models - where a bare action model spelling resolves
-// and how the packaged stance models reach the disk (issue 35). The
-// directory is one source shared by the resolver, the extraction and the
-// settings scan, and follows the menu module's id into its custom mount.
-// The extraction writes a model only when its file is missing, so a user's
-// model of the same name is never rewritten. The package is built in memory
-// (framework/PackageFixture.h) and the custom root is a scratch directory,
-// which stands in for the engine's file system as well.
+// and how the packaged stance models reach the disk (issue 35). The groups
+// live in the menu module's custom directory, one source shared by the
+// extraction and the settings scan and derived from the module's id. The
+// extraction writes a model only when its file is missing, so a user's model
+// of the same name is never rewritten. The engine cannot name a model under
+// that directory (its names are capped at MAX_MODEL_NAME), so it loads a
+// short mirror of it that follows the directory. The package is built in
+// memory (framework/PackageFixture.h) and the scratch tree stands in for the
+// engine's file system as well.
 #include "framework/PackageFixture.h"
 #include "framework/TestEnvironment.h"
 #include "framework/TestHarness.h"
@@ -17,6 +19,7 @@
 #include "rmlui/modelpreview/ActionModels.h"
 #include "rmlui/modelpreview/Options.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -34,9 +37,11 @@ using modelpreview::resolveActionModelPath;
 
 constexpr const char *kModels = "mod://abcui.gameui/models/menu_action";
 constexpr const char *kRelative = "abc/abcui/custom";
-// The path the issue names for abcui.gameui.
-constexpr const char *kDirectory =
+// The path the issue names for abcui.gameui: where the groups live.
+constexpr std::string_view kDirectory =
     "abc/abcui/custom/abcui.gameui/models/menu_action/";
+// Where the engine loads them from.
+constexpr std::string_view kLoadDir = "abc/abcui/cache/menu_action/";
 
 const std::vector<abctest::FixtureEntry> kGameUiPackage{
     {"manifest.json", "GAMEUI-MANIFEST"},
@@ -65,9 +70,20 @@ std::string read(const fs::path &path) {
           std::istreambuf_iterator<char>()};
 }
 
-// A scratch tree: the package on disk and the custom root. In the game the
-// engine's file system reaches a custom file under the same relative path
-// the VFS names, so one directory plays both here.
+// The file names directly in `directory`, sorted; none while it is absent.
+std::vector<std::string> files(const fs::path &directory) {
+  std::vector<std::string> names;
+  std::error_code error;
+  for (fs::directory_iterator it(directory, error), end; it != end;
+       it.increment(error))
+    names.push_back(it->path().filename().string());
+  std::sort(names.begin(), names.end());
+  return names;
+}
+
+// A scratch tree: the package on disk, the custom root and the mirror.
+// In the game the engine's file system reaches these under the same
+// relative paths the framework spells them with.
 struct Fixture {
   abctest::TempDir scratch{"abcui-action"};
   fs::path packages = scratch.path() / "packages";
@@ -78,16 +94,29 @@ struct Fixture {
     return custom / "abcui.gameui" / "models" / "menu_action";
   }
 
-  // abc::ModPath for the scratch tree: the file-API path of an
-  // engine-relative one below the custom root.
+  // The engine's mirror of it.
+  fs::path mirror() const {
+    return scratch.path() / "cache" / "menu_action";
+  }
+
+  // abc::ModPath for the scratch tree.
   modelpreview::NativePath native() const {
-    const std::string root = std::string(kRelative) + "/";
-    return [base = custom.wstring(), root](const std::string &relative) {
-      if (!relative.starts_with(root))
-        return std::string();
-      const std::wstring suffix =
-          framework::wtext::wideFromUtf8(relative.substr(root.size()));
-      return framework::wtext::utf8FromWide(base + L"\\" + suffix);
+    struct Root {
+      std::string_view game;
+      std::wstring disk;
+    };
+    const std::vector<Root> roots{
+        {std::string_view("abc/abcui/custom/"), custom.wstring()},
+        {std::string_view("abc/abcui/cache/"),
+         (scratch.path() / "cache").wstring()}};
+    return [roots](const std::string &relative) {
+      for (const Root &root : roots)
+        if (relative.starts_with(root.game))
+          return framework::wtext::utf8FromWide(
+              root.disk + L"\\" +
+              framework::wtext::wideFromUtf8(
+                  relative.substr(root.game.size())));
+      return std::string();
     };
   }
 };
@@ -111,23 +140,29 @@ void setUp(const Fixture &fixture) {
   modelpreview::setActionModelDir(directory + "/");
 }
 
+// What the menuconfig api runs when the menu module declares its root.
+void prepare(const Fixture &fixture) {
+  modelpreview::prepareActionModels(kModels, fixture.native());
+  modelpreview::mirrorActionModels(fixture.native());
+}
+
 } // namespace
 
 int main() {
   {
-    TEST_CASE("bare-spelling-names-a-file-of-the-directory");
-    modelpreview::setActionModelDir(kDirectory);
+    TEST_CASE("bare-spelling-names-a-file-of-the-mirror");
+    modelpreview::setActionModelDir(std::string(kDirectory));
     CHECK(resolveActionModelPath("display_female", {}) ==
-          std::string(kDirectory) + "display_female.mdl");
+          std::string(kLoadDir) + "display_female.mdl");
     CHECK(resolveActionModelPath("my_group", {}) ==
-          std::string(kDirectory) + "my_group.mdl");
+          std::string(kLoadDir) + "my_group.mdl");
     // An empty spelling is the default group.
     CHECK(resolveActionModelPath("", {}) ==
-          std::string(kDirectory) + "display_male.mdl");
+          std::string(kLoadDir) + "display_male.mdl");
   }
   {
     TEST_CASE("mdl-path-is-used-verbatim");
-    modelpreview::setActionModelDir(kDirectory);
+    modelpreview::setActionModelDir(std::string(kDirectory));
     // A complete path is any game model path, whatever directory it names.
     for (const char *spelling :
          {"models/player/foo/foo.mdl", "abc/abcui/models/menu_action/x.mdl"}) {
@@ -136,21 +171,21 @@ int main() {
   }
   {
     TEST_CASE("unusable-spelling-selects-the-default-group");
-    modelpreview::setActionModelDir(kDirectory);
+    modelpreview::setActionModelDir(std::string(kDirectory));
     for (const char *spelling :
          {"../evil.mdl", "C:/evil.mdl", "..\\evil.mdl", "models//evil"}) {
       CHECK(resolveActionModelPath(spelling, {}) ==
-            std::string(kDirectory) + "display_male.mdl");
+            std::string(kLoadDir) + "display_male.mdl");
     }
   }
   {
     TEST_CASE("group-the-engine-cannot-see-is-not-presented");
-    modelpreview::setActionModelDir(kDirectory);
+    modelpreview::setActionModelDir(std::string(kDirectory));
     const auto present =
         resolveActionModelPath("display_male", [](const std::string &path) {
-          return path == std::string(kDirectory) + "display_male.mdl";
+          return path == std::string(kLoadDir) + "display_male.mdl";
         });
-    CHECK(present == std::string(kDirectory) + "display_male.mdl");
+    CHECK(present == std::string(kLoadDir) + "display_male.mdl");
     CHECK(resolveActionModelPath("nobody", [](const std::string &) {
             return false;
           }).empty());
@@ -173,7 +208,35 @@ int main() {
     // spelled in the framework for it.
     CHECK(modelpreview::actionModelDir() == kDirectory);
     CHECK(resolveActionModelPath("display_male", {}) ==
-          "abc/abcui/custom/abcui.gameui/models/menu_action/display_male.mdl");
+          std::string(kLoadDir) + "display_male.mdl");
+  }
+  {
+    TEST_CASE("model-names-fit-the-engine");
+    // The reason for the mirror: under the directory a packaged group's name
+    // is already past what the engine can hold, under the mirror there is
+    // room for a stem of thirty-one characters.
+    const std::string_view female = "display_female.mdl";
+    CHECK(kDirectory.size() + female.size() >
+          modelpreview::kActionModelNameMax);
+    CHECK(kLoadDir.size() + female.size() <= modelpreview::kActionModelNameMax);
+    const std::string longest(modelpreview::kActionModelNameMax -
+                                  kLoadDir.size() -
+                                  std::string_view(".mdl").size(),
+                              'a');
+    CHECK(resolveActionModelPath(longest, {}) ==
+          std::string(kLoadDir) + longest + ".mdl");
+    // One character more is an unusable spelling, like any other: the
+    // default group, never a truncated model.
+    CHECK(resolveActionModelPath(longest + "a", {}) ==
+          std::string(kLoadDir) + "display_male.mdl");
+    // Only a plain stem names a file of the mirror.
+    CHECK(modelpreview::actionModelLoadPath("").empty());
+    CHECK(modelpreview::actionModelLoadPath("../evil").empty());
+    CHECK(modelpreview::actionModelLoadPath("dir/name").empty());
+    CHECK(modelpreview::actionModelLoadPath("c:evil").empty());
+    // An explicit path the engine cannot name selects the default group.
+    CHECK(resolveActionModelPath(std::string(60, 'm') + "/x.mdl", {}) ==
+          std::string(kLoadDir) + "display_male.mdl");
   }
   {
     TEST_CASE("packaged-models-are-written-when-missing");
@@ -185,10 +248,7 @@ int main() {
           "PACKAGED-FEMALE");
     // Only the direct model children: nothing else is written and no
     // temporary file stays behind.
-    std::vector<std::string> listed;
-    for (const auto &entry : fs::directory_iterator(fixture.directory()))
-      listed.push_back(entry.path().filename().string());
-    CHECK((listed ==
+    CHECK((files(fixture.directory()) ==
            std::vector<std::string>{"display_female.mdl", "display_male.mdl"}));
     CHECK(!fs::exists(fixture.directory() / "nested"));
     CHECK(!fs::exists(fixture.directory() / "notes.txt"));
@@ -233,7 +293,9 @@ int main() {
     setUp(fixture);
     // No path for the engine-relative spelling: nothing is written.
     modelpreview::prepareActionModels(kModels, {});
+    modelpreview::mirrorActionModels({});
     CHECK(!fs::exists(fixture.directory()));
+    CHECK(!fs::exists(fixture.mirror()));
     // A path that cannot become a directory, a file being in the way.
     const fs::path blocker = fixture.scratch.path() / "blocker";
     write(blocker, "FILE");
@@ -241,12 +303,100 @@ int main() {
       return framework::wtext::utf8FromWide(
           (blocker / "models" / "x.mdl").wstring());
     });
+    modelpreview::mirrorActionModels([&](const std::string &) {
+      return framework::wtext::utf8FromWide(
+          (blocker / "menu_action" / "x.mdl").wstring());
+    });
     CHECK(read(blocker) == "FILE");
     CHECK(!fs::exists(fixture.directory()));
     // Without an action model directory there is nowhere to write to.
     modelpreview::setActionModelDir({});
     modelpreview::prepareActionModels(kModels, fixture.native());
+    modelpreview::mirrorActionModels(fixture.native());
     CHECK(!fs::exists(fixture.directory()));
+    CHECK(!fs::exists(fixture.mirror()));
+  }
+  {
+    TEST_CASE("mirror-holds-the-directorys-models");
+    Fixture fixture;
+    // The user's models, there before the module mounts.
+    write(fixture.directory() / "display_female.mdl", "USER-FEMALE");
+    write(fixture.directory() / "mine.mdl", "USER-MINE");
+    write(fixture.directory() / "notes.txt", "NOT-A-MODEL");
+    setUp(fixture);
+    prepare(fixture);
+    CHECK(read(fixture.mirror() / "display_male.mdl") == "PACKAGED-MALE");
+    CHECK(read(fixture.mirror() / "display_female.mdl") == "USER-FEMALE");
+    CHECK(read(fixture.mirror() / "mine.mdl") == "USER-MINE");
+    // Only the directory's direct models: nothing nested, nothing else, no
+    // temporary file.
+    CHECK((files(fixture.mirror()) ==
+           std::vector<std::string>{"display_female.mdl", "display_male.mdl",
+                                    "mine.mdl"}));
+    // The mirror is a copy: the directory itself is left as it was.
+    CHECK(read(fixture.directory() / "display_male.mdl") == "PACKAGED-MALE");
+    CHECK(read(fixture.directory() / "display_female.mdl") == "USER-FEMALE");
+  }
+  {
+    TEST_CASE("mirror-follows-the-directory");
+    Fixture fixture;
+    setUp(fixture);
+    prepare(fixture);
+    // Nothing changed in the directory: the copy is not rewritten.
+    const auto written =
+        fs::last_write_time(fixture.mirror() / "display_male.mdl");
+    prepare(fixture);
+    CHECK(fs::last_write_time(fixture.mirror() / "display_male.mdl") ==
+          written);
+
+    // Changed in the directory - the user's edit - : copied over.
+    write(fixture.directory() / "display_male.mdl", "EDITED-MALE");
+    prepare(fixture);
+    CHECK(read(fixture.mirror() / "display_male.mdl") == "EDITED-MALE");
+
+    // Added to the directory: copied, and loadable by its bare stem.
+    write(fixture.directory() / "mine.mdl", "USER-MINE");
+    prepare(fixture);
+    CHECK(read(fixture.mirror() / "mine.mdl") == "USER-MINE");
+    CHECK(resolveActionModelPath("mine", {}) ==
+          std::string(kLoadDir) + "mine.mdl");
+
+    // Removed from the directory: its copy goes with it. A user's model is
+    // the case to use: a packaged one the extraction would put back.
+    std::error_code removed;
+    fs::remove(fixture.directory() / "mine.mdl", removed);
+    CHECK(!removed);
+    modelpreview::mirrorActionModels(fixture.native());
+    CHECK(!fs::exists(fixture.mirror() / "mine.mdl"));
+
+    // A stem the engine cannot name gets no copy; the others are untouched.
+    const std::string tooLong(32, 'b');
+    write(fixture.directory() / (tooLong + ".mdl"), "TOO-LONG");
+    prepare(fixture);
+    CHECK(!fs::exists(fixture.mirror() / (tooLong + ".mdl")));
+    CHECK((files(fixture.mirror()) ==
+           std::vector<std::string>{"display_female.mdl", "display_male.mdl"}));
+
+    // A temporary file an interrupted copy left does not survive a sync.
+    write(fixture.directory() / "mine.mdl", "USER-MINE");
+    prepare(fixture);
+    write(fixture.mirror() / "mine.mdl.tmp", "PARTIAL");
+    prepare(fixture);
+    CHECK(!fs::exists(fixture.mirror() / "mine.mdl.tmp"));
+    CHECK(read(fixture.mirror() / "mine.mdl") == "USER-MINE");
+  }
+  {
+    TEST_CASE("mirror-without-a-directory-removes-its-copies");
+    Fixture fixture;
+    setUp(fixture);
+    prepare(fixture);
+    CHECK(files(fixture.mirror()).size() == 2);
+    // The directory is gone (the user removed it): the mirror follows. The
+    // extraction is not part of this step, or it would fill it again.
+    std::error_code error;
+    fs::remove_all(fixture.directory(), error);
+    modelpreview::mirrorActionModels(fixture.native());
+    CHECK(files(fixture.mirror()).empty());
   }
   return abctest::finish("abc_ui_menu_action_models");
 }

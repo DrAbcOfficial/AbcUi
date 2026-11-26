@@ -67,6 +67,10 @@ void onMenuPaint(void *, const void *payload) {
   if (!Api->settings)
     return;
   ensureSkeleton();
+  // The preview's camera follows the card's shape, so it is named again
+  // once the first layout is in, and whenever the shape changes.
+  if (hasComponent("model-preview"))
+    projectModelPreviewCamera();
   // Model beats that need a per-frame check (cheap while nothing is
   // pending): the bind apply's queued rows and the command-channel settle.
   if (Api->settings->bindHasQueued())

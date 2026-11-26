@@ -41,7 +41,8 @@
 	     (read by gameui::engine::playerCardFacts). src / action-src / weapon /
      sequence are all projected from those engine facts every beat: the
      action group (abc_ui_menu_action_model, a file of the module's custom
-     directory, abc/abcui/custom/abcui.gameui/models/menu_action/<name>.mdl)
+     directory, abc/abcui/custom/abcui.gameui/models/menu_action/<name>.mdl,
+     loaded through AbcUi's short copy of it, abc/abcui/cache/menu_action/)
 	     poses the displayed model and the weapon (abc_ui_menu_weapon_model,
 	     empty = no weapon) through the follow chain, and
 	     abc_ui_menu_model_sequence picks the group's stance. origin / angles,
@@ -55,7 +56,7 @@
 		     it. The light shines directly onto the model's front: its ray is
 		     opposite the forward vector at the entity's -8 degree yaw. -->
 		<model id="player-model" src="models/player.mdl" sequence="0" animate="true" angles="0 -8 0"
-			action-src="abc/abcui/custom/abcui.gameui/models/menu_action/display_male.mdl" weapon="models/p_m16.mdl"
+			action-src="abc/abcui/cache/menu_action/display_male.mdl" weapon="models/p_m16.mdl"
 			controllers="127 127 127 127" blending="127 127"
 			camera-origin="121 -70 55" camera-angles="16 150 -3" fov="40"
 			ambient="96" shade="110" light-color="1 0.960784 0.901961" light-direction="-0.990268 0.139173 0"/>

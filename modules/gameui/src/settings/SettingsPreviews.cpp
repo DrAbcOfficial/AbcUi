@@ -3,6 +3,7 @@
 
 #include "../shared/PageShared.h"
 #include "SettingsInternal.h"
+#include "ModelPreviewCamera.h"
 
 #include <cstdio>
 #include <format>
@@ -11,6 +12,24 @@
 namespace settingspage {
 
 // ------------------------------------------------------------ previews -----
+
+void projectModelPreviewCamera() {
+  if (!Page)
+    return;
+  AbcUiElement *preview = node("model-preview");
+  if (!preview)
+    return;
+  float width = 0.0f;
+  float height = 0.0f;
+  // No layout yet: the document's own camera stays.
+  if (Api->ui->elementOffsetSize(preview, &width, &height) != ABCUI_OK ||
+      width <= 0.0f || height <= 0.0f)
+    return;
+  const std::string origin =
+      std::format("{:.1f} 0 0", modelPreviewDistance(width, height));
+  if (attributeOf(preview, "camera-origin") != origin)
+    Api->ui->elementSetAttribute(preview, "camera-origin", origin.c_str());
+}
 
 void setPreviewSource(const char *id, const std::string &uri) {
   AbcUiElement *image = node(id);
@@ -50,6 +69,7 @@ void renderPreviews() {
       if (attributeOf(preview, "src") != path)
         Api->ui->elementSetAttribute(preview, "src", path.c_str());
     }
+    projectModelPreviewCamera();
   }
   // The engine's stored colour token ("#abcui.gameui/Valve_Ltblue") normalizes
   // to the bare palette name the preview decoder expects.

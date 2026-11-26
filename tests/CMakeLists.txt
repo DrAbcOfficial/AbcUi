@@ -395,9 +395,10 @@ abcui_add_test(abc_ui_module_vfs
     DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
 
 # The menu action models: one directory (the menu module's custom mount,
-# derived from its id) behind the bare-spelling resolver, the extraction and
-# the settings scan, and an extraction that writes a model only when its file
-# is missing (issue 35).
+# derived from its id) behind the extraction and the settings scan; an
+# extraction that writes a model only when its file is missing; and the short
+# mirror the engine loads from, since a model name under the directory is
+# past the engine's own limit (issue 35).
 abcui_add_test(abc_ui_menu_action_models
     SOURCES MenuActionModels.cpp
             "${SRC}/rmlui/modelpreview/Options.cpp"
@@ -408,6 +409,14 @@ abcui_add_test(abc_ui_menu_action_models
             "${SRC}/modsys/PackageImage.cpp"
     LIBRARIES Abc::Core abcui_miniz
     DEFINITIONS NOMINMAX WIN32_LEAN_AND_MEAN)
+
+# The camera distance the settings page names for its player model preview:
+# it follows the card's shape, so the same ninety units stay in view whether
+# the card is short and wide or nearly square (the <model> camera itself
+# stays explicit, issue 36).
+abcui_add_test(abc_ui_model_preview_camera
+    SOURCES ModelPreviewCamera.cpp
+    INCLUDE_DIRS "${PROJECT_SOURCE_DIR}/modules/gameui/src/settings")
 
 # --- RmlUi page and document tests -------------------------------------------
 abcui_add_test(abc_ui_interactive

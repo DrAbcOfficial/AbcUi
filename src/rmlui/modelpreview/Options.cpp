@@ -96,6 +96,16 @@ const std::string &actionModelDir() {
   return actionModelDirectory();
 }
 
+std::string actionModelLoadPath(std::string_view Spelling) {
+  const std::string Name = std::string(Spelling) + ".mdl";
+  // A plain file name of the mirror, and one the engine can hold.
+  if (Spelling.empty() || !Options::isModelPath(Name) ||
+      Name.find('/') != std::string::npos ||
+      kActionModelLoadDir.size() + Name.size() > kActionModelNameMax)
+    return {};
+  return std::string(kActionModelLoadDir) + Name;
+}
+
 namespace {
 // One spelling through the models/player/ directory grammar.
 std::string spell(std::string_view Name) {
@@ -131,19 +141,24 @@ std::string resolveActionModelPath(std::string_view Spelling,
                                    const ModelExists &Exists) {
   if (Spelling.empty())
     Spelling = kActionModelDefault;
-  const std::string &Directory = actionModelDir();
   const bool Group =
       !isMdlExtension(Spelling) && Spelling.find('/') == std::string_view::npos;
   // A bare spelling is a file of the action model directory; without one no
   // group exists to name.
-  if (Group && Directory.empty())
+  if (Group && actionModelDir().empty())
     return {};
-  std::string Resolved = Group ? Directory + std::string(Spelling) + ".mdl"
-                               : std::string(Spelling);
+  std::string Resolved =
+      Group ? actionModelLoadPath(Spelling) : std::string(Spelling);
+  // Whatever the spelling, the engine has to be able to name the model: a
+  // longer one it would truncate into something it cannot load.
+  if (Resolved.size() > kActionModelNameMax)
+    Resolved.clear();
   if (!Options::isModelPath(Resolved)) {
-    if (Directory.empty())
+    if (actionModelDir().empty())
       return {};
-    Resolved = Directory + kActionModelDefault + ".mdl";
+    Resolved = actionModelLoadPath(kActionModelDefault);
+    if (Resolved.empty())
+      return {};
   }
   // A group the engine cannot see is not presented: the card degrades to the
   // displayed model drawing alone instead of an invisible body.

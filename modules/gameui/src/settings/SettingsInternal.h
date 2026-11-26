@@ -388,6 +388,9 @@ void renderVoiceSection();
 
 void setPreviewSource(const char *id, const std::string &uri);
 void renderPreviews();
+// Names the model preview's camera distance for the card's current shape;
+// a no-op while the card reads the same. Cheap enough for the paint beat.
+void projectModelPreviewCamera();
 std::string rgbaText(int red, int green, int blue, int alpha);
 std::string translateRect(float x, float y);
 std::string sizeText(float value);

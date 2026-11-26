@@ -124,15 +124,17 @@ int32_t apiSetResourceRoot(const char *uri) {
     models.pop_back();
     // The action models live in the menu module's custom directory, derived
     // from the module's own id: the packaged groups are materialized there
-    // for the engine's Studio loader, and a user's file of the same name
-    // wins.
+    // when their files are missing, and a user's file of the same name
+    // wins. The engine then reads a short mirror of the directory, its
+    // model names being too long under the directory itself.
     std::string directory;
     if (ModuleVfs::customPath(models.c_str(), directory)) {
       modelpreview::setActionModelDir(directory + "/");
-      modelpreview::prepareActionModels(models.c_str(),
-                                        [](const std::string &relative) {
-                                          return abc::ModPath(relative.c_str());
-                                        });
+      const auto native = [](const std::string &relative) {
+        return abc::ModPath(relative.c_str());
+      };
+      modelpreview::prepareActionModels(models.c_str(), native);
+      modelpreview::mirrorActionModels(native);
     }
   }
   lifetime = module_resources::Registration{};

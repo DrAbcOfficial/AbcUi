@@ -6,6 +6,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -14,8 +15,23 @@
 namespace modelpreview {
 namespace {
 
-bool materialize(const framework::PackageEntry &entry,
-                 const std::filesystem::path &path) {
+// The bytes of `path`; false when it cannot be read whole.
+bool readFile(const std::filesystem::path &path, std::string &out) {
+  std::ifstream stream(path, std::ios::binary | std::ios::ate);
+  if (!stream)
+    return false;
+  const std::streamoff size = stream.tellg();
+  if (size <= 0)
+    return false;
+  out.resize(static_cast<size_t>(size));
+  stream.seekg(0);
+  return static_cast<bool>(stream.read(out.data(), size));
+}
+
+// Writes `bytes` beside `path`, then renames them into place. A file already
+// there is replaced only when `replace` is set: the extraction never does.
+bool writeFile(std::string_view bytes, const std::filesystem::path &path,
+               bool replace) {
   std::error_code error;
   std::filesystem::create_directories(path.parent_path(), error);
   if (error)
@@ -23,14 +39,15 @@ bool materialize(const framework::PackageEntry &entry,
   auto temporary = path;
   temporary += ".tmp";
   std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
-  if (!output)
-    return false;
-  output.write(static_cast<const char *>(entry.data),
-               static_cast<std::streamsize>(entry.size));
+  output.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
   output.close();
-  // Without replacement: a file that appeared meanwhile stays.
-  const bool complete = output && MoveFileExW(temporary.c_str(), path.c_str(),
-                                              MOVEFILE_WRITE_THROUGH);
+  if (!output) {
+    std::filesystem::remove(temporary, error);
+    return false;
+  }
+  const bool complete = MoveFileExW(
+      temporary.c_str(), path.c_str(),
+      MOVEFILE_WRITE_THROUGH | (replace ? MOVEFILE_REPLACE_EXISTING : 0));
   if (!complete)
     std::filesystem::remove(temporary, error);
   return complete;
@@ -59,12 +76,72 @@ void prepareActionModels(const char *directory, const NativePath &path) {
     if (!native.empty() && std::filesystem::exists(native, error))
       continue;
     framework::PackageEntry entry;
+    // Without replacement: a model that appeared there meanwhile stays.
     if (native.empty() ||
         !framework::ModuleVfs::open(uri.c_str(), entry, nullptr) ||
         entry.size == 0 || entry.size > 16 * 1024 * 1024 ||
-        !materialize(entry, native))
+        !writeFile({static_cast<const char *>(entry.data), entry.size}, native,
+                   false))
       abc::ConsoleWarn("[AbcUi] menu action model unavailable: %s\n",
                        name.c_str());
+  }
+}
+
+void mirrorActionModels(const NativePath &path) {
+  const std::string directory = actionModelDir();
+  if (directory.empty())
+    return;
+  const std::string source = path ? path(directory) : std::string();
+  const std::string mirror =
+      path ? path(std::string(kActionModelLoadDir)) : std::string();
+  if (source.empty() || mirror.empty()) {
+    abc::ConsoleWarn(
+        "[AbcUi] menu action models have no path for the engine's copy\n");
+    return;
+  }
+  // What the mirror holds when this is done.
+  std::set<std::string> copied;
+  std::error_code error;
+  std::error_code kind;
+  for (std::filesystem::directory_iterator it(source, error), end; it != end;
+       it.increment(error)) {
+    const std::string name = it->path().filename().string();
+    // Only the direct model children: nothing else there is a group.
+    if (!it->is_regular_file(kind) || !Options::isModelPath(name))
+      continue;
+    // The engine can only name what fits MAX_MODEL_NAME: for a longer stem
+    // there is no loadable copy to make.
+    if (kActionModelLoadDir.size() + name.size() > kActionModelNameMax) {
+      abc::ConsoleWarn("[AbcUi] menu action model name is too long for the "
+                       "engine: %s\n",
+                       name.c_str());
+      continue;
+    }
+    const auto destination =
+        std::filesystem::path(mirror) / it->path().filename();
+    std::string wanted, current;
+    if (readFile(destination, current) && readFile(it->path(), wanted) &&
+        current == wanted) {
+      copied.insert(name);
+      continue;
+    }
+    wanted.clear();
+    if (readFile(it->path(), wanted) && writeFile(wanted, destination, true))
+      copied.insert(name);
+    else
+      abc::ConsoleWarn("[AbcUi] menu action model cannot be copied for the "
+                       "engine: %s\n",
+                       name.c_str());
+  }
+  // The mirror only ever holds the models copied above: anything else there
+  // is a stale copy, a stray file or a temporary one an interrupted copy
+  // left.
+  for (std::filesystem::directory_iterator it(mirror, error), end; it != end;
+       it.increment(error)) {
+    if (!it->is_regular_file(kind) ||
+        copied.contains(it->path().filename().string()))
+      continue;
+    std::filesystem::remove(it->path(), kind);
   }
 }
 

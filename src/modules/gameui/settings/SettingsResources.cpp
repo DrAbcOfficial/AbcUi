@@ -102,11 +102,13 @@ std::vector<services::settings::StringChoice> actionModels() {
   const char *name = abc::g_pFileSystem->FindFirst(mask.c_str(), &handle);
   while (name && choices.size() < 512) {
     const std::string path = directory + name;
+    const std::string stem = std::filesystem::path(name).stem().string();
+    // The engine loads a group through its mirror, by a name the engine can
+    // hold: a stem with no such path is left out, not listed and unusable.
     if (!abc::g_pFileSystem->FindIsDirectory(handle) &&
-        modelpreview::Options::isModelPath(path)) {
-      const std::string stem = std::filesystem::path(name).stem().string();
+        modelpreview::Options::isModelPath(path) &&
+        !modelpreview::actionModelLoadPath(stem).empty())
       choices.push_back({stem, stem});
-    }
     name = abc::g_pFileSystem->FindNext(handle);
   }
   return choices;

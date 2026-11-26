@@ -3,6 +3,7 @@
 // New implementation. Engine-independent <model> attribute validation.
 // Target consumes the validated options; ElementModel supplies string values.
 #include <array>
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <string_view>
@@ -15,16 +16,30 @@ constexpr const char *kGenericModelPath = "models/player.mdl";
 
 constexpr const char *kActionModelDefault = "display_male";
 
-// The action model directory: where a bare action spelling names its group,
-// as the engine filesystem spells it. It is the menu module's custom
-// directory (abc/abcui/custom/<module id>/models/menu_action/): the engine's
-// Studio loader needs a file in the game search path, so the packaged groups
-// are materialized there, and a file the user puts there wins. The framework
-// derives it from the module's resource root when that is declared; until
-// then it is empty and no bare group resolves. The resolver, the extraction
-// target and the settings scan all read it here.
+// The action model directory: where the action model groups live, as the
+// engine filesystem spells it. It is the menu module's custom directory
+// (abc/abcui/custom/<module id>/models/menu_action/): the packaged groups
+// are materialized there because the Studio loader needs a file in the game
+// search path, and a file the user puts there wins. The framework derives it
+// from the module's resource root when that is declared; until then it is
+// empty and no bare group resolves. The extraction target and the settings
+// scan read it here.
 void setActionModelDir(std::string directory);
 const std::string &actionModelDir();
+
+// The engine keys its model cache by the full game-relative name and caps
+// that name at MAX_MODEL_NAME (64) bytes, too little for a name under the
+// directory above: its 49 characters leave room for a ten-character stem. So
+// the engine never loads from the directory. ActionModels.cpp keeps a short
+// mirror of it here and a bare spelling resolves into the mirror.
+constexpr std::string_view kActionModelLoadDir = "abc/abcui/cache/menu_action/";
+// MAX_MODEL_NAME without its terminator.
+constexpr std::size_t kActionModelNameMax = 63;
+
+// The engine path of the action model group `Spelling`, a bare stem naming
+// "<stem>.mdl" in the mirror. Empty for anything but a plain stem whose
+// model the engine can name.
+std::string actionModelLoadPath(std::string_view Spelling);
 
 // Resolves a Studio path spelling the way the shipped cvars spell one: a
 // value that already names a file (".../*.mdl") is used verbatim, anything
@@ -38,9 +53,10 @@ std::string resolveModelPath(std::string_view Spelling,
 using ModelExists = std::function<bool(const std::string &)>;
 
 // The main page's action group (cvar `abc_ui_menu_action_model`): a bare
-// spelling names a group in actionModelDir() ("display_male" ->
-// "<action model dir>display_male.mdl"), a .mdl path is used verbatim.
-// Empty or invalid spelling selects the default group. A missing group
+// spelling names a group of the action model directory, loaded through its
+// mirror ("display_male" -> "<action model load dir>display_male.mdl"); a
+// .mdl path is used verbatim. Either way the path must be one the engine can
+// name. Empty or invalid spelling selects the default group. A missing group
 // yields an empty path: the card then draws its own model without the
 // follow/merge chain.
 std::string resolveActionModelPath(std::string_view Spelling,

@@ -36,9 +36,12 @@
 				     the character. The camera is explicit and level with the
 				     model's origin, which is the middle of the player model's
 				     own bounding box (-36..+36 units), so the character sits
-				     centred in the box. 100 units keeps the default
-				     models/player.mdl whole through a full drag turn and the
-				     drag's tilt, in both the short and the tall card. -->
+				     centred in the box. The page names the distance for the
+				     card's shape (ModelPreviewCamera.h): 90 units stay in view
+				     from top to bottom, which keeps the default
+				     models/player.mdl at four fifths of the card and whole
+				     through a full drag turn, in the short and the tall card.
+				     The 100 here is the camera until the card has a layout. -->
 				<div class="preview-box">
 					<model id="model-preview" drag-rotate="true" sequence="2" animate="true" angles="0 25 0"
 					controllers="127 127 127 127" blending="127 127"

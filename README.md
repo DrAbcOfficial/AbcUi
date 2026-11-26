@@ -237,6 +237,11 @@ The menu action models are extracted only when their files do not exist yet.
 A model you placed there is never overwritten, so when a module update changes
 a packaged model, delete the old file to receive the new one.
 
+Action model file names may be up to 31 characters long, without `.mdl`. A
+longer name cannot be loaded and is reported in the console. AbcUi also keeps
+the game's own copy of these models in `svencoop/abc/abcui/cache/menu_action/`;
+it is refreshed on every start and needs no attention.
+
 ## Build the dist package
 
 Requires Windows, Visual Studio 2026 with the C++ workload, CMake 4.2 or newer, Python 3 for the UI module packages, and the AbcCore source next to AbcUi.

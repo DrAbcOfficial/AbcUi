@@ -18,4 +18,14 @@ using NativePath = std::function<std::string(const std::string &)>;
 // Failure is reported without preventing the menu from loading.
 void prepareActionModels(const char *directory, const NativePath &path);
 
+// Make the engine's copy of the action models match actionModelDir():
+// every model directly in the directory is written to
+// kActionModelLoadDir + name when it is missing or differs there, and a
+// copy without its model is removed. The engine can only load a model whose
+// game-relative name fits MAX_MODEL_NAME, which the directory itself is too
+// long for, so it reads this mirror and never the directory. A stem that
+// fits not even here is reported once and gets no copy. Failure is reported
+// without preventing the menu from loading.
+void mirrorActionModels(const NativePath &path);
+
 } // namespace modelpreview

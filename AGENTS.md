@@ -295,19 +295,37 @@ implemented rules the transition must keep:
   (`ModuleCustom::report`) and printed by the main thread in
   `modmanager::boot` and `frameAll`, never from a decoder thread.
 - The packaged menu action models are materialized into the menu module's
-  custom directory because the engine's Studio loader needs a file in the
-  game search path. `modelpreview::actionModelDir()` is their one path source:
+  custom directory because that is the one place the user and the extraction
+  share. `modelpreview::actionModelDir()` is their one path source:
   `apiSetResourceRoot` derives it from the resource root's module id through
-  `ModuleVfs::customPath`, and the bare-spelling resolver (`Options.cpp`),
-  the extraction target (`ActionModels.cpp`) and the settings scan
-  (`SettingsResources.cpp`) all read it - nowhere else does the framework
-  spell the module id for it. `prepareActionModels` writes a model only when
-  its file is missing and renames without replacement: a file already there,
-  the user's or one an earlier run wrote, is never rewritten, and through the
-  overlay it shadows the packaged model, so a packaged model changed by a
-  module upgrade stays shadowed until that file is deleted. The old
-  `abc/abcui/models/menu_action/` is neither read nor written; its files are
-  left alone.
+  `ModuleVfs::customPath`, and the extraction target (`ActionModels.cpp`) and
+  the settings scan (`SettingsResources.cpp`) both read it - nowhere else does
+  the framework spell the module id for it. `prepareActionModels` writes a
+  model only when its file is missing and renames without replacement: a file
+  already there, the user's or one an earlier run wrote, is never rewritten,
+  and through the overlay it shadows the packaged model, so a packaged model
+  changed by a module upgrade stays shadowed until that file is deleted. The
+  old `abc/abcui/models/menu_action/` is neither read nor written; its files
+  are left alone.
+- The engine keys its model cache by the full game-relative name and caps it
+  at `MAX_MODEL_NAME` (64 bytes). A model under the action model directory is
+  already 65+ bytes (`abc/abcui/custom/abcui.gameui/models/menu_action/` alone
+  is 49), so the engine never loads from it: `modelpreview::mirrorActionModels`
+  keeps `abc/abcui/cache/menu_action/` - short enough for a 31-character stem -
+  in step with the directory on every start (copy when missing or different,
+  remove a copy whose model is gone, report a stem that still does not fit).
+  A bare spelling resolves into the mirror (`Options.cpp`,
+  `actionModelLoadPath`), a resolved path longer than `kActionModelNameMax` is
+  not presented, and the settings scan lists only stems the engine can name.
+  Do not point the engine at the custom directory directly again; do not add
+  a second mirror or a second loader.
+- The settings page's player model preview keeps an explicit camera (issue 36
+  forbids fitting it to the model). Its distance is the page's own value and
+  follows the card's shape (`modules/gameui/src/settings/ModelPreviewCamera.h`):
+  a fixed number of visible units from the card's top to its bottom keeps the
+  default player model at the same share of the card whatever its aspect
+  ratio. The document's `camera-origin` is only the value before the first
+  layout.
 - Module panel descriptors are kept for the whole process and every
   HUD_Init cycle builds fresh wrappers: `PanelManager::shutdown` destroys the
   panel list on every HUD_Shutdown, so taking the wrappers once would lose
